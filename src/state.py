@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 
+from src.ingest import get_player_career_3p_stats
+
 STATE_COLS = ["player_id", "player_name", "A_r", "M_r"]
 
 def load_player_state(path: Path) -> pd.DataFrame:
@@ -25,14 +27,24 @@ def save_player_state(df: pd.DataFrame, path: Path) -> None:
     df.to_csv(path, index=False)
 
 def ensure_players_exist(player_state: pd.DataFrame, player_df: pd.DataFrame) -> pd.DataFrame:
-    """Ensure any PLAYER_ID in player_df exists in player_state."""
+    """Ensure any PLAYER_ID in player_df exists in player_state.
+
+    New players are initialized with their career 3P stats as baseline.
+    """
     st = player_state.copy()
     existing_ids = set(st["player_id"].dropna().astype(int).tolist())
     new_players = []
     for _, r in player_df.iterrows():
         pid = int(r["PLAYER_ID"])
         if pid not in existing_ids:
-            new_players.append({"player_id": pid, "player_name": r["PLAYER_NAME"], "A_r": 0.0, "M_r": 0.0})
+            # Fetch career stats to use as baseline
+            career = get_player_career_3p_stats(pid)
+            new_players.append({
+                "player_id": pid,
+                "player_name": r["PLAYER_NAME"],
+                "A_r": career['fg3a'],
+                "M_r": career['fg3m'],
+            })
             existing_ids.add(pid)
     if new_players:
         st = pd.concat([st, pd.DataFrame(new_players)], ignore_index=True)

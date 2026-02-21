@@ -7,6 +7,45 @@ from typing import Any
 import pandas as pd
 import requests
 
+from nba_api.stats.endpoints import playercareerstats
+
+
+# Cache for player career stats
+_career_stats_cache: dict[int, dict[str, float]] = {}
+
+
+def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
+    """
+    Fetch career 3P stats for a player from NBA API.
+    Returns dict with 'fg3a' (attempts) and 'fg3m' (makes) career totals.
+    Returns zeros if stats can't be fetched.
+    """
+    if player_id in _career_stats_cache:
+        return _career_stats_cache[player_id]
+
+    try:
+        # Add small delay to avoid rate limiting
+        time.sleep(0.3)
+
+        career = playercareerstats.PlayerCareerStats(player_id=str(player_id))
+        totals = career.career_totals_regular_season.get_data_frame()
+
+        if totals.empty:
+            result = {'fg3a': 0.0, 'fg3m': 0.0}
+        else:
+            # Career totals are in a single row
+            row = totals.iloc[0]
+            result = {
+                'fg3a': float(row.get('FG3A', 0) or 0),
+                'fg3m': float(row.get('FG3M', 0) or 0),
+            }
+    except Exception as e:
+        # If we can't fetch, default to zeros (will use league prior)
+        result = {'fg3a': 0.0, 'fg3m': 0.0}
+
+    _career_stats_cache[player_id] = result
+    return result
+
 
 # --- cdn.nba.com endpoints ---
 SCHEDULE_URL = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"

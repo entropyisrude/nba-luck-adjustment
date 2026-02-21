@@ -58,6 +58,61 @@ def compute_team_adjusted_points(
         }
     return out
 
+def compute_player_deltas(
+    player_df: pd.DataFrame,
+    player_state: pd.DataFrame,
+    mu: float,
+    kappa: float,
+    orb_rate: float,
+    ppp: float,
+) -> list[dict]:
+    """Compute per-player point delta (luck impact) for a game.
+
+    Returns list of dicts with player_name, team_id, delta_pts (positive = player was lucky).
+    """
+    haircut = orb_rate * ppp
+    st = player_state.set_index("player_id")[["A_r", "M_r"]]
+    results = []
+
+    for _, r in player_df.iterrows():
+        a = float(r["FG3A"])
+        if a <= 0:
+            continue
+        pid = int(r["PLAYER_ID"])
+        m = float(r["FG3M"])
+
+        if pid in st.index:
+            A_r = float(st.loc[pid, "A_r"])
+            M_r = float(st.loc[pid, "M_r"])
+        else:
+            A_r = 0.0
+            M_r = 0.0
+
+        p_hat = (M_r + kappa * mu) / (A_r + kappa)
+        exp_3pm = a * p_hat
+        delta_3m = m - exp_3pm  # positive = made more than expected (lucky)
+        delta_pts = 3.0 * delta_3m - haircut * (-delta_3m)  # points gained from luck
+
+        results.append({
+            "player_id": pid,
+            "player_name": r.get("PLAYER_NAME", ""),
+            "team_id": int(r["TEAM_ID"]),
+            "fg3a": a,
+            "fg3m": m,
+            "exp_3pm": exp_3pm,
+            "delta_pts": delta_pts,
+        })
+
+    return results
+
+
+def get_biggest_swing_player(player_deltas: list[dict]) -> dict | None:
+    """Find the player with the largest absolute point delta (most luck impact)."""
+    if not player_deltas:
+        return None
+    return max(player_deltas, key=lambda x: abs(x["delta_pts"]))
+
+
 def update_player_state_attempt_decay(
     player_df: pd.DataFrame,
     player_state: pd.DataFrame,
