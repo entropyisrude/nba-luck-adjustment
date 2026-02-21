@@ -1,0 +1,6 @@
+# v1 constants for 2025-26
+mu: 0.36               # baseline 3P%
+kappa: 400             # prior attempt strength
+half_life_3pa: 2000    # attempt-based half-life for recency weighting
+orb_rate: 0.2608       # league average offensive rebound rate (ORR / ORB% proxy)
+ppp: 1.1240            # league points per possession
