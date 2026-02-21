@@ -1,6 +1,7 @@
 """Generate HTML summary report from adjusted_games.csv"""
 
 import pandas as pd
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -40,12 +41,59 @@ def generate_report():
          'margin_actual', 'margin_adj', 'margin_delta']
     ].copy()
 
-    # Recent games (last 2 weeks with significant swings)
-    recent = df[df['date'] >= '2026-02-10'].copy()
-    recent_notable = recent.nlargest(10, 'abs_margin_delta')[
-        ['date', 'home_team', 'away_team', 'home_pts_actual', 'away_pts_actual',
-         'margin_actual', 'margin_adj', 'margin_delta']
-    ]
+    # Prepare games data as JSON for calendar
+    # Check if swing_player columns exist (for backward compatibility)
+    has_swing_player = 'swing_player' in df.columns
+
+    json_cols = ['date', 'home_team', 'away_team', 'home_pts_actual', 'away_pts_actual',
+                 'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta']
+    if has_swing_player:
+        json_cols += ['swing_player', 'swing_player_delta']
+
+    games_for_json = df[json_cols].copy()
+    games_for_json = games_for_json.sort_values('date')
+
+    # Group games by date for JSON
+    games_by_date = {}
+    for _, row in games_for_json.iterrows():
+        date = row['date']
+        if date not in games_by_date:
+            games_by_date[date] = []
+        game_obj = {
+            'home_team': row['home_team'],
+            'away_team': row['away_team'],
+            'home_pts_actual': int(row['home_pts_actual']),
+            'away_pts_actual': int(row['away_pts_actual']),
+            'home_pts_adj': round(row['home_pts_adj'], 1),
+            'away_pts_adj': round(row['away_pts_adj'], 1),
+            'margin_actual': int(row['margin_actual']),
+            'margin_adj': round(row['margin_adj'], 1),
+            'margin_delta': round(row['margin_delta'], 1)
+        }
+        if has_swing_player:
+            game_obj['swing_player'] = row['swing_player'] if pd.notna(row['swing_player']) else ''
+            game_obj['swing_player_delta'] = round(row['swing_player_delta'], 1) if pd.notna(row['swing_player_delta']) else 0
+        games_by_date[date].append(game_obj)
+
+    games_json = json.dumps(games_by_date)
+    most_recent_date = df['date'].max()
+
+    # Determine date range from data for calendar
+    min_date = pd.to_datetime(df['date'].min())
+    max_date = pd.to_datetime(df['date'].max())
+
+    # Build list of months to display (from first game month to last game month)
+    season_months = []
+    current = min_date.replace(day=1)
+    while current <= max_date:
+        season_months.append({'year': current.year, 'month': current.month - 1})  # JS months are 0-indexed
+        # Move to next month
+        if current.month == 12:
+            current = current.replace(year=current.year + 1, month=1)
+        else:
+            current = current.replace(month=current.month + 1)
+
+    season_months_json = json.dumps(season_months)
 
     # Generate HTML
     html = f"""<!DOCTYPE html>
@@ -55,7 +103,7 @@ def generate_report():
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
@@ -119,6 +167,117 @@ def generate_report():
             color: #666;
             font-size: 0.85em;
         }}
+
+        /* Navigation Links */
+        .nav-links {{
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }}
+        .nav-links a {{
+            background: #1a1a2e;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }}
+        .nav-links a:hover {{
+            background: #e94560;
+        }}
+
+        /* Calendar Styles */
+        .calendar-container {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }}
+        .calendar-grid {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }}
+        .month {{
+            width: 280px;
+        }}
+        .month-title {{
+            text-align: center;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }}
+        .weekdays {{
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+        }}
+        .days {{
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }}
+        .day {{
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            border-radius: 4px;
+            color: #999;
+        }}
+        .day.has-games {{
+            background: #e8f4f8;
+            color: #1a1a2e;
+            cursor: pointer;
+            font-weight: 500;
+        }}
+        .day.has-games:hover {{
+            background: #c8e4f0;
+        }}
+        .day.selected {{
+            background: #e94560 !important;
+            color: white !important;
+        }}
+        .day.empty {{
+            visibility: hidden;
+        }}
+
+        /* Selected Date Games */
+        .selected-date-section {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }}
+        .selected-date-title {{
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+        }}
+        #games-table-container {{
+            min-height: 100px;
+        }}
+        .no-games {{
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }}
+        .winner-flip {{
+            color: #e94560;
+            font-weight: bold;
+        }}
     </style>
 </head>
 <body>
@@ -129,10 +288,27 @@ def generate_report():
         <p><strong>What is this?</strong> This analysis adjusts NBA scores based on 3-point shooting luck.
         When a team shoots significantly above or below their expected 3P% (based on each player's historical shooting),
         we calculate what the score "should have been" if shooting regressed to expectation.</p>
-        <p><strong>Margin Delta</strong> = Luck-adjusted margin minus actual margin. Positive means the team benefited from luck.</p>
+        <p><strong>Margin Delta</strong> = Luck-adjusted margin minus actual margin. Positive means the home team benefited from luck.</p>
     </div>
 
-    <h2>1. Team Luck Rankings (Season Totals)</h2>
+    <div class="nav-links">
+        <a href="#team-rankings">Team Rankings</a>
+        <a href="#biggest-swings">Biggest Swings</a>
+    </div>
+
+    <h2>Games by Date</h2>
+    <div class="calendar-container">
+        <div class="calendar-grid" id="calendar"></div>
+    </div>
+
+    <div class="selected-date-section">
+        <div class="selected-date-title" id="selected-date-title">Select a date above</div>
+        <div id="games-table-container">
+            <p class="no-games">Click on a highlighted date to see games</p>
+        </div>
+    </div>
+
+    <h2 id="team-rankings">Team Luck Rankings (Season Totals)</h2>
     <p>Cumulative margin points gained/lost due to 3PT variance</p>
     <table>
         <tr>
@@ -157,7 +333,7 @@ def generate_report():
 
     html += """    </table>
 
-    <h2>2. Biggest Luck-Swing Games</h2>
+    <h2 id="biggest-swings">Biggest Luck-Swing Games</h2>
     <p>Games where 3PT variance most dramatically affected the outcome</p>
     <table>
         <tr>
@@ -173,36 +349,7 @@ def generate_report():
         swing_class = "positive" if row['margin_delta'] > 0 else "negative"
         winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
         adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
-        flip = "⚠️" if winner != adj_winner else ""
-        html += f"""        <tr>
-            <td>{row['date']}</td>
-            <td>{row['away_team']} @ {row['home_team']}</td>
-            <td>{int(row['away_pts_actual'])}-{int(row['home_pts_actual'])}</td>
-            <td>{row['margin_adj']:+.1f}</td>
-            <td class="{swing_class}">{row['margin_delta']:+.1f} {flip}</td>
-        </tr>
-"""
-
-    html += """    </table>
-    <p><small>⚠️ = Adjusted margin flips the winner</small></p>
-
-    <h2>3. Recent Notable Games</h2>
-    <p>Biggest luck swings in the last 2 weeks</p>
-    <table>
-        <tr>
-            <th>Date</th>
-            <th>Matchup</th>
-            <th>Actual</th>
-            <th>Adjusted</th>
-            <th>Swing</th>
-        </tr>
-"""
-
-    for _, row in recent_notable.iterrows():
-        swing_class = "positive" if row['margin_delta'] > 0 else "negative"
-        winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
-        adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
-        flip = "⚠️" if winner != adj_winner else ""
+        flip = "&#9888;" if winner != adj_winner else ""
         html += f"""        <tr>
             <td>{row['date']}</td>
             <td>{row['away_team']} @ {row['home_team']}</td>
@@ -213,17 +360,171 @@ def generate_report():
 """
 
     html += f"""    </table>
+    <p><small>&#9888; = Adjusted margin flips the winner</small></p>
 
     <div class="methodology">
         <h3>Methodology</h3>
         <ul>
-            <li><strong>Expected 3P%</strong>: Each player's expected make rate uses Bayesian updating with a prior of 36% and κ=400 attempts</li>
+            <li><strong>Expected 3P%</strong>: Each player's expected make rate uses Bayesian updating with a prior of 36% and kappa=400 attempts</li>
             <li><strong>Recency weighting</strong>: Attempts decay with half-life of 2000 3PA to weight recent performance</li>
             <li><strong>ORB correction</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP</li>
             <li><strong>Data source</strong>: cdn.nba.com live boxscores</li>
         </ul>
         <p>Generated {datetime.now().strftime('%Y-%m-%d %H:%M')} | <a href="https://github.com">View on GitHub</a></p>
     </div>
+
+    <script>
+    // Game data embedded as JSON
+    const gamesByDate = {games_json};
+    const mostRecentDate = "{most_recent_date}";
+
+    // Month names
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Season months: dynamically generated from game data
+    const seasonMonths = {season_months_json};
+
+    let selectedDate = null;
+
+    function formatDate(year, month, day) {{
+        return `${{year}}-${{String(month + 1).padStart(2, '0')}}-${{String(day).padStart(2, '0')}}`;
+    }}
+
+    function renderCalendar() {{
+        const calendar = document.getElementById('calendar');
+        calendar.innerHTML = '';
+
+        seasonMonths.forEach(({{ year, month }}) => {{
+            const monthDiv = document.createElement('div');
+            monthDiv.className = 'month';
+
+            // Month title
+            const title = document.createElement('div');
+            title.className = 'month-title';
+            title.textContent = `${{monthNames[month]}} ${{year}}`;
+            monthDiv.appendChild(title);
+
+            // Weekday headers
+            const weekdays = document.createElement('div');
+            weekdays.className = 'weekdays';
+            dayNames.forEach(d => {{
+                const wd = document.createElement('div');
+                wd.textContent = d;
+                weekdays.appendChild(wd);
+            }});
+            monthDiv.appendChild(weekdays);
+
+            // Days grid
+            const daysDiv = document.createElement('div');
+            daysDiv.className = 'days';
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Empty cells before first day
+            for (let i = 0; i < firstDay; i++) {{
+                const empty = document.createElement('div');
+                empty.className = 'day empty';
+                daysDiv.appendChild(empty);
+            }}
+
+            // Day cells
+            for (let day = 1; day <= daysInMonth; day++) {{
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                dayDiv.textContent = day;
+
+                const dateStr = formatDate(year, month, day);
+                if (gamesByDate[dateStr]) {{
+                    dayDiv.classList.add('has-games');
+                    dayDiv.dataset.date = dateStr;
+                    dayDiv.addEventListener('click', () => selectDate(dateStr));
+                }}
+
+                daysDiv.appendChild(dayDiv);
+            }}
+
+            monthDiv.appendChild(daysDiv);
+            calendar.appendChild(monthDiv);
+        }});
+    }}
+
+    function selectDate(dateStr) {{
+        // Remove previous selection
+        document.querySelectorAll('.day.selected').forEach(el => el.classList.remove('selected'));
+
+        // Add selection to clicked day
+        document.querySelectorAll(`.day[data-date="${{dateStr}}"]`).forEach(el => el.classList.add('selected'));
+
+        selectedDate = dateStr;
+        renderGamesTable(dateStr);
+    }}
+
+    function renderGamesTable(dateStr) {{
+        const container = document.getElementById('games-table-container');
+        const titleEl = document.getElementById('selected-date-title');
+
+        const games = gamesByDate[dateStr];
+
+        if (!games || games.length === 0) {{
+            titleEl.textContent = dateStr;
+            container.innerHTML = '<p class="no-games">No games on this date</p>';
+            return;
+        }}
+
+        titleEl.textContent = `${{dateStr}} (${{games.length}} game${{games.length > 1 ? 's' : ''}})`;
+
+        let html = `<table>
+            <tr>
+                <th>Matchup</th>
+                <th>Actual Score</th>
+                <th>Adjusted Score</th>
+                <th>Luck Swing</th>
+                <th>Biggest Swing Player</th>
+            </tr>`;
+
+        games.forEach(game => {{
+            const swingClass = game.margin_delta > 0 ? 'positive' : 'negative';
+            const actualWinner = game.margin_actual > 0 ? game.home_team : game.away_team;
+            const adjWinner = game.margin_adj > 0 ? game.home_team : game.away_team;
+            const flip = actualWinner !== adjWinner ? '<span class="winner-flip">&#9888;</span>' : '';
+
+            // Format adjusted score with winner in bold
+            const awayAdj = game.away_pts_adj.toFixed(1);
+            const homeAdj = game.home_pts_adj.toFixed(1);
+            const adjScore = game.margin_adj > 0
+                ? `${{awayAdj}}-<strong>${{homeAdj}}</strong>`
+                : `<strong>${{awayAdj}}</strong>-${{homeAdj}}`;
+
+            // Format swing player with delta
+            let swingPlayer = '';
+            if (game.swing_player) {{
+                const playerDeltaClass = game.swing_player_delta > 0 ? 'positive' : 'negative';
+                const deltaSign = game.swing_player_delta > 0 ? '+' : '';
+                swingPlayer = `${{game.swing_player}} <span class="${{playerDeltaClass}}">${{deltaSign}}${{game.swing_player_delta.toFixed(1)}}</span>`;
+            }}
+
+            html += `<tr>
+                <td>${{game.away_team}} @ ${{game.home_team}}</td>
+                <td>${{game.away_pts_actual}}-${{game.home_pts_actual}}</td>
+                <td>${{adjScore}} ${{flip}}</td>
+                <td class="${{swingClass}}">${{game.margin_delta > 0 ? '+' : ''}}${{game.margin_delta.toFixed(1)}}</td>
+                <td>${{swingPlayer}}</td>
+            </tr>`;
+        }});
+
+        html += '</table><p><small><strong>Bold</strong> = adjusted winner | &#9888; = different from actual winner</small></p>';
+        container.innerHTML = html;
+    }}
+
+    // Initialize
+    renderCalendar();
+    if (gamesByDate[mostRecentDate]) {{
+        selectDate(mostRecentDate);
+    }}
+    </script>
 </body>
 </html>
 """

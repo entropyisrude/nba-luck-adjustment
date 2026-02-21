@@ -15,6 +15,8 @@ from src.state import load_player_state, save_player_state, ensure_players_exist
 from src.adjust import (
     compute_team_expected_3pm,
     compute_team_adjusted_points,
+    compute_player_deltas,
+    get_biggest_swing_player,
     update_player_state_attempt_decay,
 )
 
@@ -46,7 +48,12 @@ def main():
     state_path = DATA_DIR / "player_state.csv"
 
     player_state = load_player_state(state_path)
-    existing = pd.read_csv(adjusted_path) if adjusted_path.exists() else pd.DataFrame()
+    if adjusted_path.exists():
+        existing = pd.read_csv(adjusted_path, dtype={'game_id': str})
+        # Normalize game_id to remove leading zeros for consistent deduplication
+        existing['game_id'] = existing['game_id'].astype(str).str.lstrip('0')
+    else:
+        existing = pd.DataFrame()
 
     rows = []
 
@@ -83,6 +90,17 @@ def main():
                     ppp=float(cfg["ppp"]),
                 )
 
+                # Compute player-level deltas for biggest swing player
+                player_deltas = compute_player_deltas(
+                    player_df=player_df,
+                    player_state=player_state,
+                    mu=float(cfg["mu"]),
+                    kappa=float(cfg["kappa"]),
+                    orb_rate=float(cfg["orb_rate"]),
+                    ppp=float(cfg["ppp"]),
+                )
+                biggest_swing = get_biggest_swing_player(player_deltas)
+
                 home_team_id, away_team_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)
 
                 home = team_df.loc[team_df["TEAM_ID"] == home_team_id].iloc[0]
@@ -93,7 +111,7 @@ def main():
 
                 row = {
                     "date": d.isoformat(),
-                    "game_id": str(game_id),
+                    "game_id": str(game_id).lstrip('0'),  # Normalize to remove leading zeros
                     "home_team": home["TEAM_ABBREVIATION"],
                     "away_team": away["TEAM_ABBREVIATION"],
                     "home_pts_actual": float(home["PTS"]),
@@ -116,6 +134,14 @@ def main():
                 row["margin_actual"] = row["home_pts_actual"] - row["away_pts_actual"]
                 row["margin_adj"] = row["home_pts_adj"] - row["away_pts_adj"]
                 row["margin_delta"] = row["margin_adj"] - row["margin_actual"]
+
+                # Add biggest swing player info
+                if biggest_swing:
+                    row["swing_player"] = biggest_swing["player_name"]
+                    row["swing_player_delta"] = round(biggest_swing["delta_pts"], 1)
+                else:
+                    row["swing_player"] = ""
+                    row["swing_player_delta"] = 0.0
 
                 rows.append(row)
 
