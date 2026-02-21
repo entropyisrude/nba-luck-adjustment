@@ -1,0 +1,50 @@
+name: Update NBA 3PT Luck Report
+
+on:
+  schedule:
+    # Run at 6 AM UTC (1 AM EST / 10 PM PST) - after west coast games finish
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Get yesterday's date (games we're updating)
+        id: date
+        run: |
+          echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Run daily update
+        run: |
+          python run_daily.py --start ${{ steps.date.outputs.yesterday }} --end ${{ steps.date.outputs.yesterday }}
+
+      - name: Generate report
+        run: |
+          python generate_report.py
+
+      - name: Copy report to index.html
+        run: |
+          cp data/3pt_luck_report.html index.html
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Auto-update: Games from ${{ steps.date.outputs.yesterday }}"
+          git push
