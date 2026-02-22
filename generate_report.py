@@ -353,6 +353,77 @@ def generate_report():
             content: '↓';
             opacity: 1;
         }}
+
+        /* Clickable diff cells */
+        .clickable-diff {{
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }}
+        .clickable-diff:hover {{
+            text-decoration-style: solid;
+        }}
+
+        /* Modal styles */
+        .modal-overlay {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }}
+        .modal-overlay.active {{
+            display: flex;
+        }}
+        .modal {{
+            background: white;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: relative;
+        }}
+        .modal-header {{
+            background: #1a1a2e;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+            position: sticky;
+            top: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .modal-close {{
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 0 5px;
+        }}
+        .modal-close:hover {{
+            color: #e94560;
+        }}
+        .modal-body {{
+            padding: 20px;
+        }}
+        .modal table {{
+            margin-bottom: 0;
+        }}
+        .lucky-win {{
+            color: #28a745;
+        }}
+        .unlucky-loss {{
+            color: #dc3545;
+        }}
     </style>
 </head>
 <body>
@@ -411,7 +482,7 @@ def generate_report():
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
             <td>{adj_record}</td>
-            <td class="{diff_class}">{diff_str}</td>
+            <td class="{diff_class} clickable-diff" onclick="showFlippedGames('{row['team']}')">{diff_str}</td>
             <td class="{luck_class}">{row['total_luck']:+.1f}</td>
             <td class="{luck_class}">{row['luck_per_game']:+.2f}</td>
         </tr>
@@ -455,11 +526,12 @@ def generate_report():
         <h4>Player Expected 3P%</h4>
         <p>Each player's expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
         <ul>
-            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
+            <li><strong>Career weighting</strong>: Season-by-season stats weighted with a 5-year half-life (recent seasons count more)</li>
+            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ weighted 3PA)</li>
             <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Formula</strong>: expected_pct = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
+            <li><strong>Formula</strong>: expected_pct = (weighted_makes + kappa × prior) / (weighted_attempts + kappa)</li>
         </ul>
-        <p>This means rookies regress more heavily toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
+        <p>This means a player who shot 40% last year but 34% for their career will have expectations closer to 40%. Rookies still regress toward a conservative 32% baseline.</p>
 
         <h4>In-Season Adjustment</h4>
         <ul>
@@ -696,7 +768,102 @@ def generate_report():
     }}
 
     setupSortableTable();
+
+    // Modal functions for showing flipped games
+    function showFlippedGames(team) {{
+        const overlay = document.getElementById('modal-overlay');
+        const title = document.getElementById('modal-title');
+        const body = document.getElementById('modal-body');
+
+        // Find all games where this team was involved and luck flipped the winner
+        const flippedGames = [];
+        for (const [date, games] of Object.entries(gamesByDate)) {{
+            for (const game of games) {{
+                const isHome = game.home_team === team;
+                const isAway = game.away_team === team;
+                if (!isHome && !isAway) continue;
+
+                const actualWinner = game.margin_actual > 0 ? game.home_team : game.away_team;
+                const adjWinner = game.margin_adj > 0 ? game.home_team : game.away_team;
+                if (actualWinner === adjWinner) continue;  // Not flipped
+
+                // Determine if this was a lucky win or unlucky loss for the team
+                const teamActuallyWon = actualWinner === team;
+                const teamShouldHaveWon = adjWinner === team;
+
+                flippedGames.push({{
+                    date,
+                    game,
+                    luckyWin: teamActuallyWon && !teamShouldHaveWon,
+                    unluckyLoss: !teamActuallyWon && teamShouldHaveWon
+                }});
+            }}
+        }}
+
+        // Sort by date descending
+        flippedGames.sort((a, b) => b.date.localeCompare(a.date));
+
+        const luckyWins = flippedGames.filter(g => g.luckyWin).length;
+        const unluckyLosses = flippedGames.filter(g => g.unluckyLoss).length;
+
+        title.textContent = `${{team}}: Games Where Luck Changed the Outcome (${{flippedGames.length}})`;
+
+        if (flippedGames.length === 0) {{
+            body.innerHTML = '<p>No games where luck flipped the winner for this team.</p>';
+        }} else {{
+            let html = `<p><span class="lucky-win">Lucky wins: ${{luckyWins}}</span> | <span class="unlucky-loss">Unlucky losses: ${{unluckyLosses}}</span></p>`;
+            html += `<table>
+                <tr>
+                    <th>Date</th>
+                    <th>Matchup</th>
+                    <th>Actual</th>
+                    <th>Adjusted</th>
+                    <th>Result</th>
+                </tr>`;
+
+            for (const {{ date, game, luckyWin, unluckyLoss }} of flippedGames) {{
+                const resultClass = luckyWin ? 'lucky-win' : 'unlucky-loss';
+                const resultText = luckyWin ? 'Lucky W' : 'Unlucky L';
+                const awayAdj = game.away_pts_adj.toFixed(1);
+                const homeAdj = game.home_pts_adj.toFixed(1);
+
+                html += `<tr>
+                    <td>${{date}}</td>
+                    <td>${{game.away_team}} @ ${{game.home_team}}</td>
+                    <td>${{game.away_pts_actual}}-${{game.home_pts_actual}}</td>
+                    <td>${{awayAdj}}-${{homeAdj}}</td>
+                    <td class="${{resultClass}}">${{resultText}}</td>
+                </tr>`;
+            }}
+
+            html += '</table>';
+            body.innerHTML = html;
+        }}
+
+        overlay.classList.add('active');
+    }}
+
+    function closeModal(event) {{
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById('modal-overlay').classList.remove('active');
+    }}
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {{
+        if (e.key === 'Escape') closeModal();
+    }});
     </script>
+    <!-- Modal for flipped games -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span id="modal-title">Games</span>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
     <script data-goatcounter="https://entropyisrude.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
