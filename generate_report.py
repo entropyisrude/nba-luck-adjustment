@@ -106,7 +106,7 @@ def generate_report():
             'home_pts_adj': round(row['home_pts_adj'], 1),
             'away_pts_adj': round(row['away_pts_adj'], 1),
             'margin_actual': int(row['margin_actual']),
-            'margin_adj': round(row['margin_adj'], 1),
+            'margin_adj': round(row['margin_adj'], 2),
             'margin_delta': round(row['margin_delta'], 1)
         }
         if has_swing_player:
