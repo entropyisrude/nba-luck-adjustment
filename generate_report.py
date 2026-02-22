@@ -85,6 +85,9 @@ def generate_report():
                  'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta']
     if has_swing_player:
         json_cols += ['swing_player', 'swing_player_delta']
+        # Add shooting stats if available
+        if 'swing_player_fg3m' in df.columns:
+            json_cols += ['swing_player_fg3m', 'swing_player_fg3a']
 
     games_for_json = df[json_cols].copy()
     games_for_json = games_for_json.sort_values('date')
@@ -109,6 +112,10 @@ def generate_report():
         if has_swing_player:
             game_obj['swing_player'] = row['swing_player'] if pd.notna(row['swing_player']) else ''
             game_obj['swing_player_delta'] = round(row['swing_player_delta'], 1) if pd.notna(row['swing_player_delta']) else 0
+            # Add shooting stats if available
+            if 'swing_player_fg3m' in row and pd.notna(row.get('swing_player_fg3m')):
+                game_obj['swing_player_fg3m'] = int(row['swing_player_fg3m'])
+                game_obj['swing_player_fg3a'] = int(row['swing_player_fg3a'])
         games_by_date[date].append(game_obj)
 
     games_json = json.dumps(games_by_date)
@@ -581,12 +588,17 @@ def generate_report():
                 ? `${{awayAdj}}-<strong>${{homeAdj}}</strong>`
                 : `<strong>${{awayAdj}}</strong>-${{homeAdj}}`;
 
-            // Format swing player with delta
+            // Format swing player with shooting stats and delta
             let swingPlayer = '';
             if (game.swing_player) {{
                 const playerDeltaClass = game.swing_player_delta > 0 ? 'positive' : 'negative';
                 const deltaSign = game.swing_player_delta > 0 ? '+' : '';
-                swingPlayer = `${{game.swing_player}} <span class="${{playerDeltaClass}}">${{deltaSign}}${{game.swing_player_delta.toFixed(1)}}</span>`;
+                // Add shooting stats if available (e.g., "1-8")
+                let shootingStats = '';
+                if (game.swing_player_fg3a !== undefined) {{
+                    shootingStats = ` (${{game.swing_player_fg3m}}-${{game.swing_player_fg3a}})`;
+                }}
+                swingPlayer = `${{game.swing_player}}${{shootingStats}} <span class="${{playerDeltaClass}}">${{deltaSign}}${{game.swing_player_delta.toFixed(1)}}</span>`;
             }}
 
             html += `<tr class="${{rowClass}}">

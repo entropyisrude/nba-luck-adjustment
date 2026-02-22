@@ -139,9 +139,13 @@ def main():
                 if biggest_swing:
                     row["swing_player"] = biggest_swing["player_name"]
                     row["swing_player_delta"] = round(biggest_swing["delta_pts"], 1)
+                    row["swing_player_fg3m"] = int(biggest_swing["fg3m"])
+                    row["swing_player_fg3a"] = int(biggest_swing["fg3a"])
                 else:
                     row["swing_player"] = ""
                     row["swing_player_delta"] = 0.0
+                    row["swing_player_fg3m"] = 0
+                    row["swing_player_fg3a"] = 0
 
                 rows.append(row)
 
