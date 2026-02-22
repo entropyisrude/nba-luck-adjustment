@@ -278,6 +278,12 @@ def generate_report():
             color: #e94560;
             font-weight: bold;
         }}
+        tr.winner-flipped {{
+            background: #ffe0e0 !important;
+        }}
+        tr.winner-flipped:hover {{
+            background: #ffd0d0 !important;
+        }}
     </style>
 </head>
 <body>
@@ -476,6 +482,9 @@ def generate_report():
 
         titleEl.textContent = `${{dateStr}} (${{games.length}} game${{games.length > 1 ? 's' : ''}})`;
 
+        // Sort games by absolute margin_delta (largest swing first)
+        const sortedGames = [...games].sort((a, b) => Math.abs(b.margin_delta) - Math.abs(a.margin_delta));
+
         let html = `<table>
             <tr>
                 <th>Matchup</th>
@@ -485,11 +494,13 @@ def generate_report():
                 <th>Biggest Swing Player</th>
             </tr>`;
 
-        games.forEach(game => {{
+        sortedGames.forEach(game => {{
             const swingClass = game.margin_delta > 0 ? 'positive' : 'negative';
             const actualWinner = game.margin_actual > 0 ? game.home_team : game.away_team;
             const adjWinner = game.margin_adj > 0 ? game.home_team : game.away_team;
-            const flip = actualWinner !== adjWinner ? '<span class="winner-flip">&#9888;</span>' : '';
+            const isFlipped = actualWinner !== adjWinner;
+            const flip = isFlipped ? '<span class="winner-flip">&#9888;</span>' : '';
+            const rowClass = isFlipped ? 'winner-flipped' : '';
 
             // Format adjusted score with winner in bold
             const awayAdj = game.away_pts_adj.toFixed(1);
@@ -506,7 +517,7 @@ def generate_report():
                 swingPlayer = `${{game.swing_player}} <span class="${{playerDeltaClass}}">${{deltaSign}}${{game.swing_player_delta.toFixed(1)}}</span>`;
             }}
 
-            html += `<tr>
+            html += `<tr class="${{rowClass}}">
                 <td>${{game.away_team}} @ ${{game.home_team}}</td>
                 <td>${{game.away_pts_actual}}-${{game.home_pts_actual}}</td>
                 <td>${{adjScore}} ${{flip}}</td>
@@ -515,7 +526,7 @@ def generate_report():
             </tr>`;
         }});
 
-        html += '</table><p><small><strong>Bold</strong> = adjusted winner | &#9888; = different from actual winner</small></p>';
+        html += '</table><p><small><strong>Bold</strong> = adjusted winner | <span style="background:#ffe0e0;padding:2px 6px;">Pink row</span> + &#9888; = luck flipped the winner</small></p>';
         container.innerHTML = html;
     }}
 
@@ -525,6 +536,8 @@ def generate_report():
         selectDate(mostRecentDate);
     }}
     </script>
+    <script data-goatcounter="https://entropyisrude.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
 """

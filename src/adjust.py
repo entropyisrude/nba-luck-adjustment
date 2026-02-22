@@ -3,11 +3,34 @@ from __future__ import annotations
 import math
 import pandas as pd
 
+
+# Sliding prior parameters
+MU_MIN = 0.32      # Prior for rookies (0 career attempts)
+MU_MAX = 0.36      # Prior for veterans (1000+ career attempts)
+KAPPA_MIN = 200    # Prior strength for rookies
+KAPPA_MAX = 300    # Prior strength for veterans
+SCALE_ATTEMPTS = 1000  # Attempts at which prior/kappa reach max
+
+
+def get_player_prior(A_r: float) -> tuple[float, float]:
+    """
+    Calculate sliding prior (mu) and prior strength (kappa) based on career attempts.
+
+    Returns (mu, kappa) where:
+    - mu scales from 32% (rookie) to 36% (veteran)
+    - kappa scales from 200 (rookie) to 300 (veteran)
+    """
+    scale = min(A_r / SCALE_ATTEMPTS, 1.0)
+    mu = MU_MIN + (MU_MAX - MU_MIN) * scale
+    kappa = KAPPA_MIN + (KAPPA_MAX - KAPPA_MIN) * scale
+    return mu, kappa
+
+
 def compute_team_expected_3pm(
     player_df: pd.DataFrame,
     player_state: pd.DataFrame,
-    mu: float,
-    kappa: float,
+    mu: float,       # Kept for compatibility but not used (sliding prior instead)
+    kappa: float,    # Kept for compatibility but not used (sliding kappa instead)
 ) -> dict[int, float]:
     """Compute expected made threes by team from player 3PA * p_hat (pre-game state)."""
     # Map player_id -> (A_r, M_r)
@@ -27,7 +50,9 @@ def compute_team_expected_3pm(
             else:
                 A_r = 0.0
                 M_r = 0.0
-            p_hat = (M_r + kappa * mu) / (A_r + kappa)
+            # Use sliding prior based on career attempts
+            mu_player, kappa_player = get_player_prior(A_r)
+            p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
             exp += a * p_hat
         exp_by_team[team_id] = exp
     return exp_by_team
@@ -61,8 +86,8 @@ def compute_team_adjusted_points(
 def compute_player_deltas(
     player_df: pd.DataFrame,
     player_state: pd.DataFrame,
-    mu: float,
-    kappa: float,
+    mu: float,       # Kept for compatibility but not used (sliding prior instead)
+    kappa: float,    # Kept for compatibility but not used (sliding kappa instead)
     orb_rate: float,
     ppp: float,
 ) -> list[dict]:
@@ -88,7 +113,9 @@ def compute_player_deltas(
             A_r = 0.0
             M_r = 0.0
 
-        p_hat = (M_r + kappa * mu) / (A_r + kappa)
+        # Use sliding prior based on career attempts
+        mu_player, kappa_player = get_player_prior(A_r)
+        p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
         exp_3pm = a * p_hat
         delta_3m = m - exp_3pm  # positive = made more than expected (lucky)
         delta_pts = 3.0 * delta_3m - haircut * (-delta_3m)  # points gained from luck

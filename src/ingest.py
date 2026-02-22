@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import random
 import time
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -10,22 +12,56 @@ import requests
 from nba_api.stats.endpoints import playercareerstats
 
 
-# Cache for player career stats
+# Cache for player career stats (in-memory)
 _career_stats_cache: dict[int, dict[str, float]] = {}
+_cache_loaded = False
+
+# File-based cache path
+CAREER_CACHE_PATH = Path("data/career_stats_cache.json")
+
+
+def _load_career_cache() -> None:
+    """Load career stats cache from file."""
+    global _career_stats_cache, _cache_loaded
+    if _cache_loaded:
+        return
+    if CAREER_CACHE_PATH.exists():
+        try:
+            with open(CAREER_CACHE_PATH, 'r') as f:
+                data = json.load(f)
+                # Convert string keys back to int
+                _career_stats_cache = {int(k): v for k, v in data.items()}
+        except Exception:
+            _career_stats_cache = {}
+    _cache_loaded = True
+
+
+def _save_career_cache() -> None:
+    """Save career stats cache to file."""
+    try:
+        CAREER_CACHE_PATH.parent.mkdir(exist_ok=True)
+        with open(CAREER_CACHE_PATH, 'w') as f:
+            json.dump(_career_stats_cache, f)
+    except Exception:
+        pass
 
 
 def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
     """
     Fetch career 3P stats for a player from NBA API.
+    Results are cached to disk to avoid repeated API calls.
+
     Returns dict with 'fg3a' (attempts) and 'fg3m' (makes) career totals.
     Returns zeros if stats can't be fetched.
     """
+    _load_career_cache()
+
     if player_id in _career_stats_cache:
         return _career_stats_cache[player_id]
 
     try:
-        # Add small delay to avoid rate limiting
-        time.sleep(0.3)
+        # Small delay to avoid rate limiting
+        time.sleep(0.1)
 
         career = playercareerstats.PlayerCareerStats(player_id=str(player_id))
         totals = career.career_totals_regular_season.get_data_frame()
@@ -44,6 +80,7 @@ def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
         result = {'fg3a': 0.0, 'fg3m': 0.0}
 
     _career_stats_cache[player_id] = result
+    _save_career_cache()  # Persist to disk
     return result
 
 
