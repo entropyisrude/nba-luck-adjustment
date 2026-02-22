@@ -228,6 +228,7 @@
     <div class="nav-links">
         <a href="#team-rankings">Team Rankings</a>
         <a href="#biggest-swings">Biggest Swings</a>
+        <a href="#methodology">Methodology</a>
     </div>
 
     <h2>Games by Date</h2>
@@ -644,15 +645,39 @@
     </table>
     <p><small>&#9888; = Adjusted margin flips the winner</small></p>
 
-    <div class="methodology">
+    <div class="methodology" id="methodology">
         <h3>Methodology</h3>
+        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>game-by-game basis</strong>.</p>
+
+        <h4>Player Expected 3P%</h4>
+        <p>Each player's expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
         <ul>
-            <li><strong>Expected 3P%</strong>: Each player's expected make rate uses Bayesian updating with a prior of 36% and kappa=400 attempts</li>
-            <li><strong>Recency weighting</strong>: Attempts decay with half-life of 2000 3PA to weight recent performance</li>
-            <li><strong>ORB correction</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP</li>
-            <li><strong>Data source</strong>: cdn.nba.com live boxscores</li>
+            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
+            <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
+            <li><strong>Formula</strong>: expected_pct = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
         </ul>
-        <p>Generated 2026-02-22 13:05 | <a href="https://github.com">View on GitHub</a></p>
+        <p>This means rookies regress more heavily toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
+
+        <h4>In-Season Adjustment</h4>
+        <ul>
+            <li><strong>Recency weighting</strong>: In-season attempts decay with a half-life of 2000 3PA</li>
+            <li>This allows for gradual adjustment if a player's shooting changes mid-season</li>
+        </ul>
+
+        <h4>Point Adjustment</h4>
+        <ul>
+            <li><strong>Base adjustment</strong>: 3 points per made/missed three above/below expectation</li>
+            <li><strong>ORB correction</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP, reducing the net impact slightly</li>
+        </ul>
+
+        <h4>Data</h4>
+        <ul>
+            <li><strong>Source</strong>: cdn.nba.com live boxscores</li>
+            <li><strong>Career stats</strong>: nba_api for historical player data</li>
+            <li><strong>Updates</strong>: Automatically refreshed daily</li>
+        </ul>
+
+        <p class="timestamp">Generated 2026-02-22 13:12 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
     </div>
 
     <script>
