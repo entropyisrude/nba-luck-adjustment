@@ -320,6 +320,32 @@ def generate_report():
         tr.winner-flipped:hover {{
             background: #ffd0d0 !important;
         }}
+
+        /* Sortable table headers */
+        th.sortable {{
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 20px;
+        }}
+        th.sortable:hover {{
+            background: #2a2a4e;
+        }}
+        th.sortable::after {{
+            content: '⇅';
+            position: absolute;
+            right: 6px;
+            opacity: 0.5;
+            font-size: 0.8em;
+        }}
+        th.sortable.asc::after {{
+            content: '↑';
+            opacity: 1;
+        }}
+        th.sortable.desc::after {{
+            content: '↓';
+            opacity: 1;
+        }}
     </style>
 </head>
 <body>
@@ -351,16 +377,16 @@ def generate_report():
     </div>
 
     <h2 id="team-rankings">Team Luck Rankings (Season Totals)</h2>
-    <p>Cumulative margin points gained/lost due to 3PT variance</p>
-    <table>
+    <p>Cumulative margin points gained/lost due to 3PT variance. Click column headers to sort.</p>
+    <table id="team-table">
         <tr>
             <th>Rank</th>
-            <th>Team</th>
-            <th>Record</th>
-            <th>Adj Record</th>
-            <th>Diff</th>
-            <th>Total Luck</th>
-            <th>Per Game</th>
+            <th class="sortable" data-sort="team" data-type="string">Team</th>
+            <th class="sortable" data-sort="wins" data-type="number">Record</th>
+            <th class="sortable" data-sort="adj-wins" data-type="number">Adj Record</th>
+            <th class="sortable" data-sort="diff" data-type="number">Diff</th>
+            <th class="sortable desc" data-sort="luck" data-type="number">Total Luck</th>
+            <th class="sortable" data-sort="per-game" data-type="number">Per Game</th>
         </tr>
 """
 
@@ -368,10 +394,11 @@ def generate_report():
         luck_class = "positive" if row['total_luck'] > 0 else "negative"
         record = f"{int(row['wins'])}-{int(row['losses'])}"
         adj_record = f"{int(row['adj_wins'])}-{int(row['adj_losses'])}"
-        win_diff = int(row['adj_wins']) - int(row['wins'])
+        # Diff = actual wins - adjusted wins (positive = lucky, got more wins than deserved)
+        win_diff = int(row['wins']) - int(row['adj_wins'])
         diff_class = "positive" if win_diff > 0 else ("negative" if win_diff < 0 else "")
         diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
-        html += f"""        <tr>
+        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-luck="{row['total_luck']:.1f}" data-per-game="{row['luck_per_game']:.2f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
@@ -580,6 +607,58 @@ def generate_report():
     if (gamesByDate[mostRecentDate]) {{
         selectDate(mostRecentDate);
     }}
+
+    // Sortable table functionality
+    function setupSortableTable() {{
+        const table = document.getElementById('team-table');
+        if (!table) return;
+
+        const headers = table.querySelectorAll('th.sortable');
+        const tbody = table.querySelector('tbody') || table;
+
+        headers.forEach(header => {{
+            header.addEventListener('click', () => {{
+                const sortKey = header.dataset.sort;
+                const sortType = header.dataset.type;
+                const isAsc = header.classList.contains('asc');
+
+                // Remove sort classes from all headers
+                headers.forEach(h => h.classList.remove('asc', 'desc'));
+
+                // Toggle sort direction
+                const newDir = isAsc ? 'desc' : 'asc';
+                header.classList.add(newDir);
+
+                // Get all data rows (skip header row)
+                const rows = Array.from(table.querySelectorAll('tr[data-team]'));
+
+                rows.sort((a, b) => {{
+                    let aVal = a.dataset[sortKey] || '';
+                    let bVal = b.dataset[sortKey] || '';
+
+                    if (sortType === 'number') {{
+                        aVal = parseFloat(aVal) || 0;
+                        bVal = parseFloat(bVal) || 0;
+                    }} else {{
+                        aVal = aVal.toLowerCase();
+                        bVal = bVal.toLowerCase();
+                    }}
+
+                    if (aVal < bVal) return newDir === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return newDir === 'asc' ? 1 : -1;
+                    return 0;
+                }});
+
+                // Re-append rows in sorted order and update ranks
+                rows.forEach((row, index) => {{
+                    row.querySelector('td:first-child').textContent = index + 1;
+                    table.appendChild(row);
+                }});
+            }});
+        }});
+    }}
+
+    setupSortableTable();
     </script>
     <script data-goatcounter="https://entropyisrude.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
