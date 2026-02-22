@@ -31,8 +31,44 @@ def generate_report():
     teams['total_luck'] = teams['home_luck'] + teams['away_luck']
     teams['total_games'] = teams['home_games'] + teams['away_games']
     teams['luck_per_game'] = teams['total_luck'] / teams['total_games']
-    teams = teams.sort_values('total_luck', ascending=False).reset_index()
+
+    # Calculate actual and adjusted records for each team
+    team_records = {}
+    for team in set(df['home_team'].unique()) | set(df['away_team'].unique()):
+        team_records[team] = {'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0}
+
+    for _, row in df.iterrows():
+        home = row['home_team']
+        away = row['away_team']
+        actual_margin = row['margin_actual']
+        adj_margin = row['margin_adj']
+
+        # Actual record
+        if actual_margin > 0:  # Home win
+            team_records[home]['wins'] += 1
+            team_records[away]['losses'] += 1
+        else:  # Away win
+            team_records[away]['wins'] += 1
+            team_records[home]['losses'] += 1
+
+        # Adjusted record
+        if adj_margin > 0:  # Home would have won
+            team_records[home]['adj_wins'] += 1
+            team_records[away]['adj_losses'] += 1
+        else:  # Away would have won
+            team_records[away]['adj_wins'] += 1
+            team_records[home]['adj_losses'] += 1
+
+    teams = teams.reset_index()
     teams.columns = ['team'] + list(teams.columns[1:])
+
+    # Add records to teams dataframe
+    teams['wins'] = teams['team'].map(lambda t: team_records.get(t, {}).get('wins', 0))
+    teams['losses'] = teams['team'].map(lambda t: team_records.get(t, {}).get('losses', 0))
+    teams['adj_wins'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_wins', 0))
+    teams['adj_losses'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_losses', 0))
+
+    teams = teams.sort_values('total_luck', ascending=False)
 
     # Biggest swing games (absolute margin_delta)
     df['abs_margin_delta'] = df['margin_delta'].abs()
@@ -320,20 +356,29 @@ def generate_report():
         <tr>
             <th>Rank</th>
             <th>Team</th>
+            <th>Record</th>
+            <th>Adj Record</th>
+            <th>Diff</th>
             <th>Total Luck</th>
             <th>Per Game</th>
-            <th>Games</th>
         </tr>
 """
 
-    for i, row in teams.iterrows():
+    for rank, (_, row) in enumerate(teams.iterrows(), 1):
         luck_class = "positive" if row['total_luck'] > 0 else "negative"
+        record = f"{int(row['wins'])}-{int(row['losses'])}"
+        adj_record = f"{int(row['adj_wins'])}-{int(row['adj_losses'])}"
+        win_diff = int(row['adj_wins']) - int(row['wins'])
+        diff_class = "positive" if win_diff > 0 else ("negative" if win_diff < 0 else "")
+        diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
         html += f"""        <tr>
-            <td>{i+1}</td>
+            <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
+            <td>{record}</td>
+            <td>{adj_record}</td>
+            <td class="{diff_class}">{diff_str}</td>
             <td class="{luck_class}">{row['total_luck']:+.1f}</td>
             <td class="{luck_class}">{row['luck_per_game']:+.2f}</td>
-            <td>{int(row['total_games'])}</td>
         </tr>
 """
 
