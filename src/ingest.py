@@ -12,112 +12,76 @@ import requests
 from nba_api.stats.endpoints import playercareerstats
 
 
-# Cache for player season-by-season stats (in-memory)
-# Format: {player_id: [{"season": "2024-25", "fg3a": 100, "fg3m": 35}, ...]}
-_season_stats_cache: dict[int, list[dict]] = {}
+# Cache for player career stats (in-memory)
+_career_stats_cache: dict[int, dict[str, float]] = {}
 _cache_loaded = False
 
 # File-based cache path
-SEASON_CACHE_PATH = Path("data/season_stats_cache.json")
-
-# Current season for recency calculations
-CURRENT_SEASON = "2025-26"
-HALF_LIFE_YEARS = 5
+CAREER_CACHE_PATH = Path("data/career_stats_cache.json")
 
 
-def _season_to_year(season: str) -> int:
-    """Convert season string like '2024-25' to ending year (2025)."""
-    return int(season.split("-")[0]) + 1
-
-
-def _load_season_cache() -> None:
-    """Load season stats cache from file."""
-    global _season_stats_cache, _cache_loaded
+def _load_career_cache() -> None:
+    """Load career stats cache from file."""
+    global _career_stats_cache, _cache_loaded
     if _cache_loaded:
         return
-    if SEASON_CACHE_PATH.exists():
+    if CAREER_CACHE_PATH.exists():
         try:
-            with open(SEASON_CACHE_PATH, 'r') as f:
+            with open(CAREER_CACHE_PATH, 'r') as f:
                 data = json.load(f)
                 # Convert string keys back to int
-                _season_stats_cache = {int(k): v for k, v in data.items()}
+                _career_stats_cache = {int(k): v for k, v in data.items()}
         except Exception:
-            _season_stats_cache = {}
+            _career_stats_cache = {}
     _cache_loaded = True
 
 
-def _save_season_cache() -> None:
-    """Save season stats cache to file."""
+def _save_career_cache() -> None:
+    """Save career stats cache to file."""
     try:
-        SEASON_CACHE_PATH.parent.mkdir(exist_ok=True)
-        with open(SEASON_CACHE_PATH, 'w') as f:
-            json.dump(_season_stats_cache, f)
+        CAREER_CACHE_PATH.parent.mkdir(exist_ok=True)
+        with open(CAREER_CACHE_PATH, 'w') as f:
+            json.dump(_career_stats_cache, f)
     except Exception:
         pass
 
 
-def _fetch_player_seasons(player_id: int) -> list[dict]:
-    """Fetch season-by-season stats from NBA API."""
-    try:
-        time.sleep(0.1)  # Rate limiting
-        career = playercareerstats.PlayerCareerStats(player_id=str(player_id))
-        seasons_df = career.season_totals_regular_season.get_data_frame()
-
-        if seasons_df.empty:
-            return []
-
-        seasons = []
-        for _, row in seasons_df.iterrows():
-            season_id = row.get('SEASON_ID', '')
-            if not season_id:
-                continue
-            seasons.append({
-                'season': str(season_id),
-                'fg3a': float(row.get('FG3A', 0) or 0),
-                'fg3m': float(row.get('FG3M', 0) or 0),
-            })
-        return seasons
-    except Exception:
-        return []
-
-
 def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
     """
-    Fetch weighted career 3P stats for a player.
-    Uses 5-year half-life weighting (recent seasons weighted more).
+    Fetch career 3P stats for a player from NBA API.
     Results are cached to disk to avoid repeated API calls.
 
-    Returns dict with 'fg3a' (attempts) and 'fg3m' (makes) as weighted totals.
+    Returns dict with 'fg3a' (attempts) and 'fg3m' (makes) career totals.
     Returns zeros if stats can't be fetched.
     """
-    _load_season_cache()
+    _load_career_cache()
 
-    # Fetch and cache if not present
-    if player_id not in _season_stats_cache:
-        seasons = _fetch_player_seasons(player_id)
-        _season_stats_cache[player_id] = seasons
-        _save_season_cache()
+    if player_id in _career_stats_cache:
+        return _career_stats_cache[player_id]
 
-    seasons = _season_stats_cache[player_id]
-    if not seasons:
-        return {'fg3a': 0.0, 'fg3m': 0.0}
+    try:
+        # Small delay to avoid rate limiting
+        time.sleep(0.1)
 
-    # Calculate weighted stats with half-life
-    current_year = _season_to_year(CURRENT_SEASON)
-    weighted_fg3a = 0.0
-    weighted_fg3m = 0.0
+        career = playercareerstats.PlayerCareerStats(player_id=str(player_id))
+        totals = career.career_totals_regular_season.get_data_frame()
 
-    for s in seasons:
-        season_year = _season_to_year(s['season'])
-        years_ago = current_year - season_year
+        if totals.empty:
+            result = {'fg3a': 0.0, 'fg3m': 0.0}
+        else:
+            # Career totals are in a single row
+            row = totals.iloc[0]
+            result = {
+                'fg3a': float(row.get('FG3A', 0) or 0),
+                'fg3m': float(row.get('FG3M', 0) or 0),
+            }
+    except Exception as e:
+        # If we can't fetch, default to zeros (will use league prior)
+        result = {'fg3a': 0.0, 'fg3m': 0.0}
 
-        # Weight decays by half every HALF_LIFE_YEARS years
-        weight = 0.5 ** (years_ago / HALF_LIFE_YEARS)
-
-        weighted_fg3a += s['fg3a'] * weight
-        weighted_fg3m += s['fg3m'] * weight
-
-    return {'fg3a': weighted_fg3a, 'fg3m': weighted_fg3m}
+    _career_stats_cache[player_id] = result
+    _save_career_cache()  # Persist to disk
+    return result
 
 
 # --- cdn.nba.com endpoints ---

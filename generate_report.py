@@ -526,12 +526,11 @@ def generate_report():
         <h4>Player Expected 3P%</h4>
         <p>Each player's expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
         <ul>
-            <li><strong>Career weighting</strong>: Season-by-season stats weighted with a 5-year half-life (recent seasons count more)</li>
-            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ weighted 3PA)</li>
+            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
             <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Formula</strong>: expected_pct = (weighted_makes + kappa × prior) / (weighted_attempts + kappa)</li>
+            <li><strong>Formula</strong>: expected_pct = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
         </ul>
-        <p>This means a player who shot 40% last year but 34% for their career will have expectations closer to 40%. Rookies still regress toward a conservative 32% baseline.</p>
+        <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
 
         <h4>In-Season Adjustment</h4>
         <ul>
