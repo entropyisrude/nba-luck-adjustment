@@ -2,8 +2,8 @@ name: Update NBA 3PT Luck Report
 
 on:
   schedule:
-    # Run at 6 AM UTC (1 AM EST / 10 PM PST) - after west coast games finish
-    - cron: '0 6 * * *'
+    # Run at 12 PM UTC (7 AM EST / 4 AM PST) - well after west coast games finish
+    - cron: '0 12 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
