@@ -363,7 +363,7 @@ def generate_report():
         <p><strong>What is this?</strong> This analysis adjusts NBA scores based on 3-point shooting luck.
         When a team shoots significantly above or below their expected 3P% (based on each player's historical shooting),
         we calculate what the score "should have been" if shooting regressed to expectation.</p>
-        <p><strong>Margin Delta</strong> = Luck-adjusted margin minus actual margin. Positive means the home team benefited from luck.</p>
+        <p><strong>Luck Swing</strong> = Luck-adjusted margin minus actual margin. Positive means the home team benefited from luck.</p>
     </div>
 
     <div class="nav-links">
