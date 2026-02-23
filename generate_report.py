@@ -481,11 +481,11 @@ def generate_report():
             <th>#</th>
             <th class="sortable" data-sort="team" data-type="string">Team</th>
             <th class="sortable" data-sort="wins" data-type="number">Record</th>
-            <th class="sortable" data-sort="adj-wins" data-type="number">Adj Record</th>
-            <th class="sortable" data-sort="diff" data-type="number">Diff</th>
-            <th class="sortable" data-sort="opp-exp" data-type="number">Opp Exp 3P%</th>
-            <th class="sortable asc" data-sort="opp-act" data-type="number">Opp Actual 3P%</th>
-            <th class="sortable" data-sort="opp-diff" data-type="number">3P% Diff</th>
+            <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
+            <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
+            <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
+            <th class="sortable asc" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
+            <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
         </tr>
 """
 
@@ -500,7 +500,7 @@ def generate_report():
         opp_diff = row['opp_3p_pct'] - row['opp_3p_exp_pct']
         opp_diff_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
         opp_diff_str = f"{opp_diff:+.1f}%"
-        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-opp-exp="{row['opp_3p_exp_pct']:.1f}" data-opp-act="{row['opp_3p_pct']:.1f}" data-opp-diff="{opp_diff:.1f}">
+        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
