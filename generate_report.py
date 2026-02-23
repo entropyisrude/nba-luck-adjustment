@@ -521,14 +521,24 @@ def generate_report():
 
     <div class="methodology" id="methodology">
         <h3>Methodology</h3>
-        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>game-by-game basis</strong>.</p>
+        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>shot-by-shot basis</strong>.</p>
+
+        <h4>Shot Context Model</h4>
+        <p>Each 3-point attempt is analyzed using play-by-play data to determine its difficulty:</p>
+        <ul>
+            <li><strong>Court location</strong>: Corner 3s vs above-the-break 3s</li>
+            <li><strong>Shot type</strong>: Catch-and-shoot, pullup, stepback, running, fadeaway, turnaround</li>
+        </ul>
+        <p>Expected make probability is calculated using a <strong>multiplicative adjustment</strong>:</p>
+        <p style="margin-left: 20px;"><code>expected = player_3P% × shot_difficulty_multiplier</code></p>
+        <p>Example multipliers (relative to league avg): Corner C&S = 1.12×, Above-break C&S = 1.04×, Pullup = 0.93×, Stepback = 0.90×</p>
 
         <h4>Player Expected 3P%</h4>
-        <p>Each player's expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
+        <p>Each player's baseline expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
         <ul>
             <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
             <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Formula</strong>: expected_pct = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
+            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
         </ul>
         <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
 
@@ -546,7 +556,7 @@ def generate_report():
 
         <h4>Data</h4>
         <ul>
-            <li><strong>Source</strong>: cdn.nba.com live boxscores</li>
+            <li><strong>Source</strong>: cdn.nba.com play-by-play and boxscores</li>
             <li><strong>Career stats</strong>: nba_api for historical player data</li>
             <li><strong>Updates</strong>: Automatically refreshed daily</li>
         </ul>
