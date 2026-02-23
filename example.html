@@ -135,6 +135,58 @@ Where:
   - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
   - Weighted stats use exponential decay so recent performance matters more
         </div>
+
+        <h4>Worked Examples: Veteran vs Rookie</h4>
+        <table style="max-width: 800px;">
+            <tr>
+                <th>Player</th>
+                <th>Weighted 3PA</th>
+                <th>Weighted 3PM</th>
+                <th>Career %</th>
+                <th>Prior (μ)</th>
+                <th>Prior Strength (κ)</th>
+                <th>Expected 3P%</th>
+            </tr>
+            <tr>
+                <td><strong>T. Maxey</strong> (veteran)</td>
+                <td>2405.3</td>
+                <td>911.9</td>
+                <td>37.9%</td>
+                <td>36.0%</td>
+                <td>300</td>
+                <td><strong>37.7%</strong></td>
+            </tr>
+            <tr>
+                <td><strong>V. Edgecombe</strong> (rookie)</td>
+                <td>562.5</td>
+                <td>203.4</td>
+                <td>36.2%</td>
+                <td>34.2%</td>
+                <td>256</td>
+                <td><strong>35.6%</strong></td>
+            </tr>
+        </table>
+
+        <div class="formula">
+<strong>T. Maxey:</strong>
+  Scale = min(2405.3 / 1000, 1.0) = 1.000
+  μ = 32% + (36% - 32%) × 1.000 = 36.0%
+  κ = 200 + (300 - 200) × 1.000 = 300
+  Expected = (911.9 + 300 × 0.360) / (2405.3 + 300)
+           = 1019.9 / 2705.3 = <strong>37.7%</strong>
+
+<strong>V. Edgecombe:</strong>
+  Scale = min(562.5 / 1000, 1.0) = 0.562
+  μ = 32% + (36% - 32%) × 0.562 = 34.2%
+  κ = 200 + (300 - 200) × 0.562 = 256
+  Expected = (203.4 + 256 × 0.342) / (562.5 + 256)
+           = 291.2 / 818.7 = <strong>35.6%</strong>
+        </div>
+
+        <p><strong>Key insight:</strong> T. Maxey's prior (36.0%) is higher than V. Edgecombe's (34.2%) because veterans have proven they belong in the league.
+        T. Maxey's larger κ (300 vs 256) means his career stats carry more weight relative to the prior,
+        while V. Edgecombe's expected 3P% is pulled more heavily toward the conservative rookie prior.</p>
+
     </div>
 
     <div class="step">
@@ -144,7 +196,7 @@ Where:
         <div class="formula">
 Final Expected % = Player Expected % × Shot Difficulty Multiplier
 
-Multipliers (relative to league avg 36.5%):
+Multipliers (relative to league avg {LEAGUE_AVG_3P*100:.1f}%):
   Corner + Catch-and-shoot: 1.12× (easiest)
   Above-break + Catch-and-shoot: 1.04×
   Corner + Pullup: 1.01×
@@ -165,8 +217,8 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </div>
     </div>
 
-    <h2>MIN Shot-by-Shot Breakdown</h2>
-    <p>Each 3-point attempt by MIN with the full calculation:</p>
+    <h2>{home_team} Shot-by-Shot Breakdown</h2>
+    <p>Each 3-point attempt by {home_team} with the full calculation:</p>
     <table>
         <tr>
             <th>Player</th>
@@ -1231,7 +1283,7 @@ Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
     <div class="back-link" style="margin-top: 30px;"><a href="index.html">&larr; Back to Main Report</a></div>
 
     <p style="color: #666; font-size: 0.85em; margin-top: 40px;">
-        Generated 2026-02-23 17:19 |
+        Generated 2026-02-23 17:26 |
         <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a>
     </p>
 </body>

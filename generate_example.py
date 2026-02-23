@@ -230,6 +230,71 @@ Where:
   - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
   - Weighted stats use exponential decay so recent performance matters more
         </div>
+"""
+
+    # Find Tyrese Maxey and VJ Edgecombe for worked examples
+    maxey_shots = shots_detail_df[shots_detail_df['player_name'].str.contains('Maxey', case=False, na=False)]
+    edgecombe_shots = shots_detail_df[shots_detail_df['player_name'].str.contains('Edgecombe', case=False, na=False)]
+
+    examples_html = ""
+    if not maxey_shots.empty and not edgecombe_shots.empty:
+        maxey = maxey_shots.iloc[0]
+        edgecombe = edgecombe_shots.iloc[0]
+
+        examples_html = f"""
+        <h4>Worked Examples: Veteran vs Rookie</h4>
+        <table style="max-width: 800px;">
+            <tr>
+                <th>Player</th>
+                <th>Weighted 3PA</th>
+                <th>Weighted 3PM</th>
+                <th>Career %</th>
+                <th>Prior (μ)</th>
+                <th>Prior Strength (κ)</th>
+                <th>Expected 3P%</th>
+            </tr>
+            <tr>
+                <td><strong>{maxey['player_name']}</strong> (veteran)</td>
+                <td>{maxey['weighted_3pa']:.1f}</td>
+                <td>{maxey['weighted_3pm']:.1f}</td>
+                <td>{maxey['career_pct']:.1f}%</td>
+                <td>{maxey['prior_mu']*100:.1f}%</td>
+                <td>{maxey['prior_kappa']:.0f}</td>
+                <td><strong>{maxey['player_exp_pct']:.1f}%</strong></td>
+            </tr>
+            <tr>
+                <td><strong>{edgecombe['player_name']}</strong> (rookie)</td>
+                <td>{edgecombe['weighted_3pa']:.1f}</td>
+                <td>{edgecombe['weighted_3pm']:.1f}</td>
+                <td>{edgecombe['career_pct']:.1f}%</td>
+                <td>{edgecombe['prior_mu']*100:.1f}%</td>
+                <td>{edgecombe['prior_kappa']:.0f}</td>
+                <td><strong>{edgecombe['player_exp_pct']:.1f}%</strong></td>
+            </tr>
+        </table>
+
+        <div class="formula">
+<strong>{maxey['player_name']}:</strong>
+  Scale = min({maxey['weighted_3pa']:.1f} / 1000, 1.0) = {min(maxey['weighted_3pa']/1000, 1.0):.3f}
+  μ = 32% + (36% - 32%) × {min(maxey['weighted_3pa']/1000, 1.0):.3f} = {maxey['prior_mu']*100:.1f}%
+  κ = 200 + (300 - 200) × {min(maxey['weighted_3pa']/1000, 1.0):.3f} = {maxey['prior_kappa']:.0f}
+  Expected = ({maxey['weighted_3pm']:.1f} + {maxey['prior_kappa']:.0f} × {maxey['prior_mu']:.3f}) / ({maxey['weighted_3pa']:.1f} + {maxey['prior_kappa']:.0f})
+           = {maxey['weighted_3pm'] + maxey['prior_kappa'] * maxey['prior_mu']:.1f} / {maxey['weighted_3pa'] + maxey['prior_kappa']:.1f} = <strong>{maxey['player_exp_pct']:.1f}%</strong>
+
+<strong>{edgecombe['player_name']}:</strong>
+  Scale = min({edgecombe['weighted_3pa']:.1f} / 1000, 1.0) = {min(edgecombe['weighted_3pa']/1000, 1.0):.3f}
+  μ = 32% + (36% - 32%) × {min(edgecombe['weighted_3pa']/1000, 1.0):.3f} = {edgecombe['prior_mu']*100:.1f}%
+  κ = 200 + (300 - 200) × {min(edgecombe['weighted_3pa']/1000, 1.0):.3f} = {edgecombe['prior_kappa']:.0f}
+  Expected = ({edgecombe['weighted_3pm']:.1f} + {edgecombe['prior_kappa']:.0f} × {edgecombe['prior_mu']:.3f}) / ({edgecombe['weighted_3pa']:.1f} + {edgecombe['prior_kappa']:.0f})
+           = {edgecombe['weighted_3pm'] + edgecombe['prior_kappa'] * edgecombe['prior_mu']:.1f} / {edgecombe['weighted_3pa'] + edgecombe['prior_kappa']:.1f} = <strong>{edgecombe['player_exp_pct']:.1f}%</strong>
+        </div>
+
+        <p><strong>Key insight:</strong> {maxey['player_name']}'s prior ({maxey['prior_mu']*100:.1f}%) is higher than {edgecombe['player_name']}'s ({edgecombe['prior_mu']*100:.1f}%) because veterans have proven they belong in the league.
+        {maxey['player_name']}'s larger κ ({maxey['prior_kappa']:.0f} vs {edgecombe['prior_kappa']:.0f}) means his career stats carry more weight relative to the prior,
+        while {edgecombe['player_name']}'s expected 3P% is pulled more heavily toward the conservative rookie prior.</p>
+"""
+
+    html += examples_html + """
     </div>
 
     <div class="step">
