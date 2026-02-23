@@ -32,10 +32,13 @@ def generate_report():
     teams['total_games'] = teams['home_games'] + teams['away_games']
     teams['luck_per_game'] = teams['total_luck'] / teams['total_games']
 
-    # Calculate actual and adjusted records for each team
+    # Calculate actual and adjusted records for each team, plus opponent 3P% stats
     team_records = {}
     for team in set(df['home_team'].unique()) | set(df['away_team'].unique()):
-        team_records[team] = {'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0}
+        team_records[team] = {
+            'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0,
+            'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0
+        }
 
     for _, row in df.iterrows():
         home = row['home_team']
@@ -59,6 +62,15 @@ def generate_report():
             team_records[away]['adj_wins'] += 1
             team_records[home]['adj_losses'] += 1
 
+        # Opponent 3P stats (for home team, opponent is away team and vice versa)
+        team_records[home]['opp_3pa'] += row['away_3pa']
+        team_records[home]['opp_3pm'] += row['away_3pm_actual']
+        team_records[home]['opp_3pm_exp'] += row['away_3pm_exp']
+
+        team_records[away]['opp_3pa'] += row['home_3pa']
+        team_records[away]['opp_3pm'] += row['home_3pm_actual']
+        team_records[away]['opp_3pm_exp'] += row['home_3pm_exp']
+
     teams = teams.reset_index()
     teams.columns = ['team'] + list(teams.columns[1:])
 
@@ -68,7 +80,14 @@ def generate_report():
     teams['adj_wins'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_wins', 0))
     teams['adj_losses'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_losses', 0))
 
-    teams = teams.sort_values('total_luck', ascending=False)
+    # Add opponent 3P% stats
+    teams['opp_3pa'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pa', 0))
+    teams['opp_3pm'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pm', 0))
+    teams['opp_3pm_exp'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pm_exp', 0))
+    teams['opp_3p_pct'] = (teams['opp_3pm'] / teams['opp_3pa'] * 100).round(1)
+    teams['opp_3p_exp_pct'] = (teams['opp_3pm_exp'] / teams['opp_3pa'] * 100).round(1)
+
+    teams = teams.sort_values('opp_3p_pct', ascending=True)  # Sort by opponent actual 3P% (lower is better defense)
 
     # Biggest swing games (absolute margin_delta)
     df['abs_margin_delta'] = df['margin_delta'].abs()
@@ -455,8 +474,8 @@ def generate_report():
         </div>
     </div>
 
-    <h2 id="team-rankings">Team Luck Rankings (Season Totals)</h2>
-    <p>Cumulative margin points gained/lost due to 3PT variance. Click column headers to sort.</p>
+    <h2 id="team-rankings">Team Rankings</h2>
+    <p>Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
     <table id="team-table">
         <tr>
             <th>Rank</th>
@@ -464,27 +483,29 @@ def generate_report():
             <th class="sortable" data-sort="wins" data-type="number">Record</th>
             <th class="sortable" data-sort="adj-wins" data-type="number">Adj Record</th>
             <th class="sortable" data-sort="diff" data-type="number">Diff</th>
-            <th class="sortable desc" data-sort="luck" data-type="number">Total Luck</th>
-            <th class="sortable" data-sort="per-game" data-type="number">Per Game</th>
+            <th class="sortable" data-sort="opp-exp" data-type="number">Opp Exp 3P%</th>
+            <th class="sortable asc" data-sort="opp-act" data-type="number">Opp Actual 3P%</th>
         </tr>
 """
 
     for rank, (_, row) in enumerate(teams.iterrows(), 1):
-        luck_class = "positive" if row['total_luck'] > 0 else "negative"
         record = f"{int(row['wins'])}-{int(row['losses'])}"
         adj_record = f"{int(row['adj_wins'])}-{int(row['adj_losses'])}"
         # Diff = actual wins - adjusted wins (positive = lucky, got more wins than deserved)
         win_diff = int(row['wins']) - int(row['adj_wins'])
         diff_class = "positive" if win_diff > 0 else ("negative" if win_diff < 0 else "")
         diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
-        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-luck="{row['total_luck']:.1f}" data-per-game="{row['luck_per_game']:.2f}">
+        # Opponent 3P% - lower actual than expected is good (opponents shot worse than expected)
+        opp_diff = row['opp_3p_pct'] - row['opp_3p_exp_pct']
+        opp_act_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
+        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-opp-exp="{row['opp_3p_exp_pct']:.1f}" data-opp-act="{row['opp_3p_pct']:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
             <td>{adj_record}</td>
             <td class="{diff_class} clickable-diff" onclick="showFlippedGames('{row['team']}')">{diff_str}</td>
-            <td class="{luck_class}">{row['total_luck']:+.1f}</td>
-            <td class="{luck_class}">{row['luck_per_game']:+.2f}</td>
+            <td>{row['opp_3p_exp_pct']:.1f}%</td>
+            <td class="{opp_act_class}">{row['opp_3p_pct']:.1f}%</td>
         </tr>
 """
 
