@@ -1,10 +1,9 @@
 """Generate a detailed example page showing how adjustments are calculated."""
 
-import json
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from src.ingest import get_playbyplay_3pt_shots, get_player_career_3p_stats
+from src.ingest import get_playbyplay_3pt_shots
 from src.adjust import get_player_prior, get_shot_multiplier, LEAGUE_AVG_3P
 
 # Pick an interesting game (PHI @ MIN, Feb 22, 2026 - big 28 point swing)
@@ -13,16 +12,9 @@ EXAMPLE_DATE = "02/22/2026"
 
 
 def generate_example_page():
-    # Load player state to get career stats context
+    # Load player state - this contains weighted career attempts (A_r) and makes (M_r)
     player_state = pd.read_csv("data/player_state.csv")
-    player_state = player_state.set_index("player_id")
-
-    # Load career cache for pre-season stats
-    career_cache = {}
-    cache_path = Path("data/career_stats_cache.json")
-    if cache_path.exists():
-        with open(cache_path) as f:
-            career_cache = {int(k): v for k, v in json.load(f).items()}
+    player_state_indexed = player_state.set_index("player_id")
 
     # Get shot-level data
     shots_df = get_playbyplay_3pt_shots(EXAMPLE_GAME_ID, EXAMPLE_DATE)
@@ -43,17 +35,21 @@ def generate_example_page():
             continue
         pid = int(pid)
 
-        # Get career stats
-        career = career_cache.get(pid, {'fg3a': 0, 'fg3m': 0})
-        career_3pa = career['fg3a']
-        career_3pm = career['fg3m']
-        career_pct = (career_3pm / career_3pa * 100) if career_3pa > 0 else 0
+        # Get player's weighted career stats from player_state
+        if pid in player_state_indexed.index:
+            A_r = float(player_state_indexed.loc[pid, "A_r"])
+            M_r = float(player_state_indexed.loc[pid, "M_r"])
+        else:
+            A_r = 0.0
+            M_r = 0.0
 
-        # Get prior parameters
-        mu, kappa = get_player_prior(career_3pa)
+        career_pct = (M_r / A_r * 100) if A_r > 0 else 0
+
+        # Get prior parameters based on weighted attempts
+        mu, kappa = get_player_prior(A_r)
 
         # Calculate Bayesian expected 3P%
-        player_exp_pct = (career_3pm + kappa * mu) / (career_3pa + kappa)
+        player_exp_pct = (M_r + kappa * mu) / (A_r + kappa)
 
         # Get shot context multiplier
         area = shot.get('AREA', 'above_break')
@@ -69,8 +65,8 @@ def generate_example_page():
             'made': shot['MADE'],
             'area': area,
             'shot_type': shot_type,
-            'career_3pa': int(career_3pa),
-            'career_3pm': int(career_3pm),
+            'weighted_3pa': round(A_r, 1),
+            'weighted_3pm': round(M_r, 1),
             'career_pct': career_pct,
             'prior_mu': mu,
             'prior_kappa': kappa,
@@ -225,13 +221,14 @@ def generate_example_page():
     <div class="step">
         <span class="step-number">2</span>
         <strong>Calculate Each Player's Expected 3P%</strong>
-        <p>Using Bayesian estimation with a sliding prior based on career experience:</p>
+        <p>Using Bayesian estimation with a sliding prior. Player stats are weighted with exponential decay (recent shots matter more):</p>
         <div class="formula">
-Player Expected 3P% = (Career Makes + &kappa; × Prior) / (Career Attempts + &kappa;)
+Player Expected 3P% = (Weighted Makes + &kappa; × Prior) / (Weighted Attempts + &kappa;)
 
 Where:
-  - Prior (&mu;) scales from 32% (rookies) to 36% (1000+ career 3PA)
-  - Prior strength (&kappa;) scales from 200 (rookies) to 300 (veterans)
+  - Prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
+  - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
+  - Weighted stats use exponential decay so recent performance matters more
         </div>
     </div>
 
@@ -271,7 +268,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <th>Result</th>
             <th>Location</th>
             <th>Shot Type</th>
-            <th>Career 3P</th>
+            <th>Weighted 3P</th>
             <th>Prior (μ, κ)</th>
             <th>Player Exp%</th>
             <th>Multiplier</th>
@@ -291,7 +288,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <td class="{made_class}">{made_str}</td>
             <td>{shot['area'].replace('_', ' ').title()}</td>
             <td>{shot['shot_type'].replace('_', ' ').title()}</td>
-            <td>{shot['career_3pm']}/{shot['career_3pa']} ({shot['career_pct']:.1f}%)</td>
+            <td>{shot['weighted_3pm']}/{shot['weighted_3pa']} ({shot['career_pct']:.1f}%)</td>
             <td>({shot['prior_mu']*100:.1f}%, {shot['prior_kappa']:.0f})</td>
             <td>{shot['player_exp_pct']:.1f}%</td>
             <td>{shot['multiplier']:.3f}</td>
@@ -320,7 +317,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <th>Result</th>
             <th>Location</th>
             <th>Shot Type</th>
-            <th>Career 3P</th>
+            <th>Weighted 3P</th>
             <th>Prior (μ, κ)</th>
             <th>Player Exp%</th>
             <th>Multiplier</th>
@@ -340,7 +337,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <td class="{made_class}">{made_str}</td>
             <td>{shot['area'].replace('_', ' ').title()}</td>
             <td>{shot['shot_type'].replace('_', ' ').title()}</td>
-            <td>{shot['career_3pm']}/{shot['career_3pa']} ({shot['career_pct']:.1f}%)</td>
+            <td>{shot['weighted_3pm']}/{shot['weighted_3pa']} ({shot['career_pct']:.1f}%)</td>
             <td>({shot['prior_mu']*100:.1f}%, {shot['prior_kappa']:.0f})</td>
             <td>{shot['player_exp_pct']:.1f}%</td>
             <td>{shot['multiplier']:.3f}</td>
