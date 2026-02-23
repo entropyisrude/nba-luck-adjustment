@@ -714,8 +714,8 @@ def generate_report():
                 <th>Matchup</th>
                 <th>Actual Score</th>
                 <th>Adjusted Score</th>
-                <th>Away 3P%</th>
-                <th>Home 3P%</th>
+                <th title="Made/Attempted (Actual% vs Expected%) - Expected is based on shooter skill and shot difficulty">Away 3P%</th>
+                <th title="Made/Attempted (Actual% vs Expected%) - Expected is based on shooter skill and shot difficulty">Home 3P%</th>
                 <th>Luck Swing</th>
                 <th>Biggest Swing Player</th>
             </tr>`;
