@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Detailed Example: PHI @ MIN - NBA 3PT Luck Analysis</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }
+        h2 { color: #16213e; margin-top: 30px; }
+        h3 { color: #1a1a2e; margin-top: 25px; }
+        .back-link { margin-bottom: 20px; }
+        .back-link a { color: #e94560; text-decoration: none; font-weight: 500; }
+        .back-link a:hover { text-decoration: underline; }
+        .summary-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .game-score {
+            font-size: 1.5em;
+            margin: 15px 0;
+        }
+        .positive { color: #28a745; font-weight: 600; }
+        .negative { color: #dc3545; font-weight: 600; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        th {
+            background: #1a1a2e;
+            color: white;
+            padding: 10px 6px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover { background: #f8f9fa; }
+        .formula {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        .step {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .step-number {
+            background: #e94560;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .totals-row {
+            background: #f0f0f0 !important;
+            font-weight: bold;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link"><a href="index.html">&larr; Back to Main Report</a></div>
+
+    <h1>How the Luck Adjustment Works</h1>
+    <p>A detailed breakdown using the <strong>PHI @ MIN</strong> game from <strong>2026-02-22</strong></p>
+
+    <div class="summary-box">
+        <div class="game-score">
+            <strong>Actual Score:</strong> PHI 135 - MIN 108
+        </div>
+        <div class="game-score">
+            <strong>Adjusted Score:</strong> PHI 113.2 - MIN 114.3
+        </div>
+        <div class="game-score">
+            <strong>Luck Swing:</strong> <span class="positive">+28.1 points</span>
+            (Home team benefited)
+        </div>
+    </div>
+
+    <h2>The Process</h2>
+
+    <div class="step">
+        <span class="step-number">1</span>
+        <strong>Get Every 3-Point Attempt</strong>
+        <p>We fetch play-by-play data and extract each 3-point shot with its context:</p>
+        <ul>
+            <li><strong>Court location:</strong> Corner 3 vs Above-the-break 3</li>
+            <li><strong>Shot type:</strong> Catch-and-shoot, Pullup, Stepback, Running, etc.</li>
+        </ul>
+        <p>This game had <strong>70 total 3-point attempts</strong>.</p>
+    </div>
+
+    <div class="step">
+        <span class="step-number">2</span>
+        <strong>Calculate Each Player's Expected 3P%</strong>
+        <p>Using Bayesian estimation with a sliding prior based on career experience:</p>
+        <div class="formula">
+Player Expected 3P% = (Career Makes + &kappa; × Prior) / (Career Attempts + &kappa;)
+
+Where:
+  - Prior (&mu;) scales from 32% (rookies) to 36% (1000+ career 3PA)
+  - Prior strength (&kappa;) scales from 200 (rookies) to 300 (veterans)
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">3</span>
+        <strong>Apply Shot Difficulty Multiplier</strong>
+        <p>Each shot type has a difficulty multiplier based on league-average make rates:</p>
+        <div class="formula">
+Final Expected % = Player Expected % × Shot Difficulty Multiplier
+
+Multipliers (relative to league avg 36.5%):
+  Corner + Catch-and-shoot: 1.12× (easiest)
+  Above-break + Catch-and-shoot: 1.04×
+  Corner + Pullup: 1.01×
+  Above-break + Pullup: 0.93×
+  Above-break + Stepback: 0.90×
+  Running shots: ~0.88× (hardest)
+        </div>
+    </div>
+
+    <div class="step">
+        <span class="step-number">4</span>
+        <strong>Sum Expected Makes & Calculate Adjustment</strong>
+        <p>Sum up expected make probabilities for each team, compare to actual makes:</p>
+        <div class="formula">
+Luck = Actual Makes - Expected Makes
+Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
+                 ≈ 2.7 points per make above/below expectation
+        </div>
+    </div>
+
+    <h2>MIN Shot-by-Shot Breakdown</h2>
+    <p>Each 3-point attempt by MIN with the full calculation:</p>
+    <table>
+        <tr>
+            <th>Player</th>
+            <th>Result</th>
+            <th>Location</th>
+            <th>Shot Type</th>
+            <th>Career 3P</th>
+            <th>Prior (μ, κ)</th>
+            <th>Player Exp%</th>
+            <th>Multiplier</th>
+            <th>Final Exp%</th>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>T. Shannon Jr.</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>D. DiVincenzo</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. McDaniels</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>A. Dosunmu</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.986</td>
+            <td>31.6%</td>
+        </tr>
+        <tr>
+            <td>J. McDaniels</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>D. DiVincenzo</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.986</td>
+            <td>31.6%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>J. Clark</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.877</td>
+            <td>28.1%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>M. Conley</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>D. DiVincenzo</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>D. DiVincenzo</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>A. Dosunmu</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>D. DiVincenzo</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. McDaniels</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. McDaniels</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.877</td>
+            <td>28.1%</td>
+        </tr>
+        <tr>
+            <td>M. Conley</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>A. Dosunmu</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr class="totals-row">
+            <td colspan="2"><strong>TOTALS</strong></td>
+            <td colspan="6"></td>
+            <td><strong>10.7 exp</strong></td>
+        </tr>
+        <tr class="totals-row">
+            <td colspan="2"><strong>Actual: 10 made</strong></td>
+            <td colspan="6"></td>
+            <td class="negative"><strong>-0.7 luck</strong></td>
+        </tr>
+    </table>
+
+    <h2>PHI Shot-by-Shot Breakdown</h2>
+    <p>Each 3-point attempt by PHI with the full calculation:</p>
+    <table>
+        <tr>
+            <th>Player</th>
+            <th>Result</th>
+            <th>Location</th>
+            <th>Shot Type</th>
+            <th>Career 3P</th>
+            <th>Prior (μ, κ)</th>
+            <th>Player Exp%</th>
+            <th>Multiplier</th>
+            <th>Final Exp%</th>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>D. Barlow</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>C. Payne</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>C. Payne</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>J. Walker</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>C. Payne</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Stepback</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.904</td>
+            <td>28.9%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">✗ Miss</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr>
+            <td>Q. Grimes</td>
+            <td class="positive">✓ Made</td>
+            <td>Corner</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.123</td>
+            <td>35.9%</td>
+        </tr>
+        <tr>
+            <td>J. Edwards</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Catch Shoot</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>1.041</td>
+            <td>33.3%</td>
+        </tr>
+        <tr>
+            <td>J. Edwards</td>
+            <td class="negative">✗ Miss</td>
+            <td>Above Break</td>
+            <td>Running</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.877</td>
+            <td>28.1%</td>
+        </tr>
+        <tr>
+            <td>D. Terry</td>
+            <td class="positive">✓ Made</td>
+            <td>Above Break</td>
+            <td>Pullup</td>
+            <td>0/0 (0.0%)</td>
+            <td>(32.0%, 200)</td>
+            <td>32.0%</td>
+            <td>0.932</td>
+            <td>29.8%</td>
+        </tr>
+        <tr class="totals-row">
+            <td colspan="2"><strong>TOTALS</strong></td>
+            <td colspan="6"></td>
+            <td><strong>11.9 exp</strong></td>
+        </tr>
+        <tr class="totals-row">
+            <td colspan="2"><strong>Actual: 21 made</strong></td>
+            <td colspan="6"></td>
+            <td class="positive"><strong>+9.1 luck</strong></td>
+        </tr>
+    </table>
+
+    <h2>Final Calculation</h2>
+    <div class="summary-box">
+        <h3>MIN</h3>
+        <ul>
+            <li>Actual 3PM: <strong>10</strong></li>
+            <li>Expected 3PM: <strong>10.7</strong></li>
+            <li>Luck (makes above/below expected): <strong class="negative">-0.7</strong></li>
+            <li>Point adjustment: ~-2.0 points</li>
+        </ul>
+
+        <h3>PHI</h3>
+        <ul>
+            <li>Actual 3PM: <strong>21</strong></li>
+            <li>Expected 3PM: <strong>11.9</strong></li>
+            <li>Luck (makes above/below expected): <strong class="positive">+9.1</strong></li>
+            <li>Point adjustment: ~+24.6 points</li>
+        </ul>
+
+        <h3>Net Result</h3>
+        <p>The luck differential of <strong>-9.9 makes</strong> in favor of PHI
+        translates to approximately <strong>28.1 points</strong> of margin swing.</p>
+    </div>
+
+    <div class="back-link" style="margin-top: 30px;"><a href="index.html">&larr; Back to Main Report</a></div>
+
+    <p style="color: #666; font-size: 0.85em; margin-top: 40px;">
+        Generated 2026-02-23 13:32 |
+        <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a>
+    </p>
+</body>
+</html>
