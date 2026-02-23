@@ -289,9 +289,6 @@ Where:
            = {edgecombe['weighted_3pm'] + edgecombe['prior_kappa'] * edgecombe['prior_mu']:.1f} / {edgecombe['weighted_3pa'] + edgecombe['prior_kappa']:.1f} = <strong>{edgecombe['player_exp_pct']:.1f}%</strong>
         </div>
 
-        <p><strong>Key insight:</strong> {maxey['player_name']}'s prior ({maxey['prior_mu']*100:.1f}%) is higher than {edgecombe['player_name']}'s ({edgecombe['prior_mu']*100:.1f}%) because veterans have proven they belong in the league.
-        {maxey['player_name']}'s larger κ ({maxey['prior_kappa']:.0f} vs {edgecombe['prior_kappa']:.0f}) means his career stats carry more weight relative to the prior,
-        while {edgecombe['player_name']}'s expected 3P% is pulled more heavily toward the conservative rookie prior.</p>
 """
 
     html += examples_html + """
