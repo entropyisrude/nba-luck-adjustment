@@ -93,7 +93,7 @@ def generate_report():
     df['abs_margin_delta'] = df['margin_delta'].abs()
     biggest_swings = df.nlargest(15, 'abs_margin_delta')[
         ['date', 'home_team', 'away_team', 'home_pts_actual', 'away_pts_actual',
-         'margin_actual', 'margin_adj', 'margin_delta']
+         'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta']
     ].copy()
 
     # Prepare games data as JSON for calendar
@@ -531,12 +531,19 @@ def generate_report():
         winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
         adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
         flip = "&#9888;" if winner != adj_winner else ""
+        # Format adjusted score with winner in bold
+        away_adj = f"{row['away_pts_adj']:.1f}"
+        home_adj = f"{row['home_pts_adj']:.1f}"
+        if row['margin_adj'] > 0:  # Home team wins adjusted
+            adj_score = f"{away_adj}-<strong>{home_adj}</strong>"
+        else:  # Away team wins adjusted
+            adj_score = f"<strong>{away_adj}</strong>-{home_adj}"
         html += f"""        <tr>
             <td>{row['date']}</td>
             <td>{row['away_team']} @ {row['home_team']}</td>
             <td>{int(row['away_pts_actual'])}-{int(row['home_pts_actual'])}</td>
-            <td>{row['margin_adj']:+.1f}</td>
-            <td class="{swing_class}">{row['margin_delta']:+.1f} {flip}</td>
+            <td>{adj_score} {flip}</td>
+            <td class="{swing_class}">{row['margin_delta']:+.1f}</td>
         </tr>
 """
 
