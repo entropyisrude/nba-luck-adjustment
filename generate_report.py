@@ -101,7 +101,9 @@ def generate_report():
     has_swing_player = 'swing_player' in df.columns
 
     json_cols = ['date', 'home_team', 'away_team', 'home_pts_actual', 'away_pts_actual',
-                 'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta']
+                 'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta',
+                 'home_3pa', 'home_3pm_actual', 'home_3pm_exp',
+                 'away_3pa', 'away_3pm_actual', 'away_3pm_exp']
     if has_swing_player:
         json_cols += ['swing_player', 'swing_player_delta']
         # Add shooting stats if available
@@ -126,7 +128,13 @@ def generate_report():
             'away_pts_adj': round(row['away_pts_adj'], 1),
             'margin_actual': int(row['margin_actual']),
             'margin_adj': round(row['margin_adj'], 2),
-            'margin_delta': round(row['margin_delta'], 1)
+            'margin_delta': round(row['margin_delta'], 1),
+            'home_3pa': int(row['home_3pa']),
+            'home_3pm': int(row['home_3pm_actual']),
+            'home_3pm_exp': round(row['home_3pm_exp'], 1),
+            'away_3pa': int(row['away_3pa']),
+            'away_3pm': int(row['away_3pm_actual']),
+            'away_3pm_exp': round(row['away_3pm_exp'], 1),
         }
         if has_swing_player:
             game_obj['swing_player'] = row['swing_player'] if pd.notna(row['swing_player']) else ''
@@ -706,6 +714,8 @@ def generate_report():
                 <th>Matchup</th>
                 <th>Actual Score</th>
                 <th>Adjusted Score</th>
+                <th>Away 3P%</th>
+                <th>Home 3P%</th>
                 <th>Luck Swing</th>
                 <th>Biggest Swing Player</th>
             </tr>`;
@@ -725,6 +735,17 @@ def generate_report():
                 ? `${{awayAdj}}-<strong>${{homeAdj}}</strong>`
                 : `<strong>${{awayAdj}}</strong>-${{homeAdj}}`;
 
+            // Format 3P% stats: "made/att (pct% vs exp%)"
+            const away3pPct = game.away_3pa > 0 ? (game.away_3pm / game.away_3pa * 100).toFixed(1) : '0.0';
+            const away3pExpPct = game.away_3pa > 0 ? (game.away_3pm_exp / game.away_3pa * 100).toFixed(1) : '0.0';
+            const away3pDiff = parseFloat(away3pPct) - parseFloat(away3pExpPct);
+            const away3pClass = away3pDiff > 2 ? 'negative' : (away3pDiff < -2 ? 'positive' : '');
+
+            const home3pPct = game.home_3pa > 0 ? (game.home_3pm / game.home_3pa * 100).toFixed(1) : '0.0';
+            const home3pExpPct = game.home_3pa > 0 ? (game.home_3pm_exp / game.home_3pa * 100).toFixed(1) : '0.0';
+            const home3pDiff = parseFloat(home3pPct) - parseFloat(home3pExpPct);
+            const home3pClass = home3pDiff > 2 ? 'negative' : (home3pDiff < -2 ? 'positive' : '');
+
             // Format swing player with shooting stats and delta
             let swingPlayer = '';
             if (game.swing_player) {{
@@ -742,6 +763,8 @@ def generate_report():
                 <td>${{game.away_team}} @ ${{game.home_team}}</td>
                 <td>${{game.away_pts_actual}}-${{game.home_pts_actual}}</td>
                 <td>${{adjScore}} ${{flip}}</td>
+                <td>${{game.away_3pm}}/${{game.away_3pa}} (<span class="${{away3pClass}}">${{away3pPct}}%</span> vs ${{away3pExpPct}}%)</td>
+                <td>${{game.home_3pm}}/${{game.home_3pa}} (<span class="${{home3pClass}}">${{home3pPct}}%</span> vs ${{home3pExpPct}}%)</td>
                 <td class="${{swingClass}}">${{game.margin_delta > 0 ? '+' : ''}}${{game.margin_delta.toFixed(1)}}</td>
                 <td>${{swingPlayer}}</td>
             </tr>`;
