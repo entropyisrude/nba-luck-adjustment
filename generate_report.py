@@ -432,8 +432,8 @@ def generate_report():
 
     <div class="summary">
         <p><strong>What is this?</strong> This analysis adjusts NBA scores based on 3-point shooting luck.
-        When a team shoots significantly above or below their expected 3P% (based on each player's historical shooting),
-        we calculate what the score "should have been" if shooting regressed to expectation.</p>
+        Each shot is evaluated based on the shooter's historical accuracy and the shot's difficulty (corner vs above-break, catch-and-shoot vs pullup/stepback).
+        We calculate what the score "should have been" if each shot had its expected outcome.</p>
         <p><strong>Luck Swing</strong> = Luck-adjusted margin minus actual margin. Positive means the home team benefited from luck.</p>
     </div>
 
