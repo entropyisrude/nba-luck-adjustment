@@ -560,7 +560,8 @@ def generate_report():
 
     <div class="methodology" id="methodology">
         <h3>Methodology</h3>
-        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>shot-by-shot basis</strong>.</p>
+        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>shot-by-shot basis</strong>.
+        <a href="example.html" target="_blank" style="color: #e94560; font-weight: 500;">See a detailed example breakdown &rarr;</a></p>
 
         <h4>Shot Context Model</h4>
         <p>Each 3-point attempt is analyzed using play-by-play data to determine its difficulty:</p>
