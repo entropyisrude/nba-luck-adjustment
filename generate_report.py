@@ -478,13 +478,14 @@ def generate_report():
     <p>Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
     <table id="team-table">
         <tr>
-            <th>Rank</th>
+            <th>#</th>
             <th class="sortable" data-sort="team" data-type="string">Team</th>
             <th class="sortable" data-sort="wins" data-type="number">Record</th>
             <th class="sortable" data-sort="adj-wins" data-type="number">Adj Record</th>
             <th class="sortable" data-sort="diff" data-type="number">Diff</th>
             <th class="sortable" data-sort="opp-exp" data-type="number">Opp Exp 3P%</th>
             <th class="sortable asc" data-sort="opp-act" data-type="number">Opp Actual 3P%</th>
+            <th class="sortable" data-sort="opp-diff" data-type="number">3P% Diff</th>
         </tr>
 """
 
@@ -497,15 +498,17 @@ def generate_report():
         diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
         # Opponent 3P% - lower actual than expected is good (opponents shot worse than expected)
         opp_diff = row['opp_3p_pct'] - row['opp_3p_exp_pct']
-        opp_act_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
-        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-opp-exp="{row['opp_3p_exp_pct']:.1f}" data-opp-act="{row['opp_3p_pct']:.1f}">
+        opp_diff_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
+        opp_diff_str = f"{opp_diff:+.1f}%"
+        html += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adj-wins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-opp-exp="{row['opp_3p_exp_pct']:.1f}" data-opp-act="{row['opp_3p_pct']:.1f}" data-opp-diff="{opp_diff:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
             <td>{adj_record}</td>
             <td class="{diff_class} clickable-diff" onclick="showFlippedGames('{row['team']}')">{diff_str}</td>
             <td>{row['opp_3p_exp_pct']:.1f}%</td>
-            <td class="{opp_act_class}">{row['opp_3p_pct']:.1f}%</td>
+            <td>{row['opp_3p_pct']:.1f}%</td>
+            <td class="{opp_diff_class}">{opp_diff_str}</td>
         </tr>
 """
 
