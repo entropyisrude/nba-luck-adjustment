@@ -309,6 +309,50 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </tr>
     </table>
 
+    <h3>{home_team} Player Summary</h3>
+    <table>
+        <tr>
+            <th>Player</th>
+            <th>Shots</th>
+            <th>Made</th>
+            <th>Expected Makes</th>
+            <th>Luck</th>
+            <th>Point Impact</th>
+        </tr>
+"""
+
+    # Group home shots by player
+    home_player_stats = home_shots.groupby('player_name').agg({
+        'made': ['count', 'sum'],
+        'final_exp_prob': 'sum'
+    }).reset_index()
+    home_player_stats.columns = ['player_name', 'shots', 'made', 'expected']
+    home_player_stats['luck'] = home_player_stats['made'] - home_player_stats['expected']
+    home_player_stats['point_impact'] = home_player_stats['luck'] * 2.7
+    home_player_stats = home_player_stats.sort_values('luck', ascending=False)
+
+    for _, p in home_player_stats.iterrows():
+        luck_class = "positive" if p['luck'] > 0 else "negative" if p['luck'] < 0 else ""
+        html += f"""        <tr>
+            <td>{p['player_name']}</td>
+            <td>{int(p['shots'])}</td>
+            <td>{int(p['made'])}</td>
+            <td>{p['expected']:.2f}</td>
+            <td class="{luck_class}">{p['luck']:+.2f}</td>
+            <td class="{luck_class}">{p['point_impact']:+.1f}</td>
+        </tr>
+"""
+
+    html += f"""        <tr class="totals-row">
+            <td><strong>TOTAL</strong></td>
+            <td><strong>{len(home_shots)}</strong></td>
+            <td><strong>{home_made_total}</strong></td>
+            <td><strong>{home_exp_total:.2f}</strong></td>
+            <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck:+.2f}</strong></td>
+            <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * 2.7:+.1f}</strong></td>
+        </tr>
+    </table>
+
     <h2>{away_team} Shot-by-Shot Breakdown</h2>
     <p>Each 3-point attempt by {away_team} with the full calculation:</p>
     <table>
@@ -358,6 +402,50 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </tr>
     </table>
 
+    <h3>{away_team} Player Summary</h3>
+    <table>
+        <tr>
+            <th>Player</th>
+            <th>Shots</th>
+            <th>Made</th>
+            <th>Expected Makes</th>
+            <th>Luck</th>
+            <th>Point Impact</th>
+        </tr>
+"""
+
+    # Group away shots by player
+    away_player_stats = away_shots.groupby('player_name').agg({
+        'made': ['count', 'sum'],
+        'final_exp_prob': 'sum'
+    }).reset_index()
+    away_player_stats.columns = ['player_name', 'shots', 'made', 'expected']
+    away_player_stats['luck'] = away_player_stats['made'] - away_player_stats['expected']
+    away_player_stats['point_impact'] = away_player_stats['luck'] * 2.7
+    away_player_stats = away_player_stats.sort_values('luck', ascending=False)
+
+    for _, p in away_player_stats.iterrows():
+        luck_class = "positive" if p['luck'] > 0 else "negative" if p['luck'] < 0 else ""
+        html += f"""        <tr>
+            <td>{p['player_name']}</td>
+            <td>{int(p['shots'])}</td>
+            <td>{int(p['made'])}</td>
+            <td>{p['expected']:.2f}</td>
+            <td class="{luck_class}">{p['luck']:+.2f}</td>
+            <td class="{luck_class}">{p['point_impact']:+.1f}</td>
+        </tr>
+"""
+
+    html += f"""        <tr class="totals-row">
+            <td><strong>TOTAL</strong></td>
+            <td><strong>{len(away_shots)}</strong></td>
+            <td><strong>{away_made_total}</strong></td>
+            <td><strong>{away_exp_total:.2f}</strong></td>
+            <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck:+.2f}</strong></td>
+            <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * 2.7:+.1f}</strong></td>
+        </tr>
+    </table>
+
     <h2>Final Calculation</h2>
     <div class="summary-box">
         <h3>{home_team}</h3>
@@ -365,7 +453,6 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <li>Actual 3PM: <strong>{home_made_total}</strong></li>
             <li>Expected 3PM: <strong>{home_exp_total:.1f}</strong></li>
             <li>Luck (makes above/below expected): <strong class="{'positive' if home_luck > 0 else 'negative'}">{home_luck:+.1f}</strong></li>
-            <li>Point adjustment: ~{home_luck * 2.7:+.1f} points</li>
         </ul>
 
         <h3>{away_team}</h3>
@@ -373,12 +460,47 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <li>Actual 3PM: <strong>{away_made_total}</strong></li>
             <li>Expected 3PM: <strong>{away_exp_total:.1f}</strong></li>
             <li>Luck (makes above/below expected): <strong class="{'positive' if away_luck > 0 else 'negative'}">{away_luck:+.1f}</strong></li>
-            <li>Point adjustment: ~{away_luck * 2.7:+.1f} points</li>
         </ul>
+
+        <h3>ORB Adjustment Calculation</h3>
+        <p>Each lucky make isn't worth a full 3 points because missed 3s generate offensive rebounds (~27% ORB rate)
+        that lead to additional scoring (~1.1 points per possession). We subtract this "lost opportunity" value:</p>
+        <div class="formula">
+Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
+                 = (3 × Luck) − (ORB Rate × PPP × |Luck|)
+                 = (3 × Luck) − (0.27 × 1.1 × |Luck|)
+                 ≈ 2.7 × Luck
+        </div>
+
+        <table style="max-width: 600px;">
+            <tr>
+                <th>Team</th>
+                <th>Luck</th>
+                <th>Raw 3PT Value</th>
+                <th>ORB Adjustment</th>
+                <th>Net Point Impact</th>
+            </tr>
+            <tr>
+                <td>{home_team}</td>
+                <td class="{'positive' if home_luck > 0 else 'negative'}">{home_luck:+.2f}</td>
+                <td>{home_luck * 3:+.1f}</td>
+                <td>{-home_luck * 0.297:+.1f}</td>
+                <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * 2.7:+.1f}</strong></td>
+            </tr>
+            <tr>
+                <td>{away_team}</td>
+                <td class="{'positive' if away_luck > 0 else 'negative'}">{away_luck:+.2f}</td>
+                <td>{away_luck * 3:+.1f}</td>
+                <td>{-away_luck * 0.297:+.1f}</td>
+                <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * 2.7:+.1f}</strong></td>
+            </tr>
+        </table>
 
         <h3>Net Result</h3>
         <p>The luck differential of <strong>{home_luck - away_luck:+.1f} makes</strong> in favor of {home_team if home_luck > away_luck else away_team}
-        translates to approximately <strong>{abs(game_row['margin_delta']):.1f} points</strong> of margin swing.</p>
+        translates to <strong>{abs((home_luck - away_luck) * 2.7):.1f} points</strong> of margin swing after ORB adjustment.</p>
+        <p><strong>Actual margin:</strong> {home_team} {'+' if (game_row['home_pts_actual'] - game_row['away_pts_actual']) >= 0 else ''}{int(game_row['home_pts_actual'] - game_row['away_pts_actual'])}</p>
+        <p><strong>Adjusted margin:</strong> {home_team} {'+' if (game_row['home_pts_adj'] - game_row['away_pts_adj']) >= 0 else ''}{(game_row['home_pts_adj'] - game_row['away_pts_adj']):.1f}</p>
     </div>
 
     <div class="back-link" style="margin-top: 30px;"><a href="index.html">&larr; Back to Main Report</a></div>
