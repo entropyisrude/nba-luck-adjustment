@@ -87,6 +87,7 @@ def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
 # --- cdn.nba.com endpoints ---
 SCHEDULE_URL = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
 BOXSCORE_URL = "https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json"
+PLAYBYPLAY_URL = "https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_{game_id}.json"
 
 DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 5
@@ -278,3 +279,71 @@ def get_boxscore_player_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFram
             )
 
     return pd.DataFrame(rows)
+
+
+def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
+    """
+    Fetch play-by-play data and extract all 3PT shot attempts with context.
+
+    Returns DataFrame with columns:
+        GAME_ID, TEAM_ID, PLAYER_ID, PLAYER_NAME, MADE, AREA, SHOT_TYPE
+
+    AREA: 'corner' or 'above_break'
+    SHOT_TYPE: 'pullup', 'stepback', 'catch_shoot', etc.
+    """
+    url = PLAYBYPLAY_URL.format(game_id=game_id)
+    pbp_data = _get_json(url)
+
+    game = pbp_data.get("game", {})
+    actions = game.get("actions", [])
+
+    shots = []
+    for action in actions:
+        desc = action.get("description", "")
+        desc_lower = desc.lower()
+
+        # Look for 3PT shots by description
+        is_3pt = "3pt" in desc_lower or "3-pt" in desc_lower
+
+        if is_3pt:
+            # Determine if made or missed from description
+            made = 0 if desc_lower.startswith("miss") else 1
+
+            # Get area (corner vs above break)
+            area_raw = (action.get("area", "") or "").lower()
+            if "corner" in area_raw:
+                area = "corner"
+            else:
+                area = "above_break"
+
+            # Get shot type from description
+            shot_type = _classify_shot_type(desc_lower)
+
+            shots.append({
+                "GAME_ID": str(game_id),
+                "TEAM_ID": action.get("teamId"),
+                "PLAYER_ID": action.get("personId"),
+                "PLAYER_NAME": action.get("playerNameI", ""),
+                "MADE": made,
+                "AREA": area,
+                "SHOT_TYPE": shot_type,
+            })
+
+    return pd.DataFrame(shots)
+
+
+def _classify_shot_type(desc_lower: str) -> str:
+    """Classify shot type from play-by-play description."""
+    if "step back" in desc_lower or "stepback" in desc_lower:
+        return "stepback"
+    elif "pullup" in desc_lower or "pull-up" in desc_lower or "pull up" in desc_lower:
+        return "pullup"
+    elif "running" in desc_lower or "driving" in desc_lower:
+        return "running"
+    elif "fadeaway" in desc_lower or "fade away" in desc_lower:
+        return "fadeaway"
+    elif "turnaround" in desc_lower or "turn around" in desc_lower:
+        return "turnaround"
+    else:
+        # Default to catch-and-shoot (most common for unspecified 3PT)
+        return "catch_shoot"
