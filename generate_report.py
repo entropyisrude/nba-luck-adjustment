@@ -937,6 +937,12 @@ def generate_report():
     output_path = Path("data/3pt_luck_report.html")
     output_path.write_text(html, encoding='utf-8')
     print(f"Report saved to: {output_path.absolute()}")
+
+    # Also save to index.html for GitHub Pages
+    index_path = Path("index.html")
+    index_path.write_text(html, encoding='utf-8')
+    print(f"Also saved to: {index_path.absolute()}")
+
     return output_path
 
 if __name__ == "__main__":
