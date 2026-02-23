@@ -10,12 +10,15 @@ from src.ingest import (
     get_boxscore_player_df,
     get_boxscore_team_df,
     get_game_home_away_team_ids,
+    get_playbyplay_3pt_shots,
 )
 from src.state import load_player_state, save_player_state, ensure_players_exist
 from src.adjust import (
     compute_team_expected_3pm,
+    compute_team_expected_3pm_with_context,
     compute_team_adjusted_points,
     compute_player_deltas,
+    compute_player_deltas_with_context,
     get_biggest_swing_player,
     update_player_state_attempt_decay,
 )
@@ -76,12 +79,40 @@ def main():
 
                 player_state = ensure_players_exist(player_state, player_df)
 
-                exp_by_team = compute_team_expected_3pm(
-                    player_df=player_df,
-                    player_state=player_state,
-                    mu=float(cfg["mu"]),
-                    kappa=float(cfg["kappa"]),
-                )
+                # Fetch shot-level data for context-aware adjustments
+                shots_df = get_playbyplay_3pt_shots(game_id, game_date_mmddyyyy)
+
+                if not shots_df.empty:
+                    # Use shot-context model
+                    exp_by_team = compute_team_expected_3pm_with_context(
+                        shots_df=shots_df,
+                        player_state=player_state,
+                    )
+                    # Compute player-level deltas with shot context
+                    player_deltas = compute_player_deltas_with_context(
+                        shots_df=shots_df,
+                        player_state=player_state,
+                        orb_rate=float(cfg["orb_rate"]),
+                        ppp=float(cfg["ppp"]),
+                    )
+                    print(f"  Using shot context: {len(shots_df)} 3PT attempts")
+                else:
+                    # Fallback to legacy method if no play-by-play available
+                    exp_by_team = compute_team_expected_3pm(
+                        player_df=player_df,
+                        player_state=player_state,
+                        mu=float(cfg["mu"]),
+                        kappa=float(cfg["kappa"]),
+                    )
+                    player_deltas = compute_player_deltas(
+                        player_df=player_df,
+                        player_state=player_state,
+                        mu=float(cfg["mu"]),
+                        kappa=float(cfg["kappa"]),
+                        orb_rate=float(cfg["orb_rate"]),
+                        ppp=float(cfg["ppp"]),
+                    )
+                    print("  Fallback: no play-by-play, using legacy method")
 
                 adjusted_by_team = compute_team_adjusted_points(
                     team_df=team_df,
@@ -90,15 +121,6 @@ def main():
                     ppp=float(cfg["ppp"]),
                 )
 
-                # Compute player-level deltas for biggest swing player
-                player_deltas = compute_player_deltas(
-                    player_df=player_df,
-                    player_state=player_state,
-                    mu=float(cfg["mu"]),
-                    kappa=float(cfg["kappa"]),
-                    orb_rate=float(cfg["orb_rate"]),
-                    ppp=float(cfg["ppp"]),
-                )
                 biggest_swing = get_biggest_swing_player(player_deltas)
 
                 home_team_id, away_team_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)

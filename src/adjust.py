@@ -11,6 +11,33 @@ KAPPA_MIN = 200    # Prior strength for rookies
 KAPPA_MAX = 300    # Prior strength for veterans
 SCALE_ATTEMPTS = 1000  # Attempts at which prior/kappa reach max
 
+# Shot context difficulty multipliers (relative to league average 36.5%)
+# These are league-average 3P% by shot type, expressed as multipliers
+LEAGUE_AVG_3P = 0.365
+SHOT_TYPE_MULTIPLIERS = {
+    # Corner shots (easier)
+    ("corner", "catch_shoot"): 0.41 / LEAGUE_AVG_3P,    # ~1.123
+    ("corner", "pullup"): 0.37 / LEAGUE_AVG_3P,         # ~1.014
+    ("corner", "stepback"): 0.36 / LEAGUE_AVG_3P,       # ~0.986
+    ("corner", "running"): 0.34 / LEAGUE_AVG_3P,        # ~0.932
+    ("corner", "fadeaway"): 0.33 / LEAGUE_AVG_3P,       # ~0.904
+    ("corner", "turnaround"): 0.33 / LEAGUE_AVG_3P,     # ~0.904
+    # Above the break (baseline is league average)
+    ("above_break", "catch_shoot"): 0.38 / LEAGUE_AVG_3P,  # ~1.041
+    ("above_break", "pullup"): 0.34 / LEAGUE_AVG_3P,       # ~0.932
+    ("above_break", "stepback"): 0.33 / LEAGUE_AVG_3P,     # ~0.904
+    ("above_break", "running"): 0.32 / LEAGUE_AVG_3P,      # ~0.877
+    ("above_break", "fadeaway"): 0.31 / LEAGUE_AVG_3P,     # ~0.849
+    ("above_break", "turnaround"): 0.31 / LEAGUE_AVG_3P,   # ~0.849
+}
+# Default multiplier for unknown shot types
+DEFAULT_MULTIPLIER = 1.0
+
+
+def get_shot_multiplier(area: str, shot_type: str) -> float:
+    """Get the difficulty multiplier for a shot based on area and type."""
+    return SHOT_TYPE_MULTIPLIERS.get((area, shot_type), DEFAULT_MULTIPLIER)
+
 
 def get_player_prior(A_r: float) -> tuple[float, float]:
     """
@@ -32,7 +59,11 @@ def compute_team_expected_3pm(
     mu: float,       # Kept for compatibility but not used (sliding prior instead)
     kappa: float,    # Kept for compatibility but not used (sliding kappa instead)
 ) -> dict[int, float]:
-    """Compute expected made threes by team from player 3PA * p_hat (pre-game state)."""
+    """Compute expected made threes by team from player 3PA * p_hat (pre-game state).
+
+    This is the legacy method without shot context. Use compute_team_expected_3pm_with_context
+    for shot-level adjustments.
+    """
     # Map player_id -> (A_r, M_r)
     st = player_state.set_index("player_id")[["A_r", "M_r"]]
     exp_by_team: dict[int, float] = {}
@@ -56,6 +87,138 @@ def compute_team_expected_3pm(
             exp += a * p_hat
         exp_by_team[team_id] = exp
     return exp_by_team
+
+
+def compute_team_expected_3pm_with_context(
+    shots_df: pd.DataFrame,
+    player_state: pd.DataFrame,
+) -> dict[int, float]:
+    """
+    Compute expected made threes by team using shot-level context.
+
+    Uses multiplicative adjustment:
+        expected_make_prob = player_bayesian_3p% × shot_difficulty_multiplier
+
+    Args:
+        shots_df: DataFrame with GAME_ID, TEAM_ID, PLAYER_ID, MADE, AREA, SHOT_TYPE
+        player_state: DataFrame with player_id, A_r, M_r
+
+    Returns:
+        Dict mapping team_id -> expected 3PM
+    """
+    if shots_df.empty:
+        return {}
+
+    st = player_state.set_index("player_id")[["A_r", "M_r"]]
+    exp_by_team: dict[int, float] = {}
+
+    for team_id, grp in shots_df.groupby("TEAM_ID"):
+        team_id = int(team_id)
+        exp = 0.0
+
+        for _, shot in grp.iterrows():
+            pid = shot.get("PLAYER_ID")
+            if pid is None:
+                continue
+            pid = int(pid)
+
+            # Get player's Bayesian expected 3P%
+            if pid in st.index:
+                A_r = float(st.loc[pid, "A_r"])
+                M_r = float(st.loc[pid, "M_r"])
+            else:
+                A_r = 0.0
+                M_r = 0.0
+
+            mu_player, kappa_player = get_player_prior(A_r)
+            player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
+
+            # Get shot difficulty multiplier
+            area = shot.get("AREA", "above_break")
+            shot_type = shot.get("SHOT_TYPE", "catch_shoot")
+            multiplier = get_shot_multiplier(area, shot_type)
+
+            # Multiplicative adjustment: player skill × shot difficulty
+            # Clamp to reasonable range [0.15, 0.55]
+            expected_make_prob = max(0.15, min(0.55, player_p_hat * multiplier))
+            exp += expected_make_prob
+
+        exp_by_team[team_id] = exp
+
+    return exp_by_team
+
+
+def compute_player_deltas_with_context(
+    shots_df: pd.DataFrame,
+    player_state: pd.DataFrame,
+    orb_rate: float,
+    ppp: float,
+) -> list[dict]:
+    """
+    Compute per-player point delta using shot-level context.
+
+    Returns list of dicts with player_id, player_name, team_id, fg3a, fg3m,
+    exp_3pm, delta_pts (positive = player was lucky).
+    """
+    if shots_df.empty:
+        return []
+
+    haircut = orb_rate * ppp
+    st = player_state.set_index("player_id")[["A_r", "M_r"]]
+
+    # Group shots by player
+    player_results: dict[int, dict] = {}
+
+    for _, shot in shots_df.iterrows():
+        pid = shot.get("PLAYER_ID")
+        if pid is None:
+            continue
+        pid = int(pid)
+
+        # Get player's Bayesian expected 3P%
+        if pid in st.index:
+            A_r = float(st.loc[pid, "A_r"])
+            M_r = float(st.loc[pid, "M_r"])
+        else:
+            A_r = 0.0
+            M_r = 0.0
+
+        mu_player, kappa_player = get_player_prior(A_r)
+        player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
+
+        # Get shot difficulty multiplier
+        area = shot.get("AREA", "above_break")
+        shot_type = shot.get("SHOT_TYPE", "catch_shoot")
+        multiplier = get_shot_multiplier(area, shot_type)
+
+        # Expected make probability for this shot
+        expected_make_prob = max(0.15, min(0.55, player_p_hat * multiplier))
+
+        # Initialize player entry if needed
+        if pid not in player_results:
+            player_results[pid] = {
+                "player_id": pid,
+                "player_name": shot.get("PLAYER_NAME", ""),
+                "team_id": int(shot.get("TEAM_ID", 0)),
+                "fg3a": 0,
+                "fg3m": 0,
+                "exp_3pm": 0.0,
+            }
+
+        # Accumulate
+        player_results[pid]["fg3a"] += 1
+        player_results[pid]["fg3m"] += int(shot.get("MADE", 0))
+        player_results[pid]["exp_3pm"] += expected_make_prob
+
+    # Calculate deltas
+    results = []
+    for pid, data in player_results.items():
+        delta_3m = data["fg3m"] - data["exp_3pm"]
+        delta_pts = 3.0 * delta_3m - haircut * (-delta_3m)
+        data["delta_pts"] = delta_pts
+        results.append(data)
+
+    return results
 
 def compute_team_adjusted_points(
     team_df: pd.DataFrame,
