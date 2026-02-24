@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 import pandas as pd
 
 
@@ -10,6 +12,63 @@ MU_MAX = 0.36      # Prior for veterans (1000+ career attempts)
 KAPPA_MIN = 200    # Prior strength for rookies
 KAPPA_MAX = 300    # Prior strength for veterans
 SCALE_ATTEMPTS = 1000  # Attempts at which prior/kappa reach max
+
+# Assisted/unassisted shot mix adjustments
+# These adjust the prior to reflect "true skill" independent of shot difficulty:
+# - Unassisted (pull-up) = harder shots depress career %, so RAISE prior
+# - Assisted (catch & shoot) = easier shots inflate career %, so LOWER prior
+# Derived from: catch&shoot ~38%, pullup ~32%, league avg ~36%
+UNASSISTED_MULTIPLIER = 1.12  # ~36/32
+ASSISTED_MULTIPLIER = 0.95   # ~36/38
+
+# Cache for assisted/unassisted data (loaded once)
+_ASSISTED_UNASSISTED_DATA: dict[int, dict] | None = None
+
+
+def load_assisted_unassisted_data() -> dict[int, dict]:
+    """
+    Load assisted/unassisted shot mix data from JSON file.
+    Returns dict mapping player_id -> {pct_assisted, pct_unassisted, ...}
+    """
+    global _ASSISTED_UNASSISTED_DATA
+    if _ASSISTED_UNASSISTED_DATA is not None:
+        return _ASSISTED_UNASSISTED_DATA
+
+    data_path = Path(__file__).parent.parent / "data" / "assisted_unassisted_stats.json"
+    if not data_path.exists():
+        _ASSISTED_UNASSISTED_DATA = {}
+        return _ASSISTED_UNASSISTED_DATA
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        raw_data = json.load(f)
+
+    # Index by player_id for fast lookup
+    _ASSISTED_UNASSISTED_DATA = {
+        int(p["player_id"]): p for p in raw_data
+    }
+    return _ASSISTED_UNASSISTED_DATA
+
+
+def get_shot_mix_adjustment(player_id: int) -> float:
+    """
+    Get the shot mix adjustment multiplier for a player.
+
+    Returns a multiplier based on their assisted vs unassisted 3PA mix:
+    - More assisted (catch & shoot) → higher multiplier (easier shots)
+    - More unassisted (pull-up) → lower multiplier (harder shots)
+    - Unknown players default to 1.0 (no adjustment)
+    """
+    data = load_assisted_unassisted_data()
+    if player_id not in data:
+        return 1.0
+
+    player = data[player_id]
+    # pct_assisted and pct_unassisted are stored as percentages (0-100)
+    assisted_pct = player.get("pct_assisted", 50.0) / 100.0
+    unassisted_pct = player.get("pct_unassisted", 50.0) / 100.0
+
+    # Weighted average of multipliers based on shot mix
+    return assisted_pct * ASSISTED_MULTIPLIER + unassisted_pct * UNASSISTED_MULTIPLIER
 
 # Shot context difficulty multipliers (relative to league average 36.5%)
 # These are league-average 3P% by shot type, expressed as multipliers
@@ -39,17 +98,28 @@ def get_shot_multiplier(area: str, shot_type: str) -> float:
     return SHOT_TYPE_MULTIPLIERS.get((area, shot_type), DEFAULT_MULTIPLIER)
 
 
-def get_player_prior(A_r: float) -> tuple[float, float]:
+def get_player_prior(A_r: float, player_id: int | None = None) -> tuple[float, float]:
     """
-    Calculate sliding prior (mu) and prior strength (kappa) based on career attempts.
+    Calculate sliding prior (mu) and prior strength (kappa) based on career attempts,
+    adjusted for the player's shot mix (assisted vs unassisted 3PA).
 
     Returns (mu, kappa) where:
-    - mu scales from 32% (rookie) to 36% (veteran)
+    - mu scales from 32% (rookie) to 36% (veteran), then adjusted by shot mix
     - kappa scales from 200 (rookie) to 300 (veteran)
+
+    Shot mix adjustment:
+    - More assisted (catch & shoot) → higher mu (easier shots)
+    - More unassisted (pull-up) → lower mu (harder shots)
     """
     scale = min(A_r / SCALE_ATTEMPTS, 1.0)
     mu = MU_MIN + (MU_MAX - MU_MIN) * scale
     kappa = KAPPA_MIN + (KAPPA_MAX - KAPPA_MIN) * scale
+
+    # Apply shot mix adjustment if player_id is provided
+    if player_id is not None:
+        shot_mix_mult = get_shot_mix_adjustment(player_id)
+        mu = mu * shot_mix_mult
+
     return mu, kappa
 
 
@@ -81,8 +151,8 @@ def compute_team_expected_3pm(
             else:
                 A_r = 0.0
                 M_r = 0.0
-            # Use sliding prior based on career attempts
-            mu_player, kappa_player = get_player_prior(A_r)
+            # Use sliding prior based on career attempts, adjusted for shot mix
+            mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
             p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
             exp += a * p_hat
         exp_by_team[team_id] = exp
@@ -130,7 +200,7 @@ def compute_team_expected_3pm_with_context(
                 A_r = 0.0
                 M_r = 0.0
 
-            mu_player, kappa_player = get_player_prior(A_r)
+            mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
             player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
 
             # Get shot difficulty multiplier
@@ -183,7 +253,7 @@ def compute_player_deltas_with_context(
             A_r = 0.0
             M_r = 0.0
 
-        mu_player, kappa_player = get_player_prior(A_r)
+        mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
         player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
 
         # Get shot difficulty multiplier
@@ -276,8 +346,8 @@ def compute_player_deltas(
             A_r = 0.0
             M_r = 0.0
 
-        # Use sliding prior based on career attempts
-        mu_player, kappa_player = get_player_prior(A_r)
+        # Use sliding prior based on career attempts, adjusted for shot mix
+        mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
         p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
         exp_3pm = a * p_hat
         delta_3m = m - exp_3pm  # positive = made more than expected (lucky)
