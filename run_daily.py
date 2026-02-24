@@ -1,4 +1,5 @@
 import argparse
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from src.adjust import (
     compute_player_deltas,
     compute_player_deltas_with_context,
     get_biggest_swing_player,
+    get_top_swing_players,
     update_player_state_attempt_decay,
 )
 
@@ -122,6 +124,7 @@ def main():
                 )
 
                 biggest_swing = get_biggest_swing_player(player_deltas)
+                top_swing_players = get_top_swing_players(player_deltas, threshold=5.0)
 
                 home_team_id, away_team_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)
 
@@ -157,7 +160,7 @@ def main():
                 row["margin_adj"] = row["home_pts_adj"] - row["away_pts_adj"]
                 row["margin_delta"] = row["margin_adj"] - row["margin_actual"]
 
-                # Add biggest swing player info
+                # Add biggest swing player info (legacy, for backwards compat)
                 if biggest_swing:
                     row["swing_player"] = biggest_swing["player_name"]
                     row["swing_player_delta"] = round(biggest_swing["delta_pts"], 1)
@@ -168,6 +171,19 @@ def main():
                     row["swing_player_delta"] = 0.0
                     row["swing_player_fg3m"] = 0
                     row["swing_player_fg3a"] = 0
+
+                # Add top swing players (all with >=5 point impact)
+                top_players_list = []
+                for p in top_swing_players:
+                    team_abbrev = home["TEAM_ABBREVIATION"] if p["team_id"] == home_team_id else away["TEAM_ABBREVIATION"]
+                    top_players_list.append({
+                        "name": p["player_name"],
+                        "team": team_abbrev,
+                        "delta": round(p["delta_pts"], 1),
+                        "fg3m": int(p["fg3m"]),
+                        "fg3a": int(p["fg3a"]),
+                    })
+                row["top_swing_players"] = json.dumps(top_players_list)
 
                 rows.append(row)
 

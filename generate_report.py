@@ -99,6 +99,7 @@ def generate_report():
     # Prepare games data as JSON for calendar
     # Check if swing_player columns exist (for backward compatibility)
     has_swing_player = 'swing_player' in df.columns
+    has_top_swing_players = 'top_swing_players' in df.columns
 
     json_cols = ['date', 'home_team', 'away_team', 'home_pts_actual', 'away_pts_actual',
                  'home_pts_adj', 'away_pts_adj', 'margin_actual', 'margin_adj', 'margin_delta',
@@ -109,6 +110,8 @@ def generate_report():
         # Add shooting stats if available
         if 'swing_player_fg3m' in df.columns:
             json_cols += ['swing_player_fg3m', 'swing_player_fg3a']
+    if has_top_swing_players:
+        json_cols += ['top_swing_players']
 
     games_for_json = df[json_cols].copy()
     games_for_json = games_for_json.sort_values('date')
@@ -143,6 +146,12 @@ def generate_report():
             if 'swing_player_fg3m' in row and pd.notna(row.get('swing_player_fg3m')):
                 game_obj['swing_player_fg3m'] = int(row['swing_player_fg3m'])
                 game_obj['swing_player_fg3a'] = int(row['swing_player_fg3a'])
+        if has_top_swing_players and pd.notna(row.get('top_swing_players')):
+            # Parse the JSON string into a list
+            try:
+                game_obj['top_swing_players'] = json.loads(row['top_swing_players'])
+            except (json.JSONDecodeError, TypeError):
+                game_obj['top_swing_players'] = []
         games_by_date[date].append(game_obj)
 
     games_json = json.dumps(games_by_date)
@@ -355,6 +364,126 @@ def generate_report():
             background: #ffd0d0 !important;
         }}
 
+        /* Game Box Scoreboard Styles */
+        .games-container {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }}
+        .game-box {{
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 340px;
+            overflow: hidden;
+        }}
+        .game-box.flipped {{
+            box-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
+            border: 2px solid #e94560;
+        }}
+        .scores-section {{
+            display: flex;
+        }}
+        .score-column {{
+            flex: 1;
+            padding: 10px;
+            background: white;
+        }}
+        .score-column.actual {{
+            border-right: 1px solid #eee;
+        }}
+        .column-header {{
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #333;
+        }}
+        .team-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 15px;
+        }}
+        .team-abbrev {{
+            font-weight: 600;
+            width: 40px;
+            color: #333;
+        }}
+        .team-score {{
+            font-weight: 700;
+            font-size: 18px;
+        }}
+        .team-score.winner {{
+            color: #16a34a;
+        }}
+        .team-score.loser {{
+            color: #666;
+        }}
+        .details-section {{
+            padding: 10px;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+        }}
+        .three-pt-row {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }}
+        .three-pt-team {{
+            font-weight: 600;
+            width: 35px;
+        }}
+        .three-pt-stats {{
+            color: #666;
+        }}
+        .hot {{ color: #dc3545; font-weight: 600; }}
+        .cold {{ color: #28a745; font-weight: 600; }}
+        .swing-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }}
+        .luck-label {{
+            font-weight: 600;
+        }}
+        .luck-team {{
+            font-weight: 700;
+        }}
+        .luck-value {{
+            font-weight: 700;
+            font-size: 14px;
+            color: #28a745;
+        }}
+        .flip-indicator {{
+            background: #e94560;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }}
+        .swing-players {{
+            font-size: 11px;
+            color: #666;
+            margin-top: 6px;
+        }}
+        .swing-players .player-line {{
+            margin-top: 3px;
+        }}
+        .swing-players strong {{
+            color: #333;
+        }}
+        .swing-players .team-label {{
+            font-weight: 700;
+            color: #444;
+        }}
+
         /* Sortable table headers */
         th.sortable {{
             cursor: pointer;
@@ -466,20 +595,20 @@ def generate_report():
 
     <div class="nav-links">
         <a href="#team-rankings">Team Rankings</a>
-        <a href="#biggest-swings">Biggest Swings</a>
+        <a href="#biggest-swings">Highest Variance</a>
         <a href="#methodology">Methodology</a>
     </div>
 
     <h2>Games by Date</h2>
-    <div class="calendar-container">
-        <div class="calendar-grid" id="calendar"></div>
-    </div>
-
     <div class="selected-date-section">
-        <div class="selected-date-title" id="selected-date-title">Select a date above</div>
+        <div class="selected-date-title" id="selected-date-title">Select a date below</div>
         <div id="games-table-container">
             <p class="no-games">Click on a highlighted date to see games</p>
         </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-grid" id="calendar"></div>
     </div>
 
     <h2 id="team-rankings">Team Rankings</h2>
@@ -522,7 +651,7 @@ def generate_report():
 
     html += """    </table>
 
-    <h2 id="biggest-swings">Biggest Luck-Swing Games</h2>
+    <h2 id="biggest-swings">Highest 3PT Variance Games</h2>
     <p>Games where 3PT variance most dramatically affected the outcome</p>
     <table>
         <tr>
@@ -530,12 +659,11 @@ def generate_report():
             <th>Matchup</th>
             <th>Actual</th>
             <th>Adjusted</th>
-            <th>Swing</th>
+            <th>3PT Luck</th>
         </tr>
 """
 
     for _, row in biggest_swings.iterrows():
-        swing_class = "positive" if row['margin_delta'] > 0 else "negative"
         winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
         adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
         flip = "&#9888;" if winner != adj_winner else ""
@@ -546,12 +674,15 @@ def generate_report():
             adj_score = f"{away_adj}-<strong>{home_adj}</strong>"
         else:  # Away team wins adjusted
             adj_score = f"<strong>{away_adj}</strong>-{home_adj}"
+        # Calculate lucky team: negative margin_delta = home lucky, positive = away lucky
+        lucky_team = row['home_team'] if row['margin_delta'] < 0 else row['away_team']
+        luck_amount = abs(row['margin_delta'])
         html += f"""        <tr>
             <td>{row['date']}</td>
             <td>{row['away_team']} @ {row['home_team']}</td>
             <td>{int(row['away_pts_actual'])}-{int(row['home_pts_actual'])}</td>
             <td>{adj_score} {flip}</td>
-            <td class="{swing_class}">{row['margin_delta']:+.1f}</td>
+            <td class="positive">{lucky_team}: +{luck_amount:.1f}</td>
         </tr>
 """
 
@@ -710,68 +841,107 @@ def generate_report():
         // Sort games by absolute margin_delta (largest swing first)
         const sortedGames = [...games].sort((a, b) => Math.abs(b.margin_delta) - Math.abs(a.margin_delta));
 
-        let html = `<table>
-            <tr>
-                <th>Matchup</th>
-                <th>Actual Score</th>
-                <th>Adjusted Score</th>
-                <th title="Made/Attempted (Actual% vs Expected%) - Expected is based on shooter skill and shot difficulty">Away 3P%</th>
-                <th title="Made/Attempted (Actual% vs Expected%) - Expected is based on shooter skill and shot difficulty">Home 3P%</th>
-                <th>Luck Swing</th>
-                <th>Biggest Swing Player</th>
-            </tr>`;
+        let html = '<div class="games-container">';
 
         sortedGames.forEach(game => {{
-            const swingClass = game.margin_delta > 0 ? 'positive' : 'negative';
             const actualWinner = game.margin_actual > 0 ? game.home_team : game.away_team;
             const adjWinner = game.margin_adj > 0 ? game.home_team : game.away_team;
             const isFlipped = actualWinner !== adjWinner;
-            const flip = isFlipped ? '<span class="winner-flip">&#9888;</span>' : '';
-            const rowClass = isFlipped ? 'winner-flipped' : '';
 
-            // Format adjusted score with winner in bold
-            const awayAdj = game.away_pts_adj.toFixed(1);
-            const homeAdj = game.home_pts_adj.toFixed(1);
-            const adjScore = game.margin_adj > 0
-                ? `${{awayAdj}}-<strong>${{homeAdj}}</strong>`
-                : `<strong>${{awayAdj}}</strong>-${{homeAdj}}`;
+            // Determine actual winners/losers
+            const awayActualWinner = game.away_pts_actual > game.home_pts_actual;
+            const homeActualWinner = game.home_pts_actual > game.away_pts_actual;
+            const awayAdjWinner = game.away_pts_adj > game.home_pts_adj;
+            const homeAdjWinner = game.home_pts_adj > game.away_pts_adj;
 
-            // Format 3P% stats: "made/att (pct% vs exp%)"
+            // Format 3P% stats
             const away3pPct = game.away_3pa > 0 ? (game.away_3pm / game.away_3pa * 100).toFixed(1) : '0.0';
             const away3pExpPct = game.away_3pa > 0 ? (game.away_3pm_exp / game.away_3pa * 100).toFixed(1) : '0.0';
             const away3pDiff = parseFloat(away3pPct) - parseFloat(away3pExpPct);
-            const away3pClass = away3pDiff > 2 ? 'negative' : (away3pDiff < -2 ? 'positive' : '');
+            const away3pClass = away3pDiff > 2 ? 'hot' : (away3pDiff < -2 ? 'cold' : '');
 
             const home3pPct = game.home_3pa > 0 ? (game.home_3pm / game.home_3pa * 100).toFixed(1) : '0.0';
             const home3pExpPct = game.home_3pa > 0 ? (game.home_3pm_exp / game.home_3pa * 100).toFixed(1) : '0.0';
             const home3pDiff = parseFloat(home3pPct) - parseFloat(home3pExpPct);
-            const home3pClass = home3pDiff > 2 ? 'negative' : (home3pDiff < -2 ? 'positive' : '');
+            const home3pClass = home3pDiff > 2 ? 'hot' : (home3pDiff < -2 ? 'cold' : '');
 
-            // Format swing player with shooting stats and delta
-            let swingPlayer = '';
-            if (game.swing_player) {{
-                const playerDeltaClass = game.swing_player_delta > 0 ? 'positive' : 'negative';
-                const deltaSign = game.swing_player_delta > 0 ? '+' : '';
-                // Add shooting stats if available (e.g., "1-8")
-                let shootingStats = '';
-                if (game.swing_player_fg3a !== undefined) {{
-                    shootingStats = ` (${{game.swing_player_fg3m}}-${{game.swing_player_fg3a}})`;
-                }}
-                swingPlayer = `${{game.swing_player}}${{shootingStats}} <span class="${{playerDeltaClass}}">${{deltaSign}}${{game.swing_player_delta.toFixed(1)}}</span>`;
+            // Calculate luck: positive margin_delta means home benefited
+            // We want to show the lucky team with a positive number
+            const luckAmount = Math.abs(game.margin_delta);
+            const luckyTeam = game.margin_delta > 0 ? game.home_team : game.away_team;
+
+            // Format swing players (all with >=5 point impact)
+            let swingPlayerHtml = '';
+            let topPlayers = game.top_swing_players || [];
+            // Fallback to single swing_player if no top_swing_players
+            if (topPlayers.length === 0 && game.swing_player && Math.abs(game.swing_player_delta) >= 5) {{
+                const playerTeam = game.swing_player_delta > 0 ?
+                    (game.margin_delta > 0 ? game.home_team : game.away_team) :
+                    (game.margin_delta > 0 ? game.away_team : game.home_team);
+                topPlayers = [{{
+                    name: game.swing_player,
+                    team: playerTeam,
+                    delta: game.swing_player_delta,
+                    fg3m: game.swing_player_fg3m,
+                    fg3a: game.swing_player_fg3a
+                }}];
+            }}
+            if (topPlayers.length > 0) {{
+                const playerLines = topPlayers.map(p => {{
+                    const deltaSign = p.delta > 0 ? '+' : '';
+                    const deltaClass = p.delta > 0 ? 'negative' : 'positive';
+                    const shootingStats = p.fg3a !== undefined ? `(${{p.fg3m}}-${{p.fg3a}})` : '';
+                    return `<div class="player-line"><span class="team-label">${{p.team}}:</span> ${{p.name}} ${{shootingStats}} <span class="${{deltaClass}}">${{deltaSign}}${{p.delta.toFixed(1)}}</span></div>`;
+                }}).join('');
+                swingPlayerHtml = `<div class="swing-players">${{playerLines}}</div>`;
             }}
 
-            html += `<tr class="${{rowClass}}">
-                <td>${{game.away_team}} @ ${{game.home_team}}</td>
-                <td>${{game.away_pts_actual}}-${{game.home_pts_actual}}</td>
-                <td>${{adjScore}} ${{flip}}</td>
-                <td>${{game.away_3pm}}/${{game.away_3pa}} (<span class="${{away3pClass}}">${{away3pPct}}%</span> vs ${{away3pExpPct}}%)</td>
-                <td>${{game.home_3pm}}/${{game.home_3pa}} (<span class="${{home3pClass}}">${{home3pPct}}%</span> vs ${{home3pExpPct}}%)</td>
-                <td class="${{swingClass}}">${{game.margin_delta > 0 ? '+' : ''}}${{game.margin_delta.toFixed(1)}}</td>
-                <td>${{swingPlayer}}</td>
-            </tr>`;
+            html += `
+                <div class="game-box${{isFlipped ? ' flipped' : ''}}">
+                    <div class="scores-section">
+                        <div class="score-column actual">
+                            <div class="column-header">Actual</div>
+                            <div class="team-row">
+                                <span class="team-abbrev">${{game.away_team}}</span>
+                                <span class="team-score ${{awayActualWinner ? 'winner' : 'loser'}}">${{game.away_pts_actual}}</span>
+                            </div>
+                            <div class="team-row">
+                                <span class="team-abbrev">${{game.home_team}}</span>
+                                <span class="team-score ${{homeActualWinner ? 'winner' : 'loser'}}">${{game.home_pts_actual}}</span>
+                            </div>
+                        </div>
+                        <div class="score-column adjusted">
+                            <div class="column-header">Adjusted</div>
+                            <div class="team-row">
+                                <span class="team-abbrev">${{game.away_team}}</span>
+                                <span class="team-score ${{awayAdjWinner ? 'winner' : 'loser'}}">${{game.away_pts_adj.toFixed(1)}}</span>
+                            </div>
+                            <div class="team-row">
+                                <span class="team-abbrev">${{game.home_team}}</span>
+                                <span class="team-score ${{homeAdjWinner ? 'winner' : 'loser'}}">${{game.home_pts_adj.toFixed(1)}}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="details-section">
+                        <div class="three-pt-row">
+                            <span class="three-pt-team">${{game.away_team}}</span>
+                            <span class="three-pt-stats">${{game.away_3pm}}/${{game.away_3pa}} (${{away3pClass ? `<span class="${{away3pClass}}">${{away3pPct}}%</span>` : away3pPct + '%'}} vs ${{away3pExpPct}}% exp)</span>
+                        </div>
+                        <div class="three-pt-row">
+                            <span class="three-pt-team">${{game.home_team}}</span>
+                            <span class="three-pt-stats">${{game.home_3pm}}/${{game.home_3pa}} (${{home3pClass ? `<span class="${{home3pClass}}">${{home3pPct}}%</span>` : home3pPct + '%'}} vs ${{home3pExpPct}}% exp)</span>
+                        </div>
+                        <div class="swing-row">
+                            <span><span class="luck-label">3PT Luck:</span> <span class="luck-team">${{luckyTeam}}</span> <span class="luck-value">+${{luckAmount.toFixed(1)}}</span></span>
+                            ${{isFlipped ? '<span class="flip-indicator">⚠ FLIPPED</span>' : ''}}
+                        </div>
+                        ${{swingPlayerHtml}}
+                    </div>
+                </div>`;
         }});
 
-        html += '</table><p><small><strong>Bold</strong> = adjusted winner | <span style="background:#ffe0e0;padding:2px 6px;">Pink row</span> + &#9888; = luck flipped the winner</small></p>';
+        html += '</div>';
+        html += '<p style="margin-top: 15px;"><small><span style="color: #16a34a; font-weight: 600;">Green</span> = winner | <span style="border: 2px solid #e94560; padding: 1px 4px; border-radius: 4px;">Red border</span> + ⚠ FLIPPED = luck changed the winner</small></p>';
         container.innerHTML = html;
     }}
 

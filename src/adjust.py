@@ -373,6 +373,14 @@ def get_biggest_swing_player(player_deltas: list[dict]) -> dict | None:
     return max(player_deltas, key=lambda x: abs(x["delta_pts"]))
 
 
+def get_top_swing_players(player_deltas: list[dict], threshold: float = 5.0) -> list[dict]:
+    """Get all players with absolute point delta >= threshold, sorted by absolute impact."""
+    if not player_deltas:
+        return []
+    filtered = [p for p in player_deltas if abs(p["delta_pts"]) >= threshold]
+    return sorted(filtered, key=lambda x: abs(x["delta_pts"]), reverse=True)
+
+
 def update_player_state_attempt_decay(
     player_df: pd.DataFrame,
     player_state: pd.DataFrame,
