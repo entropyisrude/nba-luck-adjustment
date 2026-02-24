@@ -587,10 +587,7 @@ def generate_report():
     <p class="timestamp">2025-26 Season through {df['date'].max()} | {len(df)} games analyzed</p>
 
     <div class="summary">
-        <p><strong>What is this?</strong> This analysis adjusts NBA scores based on 3-point shooting luck.
-        Each shot is evaluated based on the shooter's historical accuracy and the shot's difficulty (corner vs above-break, catch-and-shoot vs pullup/stepback).
-        We calculate what the score "should have been" if each shot had its expected outcome.</p>
-        <p><strong>Luck Swing</strong> = Luck-adjusted margin minus actual margin. Positive means the home team benefited from luck.</p>
+        <p><strong>What is this?</strong> How much did the notorious variance of 3pt shooting affect the outcome of the game? This page attempts to take some (but far from all) luck out of the boxscore equation by reimagining every NBA result as if the 3 point gods played no favorites. That is, if every shot went in according to its long term expected outcome. Of course, those outcomes are an imperfect science and this analysis does not use every conceivable piece of tracking data. But it also does not merely resort to league or team average. Instead, it looks at every shot and (1) What player shot it (2) The general shot difficulty (Catch and Shoot, pull-up, step-back etc.) It omits plenty of information, including how closely guarded the shot was according to tracking data. Please see the <a href="example.html" style="color: #e94560; font-weight: 500;">dirty details here</a>.</p>
     </div>
 
     <div class="nav-links">
