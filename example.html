@@ -126,12 +126,15 @@
     <div class="step">
         <span class="step-number">2</span>
         <strong>Calculate Each Player's Expected 3P%</strong>
-        <p>Using Bayesian estimation with a sliding prior. Player stats are weighted with exponential decay (recent shots matter more):</p>
+        <p>Using Bayesian estimation with a sliding prior, adjusted for shot difficulty. Player stats are weighted with exponential decay (recent shots matter more):</p>
         <div class="formula">
-Player Expected 3P% = (Weighted Makes + &kappa; × Prior) / (Weighted Attempts + &kappa;)
+Player Expected 3P% = (Weighted Makes + &kappa; × Adjusted Prior) / (Weighted Attempts + &kappa;)
 
 Where:
-  - Prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
+  - Base prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
+  - <strong>Shot mix adjustment</strong>: Prior adjusted based on career assisted vs unassisted 3PA:
+      • Pull-up (unassisted) shooters: prior ×1.12 — harder shots depress career %
+      • Catch-and-shoot (assisted) shooters: prior ×0.95 — easier shots inflate career %
   - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
   - Weighted stats use exponential decay so recent performance matters more
         </div>
