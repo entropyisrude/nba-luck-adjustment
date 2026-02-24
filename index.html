@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>NBA 3PT Luck Analysis - 2025-26 Season</title>
@@ -198,18 +198,18 @@
             background: #2a2a4e;
         }
         th.sortable::after {
-            content: '⇅';
+            content: 'â‡…';
             position: absolute;
             right: 6px;
             opacity: 0.5;
             font-size: 0.8em;
         }
         th.sortable.asc::after {
-            content: '↑';
+            content: 'â†‘';
             opacity: 1;
         }
         th.sortable.desc::after {
-            content: '↓';
+            content: 'â†“';
             opacity: 1;
         }
 
@@ -759,17 +759,23 @@
             <li><strong>Shot type</strong>: Catch-and-shoot, pullup, stepback, running, fadeaway, turnaround</li>
         </ul>
         <p>Expected make probability is calculated using a <strong>multiplicative adjustment</strong>:</p>
-        <p style="margin-left: 20px;"><code>expected = player_3P% × shot_difficulty_multiplier</code></p>
-        <p>Example multipliers (relative to league avg): Corner C&S = 1.12×, Above-break C&S = 1.04×, Pullup = 0.93×, Stepback = 0.90×</p>
+        <p style="margin-left: 20px;"><code>expected = player_3P% Ã— shot_difficulty_multiplier</code></p>
+        <p>Example multipliers (relative to league avg): Corner C&S = 1.12Ã—, Above-break C&S = 1.04Ã—, Pullup = 0.93Ã—, Stepback = 0.90Ã—</p>
 
         <h4>Player Expected 3P%</h4>
-        <p>Each player's baseline expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
+        <p>Each player's baseline expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> adjusted for shot difficulty:</p>
         <ul>
-            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
+            <li><strong>Base prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
+            <li><strong>Shot mix adjustment</strong>: Prior adjusted based on career assisted vs unassisted 3PA:
+                <ul>
+                    <li>Pull-up (unassisted) shooters: prior ×1.12 — harder shots depress career %</li>
+                    <li>Catch-and-shoot (assisted) shooters: prior ×0.95 — easier shots inflate career %</li>
+                </ul>
+            </li>
             <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
+            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × adjusted_prior) / (career_attempts + kappa)</li>
         </ul>
-        <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
+        <p>Example: James Harden (77% unassisted) gets a raised prior; Klay Thompson (80% assisted) gets a lowered prior.</p>
 
         <h4>In-Season Adjustment</h4>
         <ul>
@@ -1121,3 +1127,4 @@
         async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
+
