@@ -905,9 +905,10 @@
         <ul>
             <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
             <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × prior) / (career_attempts + kappa)</li>
+            <li><strong>Shot difficulty adjustment</strong>: The prior is adjusted based on the player's historical shot mix (assisted vs unassisted 3PA). Players who take mostly unassisted/pull-up 3s have their prior raised to reflect harder shot selection, while players who take mostly assisted/catch-and-shoot 3s have their prior lowered.</li>
+            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × adjusted_prior) / (career_attempts + kappa)</li>
         </ul>
-        <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting.</p>
+        <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting adjusted for shot difficulty.</p>
 
         <h4>In-Season Adjustment</h4>
         <ul>
@@ -918,7 +919,7 @@
         <h4>Point Adjustment</h4>
         <ul>
             <li><strong>Base adjustment</strong>: 3 points per made/missed three above/below expectation</li>
-            <li><strong>ORB correction</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP, reducing the net impact slightly</li>
+            <li><strong>ORB correction (both directions)</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP (~0.29 pts per miss). This correction applies symmetrically: when a team shot worse than expected, we reduce the adjustment because extra misses created extra ORB opportunities; when a team shot better than expected, we increase the adjustment because extra makes eliminated potential ORB opportunities.</li>
         </ul>
 
         <h4>Data</h4>
@@ -928,7 +929,7 @@
             <li><strong>Updates</strong>: Automatically refreshed daily</li>
         </ul>
 
-        <p class="timestamp">Generated 2026-02-25 08:12 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
+        <p class="timestamp">Generated 2026-02-25 08:23 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
     </div>
 
     <script>
