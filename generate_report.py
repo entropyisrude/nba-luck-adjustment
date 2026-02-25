@@ -88,7 +88,7 @@ def generate_report():
     teams['opp_3pm_exp'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pm_exp', 0))
     teams['opp_3p_pct'] = (teams['opp_3pm'] / teams['opp_3pa'] * 100).round(1)
     teams['opp_3p_exp_pct'] = (teams['opp_3pm_exp'] / teams['opp_3pa'] * 100).round(1)
-    teams = teams.sort_values('opp_3p_pct', ascending=True)
+    teams = teams.sort_values('wins', ascending=False)
 
     # Generate team rankings rows HTML
     team_rows = ""
