@@ -656,19 +656,19 @@
             const home3pDiff = parseFloat(home3pPct) - parseFloat(home3pExpPct);
             const home3pClass = home3pDiff > 2 ? 'hot' : (home3pDiff < -2 ? 'cold' : '');
 
-            // Calculate luck: positive margin_delta means home benefited
-            // We want to show the lucky team with a positive number
+            // Calculate luck: positive margin_delta means home's adjusted margin > actual
+            // So home was UNLUCKY (should have done better), away was LUCKY
             const luckAmount = Math.abs(game.margin_delta);
-            const luckyTeam = game.margin_delta > 0 ? game.home_team : game.away_team;
+            const luckyTeam = game.margin_delta > 0 ? game.away_team : game.home_team;
 
-            // Format swing players (all with >=5 point impact)
+            // Format swing players: 2 rows (away team, home team), top 2 per team with |delta| > 4
             let swingPlayerHtml = '';
             let topPlayers = game.top_swing_players || [];
             // Fallback to single swing_player if no top_swing_players
-            if (topPlayers.length === 0 && game.swing_player && Math.abs(game.swing_player_delta) >= 5) {
+            if (topPlayers.length === 0 && game.swing_player && Math.abs(game.swing_player_delta) >= 4) {
                 const playerTeam = game.swing_player_delta > 0 ?
-                    (game.margin_delta > 0 ? game.home_team : game.away_team) :
-                    (game.margin_delta > 0 ? game.away_team : game.home_team);
+                    (game.margin_delta > 0 ? game.away_team : game.home_team) :
+                    (game.margin_delta > 0 ? game.home_team : game.away_team);
                 topPlayers = [{
                     name: game.swing_player,
                     team: playerTeam,
@@ -677,14 +677,33 @@
                     fg3a: game.swing_player_fg3a
                 }];
             }
-            if (topPlayers.length > 0) {
-                const playerLines = topPlayers.map(p => {
+
+            // Split by team and get top 2 per team with |delta| > 4
+            const awayPlayers = topPlayers
+                .filter(p => p.team === game.away_team && Math.abs(p.delta) > 4)
+                .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+                .slice(0, 2);
+            const homePlayers = topPlayers
+                .filter(p => p.team === game.home_team && Math.abs(p.delta) > 4)
+                .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+                .slice(0, 2);
+
+            const formatPlayerLine = (players, teamAbbrev) => {
+                if (players.length === 0) return '';
+                const playerStrs = players.map(p => {
                     const deltaSign = p.delta > 0 ? '+' : '';
                     const deltaClass = p.delta > 0 ? 'negative' : 'positive';
                     const shootingStats = p.fg3a !== undefined ? `(${p.fg3m}-${p.fg3a})` : '';
-                    return `<div class="player-line"><span class="team-label">${p.team}:</span> ${p.name} ${shootingStats} <span class="${deltaClass}">${deltaSign}${p.delta.toFixed(1)}</span></div>`;
-                }).join('');
-                swingPlayerHtml = `<div class="swing-players">${playerLines}</div>`;
+                    return `${p.name} ${shootingStats} <span class="${deltaClass}">${deltaSign}${p.delta.toFixed(1)}</span>`;
+                }).join(', ');
+                return `<div class="player-line"><span class="team-label">${teamAbbrev}:</span> ${playerStrs}</div>`;
+            };
+
+            if (awayPlayers.length > 0 || homePlayers.length > 0) {
+                swingPlayerHtml = '<div class="swing-players">';
+                swingPlayerHtml += formatPlayerLine(awayPlayers, game.away_team);
+                swingPlayerHtml += formatPlayerLine(homePlayers, game.home_team);
+                swingPlayerHtml += '</div>';
             }
 
             html += `
