@@ -450,71 +450,31 @@
         <div class="calendar-grid" id="calendar"></div>
     </div>
 
-    <h2 id="team-rankings">Team Rankings</h2>
-    <p>Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
+    <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
+    <p style="text-align: center;">Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
     <table id="team-table">
         <tr>
             <th>#</th>
             <th class="sortable" data-sort="team" data-type="string">Team</th>
-            <th class="sortable" data-sort="wins" data-type="number">Record</th>
+            <th class="sortable desc" data-sort="wins" data-type="number">Record</th>
             <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
             <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
             <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
-            <th class="sortable asc" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
+            <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
             <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
         </tr>
-        <tr data-team="IND" data-wins="15" data-adjwins="8" data-diff="7" data-oppexp="36.7" data-oppact="34.2" data-oppdiff="-2.5">
+        <tr data-team="OKC" data-wins="44" data-adjwins="49" data-diff="-5" data-oppexp="36.4" data-oppact="37.0" data-oppdiff="0.6">
             <td>1</td>
-            <td><strong>IND</strong></td>
-            <td>15-44</td>
-            <td>8-51</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('IND')">+7</td>
-            <td>36.7%</td>
-            <td>34.2%</td>
-            <td class="positive">-2.5%</td>
-        </tr>
-        <tr data-team="PHX" data-wins="33" data-adjwins="29" data-diff="4" data-oppexp="36.5" data-oppact="34.2" data-oppdiff="-2.3">
-            <td>2</td>
-            <td><strong>PHX</strong></td>
-            <td>33-26</td>
-            <td>29-30</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('PHX')">+4</td>
-            <td>36.5%</td>
-            <td>34.2%</td>
-            <td class="positive">-2.3%</td>
-        </tr>
-        <tr data-team="DAL" data-wins="21" data-adjwins="19" data-diff="2" data-oppexp="36.3" data-oppact="34.3" data-oppdiff="-2.0">
-            <td>3</td>
-            <td><strong>DAL</strong></td>
-            <td>21-36</td>
-            <td>19-38</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('DAL')">+2</td>
-            <td>36.3%</td>
-            <td>34.3%</td>
-            <td class="positive">-2.0%</td>
-        </tr>
-        <tr data-team="TOR" data-wins="34" data-adjwins="29" data-diff="5" data-oppexp="36.5" data-oppact="34.5" data-oppdiff="-2.0">
-            <td>4</td>
-            <td><strong>TOR</strong></td>
-            <td>34-24</td>
-            <td>29-29</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('TOR')">+5</td>
-            <td>36.5%</td>
-            <td>34.5%</td>
-            <td class="positive">-2.0%</td>
-        </tr>
-        <tr data-team="HOU" data-wins="35" data-adjwins="34" data-diff="1" data-oppexp="35.8" data-oppact="34.8" data-oppdiff="-1.0">
-            <td>5</td>
-            <td><strong>HOU</strong></td>
-            <td>35-20</td>
-            <td>34-21</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('HOU')">+1</td>
-            <td>35.8%</td>
-            <td>34.8%</td>
-            <td class="positive">-1.0%</td>
+            <td><strong>OKC</strong></td>
+            <td>44-14</td>
+            <td>49-9</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('OKC')">-5</td>
+            <td>36.4%</td>
+            <td>37.0%</td>
+            <td class="negative">+0.6%</td>
         </tr>
         <tr data-team="DET" data-wins="42" data-adjwins="41" data-diff="1" data-oppexp="36.6" data-oppact="34.9" data-oppdiff="-1.7">
-            <td>6</td>
+            <td>2</td>
             <td><strong>DET</strong></td>
             <td>42-14</td>
             <td>41-15</td>
@@ -523,15 +483,55 @@
             <td>34.9%</td>
             <td class="positive">-1.7%</td>
         </tr>
-        <tr data-team="MIA" data-wins="31" data-adjwins="31" data-diff="0" data-oppexp="36.6" data-oppact="34.9" data-oppdiff="-1.7">
+        <tr data-team="SAS" data-wins="41" data-adjwins="42" data-diff="-1" data-oppexp="36.2" data-oppact="35.6" data-oppdiff="-0.6">
+            <td>3</td>
+            <td><strong>SAS</strong></td>
+            <td>41-16</td>
+            <td>42-15</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('SAS')">-1</td>
+            <td>36.2%</td>
+            <td>35.6%</td>
+            <td class="positive">-0.6%</td>
+        </tr>
+        <tr data-team="BOS" data-wins="38" data-adjwins="47" data-diff="-9" data-oppexp="36.1" data-oppact="35.9" data-oppdiff="-0.2">
+            <td>4</td>
+            <td><strong>BOS</strong></td>
+            <td>38-19</td>
+            <td>47-10</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('BOS')">-9</td>
+            <td>36.1%</td>
+            <td>35.9%</td>
+            <td class="positive">-0.2%</td>
+        </tr>
+        <tr data-team="CLE" data-wins="37" data-adjwins="42" data-diff="-5" data-oppexp="36.4" data-oppact="37.1" data-oppdiff="0.7">
+            <td>5</td>
+            <td><strong>CLE</strong></td>
+            <td>37-22</td>
+            <td>42-17</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('CLE')">-5</td>
+            <td>36.4%</td>
+            <td>37.1%</td>
+            <td class="negative">+0.7%</td>
+        </tr>
+        <tr data-team="NYK" data-wins="37" data-adjwins="39" data-diff="-2" data-oppexp="36.4" data-oppact="35.8" data-oppdiff="-0.6">
+            <td>6</td>
+            <td><strong>NYK</strong></td>
+            <td>37-22</td>
+            <td>39-20</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('NYK')">-2</td>
+            <td>36.4%</td>
+            <td>35.8%</td>
+            <td class="positive">-0.6%</td>
+        </tr>
+        <tr data-team="MIN" data-wins="36" data-adjwins="36" data-diff="0" data-oppexp="36.5" data-oppact="36.2" data-oppdiff="-0.3">
             <td>7</td>
-            <td><strong>MIA</strong></td>
-            <td>31-28</td>
-            <td>31-28</td>
-            <td class=" clickable-diff" onclick="showFlippedGames('MIA')">0</td>
-            <td>36.6%</td>
-            <td>34.9%</td>
-            <td class="positive">-1.7%</td>
+            <td><strong>MIN</strong></td>
+            <td>36-23</td>
+            <td>36-23</td>
+            <td class=" clickable-diff" onclick="showFlippedGames('MIN')">0</td>
+            <td>36.5%</td>
+            <td>36.2%</td>
+            <td class="positive">-0.3%</td>
         </tr>
         <tr data-team="DEN" data-wins="36" data-adjwins="31" data-diff="5" data-oppexp="36.6" data-oppact="35.1" data-oppdiff="-1.5">
             <td>8</td>
@@ -543,98 +543,28 @@
             <td>35.1%</td>
             <td class="positive">-1.5%</td>
         </tr>
-        <tr data-team="NOP" data-wins="17" data-adjwins="18" data-diff="-1" data-oppexp="36.6" data-oppact="35.1" data-oppdiff="-1.5">
+        <tr data-team="HOU" data-wins="35" data-adjwins="34" data-diff="1" data-oppexp="35.8" data-oppact="34.8" data-oppdiff="-1.0">
             <td>9</td>
-            <td><strong>NOP</strong></td>
-            <td>17-42</td>
-            <td>18-41</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('NOP')">-1</td>
-            <td>36.6%</td>
-            <td>35.1%</td>
-            <td class="positive">-1.5%</td>
-        </tr>
-        <tr data-team="GSW" data-wins="29" data-adjwins="36" data-diff="-7" data-oppexp="36.4" data-oppact="35.2" data-oppdiff="-1.2">
-            <td>10</td>
-            <td><strong>GSW</strong></td>
-            <td>29-28</td>
-            <td>36-21</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('GSW')">-7</td>
-            <td>36.4%</td>
-            <td>35.2%</td>
-            <td class="positive">-1.2%</td>
-        </tr>
-        <tr data-team="PHI" data-wins="32" data-adjwins="33" data-diff="-1" data-oppexp="36.5" data-oppact="35.5" data-oppdiff="-1.0">
-            <td>11</td>
-            <td><strong>PHI</strong></td>
-            <td>32-26</td>
-            <td>33-25</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('PHI')">-1</td>
-            <td>36.5%</td>
-            <td>35.5%</td>
+            <td><strong>HOU</strong></td>
+            <td>35-20</td>
+            <td>34-21</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('HOU')">+1</td>
+            <td>35.8%</td>
+            <td>34.8%</td>
             <td class="positive">-1.0%</td>
         </tr>
-        <tr data-team="SAS" data-wins="41" data-adjwins="42" data-diff="-1" data-oppexp="36.2" data-oppact="35.6" data-oppdiff="-0.6">
-            <td>12</td>
-            <td><strong>SAS</strong></td>
-            <td>41-16</td>
-            <td>42-15</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('SAS')">-1</td>
-            <td>36.2%</td>
-            <td>35.6%</td>
-            <td class="positive">-0.6%</td>
-        </tr>
-        <tr data-team="ORL" data-wins="31" data-adjwins="29" data-diff="2" data-oppexp="36.4" data-oppact="35.6" data-oppdiff="-0.8">
-            <td>13</td>
-            <td><strong>ORL</strong></td>
-            <td>31-26</td>
-            <td>29-28</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('ORL')">+2</td>
-            <td>36.4%</td>
-            <td>35.6%</td>
-            <td class="positive">-0.8%</td>
-        </tr>
-        <tr data-team="ATL" data-wins="29" data-adjwins="23" data-diff="6" data-oppexp="36.4" data-oppact="35.7" data-oppdiff="-0.7">
-            <td>14</td>
-            <td><strong>ATL</strong></td>
-            <td>29-31</td>
-            <td>23-37</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('ATL')">+6</td>
-            <td>36.4%</td>
-            <td>35.7%</td>
-            <td class="positive">-0.7%</td>
-        </tr>
-        <tr data-team="NYK" data-wins="37" data-adjwins="39" data-diff="-2" data-oppexp="36.4" data-oppact="35.8" data-oppdiff="-0.6">
-            <td>15</td>
-            <td><strong>NYK</strong></td>
-            <td>37-22</td>
-            <td>39-20</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('NYK')">-2</td>
-            <td>36.4%</td>
-            <td>35.8%</td>
-            <td class="positive">-0.6%</td>
-        </tr>
-        <tr data-team="BOS" data-wins="38" data-adjwins="47" data-diff="-9" data-oppexp="36.1" data-oppact="35.9" data-oppdiff="-0.2">
-            <td>16</td>
-            <td><strong>BOS</strong></td>
-            <td>38-19</td>
-            <td>47-10</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('BOS')">-9</td>
-            <td>36.1%</td>
-            <td>35.9%</td>
-            <td class="positive">-0.2%</td>
-        </tr>
-        <tr data-team="MEM" data-wins="21" data-adjwins="22" data-diff="-1" data-oppexp="36.2" data-oppact="36.1" data-oppdiff="-0.1">
-            <td>17</td>
-            <td><strong>MEM</strong></td>
-            <td>21-35</td>
-            <td>22-34</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('MEM')">-1</td>
-            <td>36.2%</td>
-            <td>36.1%</td>
-            <td class="positive">-0.1%</td>
+        <tr data-team="TOR" data-wins="34" data-adjwins="29" data-diff="5" data-oppexp="36.5" data-oppact="34.5" data-oppdiff="-2.0">
+            <td>10</td>
+            <td><strong>TOR</strong></td>
+            <td>34-24</td>
+            <td>29-29</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('TOR')">+5</td>
+            <td>36.5%</td>
+            <td>34.5%</td>
+            <td class="positive">-2.0%</td>
         </tr>
         <tr data-team="LAL" data-wins="34" data-adjwins="29" data-diff="5" data-oppexp="36.2" data-oppact="36.2" data-oppdiff="0.0">
-            <td>18</td>
+            <td>11</td>
             <td><strong>LAL</strong></td>
             <td>34-22</td>
             <td>29-27</td>
@@ -643,18 +573,68 @@
             <td>36.2%</td>
             <td class="">+0.0%</td>
         </tr>
-        <tr data-team="MIN" data-wins="36" data-adjwins="36" data-diff="0" data-oppexp="36.5" data-oppact="36.2" data-oppdiff="-0.3">
-            <td>19</td>
-            <td><strong>MIN</strong></td>
-            <td>36-23</td>
-            <td>36-23</td>
-            <td class=" clickable-diff" onclick="showFlippedGames('MIN')">0</td>
+        <tr data-team="PHX" data-wins="33" data-adjwins="29" data-diff="4" data-oppexp="36.5" data-oppact="34.2" data-oppdiff="-2.3">
+            <td>12</td>
+            <td><strong>PHX</strong></td>
+            <td>33-26</td>
+            <td>29-30</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('PHX')">+4</td>
             <td>36.5%</td>
-            <td>36.2%</td>
-            <td class="positive">-0.3%</td>
+            <td>34.2%</td>
+            <td class="positive">-2.3%</td>
+        </tr>
+        <tr data-team="PHI" data-wins="32" data-adjwins="33" data-diff="-1" data-oppexp="36.5" data-oppact="35.5" data-oppdiff="-1.0">
+            <td>13</td>
+            <td><strong>PHI</strong></td>
+            <td>32-26</td>
+            <td>33-25</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('PHI')">-1</td>
+            <td>36.5%</td>
+            <td>35.5%</td>
+            <td class="positive">-1.0%</td>
+        </tr>
+        <tr data-team="MIA" data-wins="31" data-adjwins="31" data-diff="0" data-oppexp="36.6" data-oppact="34.9" data-oppdiff="-1.7">
+            <td>14</td>
+            <td><strong>MIA</strong></td>
+            <td>31-28</td>
+            <td>31-28</td>
+            <td class=" clickable-diff" onclick="showFlippedGames('MIA')">0</td>
+            <td>36.6%</td>
+            <td>34.9%</td>
+            <td class="positive">-1.7%</td>
+        </tr>
+        <tr data-team="ORL" data-wins="31" data-adjwins="29" data-diff="2" data-oppexp="36.4" data-oppact="35.6" data-oppdiff="-0.8">
+            <td>15</td>
+            <td><strong>ORL</strong></td>
+            <td>31-26</td>
+            <td>29-28</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('ORL')">+2</td>
+            <td>36.4%</td>
+            <td>35.6%</td>
+            <td class="positive">-0.8%</td>
+        </tr>
+        <tr data-team="GSW" data-wins="29" data-adjwins="36" data-diff="-7" data-oppexp="36.4" data-oppact="35.2" data-oppdiff="-1.2">
+            <td>16</td>
+            <td><strong>GSW</strong></td>
+            <td>29-28</td>
+            <td>36-21</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('GSW')">-7</td>
+            <td>36.4%</td>
+            <td>35.2%</td>
+            <td class="positive">-1.2%</td>
+        </tr>
+        <tr data-team="ATL" data-wins="29" data-adjwins="23" data-diff="6" data-oppexp="36.4" data-oppact="35.7" data-oppdiff="-0.7">
+            <td>17</td>
+            <td><strong>ATL</strong></td>
+            <td>29-31</td>
+            <td>23-37</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('ATL')">+6</td>
+            <td>36.4%</td>
+            <td>35.7%</td>
+            <td class="positive">-0.7%</td>
         </tr>
         <tr data-team="POR" data-wins="28" data-adjwins="28" data-diff="0" data-oppexp="36.6" data-oppact="36.3" data-oppdiff="-0.3">
-            <td>20</td>
+            <td>18</td>
             <td><strong>POR</strong></td>
             <td>28-31</td>
             <td>28-31</td>
@@ -663,28 +643,8 @@
             <td>36.3%</td>
             <td class="positive">-0.3%</td>
         </tr>
-        <tr data-team="SAC" data-wins="13" data-adjwins="14" data-diff="-1" data-oppexp="36.6" data-oppact="36.4" data-oppdiff="-0.2">
-            <td>21</td>
-            <td><strong>SAC</strong></td>
-            <td>13-46</td>
-            <td>14-45</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('SAC')">-1</td>
-            <td>36.6%</td>
-            <td>36.4%</td>
-            <td class="positive">-0.2%</td>
-        </tr>
-        <tr data-team="MIL" data-wins="25" data-adjwins="21" data-diff="4" data-oppexp="36.4" data-oppact="36.5" data-oppdiff="0.1">
-            <td>22</td>
-            <td><strong>MIL</strong></td>
-            <td>25-31</td>
-            <td>21-35</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('MIL')">+4</td>
-            <td>36.4%</td>
-            <td>36.5%</td>
-            <td class="negative">+0.1%</td>
-        </tr>
         <tr data-team="CHA" data-wins="28" data-adjwins="36" data-diff="-8" data-oppexp="36.2" data-oppact="36.6" data-oppdiff="0.4">
-            <td>23</td>
+            <td>19</td>
             <td><strong>CHA</strong></td>
             <td>28-31</td>
             <td>36-23</td>
@@ -693,18 +653,8 @@
             <td>36.6%</td>
             <td class="negative">+0.4%</td>
         </tr>
-        <tr data-team="WAS" data-wins="16" data-adjwins="12" data-diff="4" data-oppexp="36.6" data-oppact="36.6" data-oppdiff="0.0">
-            <td>24</td>
-            <td><strong>WAS</strong></td>
-            <td>16-41</td>
-            <td>12-45</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('WAS')">+4</td>
-            <td>36.6%</td>
-            <td>36.6%</td>
-            <td class="">+0.0%</td>
-        </tr>
         <tr data-team="LAC" data-wins="27" data-adjwins="27" data-diff="0" data-oppexp="36.4" data-oppact="36.9" data-oppdiff="0.5">
-            <td>25</td>
+            <td>20</td>
             <td><strong>LAC</strong></td>
             <td>27-30</td>
             <td>27-30</td>
@@ -713,28 +663,48 @@
             <td>36.9%</td>
             <td class="negative">+0.5%</td>
         </tr>
-        <tr data-team="OKC" data-wins="44" data-adjwins="49" data-diff="-5" data-oppexp="36.4" data-oppact="37.0" data-oppdiff="0.6">
-            <td>26</td>
-            <td><strong>OKC</strong></td>
-            <td>44-14</td>
-            <td>49-9</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('OKC')">-5</td>
+        <tr data-team="MIL" data-wins="25" data-adjwins="21" data-diff="4" data-oppexp="36.4" data-oppact="36.5" data-oppdiff="0.1">
+            <td>21</td>
+            <td><strong>MIL</strong></td>
+            <td>25-31</td>
+            <td>21-35</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('MIL')">+4</td>
             <td>36.4%</td>
-            <td>37.0%</td>
-            <td class="negative">+0.6%</td>
+            <td>36.5%</td>
+            <td class="negative">+0.1%</td>
         </tr>
-        <tr data-team="CLE" data-wins="37" data-adjwins="42" data-diff="-5" data-oppexp="36.4" data-oppact="37.1" data-oppdiff="0.7">
-            <td>27</td>
-            <td><strong>CLE</strong></td>
-            <td>37-22</td>
-            <td>42-17</td>
-            <td class="negative clickable-diff" onclick="showFlippedGames('CLE')">-5</td>
-            <td>36.4%</td>
-            <td>37.1%</td>
-            <td class="negative">+0.7%</td>
+        <tr data-team="CHI" data-wins="24" data-adjwins="23" data-diff="1" data-oppexp="36.6" data-oppact="37.7" data-oppdiff="1.1">
+            <td>22</td>
+            <td><strong>CHI</strong></td>
+            <td>24-35</td>
+            <td>23-36</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('CHI')">+1</td>
+            <td>36.6%</td>
+            <td>37.7%</td>
+            <td class="negative">+1.1%</td>
+        </tr>
+        <tr data-team="DAL" data-wins="21" data-adjwins="19" data-diff="2" data-oppexp="36.3" data-oppact="34.3" data-oppdiff="-2.0">
+            <td>23</td>
+            <td><strong>DAL</strong></td>
+            <td>21-36</td>
+            <td>19-38</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('DAL')">+2</td>
+            <td>36.3%</td>
+            <td>34.3%</td>
+            <td class="positive">-2.0%</td>
+        </tr>
+        <tr data-team="MEM" data-wins="21" data-adjwins="22" data-diff="-1" data-oppexp="36.2" data-oppact="36.1" data-oppdiff="-0.1">
+            <td>24</td>
+            <td><strong>MEM</strong></td>
+            <td>21-35</td>
+            <td>22-34</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('MEM')">-1</td>
+            <td>36.2%</td>
+            <td>36.1%</td>
+            <td class="positive">-0.1%</td>
         </tr>
         <tr data-team="UTA" data-wins="18" data-adjwins="18" data-diff="0" data-oppexp="36.6" data-oppact="37.3" data-oppdiff="0.7">
-            <td>28</td>
+            <td>25</td>
             <td><strong>UTA</strong></td>
             <td>18-40</td>
             <td>18-40</td>
@@ -743,8 +713,28 @@
             <td>37.3%</td>
             <td class="negative">+0.7%</td>
         </tr>
+        <tr data-team="NOP" data-wins="17" data-adjwins="18" data-diff="-1" data-oppexp="36.6" data-oppact="35.1" data-oppdiff="-1.5">
+            <td>26</td>
+            <td><strong>NOP</strong></td>
+            <td>17-42</td>
+            <td>18-41</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('NOP')">-1</td>
+            <td>36.6%</td>
+            <td>35.1%</td>
+            <td class="positive">-1.5%</td>
+        </tr>
+        <tr data-team="WAS" data-wins="16" data-adjwins="12" data-diff="4" data-oppexp="36.6" data-oppact="36.6" data-oppdiff="0.0">
+            <td>27</td>
+            <td><strong>WAS</strong></td>
+            <td>16-41</td>
+            <td>12-45</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('WAS')">+4</td>
+            <td>36.6%</td>
+            <td>36.6%</td>
+            <td class="">+0.0%</td>
+        </tr>
         <tr data-team="BKN" data-wins="15" data-adjwins="21" data-diff="-6" data-oppexp="36.9" data-oppact="37.4" data-oppdiff="0.5">
-            <td>29</td>
+            <td>28</td>
             <td><strong>BKN</strong></td>
             <td>15-42</td>
             <td>21-36</td>
@@ -753,15 +743,25 @@
             <td>37.4%</td>
             <td class="negative">+0.5%</td>
         </tr>
-        <tr data-team="CHI" data-wins="24" data-adjwins="23" data-diff="1" data-oppexp="36.6" data-oppact="37.7" data-oppdiff="1.1">
+        <tr data-team="IND" data-wins="15" data-adjwins="8" data-diff="7" data-oppexp="36.7" data-oppact="34.2" data-oppdiff="-2.5">
+            <td>29</td>
+            <td><strong>IND</strong></td>
+            <td>15-44</td>
+            <td>8-51</td>
+            <td class="positive clickable-diff" onclick="showFlippedGames('IND')">+7</td>
+            <td>36.7%</td>
+            <td>34.2%</td>
+            <td class="positive">-2.5%</td>
+        </tr>
+        <tr data-team="SAC" data-wins="13" data-adjwins="14" data-diff="-1" data-oppexp="36.6" data-oppact="36.4" data-oppdiff="-0.2">
             <td>30</td>
-            <td><strong>CHI</strong></td>
-            <td>24-35</td>
-            <td>23-36</td>
-            <td class="positive clickable-diff" onclick="showFlippedGames('CHI')">+1</td>
+            <td><strong>SAC</strong></td>
+            <td>13-46</td>
+            <td>14-45</td>
+            <td class="negative clickable-diff" onclick="showFlippedGames('SAC')">-1</td>
             <td>36.6%</td>
-            <td>37.7%</td>
-            <td class="negative">+1.1%</td>
+            <td>36.4%</td>
+            <td class="positive">-0.2%</td>
         </tr>
 
     </table>
@@ -928,7 +928,7 @@
             <li><strong>Updates</strong>: Automatically refreshed daily</li>
         </ul>
 
-        <p class="timestamp">Generated 2026-02-25 07:55 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
+        <p class="timestamp">Generated 2026-02-25 08:12 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
     </div>
 
     <script>
@@ -940,6 +940,16 @@
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                         'July', 'August', 'September', 'October', 'November', 'December'];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Format adjusted score: round to whole number unless it would create a tie
+    function formatAdjScore(score, otherScore) {
+        const rounded = Math.round(score);
+        const otherRounded = Math.round(otherScore);
+        if (rounded === otherRounded) {
+            return score.toFixed(1);
+        }
+        return rounded.toString();
+    }
 
     // Season months: dynamically generated from game data
     const seasonMonths = [{"year": 2025, "month": 9}, {"year": 2025, "month": 10}, {"year": 2025, "month": 11}, {"year": 2026, "month": 0}, {"year": 2026, "month": 1}];
@@ -1129,11 +1139,11 @@
                             <div class="column-header">Adjusted</div>
                             <div class="team-row">
                                 <span class="team-abbrev">${game.away_team}</span>
-                                <span class="team-score ${awayAdjWinner ? 'winner' : 'loser'}">${game.away_pts_adj.toFixed(1)}</span>
+                                <span class="team-score ${awayAdjWinner ? 'winner' : 'loser'}">${formatAdjScore(game.away_pts_adj, game.home_pts_adj)}</span>
                             </div>
                             <div class="team-row">
                                 <span class="team-abbrev">${game.home_team}</span>
-                                <span class="team-score ${homeAdjWinner ? 'winner' : 'loser'}">${game.home_pts_adj.toFixed(1)}</span>
+                                <span class="team-score ${homeAdjWinner ? 'winner' : 'loser'}">${formatAdjScore(game.home_pts_adj, game.away_pts_adj)}</span>
                             </div>
                         </div>
                     </div>

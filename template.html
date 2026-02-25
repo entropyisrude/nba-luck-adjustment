@@ -450,17 +450,17 @@
         <div class="calendar-grid" id="calendar"></div>
     </div>
 
-    <h2 id="team-rankings">Team Rankings</h2>
-    <p>Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
+    <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
+    <p style="text-align: center;">Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
     <table id="team-table">
         <tr>
             <th>#</th>
             <th class="sortable" data-sort="team" data-type="string">Team</th>
-            <th class="sortable" data-sort="wins" data-type="number">Record</th>
+            <th class="sortable desc" data-sort="wins" data-type="number">Record</th>
             <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
             <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
             <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
-            <th class="sortable asc" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
+            <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
             <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
         </tr>
 {{TEAM_RANKINGS_ROWS}}
@@ -535,6 +535,16 @@
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                         'July', 'August', 'September', 'October', 'November', 'December'];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Format adjusted score: round to whole number unless it would create a tie
+    function formatAdjScore(score, otherScore) {
+        const rounded = Math.round(score);
+        const otherRounded = Math.round(otherScore);
+        if (rounded === otherRounded) {
+            return score.toFixed(1);
+        }
+        return rounded.toString();
+    }
 
     // Season months: dynamically generated from game data
     const seasonMonths = {{SEASON_MONTHS_JSON}};
@@ -724,11 +734,11 @@
                             <div class="column-header">Adjusted</div>
                             <div class="team-row">
                                 <span class="team-abbrev">${game.away_team}</span>
-                                <span class="team-score ${awayAdjWinner ? 'winner' : 'loser'}">${game.away_pts_adj.toFixed(1)}</span>
+                                <span class="team-score ${awayAdjWinner ? 'winner' : 'loser'}">${formatAdjScore(game.away_pts_adj, game.home_pts_adj)}</span>
                             </div>
                             <div class="team-row">
                                 <span class="team-abbrev">${game.home_team}</span>
-                                <span class="team-score ${homeAdjWinner ? 'winner' : 'loser'}">${game.home_pts_adj.toFixed(1)}</span>
+                                <span class="team-score ${homeAdjWinner ? 'winner' : 'loser'}">${formatAdjScore(game.home_pts_adj, game.away_pts_adj)}</span>
                             </div>
                         </div>
                     </div>
