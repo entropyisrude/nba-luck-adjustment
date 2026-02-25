@@ -178,7 +178,7 @@ def generate_report():
     html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>NBA 3PT Luck Analysis - 2025-26 Season</title>
+    <title>NBA 3-Point Shooting Luck-Adjusted Results - 2025-26 Season</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -190,8 +190,25 @@ def generate_report():
         }}
         h1 {{
             color: #1a1a2e;
-            border-bottom: 3px solid #e94560;
             padding-bottom: 10px;
+            margin-top: 0;
+        }}
+        .hero-banner {{
+            background: linear-gradient(rgba(26, 26, 46, 0.55), rgba(26, 26, 46, 0.55)),
+                        url('images/starks218.jpg') left center,
+                        url('images/rocket027.jpg') right center;
+            background-size: cover, 50% auto, 50% auto;
+            background-repeat: no-repeat;
+            padding: 120px 25px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 0 0 12px 12px;
+        }}
+        .hero-banner h1 {{
+            color: white;
+            border-bottom: none;
+            text-align: center;
+            margin-bottom: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }}
         h2 {{
             color: #16213e;
@@ -583,8 +600,10 @@ def generate_report():
     </style>
 </head>
 <body>
-    <h1>NBA 3-Point Luck Analysis</h1>
-    <p class="timestamp">2025-26 Season through {df['date'].max()} | {len(df)} games analyzed</p>
+    <div class="hero-banner">
+        <h1>NBA 3-Point Shooting Luck-Adjusted Results</h1>
+    </div>
+    <p class="timestamp" style="text-align: center; margin-top: 10px;">2025-26 Season through {df['date'].max()} | {len(df)} games analyzed</p>
 
     <div class="summary">
         <p><strong>What is this?</strong> How much did the notorious variance of 3pt shooting affect the outcome of the game? This page attempts to take some (but far from all) luck out of the boxscore equation by reimagining every NBA result as if the 3 point gods played no favorites. That is, if every shot went in according to its long term expected outcome. Of course, those outcomes are an imperfect science and this analysis does not use every conceivable piece of tracking data. But it also does not merely resort to league or team average. Instead, it looks at every shot and (1) What player shot it (2) The general shot difficulty (Catch and Shoot, pull-up, step-back etc.) It omits plenty of information, including how closely guarded the shot was according to tracking data. Please see the <a href="example.html" style="color: #e94560; font-weight: 500;">dirty details here</a>.</p>
