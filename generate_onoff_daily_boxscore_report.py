@@ -256,6 +256,8 @@ def generate_daily_boxscores_report() -> Path:
       padding-right: 4px;
     }}
     thead th {{ position: sticky; top: 0; background: #eff4fb; color: #173253; z-index: 2; }}
+    .key-th {{ font-weight: 800; color: #102a4a; }}
+    .key-col {{ font-weight: 800; }}
     .pos {{ color: var(--good); font-weight: 600; }}
     .neg {{ color: var(--bad); font-weight: 600; }}
     @media (max-width: 1500px) {{
@@ -290,6 +292,7 @@ def generate_daily_boxscores_report() -> Path:
         This page uses a 3PT expectation model to recalculate each player's plus-minus as if the shooting results
         during their specific stints matched expectation. Like the base model, it adjusts for who shot and shot
         difficulty, and includes a mitigant for the hypothetical change in ORB opportunities.
+        <strong>Key columns:</strong> <strong>PM Adj</strong> and <strong>OnA</strong>.
       </div>
     </section>
 
@@ -352,9 +355,9 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Player name">Player</th>
                       <th title="Minutes played">Min</th>
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
-                      <th title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
+                      <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -364,9 +367,9 @@ def generate_daily_boxscores_report() -> Path:
                           <td>${{r.player_name}}</td>
                           <td>${{fmt(r.minutes_on)}}</td>
                           <td class="${{cls(r.plus_minus_actual)}}">${{fmt(r.plus_minus_actual)}}</td>
-                          <td class="${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
+                          <td class="key-col ${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
                           <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual)}}</td>
-                          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
+                          <td class="key-col ${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
                         </tr>`
                       ).join("")
                     }}
@@ -383,9 +386,9 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Player name">Player</th>
                       <th title="Minutes played">Min</th>
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
-                      <th title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
+                      <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -395,9 +398,9 @@ def generate_daily_boxscores_report() -> Path:
                           <td>${{r.player_name}}</td>
                           <td>${{fmt(r.minutes_on)}}</td>
                           <td class="${{cls(r.plus_minus_actual)}}">${{fmt(r.plus_minus_actual)}}</td>
-                          <td class="${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
+                          <td class="key-col ${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
                           <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual)}}</td>
-                          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
+                          <td class="key-col ${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
                         </tr>`
                       ).join("")
                     }}
