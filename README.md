@@ -72,6 +72,16 @@ python generate_onoff_daily_boxscore_report.py
 
 This writes both `data/onoff_daily_boxscores.html` and `onoff-daily.html`.
 
+Multi-season backfill helper (monthly chunks + final rebuild):
+
+```bash
+python backfill_multiseason.py \
+  --start 2023-10-24 \
+  --end 2025-10-20 \
+  --final-history-start 2023-10-01 \
+  --final-history-end 2026-06-30
+```
+
 Validate on/off accuracy vs official boxscore plus-minus/minutes:
 
 ```bash
