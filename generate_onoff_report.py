@@ -1,180 +1,123 @@
-"""Generate HTML report for adjusted plus-minus / on-off metrics."""
+"""Generate season-to-date totals report for adjusted plus-minus and on/off."""
 
 from __future__ import annotations
 
+import csv
 import json
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
-
 DATA_DIR = Path("data")
-ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
-HISTORY_PATH = DATA_DIR / "player_onoff_history.csv"
 BOXSCORE_PATH = DATA_DIR / "player_daily_boxscore.csv"
+HISTORY_PATH = DATA_DIR / "player_onoff_history.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 
+TEAM_ID_TO_ABBR = {
+    "1610612737": "ATL",
+    "1610612738": "BOS",
+    "1610612751": "BKN",
+    "1610612766": "CHA",
+    "1610612741": "CHI",
+    "1610612739": "CLE",
+    "1610612742": "DAL",
+    "1610612743": "DEN",
+    "1610612765": "DET",
+    "1610612744": "GSW",
+    "1610612745": "HOU",
+    "1610612754": "IND",
+    "1610612746": "LAC",
+    "1610612747": "LAL",
+    "1610612763": "MEM",
+    "1610612748": "MIA",
+    "1610612749": "MIL",
+    "1610612750": "MIN",
+    "1610612740": "NOP",
+    "1610612752": "NYK",
+    "1610612760": "OKC",
+    "1610612753": "ORL",
+    "1610612755": "PHI",
+    "1610612756": "PHX",
+    "1610612757": "POR",
+    "1610612758": "SAC",
+    "1610612759": "SAS",
+    "1610612761": "TOR",
+    "1610612762": "UTA",
+    "1610612764": "WAS",
+}
 
-def _prepare_onoff_df() -> pd.DataFrame:
-    if not ONOFF_PATH.exists():
-        raise FileNotFoundError(f"Missing {ONOFF_PATH}")
-    df = pd.read_csv(ONOFF_PATH, dtype={"game_id": str, "player_id": int})
-    df["date"] = df["date"].astype(str)
-    numeric_cols = [
-        "minutes_on",
-        "on_diff",
-        "off_diff",
-        "on_off_diff",
-        "on_diff_adj",
-        "off_diff_adj",
-        "on_off_diff_adj",
-        "on_diff_reconstructed",
-        "off_diff_reconstructed",
-        "on_off_diff_reconstructed",
-    ]
-    for c in numeric_cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
+
+def _f(v: str) -> float:
+    try:
+        return float(v)
+    except Exception:
+        return 0.0
 
 
-def _prepare_history_df() -> pd.DataFrame:
+def _load_meta() -> tuple[str, int]:
+    if not BOXSCORE_PATH.exists():
+        return "", 0
+    latest_date = ""
+    game_ids: set[str] = set()
+    with BOXSCORE_PATH.open(newline="", encoding="utf-8") as f:
+        rows = csv.DictReader(f)
+        for r in rows:
+            d = str(r["date"])
+            if d > latest_date:
+                latest_date = d
+            game_ids.add(str(r["game_id"]))
+    return latest_date, len(game_ids)
+
+
+def _load_player_totals() -> list[dict]:
     if not HISTORY_PATH.exists():
         raise FileNotFoundError(f"Missing {HISTORY_PATH}")
-    df = pd.read_csv(HISTORY_PATH)
-    numeric_cols = [
-        "games",
-        "minutes_on_total",
-        "minutes_on_avg",
-        "on_off_diff_avg",
-        "on_off_diff_adj_avg",
-        "on_diff_avg",
-        "off_diff_avg",
-        "on_diff_adj_avg",
-        "off_diff_adj_avg",
-    ]
-    for c in numeric_cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
 
+    records: list[dict] = []
+    with HISTORY_PATH.open(newline="", encoding="utf-8") as f:
+        rows = csv.DictReader(f)
+        for r in rows:
+            minutes_total = _f(r["minutes_on_total"])
+            games = int(_f(r["games"]))
+            if minutes_total <= 0:
+                continue
 
-def _prepare_boxscore_df() -> pd.DataFrame:
-    if not BOXSCORE_PATH.exists():
-        raise FileNotFoundError(f"Missing {BOXSCORE_PATH}")
-    df = pd.read_csv(BOXSCORE_PATH, dtype={"game_id": str, "player_id": int})
-    df["date"] = df["date"].astype(str)
-    numeric_cols = [
-        "minutes_on",
-        "plus_minus_actual",
-        "plus_minus_adjusted",
-        "plus_minus_delta",
-        "on_off_actual",
-        "on_off_adjusted",
-        "on_off_delta",
-    ]
-    for c in numeric_cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
+            # Estimated possessions = minutes * (100 / 48), so per-100 = value * 48 / minutes.
+            scale = 48.0 / minutes_total
+            pm_actual_100 = _f(r["on_diff_total"]) * scale
+            pm_adj_100 = _f(r["on_diff_adj_total"]) * scale
+            pm_delta_100 = pm_adj_100 - pm_actual_100
+            onoff_actual_100 = _f(r["on_off_diff_total"]) * scale
+            onoff_adj_100 = _f(r["on_off_diff_adj_total"]) * scale
+            onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
-
-def _to_records(df: pd.DataFrame, cols: list[str]) -> list[dict]:
-    out = []
-    for _, r in df[cols].iterrows():
-        row = {}
-        for c in cols:
-            v = r[c]
-            if pd.isna(v):
-                row[c] = None
-            elif isinstance(v, (int, float)):
-                row[c] = float(v)
-            else:
-                row[c] = str(v)
-        out.append(row)
-    return out
+            team_id = str(r["latest_team_id"])
+            records.append(
+                {
+                    "player_id": str(r["player_id"]),
+                    "player_name": str(r["player_name"]),
+                    "team_id": team_id,
+                    "team_abbr": TEAM_ID_TO_ABBR.get(team_id, team_id),
+                    "games": games,
+                    "minutes_total": minutes_total,
+                    "pm_actual_100": pm_actual_100,
+                    "pm_adj_100": pm_adj_100,
+                    "pm_delta_100": pm_delta_100,
+                    "onoff_actual_100": onoff_actual_100,
+                    "onoff_adj_100": onoff_adj_100,
+                    "onoff_delta_100": onoff_delta_100,
+                }
+            )
+    return records
 
 
 def generate_onoff_report() -> Path:
-    onoff_df = _prepare_onoff_df()
-    hist_df = _prepare_history_df()
-    box_df = _prepare_boxscore_df()
-
-    latest_date = onoff_df["date"].max()
-    date_values = sorted(onoff_df["date"].unique().tolist())
-    team_values = sorted(onoff_df["team_id"].dropna().astype(int).unique().tolist())
-
-    daily_cols = [
-        "date",
-        "game_id",
-        "team_id",
-        "player_id",
-        "player_name",
-        "minutes_on",
-        "on_diff",
-        "off_diff",
-        "on_off_diff",
-        "on_diff_adj",
-        "off_diff_adj",
-        "on_off_diff_adj",
-    ]
-    hist_cols = [
-        "player_id",
-        "player_name",
-        "latest_team_id",
-        "games",
-        "minutes_on_total",
-        "minutes_on_avg",
-        "on_off_diff_avg",
-        "on_off_diff_adj_avg",
-        "on_diff_avg",
-        "off_diff_avg",
-        "on_diff_adj_avg",
-        "off_diff_adj_avg",
-        "first_game_date",
-        "last_game_date",
-    ]
-    player_games_cols = [
-        "date",
-        "game_id",
-        "team_id",
-        "player_id",
-        "player_name",
-        "minutes_on",
-        "on_diff",
-        "on_off_diff",
-        "on_diff_adj",
-        "on_off_diff_adj",
-    ]
-    box_cols = [
-        "date",
-        "game_id",
-        "team_id",
-        "player_id",
-        "player_name",
-        "minutes_on",
-        "plus_minus_actual",
-        "plus_minus_adjusted",
-        "plus_minus_delta",
-        "on_off_actual",
-        "on_off_adjusted",
-        "on_off_delta",
-    ]
-
-    daily_records = _to_records(onoff_df, daily_cols)
-    history_records = _to_records(hist_df, hist_cols)
-    player_game_records = _to_records(
-        onoff_df.sort_values(["date", "game_id"], ascending=[False, False]),
-        player_games_cols,
-    )
-    box_records = _to_records(
-        box_df.sort_values(["date", "game_id"], ascending=[False, False]),
-        box_cols,
-    )
-
-    page_title = "NBA Adjusted On-Off and Plus-Minus"
+    records = _load_player_totals()
+    latest_date, game_count = _load_meta()
+    team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    page_title = "3PT Luck Adjusted Plus Minus: Totals"
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -185,12 +128,12 @@ def generate_onoff_report() -> Path:
   <style>
     :root {{
       --bg: #f2f6fb;
-      --card: #ffffff;
+      --card: #fff;
       --line: #d6e1ef;
       --ink: #192231;
       --muted: #5b6778;
-      --accent: #0f766e;
-      --accent2: #b45309;
+      --good: #0f766e;
+      --bad: #b91c1c;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -208,9 +151,8 @@ def generate_onoff_report() -> Path:
       border: 1px solid #254b72;
       margin-bottom: 14px;
     }}
-    h1 {{ margin: 0; font-size: 28px; letter-spacing: 0.3px; }}
+    h1 {{ margin: 0; font-size: 28px; }}
     h2 {{ margin: 0 0 10px; font-size: 20px; }}
-    .muted {{ color: var(--muted); }}
     .meta {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }}
     .chip {{
       background: rgba(255,255,255,0.14);
@@ -219,22 +161,15 @@ def generate_onoff_report() -> Path:
       border-radius: 999px;
       font-size: 12px;
     }}
-    .nav {{ margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }}
-    .nav a {{
-      color: #e5f6ff;
-      text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.35);
-      padding: 6px 10px;
-      border-radius: 7px;
-      font-size: 12px;
-    }}
-    .grid {{ display: grid; gap: 14px; }}
+    .nav {{ margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; }}
+    .nav a {{ color: #e5f6ff; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }}
     .card {{
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 14px;
       box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06);
+      margin-bottom: 14px;
     }}
     .controls {{ display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
     .controls label {{ font-size: 12px; color: var(--muted); display: grid; gap: 4px; }}
@@ -251,10 +186,10 @@ def generate_onoff_report() -> Path:
       border: 1px solid var(--line);
       border-radius: 10px;
       overflow: auto;
-      max-height: 560px;
+      max-height: 620px;
       background: #fff;
     }}
-    table {{ width: 100%; border-collapse: collapse; min-width: 1000px; font-size: 12px; }}
+    table {{ width: 100%; border-collapse: collapse; min-width: 960px; font-size: 12px; }}
     th, td {{
       border-bottom: 1px solid #edf2f9;
       padding: 7px 8px;
@@ -262,8 +197,7 @@ def generate_onoff_report() -> Path:
       white-space: nowrap;
     }}
     th:first-child, td:first-child,
-    th:nth-child(2), td:nth-child(2),
-    th:nth-child(3), td:nth-child(3) {{ text-align: left; }}
+    th:nth-child(2), td:nth-child(2) {{ text-align: left; }}
     thead th {{
       position: sticky;
       top: 0;
@@ -271,13 +205,11 @@ def generate_onoff_report() -> Path:
       background: #edf3fc;
       color: #123154;
     }}
-    .pos {{ color: var(--accent); font-weight: 600; }}
-    .neg {{ color: #b91c1c; font-weight: 600; }}
-    .subtle {{ color: var(--muted); font-size: 11px; }}
-    @media (max-width: 900px) {{
-      h1 {{ font-size: 22px; }}
-      .table-wrap {{ max-height: 420px; }}
-    }}
+    thead th.sortable {{ cursor: pointer; }}
+    thead th.sortable:hover {{ background: #e4edf9; }}
+    .pos {{ color: var(--good); font-weight: 600; }}
+    .neg {{ color: var(--bad); font-weight: 600; }}
+    .muted {{ color: var(--muted); }}
   </style>
 </head>
 <body>
@@ -285,111 +217,36 @@ def generate_onoff_report() -> Path:
     <section class="hero">
       <h1>{page_title}</h1>
       <div class="meta">
-        <span class="chip">Player-games: {len(onoff_df):,}</span>
-        <span class="chip">Games: {onoff_df['game_id'].nunique():,}</span>
-        <span class="chip">Players: {onoff_df['player_id'].nunique():,}</span>
-        <span class="chip">Latest date: {latest_date}</span>
+        <span class="chip">Season through {latest_date}</span>
+        <span class="chip">Games: {game_count:,}</span>
+        <span class="chip">Players: {len(records):,}</span>
       </div>
       <div class="nav">
         <a href="index.html">Main 3PT Luck Page</a>
-        <a href="#daily">Daily View</a>
-        <a href="#boxscore">Daily Boxscore</a>
-        <a href="#history">Player History</a>
-        <a href="#player-games">Player Game Log</a>
+        <a href="onoff-daily.html">3PT Luck Adjust Plus Minus: Games</a>
       </div>
     </section>
 
-    <section id="boxscore" class="card">
-      <h2>Player Daily Boxscore Model (Actual vs Adjusted)</h2>
+    <section class="card">
+      <h2>Team-by-Team Season Totals</h2>
       <div class="controls">
-        <label>Date
-          <select id="box-date"></select>
-        </label>
-        <label>Team ID
-          <select id="box-team"></select>
-        </label>
-        <label>Player name contains
-          <input id="box-player" type="text" placeholder="e.g. Maxey" />
-        </label>
-        <label>Min minutes
-          <input id="box-minutes" type="number" min="0" step="0.1" value="0" />
-        </label>
-      </div>
-      <div class="subtle">Source: `data/player_daily_boxscore.csv`.</div>
-      <div class="table-wrap">
-        <table id="box-table">
-          <thead>
-            <tr>
-              <th>Player</th><th>Team</th><th>Game</th><th>Min</th>
-              <th>PM Actual</th><th>PM Adj</th><th>PM Delta</th>
-              <th>On-Off Actual</th><th>On-Off Adj</th><th>On-Off Delta</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="daily" class="card">
-      <h2>Daily Adjusted Plus-Minus / On-Off</h2>
-      <div class="controls">
-        <label>Date
-          <select id="daily-date"></select>
-        </label>
-        <label>Team ID
-          <select id="daily-team"></select>
-        </label>
-        <label>Player name contains
-          <input id="daily-player" type="text" placeholder="e.g. Maxey" />
-        </label>
-        <label>Min minutes
-          <input id="daily-minutes" type="number" min="0" step="0.1" value="0" />
-        </label>
-      </div>
-      <div class="subtle">`on_diff` is official boxscore plus-minus. Adjusted columns are model-based counterfactuals.</div>
-      <div class="table-wrap">
-        <table id="daily-table">
-          <thead>
-            <tr>
-              <th>Player</th><th>Team</th><th>Game</th><th>Min</th>
-              <th>On +/-</th><th>Off +/-</th><th>On-Off</th>
-              <th>Adj On +/-</th><th>Adj Off +/-</th><th>Adj On-Off</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="history" class="card">
-      <h2>Player Season History</h2>
-      <div class="controls">
-        <label>Player name contains
-          <input id="hist-player" type="text" placeholder="e.g. Nembhard" />
+        <label>Team
+          <select id="team-filter"></select>
         </label>
         <label>Min games
-          <input id="hist-min-games" type="number" min="0" step="1" value="10" />
+          <input id="team-min-games" type="number" min="0" step="1" value="1" />
         </label>
         <label>Min total minutes
-          <input id="hist-min-minutes" type="number" min="0" step="1" value="100" />
-        </label>
-        <label>Sort by
-          <select id="hist-sort">
-            <option value="on_off_diff_adj_avg">Adj On-Off Avg</option>
-            <option value="on_off_diff_avg">Raw On-Off Avg</option>
-            <option value="minutes_on_total">Total Minutes</option>
-            <option value="games">Games</option>
-          </select>
+          <input id="team-min-minutes" type="number" min="0" step="1" value="50" />
         </label>
       </div>
       <div class="table-wrap">
-        <table id="hist-table">
+        <table id="team-table">
           <thead>
             <tr>
-              <th>Player</th><th>Team</th><th>Games</th><th>Min Total</th><th>Min Avg</th>
-              <th>Raw On-Off Avg</th><th>Adj On-Off Avg</th>
-              <th>Raw On +/- Avg</th><th>Adj On +/- Avg</th>
-              <th>First</th><th>Last</th>
+              <th>Player</th><th>Team</th><th>G</th><th>Min</th>
+              <th>PM/100</th><th>PM Adj/100</th><th>PM Delta/100</th>
+              <th>OnOff/100</th><th>OnA/100</th><th>OnOff Delta/100</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -397,19 +254,30 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <section id="player-games" class="card">
-      <h2>Player Game Log Explorer</h2>
+    <section class="card">
+      <h2>Season Leaderboard (Sortable)</h2>
       <div class="controls">
-        <label>Player
-          <select id="pg-player"></select>
+        <label>Min games
+          <input id="lb-min-games" type="number" min="0" step="1" value="10" />
+        </label>
+        <label>Min total minutes
+          <input id="lb-min-minutes" type="number" min="0" step="1" value="200" />
         </label>
       </div>
       <div class="table-wrap">
-        <table id="pg-table">
+        <table id="lb-table">
           <thead>
             <tr>
-              <th>Date</th><th>Game</th><th>Team</th><th>Minutes</th>
-              <th>On +/-</th><th>On-Off</th><th>Adj On +/-</th><th>Adj On-Off</th>
+              <th class="sortable" data-key="player_name" data-type="str">Player</th>
+              <th class="sortable" data-key="team_abbr" data-type="str">Team</th>
+              <th class="sortable" data-key="games" data-type="num">G</th>
+              <th class="sortable" data-key="minutes_total" data-type="num">Min</th>
+              <th class="sortable" data-key="pm_actual_100" data-type="num">PM/100</th>
+              <th class="sortable" data-key="pm_adj_100" data-type="num">PM Adj/100</th>
+              <th class="sortable" data-key="pm_delta_100" data-type="num">PM Delta/100</th>
+              <th class="sortable" data-key="onoff_actual_100" data-type="num">OnOff/100</th>
+              <th class="sortable" data-key="onoff_adj_100" data-type="num">OnA/100</th>
+              <th class="sortable" data-key="onoff_delta_100" data-type="num">OnOff Delta/100</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -417,194 +285,103 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class="muted">Generated {generated_ts} | Source files: `data/adjusted_onoff.csv`, `data/player_onoff_history.csv`.</p>
+    <p class="muted">Generated {generated_ts} | Source: `data/player_onoff_history.csv`. Per-100 uses estimated possessions from minutes: possessions = minutes × (100/48).</p>
   </div>
   <script>
-    const DAILY = {json.dumps(daily_records)};
-    const BOX = {json.dumps(box_records)};
-    const HISTORY = {json.dumps(history_records)};
-    const PLAYER_GAMES = {json.dumps(player_game_records)};
-    const DATE_VALUES = {json.dumps(date_values)};
-    const TEAM_VALUES = {json.dumps(team_values)};
-    const LATEST_DATE = {json.dumps(latest_date)};
+    const ROWS = {json.dumps(records)};
+    const TEAMS = {json.dumps(team_values)};
+    const TEAM_MAP = {json.dumps(TEAM_ID_TO_ABBR)};
 
-    const fmt = (x, d = 1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
+    const fmt = (x, d=1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
 
-    function fillSelect(el, vals, includeAll = true) {{
-      if (includeAll) {{
-        const o = document.createElement("option");
-        o.value = ""; o.textContent = "All";
-        el.appendChild(o);
-      }}
-      vals.forEach(v => {{
-        const o = document.createElement("option");
-        o.value = String(v);
-        o.textContent = String(v);
-        el.appendChild(o);
-      }});
+    let lbSortKey = "pm_adj_100";
+    let lbSortDir = "desc";
+
+    function rowHtml(r) {{
+      return `<tr>
+        <td>${{r.player_name}}</td>
+        <td>${{r.team_abbr}}</td>
+        <td>${{fmt(r.games,0)}}</td>
+        <td>${{fmt(r.minutes_total,1)}}</td>
+        <td class="${{cls(r.pm_actual_100)}}">${{fmt(r.pm_actual_100,1)}}</td>
+        <td class="${{cls(r.pm_adj_100)}}">${{fmt(r.pm_adj_100,1)}}</td>
+        <td class="${{cls(r.pm_delta_100)}}">${{fmt(r.pm_delta_100,1)}}</td>
+        <td class="${{cls(r.onoff_actual_100)}}">${{fmt(r.onoff_actual_100,1)}}</td>
+        <td class="${{cls(r.onoff_adj_100)}}">${{fmt(r.onoff_adj_100,1)}}</td>
+        <td class="${{cls(r.onoff_delta_100)}}">${{fmt(r.onoff_delta_100,1)}}</td>
+      </tr>`;
     }}
 
-    function renderDaily() {{
-      const date = document.getElementById("daily-date").value;
-      const team = document.getElementById("daily-team").value;
-      const name = document.getElementById("daily-player").value.toLowerCase().trim();
-      const minMinutes = Number(document.getElementById("daily-minutes").value || 0);
-      const tbody = document.querySelector("#daily-table tbody");
-      tbody.innerHTML = "";
+    function renderTeamTable() {{
+      const team = document.getElementById("team-filter").value;
+      const minGames = Number(document.getElementById("team-min-games").value || 0);
+      const minMin = Number(document.getElementById("team-min-minutes").value || 0);
+      const tbody = document.querySelector("#team-table tbody");
 
-      const rows = DAILY
-        .filter(r => !date || r.date === date)
-        .filter(r => !team || String(r.team_id) === team)
-        .filter(r => !name || r.player_name.toLowerCase().includes(name))
-        .filter(r => Number(r.minutes_on || 0) >= minMinutes)
-        .sort((a, b) => Number(b.on_off_diff_adj || 0) - Number(a.on_off_diff_adj || 0));
-
-      rows.forEach(r => {{
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${{r.player_name}}</td>
-          <td>${{r.team_id}}</td>
-          <td>${{r.game_id}}</td>
-          <td>${{fmt(r.minutes_on, 2)}}</td>
-          <td class="${{cls(r.on_diff)}}">${{fmt(r.on_diff, 1)}}</td>
-          <td class="${{cls(r.off_diff)}}">${{fmt(r.off_diff, 1)}}</td>
-          <td class="${{cls(r.on_off_diff)}}">${{fmt(r.on_off_diff, 1)}}</td>
-          <td class="${{cls(r.on_diff_adj)}}">${{fmt(r.on_diff_adj, 2)}}</td>
-          <td class="${{cls(r.off_diff_adj)}}">${{fmt(r.off_diff_adj, 2)}}</td>
-          <td class="${{cls(r.on_off_diff_adj)}}">${{fmt(r.on_off_diff_adj, 2)}}</td>`;
-        tbody.appendChild(tr);
-      }});
-    }}
-
-    function renderBoxscore() {{
-      const date = document.getElementById("box-date").value;
-      const team = document.getElementById("box-team").value;
-      const name = document.getElementById("box-player").value.toLowerCase().trim();
-      const minMinutes = Number(document.getElementById("box-minutes").value || 0);
-      const tbody = document.querySelector("#box-table tbody");
-      tbody.innerHTML = "";
-
-      const rows = BOX
-        .filter(r => !date || r.date === date)
-        .filter(r => !team || String(r.team_id) === team)
-        .filter(r => !name || r.player_name.toLowerCase().includes(name))
-        .filter(r => Number(r.minutes_on || 0) >= minMinutes)
-        .sort((a, b) => Number(b.plus_minus_delta || 0) - Number(a.plus_minus_delta || 0));
-
-      rows.forEach(r => {{
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${{r.player_name}}</td>
-          <td>${{r.team_id}}</td>
-          <td>${{r.game_id}}</td>
-          <td>${{fmt(r.minutes_on, 2)}}</td>
-          <td class="${{cls(r.plus_minus_actual)}}">${{fmt(r.plus_minus_actual, 1)}}</td>
-          <td class="${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted, 2)}}</td>
-          <td class="${{cls(r.plus_minus_delta)}}">${{fmt(r.plus_minus_delta, 2)}}</td>
-          <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual, 1)}}</td>
-          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted, 2)}}</td>
-          <td class="${{cls(r.on_off_delta)}}">${{fmt(r.on_off_delta, 2)}}</td>`;
-        tbody.appendChild(tr);
-      }});
-    }}
-
-    function renderHistory() {{
-      const name = document.getElementById("hist-player").value.toLowerCase().trim();
-      const minGames = Number(document.getElementById("hist-min-games").value || 0);
-      const minMin = Number(document.getElementById("hist-min-minutes").value || 0);
-      const sortBy = document.getElementById("hist-sort").value;
-      const tbody = document.querySelector("#hist-table tbody");
-      tbody.innerHTML = "";
-
-      const rows = HISTORY
-        .filter(r => !name || r.player_name.toLowerCase().includes(name))
+      const rows = ROWS
+        .filter(r => r.team_id === team)
         .filter(r => Number(r.games || 0) >= minGames)
-        .filter(r => Number(r.minutes_on_total || 0) >= minMin)
-        .sort((a, b) => Number(b[sortBy] || 0) - Number(a[sortBy] || 0));
+        .filter(r => Number(r.minutes_total || 0) >= minMin)
+        .sort((a,b) => Number(b.pm_adj_100 || 0) - Number(a.pm_adj_100 || 0));
 
-      rows.forEach(r => {{
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${{r.player_name}}</td>
-          <td>${{r.latest_team_id || ""}}</td>
-          <td>${{fmt(r.games, 0)}}</td>
-          <td>${{fmt(r.minutes_on_total, 1)}}</td>
-          <td>${{fmt(r.minutes_on_avg, 2)}}</td>
-          <td class="${{cls(r.on_off_diff_avg)}}">${{fmt(r.on_off_diff_avg, 2)}}</td>
-          <td class="${{cls(r.on_off_diff_adj_avg)}}">${{fmt(r.on_off_diff_adj_avg, 2)}}</td>
-          <td class="${{cls(r.on_diff_avg)}}">${{fmt(r.on_diff_avg, 2)}}</td>
-          <td class="${{cls(r.on_diff_adj_avg)}}">${{fmt(r.on_diff_adj_avg, 2)}}</td>
-          <td>${{r.first_game_date || ""}}</td>
-          <td>${{r.last_game_date || ""}}</td>`;
-        tbody.appendChild(tr);
-      }});
+      tbody.innerHTML = rows.map(rowHtml).join("");
     }}
 
-    function renderPlayerGames() {{
-      const pid = document.getElementById("pg-player").value;
-      const tbody = document.querySelector("#pg-table tbody");
-      tbody.innerHTML = "";
-      if (!pid) return;
-      const rows = PLAYER_GAMES.filter(r => String(r.player_id) === pid);
-      rows.forEach(r => {{
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${{r.date}}</td>
-          <td>${{r.game_id}}</td>
-          <td>${{r.team_id}}</td>
-          <td>${{fmt(r.minutes_on, 2)}}</td>
-          <td class="${{cls(r.on_diff)}}">${{fmt(r.on_diff, 1)}}</td>
-          <td class="${{cls(r.on_off_diff)}}">${{fmt(r.on_off_diff, 1)}}</td>
-          <td class="${{cls(r.on_diff_adj)}}">${{fmt(r.on_diff_adj, 2)}}</td>
-          <td class="${{cls(r.on_off_diff_adj)}}">${{fmt(r.on_off_diff_adj, 2)}}</td>`;
-        tbody.appendChild(tr);
-      }});
+    function renderLeaderboard() {{
+      const minGames = Number(document.getElementById("lb-min-games").value || 0);
+      const minMin = Number(document.getElementById("lb-min-minutes").value || 0);
+      const tbody = document.querySelector("#lb-table tbody");
+
+      const rows = ROWS
+        .filter(r => Number(r.games || 0) >= minGames)
+        .filter(r => Number(r.minutes_total || 0) >= minMin)
+        .slice()
+        .sort((a,b) => {{
+          const dir = lbSortDir === "asc" ? 1 : -1;
+          if (lbSortKey === "player_name" || lbSortKey === "team_abbr") {{
+            return dir * String(a[lbSortKey]).localeCompare(String(b[lbSortKey]));
+          }}
+          return dir * (Number(a[lbSortKey] || 0) - Number(b[lbSortKey] || 0));
+        }});
+
+      tbody.innerHTML = rows.map(rowHtml).join("");
     }}
 
     function init() {{
-      const dailyDate = document.getElementById("daily-date");
-      const dailyTeam = document.getElementById("daily-team");
-      const boxDate = document.getElementById("box-date");
-      const boxTeam = document.getElementById("box-team");
-      const pgPlayer = document.getElementById("pg-player");
-
-      fillSelect(dailyDate, DATE_VALUES.slice().reverse(), false);
-      fillSelect(dailyTeam, TEAM_VALUES, true);
-      fillSelect(boxDate, DATE_VALUES.slice().reverse(), false);
-      fillSelect(boxTeam, TEAM_VALUES, true);
-      dailyDate.value = LATEST_DATE;
-      boxDate.value = LATEST_DATE;
-
-      const players = [...new Map(PLAYER_GAMES.map(r => [String(r.player_id), r.player_name])).entries()]
-        .map(([player_id, player_name]) => ({{ player_id, player_name }}))
-        .sort((a, b) => a.player_name.localeCompare(b.player_name));
-      const empty = document.createElement("option");
-      empty.value = "";
-      empty.textContent = "Select a player";
-      pgPlayer.appendChild(empty);
-      players.forEach(p => {{
+      const teamSel = document.getElementById("team-filter");
+      TEAMS.forEach(tid => {{
         const o = document.createElement("option");
-        o.value = p.player_id;
-        o.textContent = `${{p.player_name}} (${{p.player_id}})`;
-        pgPlayer.appendChild(o);
+        o.value = tid;
+        o.textContent = TEAM_MAP[tid] || tid;
+        teamSel.appendChild(o);
+      }});
+      if (teamSel.options.length > 0) {{
+        teamSel.selectedIndex = 0;
+      }}
+
+      ["team-filter","team-min-games","team-min-minutes"].forEach(id =>
+        document.getElementById(id).addEventListener("input", renderTeamTable)
+      );
+      ["lb-min-games","lb-min-minutes"].forEach(id =>
+        document.getElementById(id).addEventListener("input", renderLeaderboard)
+      );
+
+      document.querySelectorAll("#lb-table thead th.sortable").forEach(th => {{
+        th.addEventListener("click", () => {{
+          const key = th.dataset.key;
+          if (lbSortKey === key) {{
+            lbSortDir = lbSortDir === "desc" ? "asc" : "desc";
+          }} else {{
+            lbSortKey = key;
+            lbSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+          }}
+          renderLeaderboard();
+        }});
       }});
 
-      ["daily-date", "daily-team", "daily-player", "daily-minutes"].forEach(id =>
-        document.getElementById(id).addEventListener("input", renderDaily)
-      );
-      ["box-date", "box-team", "box-player", "box-minutes"].forEach(id =>
-        document.getElementById(id).addEventListener("input", renderBoxscore)
-      );
-      ["hist-player", "hist-min-games", "hist-min-minutes", "hist-sort"].forEach(id =>
-        document.getElementById(id).addEventListener("input", renderHistory)
-      );
-      pgPlayer.addEventListener("input", renderPlayerGames);
-
-      renderDaily();
-      renderBoxscore();
-      renderHistory();
-      renderPlayerGames();
+      renderTeamTable();
+      renderLeaderboard();
     }}
 
     init();

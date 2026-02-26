@@ -258,6 +258,7 @@ def generate_daily_boxscores_report() -> Path:
     thead th {{ position: sticky; top: 0; background: #eff4fb; color: #173253; z-index: 2; }}
     .key-th {{ font-weight: 800; color: #102a4a; }}
     .key-col {{ font-weight: 800; }}
+    .key-col.pos, .key-col.neg {{ font-weight: 800; }}
     .pos {{ color: var(--good); font-weight: 600; }}
     .neg {{ color: var(--bad); font-weight: 600; }}
     @media (max-width: 1500px) {{
