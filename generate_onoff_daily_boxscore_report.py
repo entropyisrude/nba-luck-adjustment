@@ -287,8 +287,9 @@ def generate_daily_boxscores_report() -> Path:
         </label>
       </div>
       <div class="muted">
-        Each game shows both teams with boxscore-style player rows and these fields:
-        actual/adjusted plus-minus and on-off, plus their deltas.
+        <strong>What is this?</strong> This page replays each game with your 3PT expectation model
+        and reallocates the resulting luck-adjusted point swings to the exact player stints from play-by-play.
+        It shows each player's actual and 3PT luck-adjusted plus-minus and on/off for that game.
       </div>
     </section>
 
