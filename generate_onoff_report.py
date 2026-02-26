@@ -7,10 +7,15 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import requests
+
 DATA_DIR = Path("data")
 ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
+
+PBP_BASE = "https://api.pbpstats.com"
+PBP_TIMEOUT = 10
 
 TEAM_ID_TO_ABBR = {
     "1610612737": "ATL",
@@ -46,14 +51,20 @@ TEAM_ID_TO_ABBR = {
 }
 
 
-def _f(v: str) -> float:
+def _f(v: object) -> float:
     try:
         return float(v)
     except Exception:
         return 0.0
 
 
-def _load_player_totals() -> tuple[list[dict], str, int]:
+def _season_from_date(date_str: str) -> str:
+    d = datetime.strptime(date_str, "%Y-%m-%d")
+    start = d.year if d.month >= 7 else d.year - 1
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     if not ONOFF_PATH.exists():
         raise FileNotFoundError(f"Missing {ONOFF_PATH}")
 
@@ -73,23 +84,24 @@ def _load_player_totals() -> tuple[list[dict], str, int]:
             tid = str(r["team_id"])
             game_ids.add(gid)
             key = (gid, tid)
+            # summed player minutes / 5 gives team minutes for that game.
             team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
 
-    agg: dict[str, dict] = {}
-    latest_row_by_player: dict[str, tuple[str, str, dict]] = {}
+    agg: dict[tuple[str, str], dict] = {}
     for r in rows:
-        player_id = str(r["player_id"])
         team_id = str(r["team_id"])
+        player_id = str(r["player_id"])
+        key = (team_id, player_id)
         game_id = str(r["game_id"])
-        date = str(r["date"])
         minutes_on = _f(r["minutes_on"])
         team_minutes = team_game_minutes.get((game_id, team_id), 0.0)
         minutes_off = max(0.0, team_minutes - minutes_on)
 
-        if player_id not in agg:
-            agg[player_id] = {
+        if key not in agg:
+            agg[key] = {
                 "player_id": player_id,
                 "player_name": str(r["player_name"]),
+                "team_id": team_id,
                 "games_set": set(),
                 "minutes_on_total": 0.0,
                 "minutes_off_total": 0.0,
@@ -99,7 +111,7 @@ def _load_player_totals() -> tuple[list[dict], str, int]:
                 "off_diff_adj_total": 0.0,
             }
 
-        a = agg[player_id]
+        a = agg[key]
         a["games_set"].add(game_id)
         a["minutes_on_total"] += minutes_on
         a["minutes_off_total"] += minutes_off
@@ -108,41 +120,178 @@ def _load_player_totals() -> tuple[list[dict], str, int]:
         a["on_diff_adj_total"] += _f(r["on_diff_adj"])
         a["off_diff_adj_total"] += _f(r["off_diff_adj"])
 
-        marker = (date, game_id)
-        prev = latest_row_by_player.get(player_id)
-        if prev is None or marker > (prev[0], prev[1]):
-            latest_row_by_player[player_id] = (date, game_id, r)
+    out: list[dict] = []
+    team_ids = sorted({k[0] for k in agg.keys()}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
+    for a in agg.values():
+        out.append(
+            {
+                "player_id": a["player_id"],
+                "player_name": a["player_name"],
+                "team_id": a["team_id"],
+                "team_abbr": TEAM_ID_TO_ABBR.get(a["team_id"], a["team_id"]),
+                "games": len(a["games_set"]),
+                "minutes_total": a["minutes_on_total"],
+                "minutes_off_total": a["minutes_off_total"],
+                "on_diff_total": a["on_diff_total"],
+                "off_diff_total": a["off_diff_total"],
+                "on_diff_adj_total": a["on_diff_adj_total"],
+                "off_diff_adj_total": a["off_diff_adj_total"],
+            }
+        )
 
-    records: list[dict] = []
-    for player_id, a in agg.items():
-        on_min = a["minutes_on_total"]
-        off_min = a["minutes_off_total"]
-        if on_min <= 0:
+    return out, latest_date, len(game_ids), team_ids
+
+
+def _fetch_json(url: str, params: dict) -> dict | None:
+    try:
+        r = requests.get(url, params=params, timeout=PBP_TIMEOUT)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except Exception:
+        return None
+
+
+def _build_pbp_maps(season: str, team_ids: list[str]) -> dict[tuple[str, str], dict]:
+    """
+    Returns map keyed by (team_id, player_id) with possession-based raw PM/100 and OnOff/100.
+    """
+    out: dict[tuple[str, str], dict] = {}
+
+    all_players_payload = _fetch_json(
+        f"{PBP_BASE}/get-totals/nba",
+        {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
+    )
+    all_teams_payload = _fetch_json(
+        f"{PBP_BASE}/get-totals/nba",
+        {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
+    )
+    if not all_players_payload or not all_teams_payload:
+        return out
+
+    players_by_team: dict[str, list[dict]] = {tid: [] for tid in team_ids}
+    for pr in all_players_payload.get("multi_row_table_data", []):
+        tid = str(pr.get("TeamId"))
+        if tid in players_by_team:
+            players_by_team[tid].append(pr)
+
+    team_totals: dict[str, dict] = {}
+    for tr in all_teams_payload.get("multi_row_table_data", []):
+        tid = str(tr.get("TeamId"))
+        if tid in team_ids:
+            team_totals[tid] = tr
+
+    for team_id in team_ids:
+        team_payload = team_totals.get(team_id)
+        players = players_by_team.get(team_id, [])
+        if not team_payload or not players:
             continue
-        latest_team_id = str(latest_row_by_player[player_id][2]["team_id"])
-        games = len(a["games_set"])
 
-        pm_actual_100 = a["on_diff_total"] * 48.0 / on_min
-        pm_adj_100 = a["on_diff_adj_total"] * 48.0 / on_min
-        pm_delta_100 = pm_adj_100 - pm_actual_100
+        team_pm = _f(team_payload.get("PlusMinus"))
+        team_off_poss = _f(team_payload.get("OffPoss"))
+        team_def_poss = _f(team_payload.get("DefPoss"))
+        team_opp_pts = _f(team_payload.get("OpponentPoints"))
+        team_ortg = _f(team_payload.get("OnOffRtg"))
 
-        if off_min > 0:
-            off_actual_100 = a["off_diff_total"] * 48.0 / off_min
-            off_adj_100 = a["off_diff_adj_total"] * 48.0 / off_min
-            onoff_actual_100 = pm_actual_100 - off_actual_100
+        if team_off_poss <= 0 or team_def_poss <= 0:
+            continue
+
+        team_drtg = (team_opp_pts / team_def_poss) * 100.0
+        team_net = team_ortg - team_drtg
+
+        for pr in players:
+            player_id = str(pr.get("EntityId"))
+            player_pm = _f(pr.get("PlusMinus"))
+            on_off_poss = _f(pr.get("OffPoss"))
+            on_def_poss = _f(pr.get("DefPoss"))
+            on_opp_pts = _f(pr.get("OpponentPoints"))
+            on_ortg = _f(pr.get("OnOffRtg"))
+
+            if on_off_poss <= 0 or on_def_poss <= 0:
+                continue
+
+            on_drtg = (on_opp_pts / on_def_poss) * 100.0
+            on_net = on_ortg - on_drtg
+
+            off_pm = team_pm - player_pm
+            off_off_poss = team_off_poss - on_off_poss
+            off_def_poss = team_def_poss - on_def_poss
+            off_opp_pts = team_opp_pts - on_opp_pts
+
+            if off_off_poss > 0 and off_def_poss > 0:
+                off_team_pts = off_opp_pts + off_pm
+                off_ortg = (off_team_pts / off_off_poss) * 100.0
+                off_drtg = (off_opp_pts / off_def_poss) * 100.0
+                off_net = off_ortg - off_drtg
+                onoff = on_net - off_net
+                off_poss = (off_off_poss + off_def_poss) / 2.0
+            else:
+                off_net = team_net
+                onoff = on_net - off_net
+                off_poss = 0.0
+
+            out[(team_id, player_id)] = {
+                "pm_actual_100": on_net,
+                "onoff_actual_100": onoff,
+                "on_poss": (on_off_poss + on_def_poss) / 2.0,
+                "off_poss": off_poss,
+                "source": "pbpstats",
+            }
+
+    return out
+
+
+def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str], dict]) -> list[dict]:
+    records: list[dict] = []
+    for r in raw_rows:
+        team_id = r["team_id"]
+        player_id = r["player_id"]
+        on_min = _f(r["minutes_total"])
+        off_min = _f(r["minutes_off_total"])
+
+        pbp = pbp_map.get((team_id, player_id))
+        if pbp:
+            pm_actual_100 = _f(pbp["pm_actual_100"])
+            onoff_actual_100 = _f(pbp["onoff_actual_100"])
+            on_poss = _f(pbp["on_poss"])
+            off_poss = _f(pbp["off_poss"])
+            source = "pbpstats"
+        else:
+            pm_actual_100 = (_f(r["on_diff_total"]) * 48.0 / on_min) if on_min > 0 else 0.0
+            if off_min > 0:
+                off_actual_100 = _f(r["off_diff_total"]) * 48.0 / off_min
+                onoff_actual_100 = pm_actual_100 - off_actual_100
+            else:
+                onoff_actual_100 = 0.0
+            on_poss = 0.0
+            off_poss = 0.0
+            source = "minutes"
+
+        if on_poss > 0:
+            pm_adj_100 = _f(r["on_diff_adj_total"]) * 100.0 / on_poss
+        else:
+            pm_adj_100 = (_f(r["on_diff_adj_total"]) * 48.0 / on_min) if on_min > 0 else 0.0
+
+        if off_poss > 0:
+            off_adj_100 = _f(r["off_diff_adj_total"]) * 100.0 / off_poss
             onoff_adj_100 = pm_adj_100 - off_adj_100
         else:
-            onoff_actual_100 = 0.0
-            onoff_adj_100 = 0.0
+            if off_min > 0:
+                off_adj_100 = _f(r["off_diff_adj_total"]) * 48.0 / off_min
+                onoff_adj_100 = pm_adj_100 - off_adj_100
+            else:
+                onoff_adj_100 = 0.0
+
+        pm_delta_100 = pm_adj_100 - pm_actual_100
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
         records.append(
             {
                 "player_id": player_id,
-                "player_name": a["player_name"],
-                "team_id": latest_team_id,
-                "team_abbr": TEAM_ID_TO_ABBR.get(latest_team_id, latest_team_id),
-                "games": games,
+                "player_name": r["player_name"],
+                "team_id": team_id,
+                "team_abbr": r["team_abbr"],
+                "games": int(_f(r["games"])),
                 "minutes_total": on_min,
                 "pm_actual_100": pm_actual_100,
                 "pm_adj_100": pm_adj_100,
@@ -150,23 +299,28 @@ def _load_player_totals() -> tuple[list[dict], str, int]:
                 "onoff_actual_100": onoff_actual_100,
                 "onoff_adj_100": onoff_adj_100,
                 "onoff_delta_100": onoff_delta_100,
+                "raw_source": source,
             }
         )
-    return records, latest_date, len(game_ids)
+    return records
 
 
 def generate_onoff_report() -> Path:
-    records, latest_date, game_count = _load_player_totals()
+    raw_rows, latest_date, game_count, team_ids = _load_team_player_totals()
+    season = _season_from_date(latest_date)
+    pbp_map = _build_pbp_maps(season, team_ids)
+    records = _finalize_records(raw_rows, pbp_map)
+
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     page_title = "3PT Luck Adjusted Plus Minus: Totals"
 
     html = f"""<!doctype html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>{page_title}</title>
   <style>
     :root {{
@@ -181,7 +335,7 @@ def generate_onoff_report() -> Path:
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
+      font-family: \"Segoe UI\", Arial, sans-serif;
       color: var(--ink);
       background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
     }}
@@ -256,47 +410,47 @@ def generate_onoff_report() -> Path:
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <section class="hero">
+  <div class=\"wrap\">
+    <section class=\"hero\">
       <h1>{page_title}</h1>
-      <div class="meta">
-        <span class="chip">Season through {latest_date}</span>
-        <span class="chip">Games: {game_count:,}</span>
-        <span class="chip">Players: {len(records):,}</span>
+      <div class=\"meta\">
+        <span class=\"chip\">Season through {latest_date}</span>
+        <span class=\"chip\">Games: {game_count:,}</span>
+        <span class=\"chip\">Rows: {len(records):,}</span>
       </div>
-      <div class="nav">
-        <a href="index.html">Main 3PT Luck Page</a>
-        <a href="onoff-daily.html">3PT Luck Adjust Plus Minus: Games</a>
+      <div class=\"nav\">
+        <a href=\"index.html\">Main 3PT Luck Page</a>
+        <a href=\"onoff-daily.html\">3PT Luck Adjust Plus Minus: Games</a>
       </div>
     </section>
 
-    <section class="card">
+    <section class=\"card\">
       <h2>Team-by-Team Season Totals</h2>
-      <div class="controls">
+      <div class=\"controls\">
         <label>Team
-          <select id="team-filter"></select>
+          <select id=\"team-filter\"></select>
         </label>
         <label>Min games
-          <input id="team-min-games" type="number" min="0" step="1" value="1" />
+          <input id=\"team-min-games\" type=\"number\" min=\"0\" step=\"1\" value=\"1\" />
         </label>
         <label>Min total minutes
-          <input id="team-min-minutes" type="number" min="0" step="1" value="50" />
+          <input id=\"team-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"50\" />
         </label>
       </div>
-      <div class="table-wrap">
-        <table id="team-table">
+      <div class=\"table-wrap\">
+        <table id=\"team-table\">
           <thead>
             <tr>
-              <th class="sortable" data-key="player_name" data-type="str">Player</th>
-              <th class="sortable" data-key="team_abbr" data-type="str">Team</th>
-              <th class="sortable" data-key="games" data-type="num">G</th>
-              <th class="sortable" data-key="minutes_total" data-type="num">Min</th>
-              <th class="sortable" data-key="pm_actual_100" data-type="num">PM/100</th>
-              <th class="sortable" data-key="pm_adj_100" data-type="num">PM Adj/100</th>
-              <th class="sortable" data-key="pm_delta_100" data-type="num">PM Delta/100</th>
-              <th class="sortable" data-key="onoff_actual_100" data-type="num">OnOff/100</th>
-              <th class="sortable" data-key="onoff_adj_100" data-type="num">OnA/100</th>
-              <th class="sortable" data-key="onoff_delta_100" data-type="num">OnOff Delta/100</th>
+              <th class=\"sortable\" data-key=\"player_name\" data-type=\"str\">Player</th>
+              <th class=\"sortable\" data-key=\"team_abbr\" data-type=\"str\">Team</th>
+              <th class=\"sortable\" data-key=\"games\" data-type=\"num\">G</th>
+              <th class=\"sortable\" data-key=\"minutes_total\" data-type=\"num\">Min</th>
+              <th class=\"sortable\" data-key=\"pm_actual_100\" data-type=\"num\">PM/100</th>
+              <th class=\"sortable\" data-key=\"pm_adj_100\" data-type=\"num\">PM Adj/100</th>
+              <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
+              <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\">OnA/100</th>
+              <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -304,30 +458,30 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <section class="card">
+    <section class=\"card\">
       <h2>Season Leaderboard (Sortable)</h2>
-      <div class="controls">
+      <div class=\"controls\">
         <label>Min games
-          <input id="lb-min-games" type="number" min="0" step="1" value="10" />
+          <input id=\"lb-min-games\" type=\"number\" min=\"0\" step=\"1\" value=\"10\" />
         </label>
         <label>Min total minutes
-          <input id="lb-min-minutes" type="number" min="0" step="1" value="200" />
+          <input id=\"lb-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"200\" />
         </label>
       </div>
-      <div class="table-wrap">
-        <table id="lb-table">
+      <div class=\"table-wrap\">
+        <table id=\"lb-table\">
           <thead>
             <tr>
-              <th class="sortable" data-key="player_name" data-type="str">Player</th>
-              <th class="sortable" data-key="team_abbr" data-type="str">Team</th>
-              <th class="sortable" data-key="games" data-type="num">G</th>
-              <th class="sortable" data-key="minutes_total" data-type="num">Min</th>
-              <th class="sortable" data-key="pm_actual_100" data-type="num">PM/100</th>
-              <th class="sortable" data-key="pm_adj_100" data-type="num">PM Adj/100</th>
-              <th class="sortable" data-key="pm_delta_100" data-type="num">PM Delta/100</th>
-              <th class="sortable" data-key="onoff_actual_100" data-type="num">OnOff/100</th>
-              <th class="sortable" data-key="onoff_adj_100" data-type="num">OnA/100</th>
-              <th class="sortable" data-key="onoff_delta_100" data-type="num">OnOff Delta/100</th>
+              <th class=\"sortable\" data-key=\"player_name\" data-type=\"str\">Player</th>
+              <th class=\"sortable\" data-key=\"team_abbr\" data-type=\"str\">Team</th>
+              <th class=\"sortable\" data-key=\"games\" data-type=\"num\">G</th>
+              <th class=\"sortable\" data-key=\"minutes_total\" data-type=\"num\">Min</th>
+              <th class=\"sortable\" data-key=\"pm_actual_100\" data-type=\"num\">PM/100</th>
+              <th class=\"sortable\" data-key=\"pm_adj_100\" data-type=\"num\">PM Adj/100</th>
+              <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
+              <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\">OnA/100</th>
+              <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -335,7 +489,7 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class="muted">Generated {generated_ts} | Source: `data/adjusted_onoff.csv`. Per-100 uses estimated possessions from minutes: possessions = minutes × (100/48).</p>
+    <p class=\"muted\">Generated {generated_ts} | Source: `data/adjusted_onoff.csv` + pbpstats possession totals.</p>
   </div>
   <script>
     const ROWS = {json.dumps(records)};
