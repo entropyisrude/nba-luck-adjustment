@@ -71,7 +71,7 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     rows: list[dict] = []
     latest_date = ""
     game_ids: set[str] = set()
-    team_game_minutes: dict[tuple[str, str], float] = {}
+    team_game_minutes: dict[tuple[str, str, str], float] = {}
 
     with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -83,24 +83,27 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
             gid = str(r["game_id"])
             tid = str(r["team_id"])
             game_ids.add(gid)
-            key = (gid, tid)
+            key = (d, gid, tid)
             # summed player minutes / 5 gives team minutes for that game.
             team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
 
-    agg: dict[tuple[str, str], dict] = {}
+    agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
+        season = _season_from_date(str(r["date"]))
         team_id = str(r["team_id"])
         player_id = str(r["player_id"])
-        key = (team_id, player_id)
+        key = (season, team_id, player_id)
         game_id = str(r["game_id"])
+        date = str(r["date"])
         minutes_on = _f(r["minutes_on"])
-        team_minutes = team_game_minutes.get((game_id, team_id), 0.0)
+        team_minutes = team_game_minutes.get((date, game_id, team_id), 0.0)
         minutes_off = max(0.0, team_minutes - minutes_on)
 
         if key not in agg:
             agg[key] = {
                 "player_id": player_id,
                 "player_name": str(r["player_name"]),
+                "season": season,
                 "team_id": team_id,
                 "games_set": set(),
                 "minutes_on_total": 0.0,
@@ -121,12 +124,13 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         a["off_diff_adj_total"] += _f(r["off_diff_adj"])
 
     out: list[dict] = []
-    team_ids = sorted({k[0] for k in agg.keys()}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
+    team_ids = sorted({k[1] for k in agg.keys()}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     for a in agg.values():
         out.append(
             {
                 "player_id": a["player_id"],
                 "player_name": a["player_name"],
+                "season": a["season"],
                 "team_id": a["team_id"],
                 "team_abbr": TEAM_ID_TO_ABBR.get(a["team_id"], a["team_id"]),
                 "games": len(a["games_set"]),
@@ -152,104 +156,106 @@ def _fetch_json(url: str, params: dict) -> dict | None:
         return None
 
 
-def _build_pbp_maps(season: str, team_ids: list[str]) -> dict[tuple[str, str], dict]:
+def _build_pbp_maps(season_to_team_ids: dict[str, list[str]]) -> dict[tuple[str, str, str], dict]:
     """
-    Returns map keyed by (team_id, player_id) with possession-based raw PM/100 and OnOff/100.
+    Returns map keyed by (season, team_id, player_id) with possession-based raw PM/100 and OnOff/100.
     """
-    out: dict[tuple[str, str], dict] = {}
+    out: dict[tuple[str, str, str], dict] = {}
 
-    all_players_payload = _fetch_json(
-        f"{PBP_BASE}/get-totals/nba",
-        {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
-    )
-    all_teams_payload = _fetch_json(
-        f"{PBP_BASE}/get-totals/nba",
-        {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
-    )
-    if not all_players_payload or not all_teams_payload:
-        return out
-
-    players_by_team: dict[str, list[dict]] = {tid: [] for tid in team_ids}
-    for pr in all_players_payload.get("multi_row_table_data", []):
-        tid = str(pr.get("TeamId"))
-        if tid in players_by_team:
-            players_by_team[tid].append(pr)
-
-    team_totals: dict[str, dict] = {}
-    for tr in all_teams_payload.get("multi_row_table_data", []):
-        tid = str(tr.get("TeamId"))
-        if tid in team_ids:
-            team_totals[tid] = tr
-
-    for team_id in team_ids:
-        team_payload = team_totals.get(team_id)
-        players = players_by_team.get(team_id, [])
-        if not team_payload or not players:
+    for season, team_ids in season_to_team_ids.items():
+        all_players_payload = _fetch_json(
+            f"{PBP_BASE}/get-totals/nba",
+            {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
+        )
+        all_teams_payload = _fetch_json(
+            f"{PBP_BASE}/get-totals/nba",
+            {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
+        )
+        if not all_players_payload or not all_teams_payload:
             continue
 
-        team_pm = _f(team_payload.get("PlusMinus"))
-        team_off_poss = _f(team_payload.get("OffPoss"))
-        team_def_poss = _f(team_payload.get("DefPoss"))
-        team_opp_pts = _f(team_payload.get("OpponentPoints"))
-        team_ortg = _f(team_payload.get("OnOffRtg"))
+        players_by_team: dict[str, list[dict]] = {tid: [] for tid in team_ids}
+        for pr in all_players_payload.get("multi_row_table_data", []):
+            tid = str(pr.get("TeamId"))
+            if tid in players_by_team:
+                players_by_team[tid].append(pr)
 
-        if team_off_poss <= 0 or team_def_poss <= 0:
-            continue
+        team_totals: dict[str, dict] = {}
+        for tr in all_teams_payload.get("multi_row_table_data", []):
+            tid = str(tr.get("TeamId"))
+            if tid in team_ids:
+                team_totals[tid] = tr
 
-        team_drtg = (team_opp_pts / team_def_poss) * 100.0
-        team_net = team_ortg - team_drtg
-
-        for pr in players:
-            player_id = str(pr.get("EntityId"))
-            player_pm = _f(pr.get("PlusMinus"))
-            on_off_poss = _f(pr.get("OffPoss"))
-            on_def_poss = _f(pr.get("DefPoss"))
-            on_opp_pts = _f(pr.get("OpponentPoints"))
-            on_ortg = _f(pr.get("OnOffRtg"))
-
-            if on_off_poss <= 0 or on_def_poss <= 0:
+        for team_id in team_ids:
+            team_payload = team_totals.get(team_id)
+            players = players_by_team.get(team_id, [])
+            if not team_payload or not players:
                 continue
 
-            on_drtg = (on_opp_pts / on_def_poss) * 100.0
-            on_net = on_ortg - on_drtg
+            team_pm = _f(team_payload.get("PlusMinus"))
+            team_off_poss = _f(team_payload.get("OffPoss"))
+            team_def_poss = _f(team_payload.get("DefPoss"))
+            team_opp_pts = _f(team_payload.get("OpponentPoints"))
+            team_ortg = _f(team_payload.get("OnOffRtg"))
 
-            off_pm = team_pm - player_pm
-            off_off_poss = team_off_poss - on_off_poss
-            off_def_poss = team_def_poss - on_def_poss
-            off_opp_pts = team_opp_pts - on_opp_pts
+            if team_off_poss <= 0 or team_def_poss <= 0:
+                continue
 
-            if off_off_poss > 0 and off_def_poss > 0:
-                off_team_pts = off_opp_pts + off_pm
-                off_ortg = (off_team_pts / off_off_poss) * 100.0
-                off_drtg = (off_opp_pts / off_def_poss) * 100.0
-                off_net = off_ortg - off_drtg
-                onoff = on_net - off_net
-                off_poss = (off_off_poss + off_def_poss) / 2.0
-            else:
-                off_net = team_net
-                onoff = on_net - off_net
-                off_poss = 0.0
+            team_drtg = (team_opp_pts / team_def_poss) * 100.0
+            team_net = team_ortg - team_drtg
 
-            out[(team_id, player_id)] = {
-                "pm_actual_100": on_net,
-                "onoff_actual_100": onoff,
-                "on_poss": (on_off_poss + on_def_poss) / 2.0,
-                "off_poss": off_poss,
-                "source": "pbpstats",
-            }
+            for pr in players:
+                player_id = str(pr.get("EntityId"))
+                player_pm = _f(pr.get("PlusMinus"))
+                on_off_poss = _f(pr.get("OffPoss"))
+                on_def_poss = _f(pr.get("DefPoss"))
+                on_opp_pts = _f(pr.get("OpponentPoints"))
+                on_ortg = _f(pr.get("OnOffRtg"))
+
+                if on_off_poss <= 0 or on_def_poss <= 0:
+                    continue
+
+                on_drtg = (on_opp_pts / on_def_poss) * 100.0
+                on_net = on_ortg - on_drtg
+
+                off_pm = team_pm - player_pm
+                off_off_poss = team_off_poss - on_off_poss
+                off_def_poss = team_def_poss - on_def_poss
+                off_opp_pts = team_opp_pts - on_opp_pts
+
+                if off_off_poss > 0 and off_def_poss > 0:
+                    off_team_pts = off_opp_pts + off_pm
+                    off_ortg = (off_team_pts / off_off_poss) * 100.0
+                    off_drtg = (off_opp_pts / off_def_poss) * 100.0
+                    off_net = off_ortg - off_drtg
+                    onoff = on_net - off_net
+                    off_poss = (off_off_poss + off_def_poss) / 2.0
+                else:
+                    off_net = team_net
+                    onoff = on_net - off_net
+                    off_poss = 0.0
+
+                out[(season, team_id, player_id)] = {
+                    "pm_actual_100": on_net,
+                    "onoff_actual_100": onoff,
+                    "on_poss": (on_off_poss + on_def_poss) / 2.0,
+                    "off_poss": off_poss,
+                    "source": "pbpstats",
+                }
 
     return out
 
 
-def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str], dict]) -> list[dict]:
+def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], dict]) -> list[dict]:
     records: list[dict] = []
     for r in raw_rows:
+        season = str(r["season"])
         team_id = r["team_id"]
         player_id = r["player_id"]
         on_min = _f(r["minutes_total"])
         off_min = _f(r["minutes_off_total"])
 
-        pbp = pbp_map.get((team_id, player_id))
+        pbp = pbp_map.get((season, team_id, player_id))
         if pbp:
             pm_actual_100 = _f(pbp["pm_actual_100"])
             onoff_actual_100 = _f(pbp["onoff_actual_100"])
@@ -289,6 +295,7 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str], dict]
             {
                 "player_id": player_id,
                 "player_name": r["player_name"],
+                "season": season,
                 "team_id": team_id,
                 "team_abbr": r["team_abbr"],
                 "games": int(_f(r["games"])),
@@ -307,11 +314,19 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str], dict]
 
 def generate_onoff_report() -> Path:
     raw_rows, latest_date, game_count, team_ids = _load_team_player_totals()
-    season = _season_from_date(latest_date)
-    pbp_map = _build_pbp_maps(season, team_ids)
+    latest_season = _season_from_date(latest_date)
+    season_to_team_ids: dict[str, list[str]] = {}
+    for r in raw_rows:
+        s = str(r["season"])
+        season_to_team_ids.setdefault(s, [])
+        tid = str(r["team_id"])
+        if tid not in season_to_team_ids[s]:
+            season_to_team_ids[s].append(tid)
+    pbp_map = _build_pbp_maps(season_to_team_ids)
     records = _finalize_records(raw_rows, pbp_map)
 
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
+    season_values = sorted({r["season"] for r in records}, reverse=True)
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     page_title = "3PT Luck Adjusted Plus Minus: Totals"
@@ -414,7 +429,7 @@ def generate_onoff_report() -> Path:
     <section class=\"hero\">
       <h1>{page_title}</h1>
       <div class=\"meta\">
-        <span class=\"chip\">Season through {latest_date}</span>
+        <span class=\"chip\">Data through {latest_date}</span>
         <span class=\"chip\">Games: {game_count:,}</span>
         <span class=\"chip\">Rows: {len(records):,}</span>
       </div>
@@ -427,6 +442,9 @@ def generate_onoff_report() -> Path:
     <section class=\"card\">
       <h2>Team-by-Team Season Totals</h2>
       <div class=\"controls\">
+        <label>Season
+          <select id=\"season-filter\"></select>
+        </label>
         <label>Team
           <select id=\"team-filter\"></select>
         </label>
@@ -494,7 +512,9 @@ def generate_onoff_report() -> Path:
   <script>
     const ROWS = {json.dumps(records)};
     const TEAMS = {json.dumps(team_values)};
+    const SEASONS = {json.dumps(season_values)};
     const TEAM_MAP = {json.dumps(TEAM_ID_TO_ABBR)};
+    const LATEST_SEASON = {json.dumps(latest_season)};
 
     const fmt = (x, d=1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
@@ -520,12 +540,14 @@ def generate_onoff_report() -> Path:
     }}
 
     function renderTeamTable() {{
+      const season = document.getElementById("season-filter").value;
       const team = document.getElementById("team-filter").value;
       const minGames = Number(document.getElementById("team-min-games").value || 0);
       const minMin = Number(document.getElementById("team-min-minutes").value || 0);
       const tbody = document.querySelector("#team-table tbody");
 
       const rows = ROWS
+        .filter(r => r.season === season)
         .filter(r => r.team_id === team)
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
@@ -542,11 +564,13 @@ def generate_onoff_report() -> Path:
     }}
 
     function renderLeaderboard() {{
+      const season = document.getElementById("season-filter").value;
       const minGames = Number(document.getElementById("lb-min-games").value || 0);
       const minMin = Number(document.getElementById("lb-min-minutes").value || 0);
       const tbody = document.querySelector("#lb-table tbody");
 
       const rows = ROWS
+        .filter(r => r.season === season)
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
         .slice()
@@ -562,20 +586,44 @@ def generate_onoff_report() -> Path:
     }}
 
     function init() {{
+      const seasonSel = document.getElementById("season-filter");
       const teamSel = document.getElementById("team-filter");
-      TEAMS.forEach(tid => {{
+      SEASONS.forEach(s => {{
         const o = document.createElement("option");
-        o.value = tid;
-        o.textContent = TEAM_MAP[tid] || tid;
-        teamSel.appendChild(o);
+        o.value = s;
+        o.textContent = s;
+        seasonSel.appendChild(o);
       }});
-      if (teamSel.options.length > 0) {{
-        teamSel.selectedIndex = 0;
+      seasonSel.value = LATEST_SEASON;
+
+      function refreshTeamOptions() {{
+        const season = seasonSel.value;
+        const seasonTeams = [...new Set(ROWS.filter(r => r.season === season).map(r => r.team_id))]
+          .sort((a, b) => String(TEAM_MAP[a] || a).localeCompare(String(TEAM_MAP[b] || b)));
+        teamSel.innerHTML = "";
+        seasonTeams.forEach(tid => {{
+          const o = document.createElement("option");
+          o.value = tid;
+          o.textContent = TEAM_MAP[tid] || tid;
+          teamSel.appendChild(o);
+        }});
+        if (teamSel.options.length > 0) {{
+          teamSel.selectedIndex = 0;
+        }}
       }}
 
-      ["team-filter","team-min-games","team-min-minutes"].forEach(id =>
-        document.getElementById(id).addEventListener("input", renderTeamTable)
+      refreshTeamOptions();
+
+      ["season-filter","team-filter","team-min-games","team-min-minutes"].forEach(id =>
+        document.getElementById(id).addEventListener("input", () => {{
+          if (id === "season-filter") {{
+            refreshTeamOptions();
+          }}
+          renderTeamTable();
+          renderLeaderboard();
+        }})
       );
+
       ["lb-min-games","lb-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderLeaderboard)
       );
