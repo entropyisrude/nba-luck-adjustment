@@ -287,7 +287,7 @@ def generate_daily_boxscores_report() -> Path:
         </label>
       </div>
       <div class="muted">
-        <strong>What is this?</strong> Daily plus-minus is incredibly noisy, and no adjustment can fully solve that.
+        <strong>Daily plus-minus is incredibly noisy, and no adjustment can change that.</strong>
         This page uses a 3PT expectation model to recalculate each player's plus-minus as if the shooting results
         during their specific stints matched expectation. Like the base model, it adjusts for who shot and shot
         difficulty, and includes a mitigant for the hypothetical change in ORB opportunities.
