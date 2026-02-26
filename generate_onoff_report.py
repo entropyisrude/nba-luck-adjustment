@@ -8,8 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 DATA_DIR = Path("data")
-BOXSCORE_PATH = DATA_DIR / "player_daily_boxscore.csv"
-HISTORY_PATH = DATA_DIR / "player_onoff_history.csv"
+ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 
@@ -54,66 +53,110 @@ def _f(v: str) -> float:
         return 0.0
 
 
-def _load_meta() -> tuple[str, int]:
-    if not BOXSCORE_PATH.exists():
-        return "", 0
+def _load_player_totals() -> tuple[list[dict], str, int]:
+    if not ONOFF_PATH.exists():
+        raise FileNotFoundError(f"Missing {ONOFF_PATH}")
+
+    rows: list[dict] = []
     latest_date = ""
     game_ids: set[str] = set()
-    with BOXSCORE_PATH.open(newline="", encoding="utf-8") as f:
-        rows = csv.DictReader(f)
-        for r in rows:
+    team_game_minutes: dict[tuple[str, str], float] = {}
+
+    with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for r in reader:
+            rows.append(r)
             d = str(r["date"])
             if d > latest_date:
                 latest_date = d
-            game_ids.add(str(r["game_id"]))
-    return latest_date, len(game_ids)
+            gid = str(r["game_id"])
+            tid = str(r["team_id"])
+            game_ids.add(gid)
+            key = (gid, tid)
+            team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
 
+    agg: dict[str, dict] = {}
+    latest_row_by_player: dict[str, tuple[str, str, dict]] = {}
+    for r in rows:
+        player_id = str(r["player_id"])
+        team_id = str(r["team_id"])
+        game_id = str(r["game_id"])
+        date = str(r["date"])
+        minutes_on = _f(r["minutes_on"])
+        team_minutes = team_game_minutes.get((game_id, team_id), 0.0)
+        minutes_off = max(0.0, team_minutes - minutes_on)
 
-def _load_player_totals() -> list[dict]:
-    if not HISTORY_PATH.exists():
-        raise FileNotFoundError(f"Missing {HISTORY_PATH}")
+        if player_id not in agg:
+            agg[player_id] = {
+                "player_id": player_id,
+                "player_name": str(r["player_name"]),
+                "games_set": set(),
+                "minutes_on_total": 0.0,
+                "minutes_off_total": 0.0,
+                "on_diff_total": 0.0,
+                "off_diff_total": 0.0,
+                "on_diff_adj_total": 0.0,
+                "off_diff_adj_total": 0.0,
+            }
+
+        a = agg[player_id]
+        a["games_set"].add(game_id)
+        a["minutes_on_total"] += minutes_on
+        a["minutes_off_total"] += minutes_off
+        a["on_diff_total"] += _f(r["on_diff"])
+        a["off_diff_total"] += _f(r["off_diff"])
+        a["on_diff_adj_total"] += _f(r["on_diff_adj"])
+        a["off_diff_adj_total"] += _f(r["off_diff_adj"])
+
+        marker = (date, game_id)
+        prev = latest_row_by_player.get(player_id)
+        if prev is None or marker > (prev[0], prev[1]):
+            latest_row_by_player[player_id] = (date, game_id, r)
 
     records: list[dict] = []
-    with HISTORY_PATH.open(newline="", encoding="utf-8") as f:
-        rows = csv.DictReader(f)
-        for r in rows:
-            minutes_total = _f(r["minutes_on_total"])
-            games = int(_f(r["games"]))
-            if minutes_total <= 0:
-                continue
+    for player_id, a in agg.items():
+        on_min = a["minutes_on_total"]
+        off_min = a["minutes_off_total"]
+        if on_min <= 0:
+            continue
+        latest_team_id = str(latest_row_by_player[player_id][2]["team_id"])
+        games = len(a["games_set"])
 
-            # Estimated possessions = minutes * (100 / 48), so per-100 = value * 48 / minutes.
-            scale = 48.0 / minutes_total
-            pm_actual_100 = _f(r["on_diff_total"]) * scale
-            pm_adj_100 = _f(r["on_diff_adj_total"]) * scale
-            pm_delta_100 = pm_adj_100 - pm_actual_100
-            onoff_actual_100 = _f(r["on_off_diff_total"]) * scale
-            onoff_adj_100 = _f(r["on_off_diff_adj_total"]) * scale
-            onoff_delta_100 = onoff_adj_100 - onoff_actual_100
+        pm_actual_100 = a["on_diff_total"] * 48.0 / on_min
+        pm_adj_100 = a["on_diff_adj_total"] * 48.0 / on_min
+        pm_delta_100 = pm_adj_100 - pm_actual_100
 
-            team_id = str(r["latest_team_id"])
-            records.append(
-                {
-                    "player_id": str(r["player_id"]),
-                    "player_name": str(r["player_name"]),
-                    "team_id": team_id,
-                    "team_abbr": TEAM_ID_TO_ABBR.get(team_id, team_id),
-                    "games": games,
-                    "minutes_total": minutes_total,
-                    "pm_actual_100": pm_actual_100,
-                    "pm_adj_100": pm_adj_100,
-                    "pm_delta_100": pm_delta_100,
-                    "onoff_actual_100": onoff_actual_100,
-                    "onoff_adj_100": onoff_adj_100,
-                    "onoff_delta_100": onoff_delta_100,
-                }
-            )
-    return records
+        if off_min > 0:
+            off_actual_100 = a["off_diff_total"] * 48.0 / off_min
+            off_adj_100 = a["off_diff_adj_total"] * 48.0 / off_min
+            onoff_actual_100 = pm_actual_100 - off_actual_100
+            onoff_adj_100 = pm_adj_100 - off_adj_100
+        else:
+            onoff_actual_100 = 0.0
+            onoff_adj_100 = 0.0
+        onoff_delta_100 = onoff_adj_100 - onoff_actual_100
+
+        records.append(
+            {
+                "player_id": player_id,
+                "player_name": a["player_name"],
+                "team_id": latest_team_id,
+                "team_abbr": TEAM_ID_TO_ABBR.get(latest_team_id, latest_team_id),
+                "games": games,
+                "minutes_total": on_min,
+                "pm_actual_100": pm_actual_100,
+                "pm_adj_100": pm_adj_100,
+                "pm_delta_100": pm_delta_100,
+                "onoff_actual_100": onoff_actual_100,
+                "onoff_adj_100": onoff_adj_100,
+                "onoff_delta_100": onoff_delta_100,
+            }
+        )
+    return records, latest_date, len(game_ids)
 
 
 def generate_onoff_report() -> Path:
-    records = _load_player_totals()
-    latest_date, game_count = _load_meta()
+    records, latest_date, game_count = _load_player_totals()
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -292,7 +335,7 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class="muted">Generated {generated_ts} | Source: `data/player_onoff_history.csv`. Per-100 uses estimated possessions from minutes: possessions = minutes × (100/48).</p>
+    <p class="muted">Generated {generated_ts} | Source: `data/adjusted_onoff.csv`. Per-100 uses estimated possessions from minutes: possessions = minutes × (100/48).</p>
   </div>
   <script>
     const ROWS = {json.dumps(records)};
