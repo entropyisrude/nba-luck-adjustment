@@ -287,9 +287,10 @@ def generate_daily_boxscores_report() -> Path:
         </label>
       </div>
       <div class="muted">
-        <strong>What is this?</strong> This page replays each game with your 3PT expectation model
-        and reallocates the resulting luck-adjusted point swings to the exact player stints from play-by-play.
-        It shows each player's actual and 3PT luck-adjusted plus-minus and on/off for that game.
+        <strong>What is this?</strong> Daily plus-minus is incredibly noisy, and no adjustment can fully solve that.
+        This page uses a 3PT expectation model to recalculate each player's plus-minus as if the shooting results
+        during their specific stints matched expectation. Like the base model, it adjusts for who shot and shot
+        difficulty, and includes a mitigant for the hypothetical change in ORB opportunities.
       </div>
     </section>
 
