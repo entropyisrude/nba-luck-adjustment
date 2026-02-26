@@ -281,6 +281,100 @@ def get_boxscore_player_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFram
     return pd.DataFrame(rows)
 
 
+def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
+    """
+    Player rows from cdn.nba.com boxscore with starter/oncourt flags.
+    Returns columns:
+        GAME_ID, TEAM_ID, PLAYER_ID, PLAYER_NAME, STARTER, ONCOURT, PLAYED,
+        PLUS_MINUS, MINUTES
+    """
+    js = _get_boxscore_json(game_id, game_date_mmddyyyy)
+    game = js.get("game", {}) or {}
+
+    home = game.get("homeTeam", {}) or {}
+    away = game.get("awayTeam", {}) or {}
+
+    rows = []
+    for team in [home, away]:
+        team_id = int(team.get("teamId", 0))
+        players = team.get("players", []) or []
+
+        for p in players:
+            pid = p.get("personId")
+            if pid is None:
+                continue
+
+            # Build player name
+            first = p.get("firstName", "") or ""
+            last = p.get("familyName", "") or p.get("lastName", "") or ""
+            name = (first + " " + last).strip() or p.get("name", "") or p.get("nameI", "") or ""
+
+            rows.append(
+                {
+                    "GAME_ID": str(game_id),
+                    "TEAM_ID": team_id,
+                    "PLAYER_ID": int(pid),
+                    "PLAYER_NAME": str(name),
+                    "STARTER": str(p.get("starter", "0") or "0"),
+                    "ONCOURT": str(p.get("oncourt", "0") or "0"),
+                    "PLAYED": str(p.get("played", "0") or "0"),
+                    "PLUS_MINUS": float((p.get("statistics", {}) or {}).get("plusMinusPoints") or 0.0),
+                    "MINUTES": _iso_duration_to_minutes((p.get("statistics", {}) or {}).get("minutes")),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def _iso_duration_to_minutes(value: str | None) -> float:
+    """Parse ISO-ish NBA duration like PT33M37.00S to decimal minutes."""
+    if not value:
+        return 0.0
+    s = str(value).strip()
+    if not s.startswith("PT"):
+        return 0.0
+    try:
+        body = s[2:].replace("S", "")
+        if "M" in body:
+            mm, ss = body.split("M", 1)
+            minutes = int(mm or 0)
+            seconds = float(ss or 0.0)
+        else:
+            minutes = 0
+            seconds = float(body or 0.0)
+        return round(minutes + seconds / 60.0, 4)
+    except Exception:
+        return 0.0
+
+
+def get_starters_by_team(game_id: str, game_date_mmddyyyy: str) -> dict[int, list[int]]:
+    """
+    Return starters per team_id from boxscore.
+    """
+    players = get_boxscore_players(game_id, game_date_mmddyyyy)
+    starters: dict[int, list[int]] = {}
+    if players.empty:
+        return starters
+
+    for team_id, grp in players.groupby("TEAM_ID"):
+        team_id = int(team_id)
+        starter_ids = [
+            int(pid) for pid in grp.loc[grp["STARTER"] == "1", "PLAYER_ID"].tolist()
+        ]
+        starters[team_id] = starter_ids
+    return starters
+
+
+def get_playbyplay_actions(game_id: str, game_date_mmddyyyy: str) -> list[dict[str, Any]]:
+    """
+    Fetch play-by-play data and return all actions.
+    """
+    url = PLAYBYPLAY_URL.format(game_id=game_id)
+    pbp_data = _get_json(url)
+    game = pbp_data.get("game", {}) or {}
+    return game.get("actions", []) or []
+
+
 def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
     """
     Fetch play-by-play data and extract all 3PT shot attempts with context.

@@ -7,6 +7,9 @@ It also applies a simple league-average **offensive rebound (ORB) correction** i
 ## What it outputs
 - `data/adjusted_games.csv` — shareable, one row per game (actual vs adjusted)
 - `data/player_state.csv` — incremental player skill state `(A_r, M_r)`
+- `data/adjusted_onoff.csv` — per-player, per-game on/off with 3PT luck adjustment
+- `data/player_onoff_history.csv` — per-player season aggregate history from `adjusted_onoff.csv`
+- `data/player_daily_boxscore.csv` — per-player, per-game actual vs adjusted plus-minus and on-off
 
 ## Install
 Create a virtualenv and install requirements:
@@ -27,6 +30,55 @@ python run_daily.py --start 2026-02-01 --end 2026-02-21
 ```
 
 The script appends to `data/adjusted_games.csv` (deduped by `game_id`) and updates `data/player_state.csv`.
+
+Compute per-player on/off (luck-adjusted):
+
+```bash
+python run_onoff.py --start 2026-02-21 --end 2026-02-21
+```
+
+This appends to `data/adjusted_onoff.csv` (deduped by `game_id`, `player_id`), updates
+`data/player_state.csv`, and rebuilds:
+- `data/player_onoff_history.csv`
+- `data/player_daily_boxscore.csv`
+
+Backfill a full season window (example 2025-26):
+
+```bash
+python run_onoff.py --start 2025-10-21 --end 2026-04-15 --history-season-start 2025-10-01 --history-season-end 2026-06-30
+```
+
+Daily updater (defaults to yesterday):
+
+```bash
+python run_onoff_daily.py
+# or specific date
+python run_onoff_daily.py --date 2026-02-24
+```
+
+Generate the standalone on/off website page:
+
+```bash
+python generate_onoff_report.py
+```
+
+This writes both `data/onoff_report.html` and `onoff.html`.
+
+Generate daily game-by-game on/off boxscores page:
+
+```bash
+python generate_onoff_daily_boxscore_report.py
+```
+
+This writes both `data/onoff_daily_boxscores.html` and `onoff-daily.html`.
+
+Validate on/off accuracy vs official boxscore plus-minus/minutes:
+
+```bash
+python validate_onoff_accuracy.py --start 2026-02-24 --end 2026-02-24
+```
+
+Writes `data/onoff_validation.csv` and prints summary error stats.
 
 ## Method summary
 

@@ -36,6 +36,9 @@ jobs:
       - name: Generate report
         run: |
           python generate_report.py
+          python run_onoff_daily.py --date ${{ steps.date.outputs.yesterday }}
+          python generate_onoff_report.py
+          python generate_onoff_daily_boxscore_report.py
 
       - name: Copy report to index.html
         run: |

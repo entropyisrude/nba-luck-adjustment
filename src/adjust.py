@@ -284,7 +284,9 @@ def compute_player_deltas_with_context(
     results = []
     for pid, data in player_results.items():
         delta_3m = data["fg3m"] - data["exp_3pm"]
-        delta_pts = 3.0 * delta_3m - haircut * (-delta_3m)
+        # Keep player-level luck impact consistent with team-level ORB correction:
+        # delta_pts = delta_3m * (3 - orb_rate*ppp)
+        delta_pts = 3.0 * delta_3m - haircut * delta_3m
         data["delta_pts"] = delta_pts
         results.append(data)
 
@@ -351,7 +353,8 @@ def compute_player_deltas(
         p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
         exp_3pm = a * p_hat
         delta_3m = m - exp_3pm  # positive = made more than expected (lucky)
-        delta_pts = 3.0 * delta_3m - haircut * (-delta_3m)  # points gained from luck
+        # Keep player-level luck impact consistent with team-level ORB correction.
+        delta_pts = 3.0 * delta_3m - haircut * delta_3m
 
         results.append({
             "player_id": pid,
