@@ -122,7 +122,6 @@ def generate_daily_boxscores_report() -> Path:
 
     page_title = "NBA Daily Adjusted On-Off Boxscores"
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    page_version = "v10"
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -270,7 +269,7 @@ def generate_daily_boxscores_report() -> Path:
 <body>
   <div class="wrap">
     <section class="hero">
-      <h1>{page_title} ({page_version})</h1>
+      <h1>{page_title}</h1>
       <div class="nav">
         <a href="index.html">Main 3PT Luck Page</a>
         <a href="onoff.html">On-Off Explorer</a>
