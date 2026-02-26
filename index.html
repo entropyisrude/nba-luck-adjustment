@@ -89,22 +89,31 @@
 
         /* Navigation Links */
         .nav-links {
+            margin: 20px 0 14px;
+            display: grid;
+            gap: 8px;
+        }
+        .nav-row {
             display: flex;
-            gap: 20px;
-            margin: 20px 0;
             flex-wrap: wrap;
+            gap: 14px;
+            align-items: baseline;
         }
-        .nav-links a {
-            background: #1a1a2e;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background 0.2s;
+        .nav-label {
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
-        .nav-links a:hover {
-            background: #e94560;
+        .nav-row a {
+            color: #1a1a2e;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            font-weight: 600;
+        }
+        .nav-row a:hover {
+            color: #e94560;
         }
 
         /* Calendar Styles */
@@ -433,11 +442,17 @@
     </div>
 
     <div class="nav-links">
-        <a href="onoff-daily.html">Daily On/Off Boxscores</a>
-        <a href="onoff.html">Adjusted On/Off</a>
-        <a href="#team-rankings">Team Rankings</a>
-        <a href="#biggest-swings">Highest Variance</a>
-        <a href="#methodology">Methodology</a>
+        <div class="nav-row">
+            <span class="nav-label">Player Project</span>
+            <a href="onoff-daily.html">3PT Luck Adjust Plus Minus: Games</a>
+            <a href="onoff.html">3PT Luck Adjusted Plus Minus: Totals</a>
+        </div>
+        <div class="nav-row">
+            <span class="nav-label">This Page</span>
+            <a href="#team-rankings">Team Rankings</a>
+            <a href="#biggest-swings">Highest Variance</a>
+            <a href="#methodology">Methodology</a>
+        </div>
     </div>
 
     <h2>Games by Date</h2>
