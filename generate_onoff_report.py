@@ -244,9 +244,16 @@ def generate_onoff_report() -> Path:
         <table id="team-table">
           <thead>
             <tr>
-              <th>Player</th><th>Team</th><th>G</th><th>Min</th>
-              <th>PM/100</th><th>PM Adj/100</th><th>PM Delta/100</th>
-              <th>OnOff/100</th><th>OnA/100</th><th>OnOff Delta/100</th>
+              <th class="sortable" data-key="player_name" data-type="str">Player</th>
+              <th class="sortable" data-key="team_abbr" data-type="str">Team</th>
+              <th class="sortable" data-key="games" data-type="num">G</th>
+              <th class="sortable" data-key="minutes_total" data-type="num">Min</th>
+              <th class="sortable" data-key="pm_actual_100" data-type="num">PM/100</th>
+              <th class="sortable" data-key="pm_adj_100" data-type="num">PM Adj/100</th>
+              <th class="sortable" data-key="pm_delta_100" data-type="num">PM Delta/100</th>
+              <th class="sortable" data-key="onoff_actual_100" data-type="num">OnOff/100</th>
+              <th class="sortable" data-key="onoff_adj_100" data-type="num">OnA/100</th>
+              <th class="sortable" data-key="onoff_delta_100" data-type="num">OnOff Delta/100</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -295,6 +302,8 @@ def generate_onoff_report() -> Path:
     const fmt = (x, d=1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
 
+    let teamSortKey = "pm_adj_100";
+    let teamSortDir = "desc";
     let lbSortKey = "pm_adj_100";
     let lbSortDir = "desc";
 
@@ -323,7 +332,14 @@ def generate_onoff_report() -> Path:
         .filter(r => r.team_id === team)
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
-        .sort((a,b) => Number(b.pm_adj_100 || 0) - Number(a.pm_adj_100 || 0));
+        .slice()
+        .sort((a,b) => {{
+          const dir = teamSortDir === "asc" ? 1 : -1;
+          if (teamSortKey === "player_name" || teamSortKey === "team_abbr") {{
+            return dir * String(a[teamSortKey]).localeCompare(String(b[teamSortKey]));
+          }}
+          return dir * (Number(a[teamSortKey] || 0) - Number(b[teamSortKey] || 0));
+        }});
 
       tbody.innerHTML = rows.map(rowHtml).join("");
     }}
@@ -377,6 +393,18 @@ def generate_onoff_report() -> Path:
             lbSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
           }}
           renderLeaderboard();
+        }});
+      }});
+      document.querySelectorAll("#team-table thead th.sortable").forEach(th => {{
+        th.addEventListener("click", () => {{
+          const key = th.dataset.key;
+          if (teamSortKey === key) {{
+            teamSortDir = teamSortDir === "desc" ? "asc" : "desc";
+          }} else {{
+            teamSortKey = key;
+            teamSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+          }}
+          renderTeamTable();
         }});
       }});
 
