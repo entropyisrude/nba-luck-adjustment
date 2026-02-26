@@ -257,8 +257,6 @@ def generate_daily_boxscores_report() -> Path:
     }}
     thead th {{ position: sticky; top: 0; background: #eff4fb; color: #173253; z-index: 2; }}
     .key-th {{ font-weight: 800; color: #102a4a; }}
-    .key-col {{ font-weight: 800; }}
-    .key-col.pos, .key-col.neg {{ font-weight: 800; }}
     .pos {{ color: var(--good); font-weight: 600; }}
     .neg {{ color: var(--bad); font-weight: 600; }}
     @media (max-width: 1500px) {{
@@ -275,7 +273,7 @@ def generate_daily_boxscores_report() -> Path:
       <h1>{page_title}</h1>
       <div class="nav">
         <a href="index.html">Main 3PT Luck Page</a>
-        <a href="onoff.html">On-Off Explorer</a>
+        <a href="onoff.html">3PT Luck Adjusted Plus Minus: Totals</a>
       </div>
     </section>
 
@@ -368,9 +366,9 @@ def generate_daily_boxscores_report() -> Path:
                           <td>${{r.player_name}}</td>
                           <td>${{fmt(r.minutes_on)}}</td>
                           <td class="${{cls(r.plus_minus_actual)}}">${{fmt(r.plus_minus_actual)}}</td>
-                          <td class="key-col ${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
+                          <td class="${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
                           <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual)}}</td>
-                          <td class="key-col ${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
+                          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
                         </tr>`
                       ).join("")
                     }}
@@ -399,9 +397,9 @@ def generate_daily_boxscores_report() -> Path:
                           <td>${{r.player_name}}</td>
                           <td>${{fmt(r.minutes_on)}}</td>
                           <td class="${{cls(r.plus_minus_actual)}}">${{fmt(r.plus_minus_actual)}}</td>
-                          <td class="key-col ${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
+                          <td class="${{cls(r.plus_minus_adjusted)}}">${{fmt(r.plus_minus_adjusted)}}</td>
                           <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual)}}</td>
-                          <td class="key-col ${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
+                          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted)}}</td>
                         </tr>`
                       ).join("")
                     }}

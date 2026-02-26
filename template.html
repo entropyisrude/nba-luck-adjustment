@@ -107,10 +107,15 @@
             letter-spacing: 0.04em;
         }
         .nav-row a {
-            color: #1a1a2e;
             text-decoration: underline;
             text-underline-offset: 3px;
             font-weight: 600;
+        }
+        .nav-row.project-links a {
+            color: #1d4ed8;
+        }
+        .nav-row.this-page-links a {
+            color: #000000;
         }
         .nav-row a:hover {
             color: #e94560;
@@ -442,12 +447,12 @@
     </div>
 
     <div class="nav-links">
-        <div class="nav-row">
+        <div class="nav-row project-links">
             <span class="nav-label">Player Project</span>
             <a href="onoff-daily.html">3PT Luck Adjust Plus Minus: Games</a>
             <a href="onoff.html">3PT Luck Adjusted Plus Minus: Totals</a>
         </div>
-        <div class="nav-row">
+        <div class="nav-row this-page-links">
             <span class="nav-label">This Page</span>
             <a href="#team-rankings">Team Rankings</a>
             <a href="#biggest-swings">Highest Variance</a>
