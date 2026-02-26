@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 from datetime import date, timedelta
 
 
@@ -31,6 +32,7 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> None:
+    py = sys.executable
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", required=True, help="YYYY-MM-DD")
     parser.add_argument("--end", required=True, help="YYYY-MM-DD")
@@ -45,7 +47,7 @@ def main() -> None:
     for chunk_start, chunk_end in daterange_months(start, end):
         run(
             [
-                "python",
+                py,
                 "run_onoff.py",
                 "--start",
                 chunk_start.isoformat(),
@@ -59,7 +61,7 @@ def main() -> None:
     # Final rebuild for history + daily boxscore over the full selected window.
     run(
         [
-            "python",
+            py,
             "run_onoff.py",
             "--start",
             start.isoformat(),
@@ -72,8 +74,8 @@ def main() -> None:
         ]
     )
 
-    run(["python", "generate_onoff_report.py"])
-    run(["python", "generate_onoff_daily_boxscore_report.py"])
+    run([py, "generate_onoff_report.py"])
+    run([py, "generate_onoff_daily_boxscore_report.py"])
 
 
 if __name__ == "__main__":
