@@ -155,10 +155,11 @@ def generate_daily_boxscores_report() -> Path:
       border-radius: 14px;
       padding: 18px 20px;
       margin-bottom: 14px;
+      text-align: center;
     }}
     h1 {{ margin: 0; font-size: 28px; }}
     .muted {{ color: var(--muted); }}
-    .nav {{ margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }}
+    .nav {{ margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }}
     .nav a {{
       color: #e8f4ff;
       text-decoration: none;
