@@ -376,7 +376,7 @@ def get_biggest_swing_player(player_deltas: list[dict]) -> dict | None:
     return max(player_deltas, key=lambda x: abs(x["delta_pts"]))
 
 
-def get_top_swing_players(player_deltas: list[dict], threshold: float = 5.0) -> list[dict]:
+def get_top_swing_players(player_deltas: list[dict], threshold: float = 2.0) -> list[dict]:
     """Get all players with absolute point delta >= threshold, sorted by absolute impact."""
     if not player_deltas:
         return []
