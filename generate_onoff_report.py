@@ -304,35 +304,40 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
         # Break adjusted on-off into offensive and defensive components.
-        # Normalize using the same possession (or minute) denominators as above.
+        # Use on_poss from pbpstats for on-court normalization (it correctly
+        # reflects only games the player appeared in). For off-court, pbpstats
+        # off_poss is inflated — it counts all team possessions without the
+        # player, including games where they were DNP. Instead, estimate
+        # off_poss by applying the same possessions-per-minute rate to off_min.
         on_for_adj = _f(r["on_pts_for_adj_total"])
         on_against_adj = _f(r["on_pts_against_adj_total"])
         off_for_adj = _f(r["off_pts_for_adj_total"])
         off_against_adj = _f(r["off_pts_against_adj_total"])
 
-        if on_poss > 0:
+        if on_poss > 0 and on_min > 0:
+            poss_per_min = on_poss / on_min
             on_ortg_adj = on_for_adj * 100.0 / on_poss
             on_drtg_adj = on_against_adj * 100.0 / on_poss
+            off_poss_est = off_min * poss_per_min if off_min > 0 else 0.0
         elif on_min > 0:
-            on_ortg_adj = on_for_adj * 48.0 / on_min
-            on_drtg_adj = on_against_adj * 48.0 / on_min
+            poss_per_min = 100.0 / 48.0  # fallback: ~2.08 poss/min
+            on_ortg_adj = on_for_adj * 100.0 / (on_min * poss_per_min)
+            on_drtg_adj = on_against_adj * 100.0 / (on_min * poss_per_min)
+            off_poss_est = off_min * poss_per_min if off_min > 0 else 0.0
         else:
             on_ortg_adj = on_drtg_adj = 0.0
+            off_poss_est = 0.0
 
-        if off_poss > 0:
-            off_ortg_adj = off_for_adj * 100.0 / off_poss
-            off_drtg_adj = off_against_adj * 100.0 / off_poss
-        elif off_min > 0:
-            off_ortg_adj = off_for_adj * 48.0 / off_min
-            off_drtg_adj = off_against_adj * 48.0 / off_min
+        if off_poss_est > 0:
+            off_ortg_adj = off_for_adj * 100.0 / off_poss_est
+            off_drtg_adj = off_against_adj * 100.0 / off_poss_est
         else:
             off_ortg_adj = off_drtg_adj = 0.0
 
-        # Offensive: team ORtg adj when ON minus when OFF (positive = helps offense)
+        # Offensive: team adj ORtg per 100 when ON minus when OFF (positive = helps offense)
         onoff_adj_off_100 = on_ortg_adj - off_ortg_adj
-        # Defensive: team DRtg adj when OFF minus when ON (positive = helps defense)
+        # Defensive: team adj DRtg per 100 when OFF minus when ON (positive = helps defense)
         onoff_adj_def_100 = off_drtg_adj - on_drtg_adj
-        # These two sum to onoff_adj_100 by construction.
 
         records.append(
             {
@@ -513,8 +518,8 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component of adjusted on-off: team adjusted ORtg per 100 when ON minus when OFF\">OnOff Adj Off/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component of adjusted on-off: team adjusted DRtg per 100 when OFF minus when ON (positive = player improves defense)\">OnOff Adj Def/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg per 100 poss when ON minus when OFF. Positive = player improves team offense.\">OnOff Adj Off/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg per 100 poss when OFF minus when ON. Positive = player improves team defense.\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
@@ -546,8 +551,8 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component of adjusted on-off: team adjusted ORtg per 100 when ON minus when OFF\">OnOff Adj Off/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component of adjusted on-off: team adjusted DRtg per 100 when OFF minus when ON (positive = player improves defense)\">OnOff Adj Def/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg per 100 poss when ON minus when OFF. Positive = player improves team offense.\">OnOff Adj Off/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg per 100 poss when OFF minus when ON. Positive = player improves team defense.\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
