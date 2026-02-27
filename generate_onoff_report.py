@@ -356,6 +356,10 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
                 "onoff_adj_off_100": onoff_adj_off_100,
                 "onoff_adj_def_100": onoff_adj_def_100,
                 "onoff_delta_100": onoff_delta_100,
+                "on_ortg_adj": on_ortg_adj,
+                "on_drtg_adj": on_drtg_adj,
+                "off_ortg_adj": off_ortg_adj,
+                "off_drtg_adj": off_drtg_adj,
                 "raw_source": source,
             }
         )
@@ -473,6 +477,19 @@ def generate_onoff_report() -> Path:
     .pos {{ color: var(--good); font-weight: 600; }}
     .neg {{ color: var(--bad); font-weight: 600; }}
     .muted {{ color: var(--muted); }}
+    .toggle-row {{ display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }}
+    .toggle-btn {{
+      background: #e8f0fa;
+      border: 1px solid #c5d4e8;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--ink);
+    }}
+    .toggle-btn:hover {{ background: #dbe7f5; }}
+    .toggle-btn.active {{ background: #0b2d4d; color: #fff; border-color: #0b2d4d; }}
+    .col-hidden {{ display: none; }}
   </style>
 </head>
 <body>
@@ -506,6 +523,10 @@ def generate_onoff_report() -> Path:
           <input id=\"team-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"50\" />
         </label>
       </div>
+      <div class=\"toggle-row\">
+        <button class=\"toggle-btn\" data-cols=\"on-rtg\" onclick=\"toggleCols('on-rtg')\">Show On-Court Rtg</button>
+        <button class=\"toggle-btn\" data-cols=\"off-rtg\" onclick=\"toggleCols('off-rtg')\">Show Off-Court Rtg</button>
+      </div>
       <div class=\"table-wrap\">
         <table id=\"team-table\">
           <thead>
@@ -519,6 +540,10 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
+              <th class=\"sortable col-on-rtg col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg per 100 poss when player is ON court\">On ORtg</th>
+              <th class=\"sortable col-on-rtg col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg per 100 poss when player is ON court\">On DRtg</th>
+              <th class=\"sortable col-off-rtg col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg per 100 poss when player is OFF court\">Off ORtg</th>
+              <th class=\"sortable col-off-rtg col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg per 100 poss when player is OFF court\">Off DRtg</th>
               <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg per 100 poss when ON minus when OFF. Positive = player improves team offense.\">OnOff Adj Off/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg per 100 poss when OFF minus when ON. Positive = player improves team defense.\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
@@ -539,6 +564,10 @@ def generate_onoff_report() -> Path:
           <input id=\"lb-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"200\" />
         </label>
       </div>
+      <div class=\"toggle-row\">
+        <button class=\"toggle-btn\" data-cols=\"on-rtg\" onclick=\"toggleCols('on-rtg')\">Show On-Court Rtg</button>
+        <button class=\"toggle-btn\" data-cols=\"off-rtg\" onclick=\"toggleCols('off-rtg')\">Show Off-Court Rtg</button>
+      </div>
       <div class=\"table-wrap\">
         <table id=\"lb-table\">
           <thead>
@@ -552,6 +581,10 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
+              <th class=\"sortable col-on-rtg col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg per 100 poss when player is ON court\">On ORtg</th>
+              <th class=\"sortable col-on-rtg col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg per 100 poss when player is ON court\">On DRtg</th>
+              <th class=\"sortable col-off-rtg col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg per 100 poss when player is OFF court\">Off ORtg</th>
+              <th class=\"sortable col-off-rtg col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg per 100 poss when player is OFF court\">Off DRtg</th>
               <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg per 100 poss when ON minus when OFF. Positive = player improves team offense.\">OnOff Adj Off/100</th>
               <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg per 100 poss when OFF minus when ON. Positive = player improves team defense.\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
@@ -579,7 +612,18 @@ def generate_onoff_report() -> Path:
     let lbSortKey = "pm_adj_100";
     let lbSortDir = "desc";
 
+    function toggleCols(colGroup) {{
+      const btns = document.querySelectorAll(`.toggle-btn[data-cols="${{colGroup}}"]`);
+      const cols = document.querySelectorAll(`.col-${{colGroup}}`);
+      const isHidden = cols[0]?.classList.contains('col-hidden');
+      btns.forEach(btn => btn.classList.toggle('active', isHidden));
+      cols.forEach(col => col.classList.toggle('col-hidden', !isHidden));
+      btns.forEach(btn => btn.textContent = isHidden ? btn.textContent.replace('Show', 'Hide') : btn.textContent.replace('Hide', 'Show'));
+    }}
+
     function rowHtml(r) {{
+      const onRtgHidden = !document.querySelector('.toggle-btn[data-cols="on-rtg"]')?.classList.contains('active');
+      const offRtgHidden = !document.querySelector('.toggle-btn[data-cols="off-rtg"]')?.classList.contains('active');
       return `<tr>
         <td>${{r.player_name}}</td>
         <td>${{r.team_abbr}}</td>
@@ -590,6 +634,10 @@ def generate_onoff_report() -> Path:
         <td class="${{cls(r.pm_delta_100)}}">${{fmt(r.pm_delta_100,1)}}</td>
         <td class="${{cls(r.onoff_actual_100)}}">${{fmt(r.onoff_actual_100,1)}}</td>
         <td class="${{cls(r.onoff_adj_100)}}">${{fmt(r.onoff_adj_100,1)}}</td>
+        <td class="col-on-rtg${{onRtgHidden ? ' col-hidden' : ''}}">${{fmt(r.on_ortg_adj,1)}}</td>
+        <td class="col-on-rtg${{onRtgHidden ? ' col-hidden' : ''}}">${{fmt(r.on_drtg_adj,1)}}</td>
+        <td class="col-off-rtg${{offRtgHidden ? ' col-hidden' : ''}}">${{fmt(r.off_ortg_adj,1)}}</td>
+        <td class="col-off-rtg${{offRtgHidden ? ' col-hidden' : ''}}">${{fmt(r.off_drtg_adj,1)}}</td>
         <td class="${{cls(r.onoff_adj_off_100)}}">${{fmt(r.onoff_adj_off_100,1)}}</td>
         <td class="${{cls(r.onoff_adj_def_100)}}">${{fmt(r.onoff_adj_def_100,1)}}</td>
         <td class="${{cls(r.onoff_delta_100)}}">${{fmt(r.onoff_delta_100,1)}}</td>
