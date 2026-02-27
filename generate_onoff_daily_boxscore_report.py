@@ -203,7 +203,7 @@ def generate_daily_boxscores_report() -> Path:
       border-bottom: 1px solid var(--line);
       background: #edf4fe;
       display: flex;
-      justify-content: flex-start;
+      justify-content: center;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
@@ -244,14 +244,17 @@ def generate_daily_boxscores_report() -> Path:
     th:first-child, td:first-child {{
       text-align: left;
       padding-right: 2px;
+      max-width: 95px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
     th:nth-child(2), td:nth-child(2) {{ width: 34px; min-width: 34px; padding-left: 2px; }}
     th:nth-child(3), td:nth-child(3) {{ width: 36px; min-width: 36px; }}
     th:nth-child(4), td:nth-child(4) {{ width: 44px; min-width: 44px; }}
     th:nth-child(5), td:nth-child(5) {{ width: 38px; min-width: 38px; }}
     th:nth-child(6), td:nth-child(6) {{
-      width: 38px;
-      min-width: 38px;
+      width: 54px;
+      min-width: 54px;
       padding-left: 2px;
       padding-right: 4px;
     }}
@@ -291,7 +294,7 @@ def generate_daily_boxscores_report() -> Path:
         This page uses a 3PT expectation model to recalculate each player's plus-minus as if the shooting results
         during their specific stints matched expectation. Like the base model, it adjusts for who shot and shot
         difficulty, and includes a mitigant for the hypothetical change in ORB opportunities.
-        <strong>Key columns:</strong> <strong>PM Adj</strong> and <strong>OnA</strong>.
+        <strong>Key columns:</strong> <strong>PM Adj</strong> and <strong>OnOff Adj</strong>.
       </div>
     </section>
 
@@ -356,7 +359,7 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
                       <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnOff Adj</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -387,7 +390,7 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
                       <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnA</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnOff Adj</th>
                     </tr>
                   </thead>
                   <tbody>
