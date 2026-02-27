@@ -412,10 +412,11 @@ def generate_onoff_report() -> Path:
       padding: 18px 20px;
       border: 1px solid #254b72;
       margin-bottom: 14px;
+      text-align: center;
     }}
     h1 {{ margin: 0; font-size: 28px; }}
     h2 {{ margin: 0 0 10px; font-size: 20px; }}
-    .meta {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }}
+    .meta {{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; justify-content: center; }}
     .chip {{
       background: rgba(255,255,255,0.14);
       border: 1px solid rgba(255,255,255,0.22);
@@ -423,7 +424,7 @@ def generate_onoff_report() -> Path:
       border-radius: 999px;
       font-size: 12px;
     }}
-    .nav {{ margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; }}
+    .nav {{ margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }}
     .nav a {{ color: #e5f6ff; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }}
     .card {{
       background: var(--card);
