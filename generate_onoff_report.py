@@ -112,6 +112,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 "off_diff_total": 0.0,
                 "on_diff_adj_total": 0.0,
                 "off_diff_adj_total": 0.0,
+                "on_pts_for_adj_total": 0.0,
+                "on_pts_against_adj_total": 0.0,
+                "off_pts_for_adj_total": 0.0,
+                "off_pts_against_adj_total": 0.0,
             }
 
         a = agg[key]
@@ -122,6 +126,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         a["off_diff_total"] += _f(r["off_diff"])
         a["on_diff_adj_total"] += _f(r["on_diff_adj"])
         a["off_diff_adj_total"] += _f(r["off_diff_adj"])
+        a["on_pts_for_adj_total"] += _f(r["on_pts_for_adj"])
+        a["on_pts_against_adj_total"] += _f(r["on_pts_against_adj"])
+        a["off_pts_for_adj_total"] += _f(r["off_pts_for_adj"])
+        a["off_pts_against_adj_total"] += _f(r["off_pts_against_adj"])
 
     out: list[dict] = []
     team_ids = sorted({k[1] for k in agg.keys()}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
@@ -140,6 +148,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 "off_diff_total": a["off_diff_total"],
                 "on_diff_adj_total": a["on_diff_adj_total"],
                 "off_diff_adj_total": a["off_diff_adj_total"],
+                "on_pts_for_adj_total": a["on_pts_for_adj_total"],
+                "on_pts_against_adj_total": a["on_pts_against_adj_total"],
+                "off_pts_for_adj_total": a["off_pts_for_adj_total"],
+                "off_pts_against_adj_total": a["off_pts_against_adj_total"],
             }
         )
 
@@ -291,6 +303,37 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         pm_delta_100 = pm_adj_100 - pm_actual_100
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
+        # Break adjusted on-off into offensive and defensive components.
+        # Normalize using the same possession (or minute) denominators as above.
+        on_for_adj = _f(r["on_pts_for_adj_total"])
+        on_against_adj = _f(r["on_pts_against_adj_total"])
+        off_for_adj = _f(r["off_pts_for_adj_total"])
+        off_against_adj = _f(r["off_pts_against_adj_total"])
+
+        if on_poss > 0:
+            on_ortg_adj = on_for_adj * 100.0 / on_poss
+            on_drtg_adj = on_against_adj * 100.0 / on_poss
+        elif on_min > 0:
+            on_ortg_adj = on_for_adj * 48.0 / on_min
+            on_drtg_adj = on_against_adj * 48.0 / on_min
+        else:
+            on_ortg_adj = on_drtg_adj = 0.0
+
+        if off_poss > 0:
+            off_ortg_adj = off_for_adj * 100.0 / off_poss
+            off_drtg_adj = off_against_adj * 100.0 / off_poss
+        elif off_min > 0:
+            off_ortg_adj = off_for_adj * 48.0 / off_min
+            off_drtg_adj = off_against_adj * 48.0 / off_min
+        else:
+            off_ortg_adj = off_drtg_adj = 0.0
+
+        # Offensive: team ORtg adj when ON minus when OFF (positive = helps offense)
+        onoff_adj_off_100 = on_ortg_adj - off_ortg_adj
+        # Defensive: team DRtg adj when OFF minus when ON (positive = helps defense)
+        onoff_adj_def_100 = off_drtg_adj - on_drtg_adj
+        # These two sum to onoff_adj_100 by construction.
+
         records.append(
             {
                 "player_id": player_id,
@@ -305,6 +348,8 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
                 "pm_delta_100": pm_delta_100,
                 "onoff_actual_100": onoff_actual_100,
                 "onoff_adj_100": onoff_adj_100,
+                "onoff_adj_off_100": onoff_adj_off_100,
+                "onoff_adj_def_100": onoff_adj_def_100,
                 "onoff_delta_100": onoff_delta_100,
                 "raw_source": source,
             }
@@ -401,7 +446,7 @@ def generate_onoff_report() -> Path:
       max-height: 620px;
       background: #fff;
     }}
-    table {{ width: 100%; border-collapse: collapse; min-width: 960px; font-size: 12px; }}
+    table {{ width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 12px; }}
     th, td {{
       border-bottom: 1px solid #edf2f9;
       padding: 7px 8px;
@@ -467,7 +512,9 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_adj_100\" data-type=\"num\">PM Adj/100</th>
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\">OnA/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component of adjusted on-off: team adjusted ORtg per 100 when ON minus when OFF\">OnOff Adj Off/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component of adjusted on-off: team adjusted DRtg per 100 when OFF minus when ON (positive = player improves defense)\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
@@ -498,7 +545,9 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable\" data-key=\"pm_adj_100\" data-type=\"num\">PM Adj/100</th>
               <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta/100</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff/100</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\">OnA/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component of adjusted on-off: team adjusted ORtg per 100 when ON minus when OFF\">OnOff Adj Off/100</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component of adjusted on-off: team adjusted DRtg per 100 when OFF minus when ON (positive = player improves defense)\">OnOff Adj Def/100</th>
               <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta/100</th>
             </tr>
           </thead>
@@ -535,6 +584,8 @@ def generate_onoff_report() -> Path:
         <td class="${{cls(r.pm_delta_100)}}">${{fmt(r.pm_delta_100,1)}}</td>
         <td class="${{cls(r.onoff_actual_100)}}">${{fmt(r.onoff_actual_100,1)}}</td>
         <td class="${{cls(r.onoff_adj_100)}}">${{fmt(r.onoff_adj_100,1)}}</td>
+        <td class="${{cls(r.onoff_adj_off_100)}}">${{fmt(r.onoff_adj_off_100,1)}}</td>
+        <td class="${{cls(r.onoff_adj_def_100)}}">${{fmt(r.onoff_adj_def_100,1)}}</td>
         <td class="${{cls(r.onoff_delta_100)}}">${{fmt(r.onoff_delta_100,1)}}</td>
       </tr>`;
     }}
