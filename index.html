@@ -1099,11 +1099,11 @@
             const luckAmount = Math.abs(game.margin_delta);
             const luckyTeam = game.margin_delta > 0 ? game.away_team : game.home_team;
 
-            // Format swing players: 2 rows (away team, home team), top 2 per team with |delta| > 4
+            // Format swing players: 2 rows (away team, home team), top 2 per team with |delta| > 2
             let swingPlayerHtml = '';
             let topPlayers = game.top_swing_players || [];
             // Fallback to single swing_player if no top_swing_players
-            if (topPlayers.length === 0 && game.swing_player && Math.abs(game.swing_player_delta) >= 4) {
+            if (topPlayers.length === 0 && game.swing_player && Math.abs(game.swing_player_delta) >= 2) {
                 const playerTeam = game.swing_player_delta > 0 ?
                     (game.margin_delta > 0 ? game.away_team : game.home_team) :
                     (game.margin_delta > 0 ? game.home_team : game.away_team);
@@ -1116,13 +1116,13 @@
                 }];
             }
 
-            // Split by team and get top 2 per team with |delta| > 4
+            // Split by team and get top 2 per team with |delta| > 2
             const awayPlayers = topPlayers
-                .filter(p => p.team === game.away_team && Math.abs(p.delta) > 4)
+                .filter(p => p.team === game.away_team && Math.abs(p.delta) > 2)
                 .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
                 .slice(0, 2);
             const homePlayers = topPlayers
-                .filter(p => p.team === game.home_team && Math.abs(p.delta) > 4)
+                .filter(p => p.team === game.home_team && Math.abs(p.delta) > 2)
                 .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
                 .slice(0, 2);
 
