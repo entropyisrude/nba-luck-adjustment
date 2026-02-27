@@ -26,6 +26,11 @@ def main() -> None:
         default="2026-06-30",
         help="Season end date for history output (YYYY-MM-DD)",
     )
+    parser.add_argument(
+        "--skip-rapm",
+        action="store_true",
+        help="Skip RAPM report generation",
+    )
     args = parser.parse_args()
 
     if args.date:
@@ -50,6 +55,11 @@ def main() -> None:
 
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
+
+    if not args.skip_rapm:
+        rapm_cmd = [sys.executable, "generate_rapm_report.py"]
+        print("Running:", " ".join(rapm_cmd))
+        subprocess.run(rapm_cmd, check=True)
 
 
 if __name__ == "__main__":

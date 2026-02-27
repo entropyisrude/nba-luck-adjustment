@@ -72,6 +72,14 @@ python generate_onoff_daily_boxscore_report.py
 
 This writes both `data/onoff_daily_boxscores.html` and `onoff-daily.html`.
 
+Generate/update RAPM page (latest season + rolling last 3 years):
+
+```bash
+python generate_rapm_report.py
+```
+
+This updates `data/rapm_all.json`, `data/player_info_map.json`, and `rapm.html`.
+
 Multi-season backfill helper (monthly chunks + final rebuild):
 
 ```bash
