@@ -124,7 +124,7 @@ def main():
                 )
 
                 biggest_swing = get_biggest_swing_player(player_deltas)
-                top_swing_players = get_top_swing_players(player_deltas, threshold=5.0)
+                top_swing_players = get_top_swing_players(player_deltas, threshold=2.0)
 
                 home_team_id, away_team_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)
 
