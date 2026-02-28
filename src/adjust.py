@@ -376,12 +376,38 @@ def get_biggest_swing_player(player_deltas: list[dict]) -> dict | None:
     return max(player_deltas, key=lambda x: abs(x["delta_pts"]))
 
 
-def get_top_swing_players(player_deltas: list[dict], threshold: float = 2.0) -> list[dict]:
-    """Get all players with absolute point delta >= threshold, sorted by absolute impact."""
+def get_top_swing_players(player_deltas: list[dict], threshold: float = 2.0, per_team: int = 2) -> list[dict]:
+    """
+    Get top swing players from each team.
+
+    Args:
+        player_deltas: List of player delta dicts with team_id and delta_pts
+        threshold: Minimum absolute delta to include (default 2.0)
+        per_team: Max players per team (default 2)
+
+    Returns:
+        Top N players from each team with |delta| >= threshold, sorted by absolute impact.
+    """
     if not player_deltas:
         return []
+
+    # Filter by threshold
     filtered = [p for p in player_deltas if abs(p["delta_pts"]) >= threshold]
-    return sorted(filtered, key=lambda x: abs(x["delta_pts"]), reverse=True)
+
+    # Group by team and take top N from each
+    from collections import defaultdict
+    by_team = defaultdict(list)
+    for p in filtered:
+        by_team[p["team_id"]].append(p)
+
+    result = []
+    for team_id, players in by_team.items():
+        # Sort by absolute impact and take top N
+        sorted_players = sorted(players, key=lambda x: abs(x["delta_pts"]), reverse=True)
+        result.extend(sorted_players[:per_team])
+
+    # Sort combined result by absolute impact
+    return sorted(result, key=lambda x: abs(x["delta_pts"]), reverse=True)
 
 
 def update_player_state_attempt_decay(
