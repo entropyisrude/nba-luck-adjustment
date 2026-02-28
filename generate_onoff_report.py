@@ -304,31 +304,26 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
         # Break adjusted on-off into offensive and defensive components.
-        # Use on_poss from pbpstats for on-court normalization (it correctly
-        # reflects only games the player appeared in). For off-court, pbpstats
-        # off_poss is inflated — it counts all team possessions without the
-        # player, including games where they were DNP. Instead, estimate
-        # off_poss by applying the same possessions-per-minute rate to off_min.
+        # IMPORTANT: Do NOT use pbpstats possession counts for adjusted stats.
+        # For traded players, pbpstats may return season-long possessions mapped
+        # to their current team, while our adjusted point totals are team-specific.
+        # Instead, always estimate possessions from minutes using a consistent rate.
         on_for_adj = _f(r["on_pts_for_adj_total"])
         on_against_adj = _f(r["on_pts_against_adj_total"])
         off_for_adj = _f(r["off_pts_for_adj_total"])
         off_against_adj = _f(r["off_pts_against_adj_total"])
 
-        if on_poss > 0 and on_min > 0:
-            poss_per_min = on_poss / on_min
-            on_ortg_adj = on_for_adj * 100.0 / on_poss
-            on_drtg_adj = on_against_adj * 100.0 / on_poss
-            off_poss_est = off_min * poss_per_min if off_min > 0 else 0.0
-        elif on_min > 0:
-            poss_per_min = 100.0 / 48.0  # fallback: ~2.08 poss/min
-            on_ortg_adj = on_for_adj * 100.0 / (on_min * poss_per_min)
-            on_drtg_adj = on_against_adj * 100.0 / (on_min * poss_per_min)
-            off_poss_est = off_min * poss_per_min if off_min > 0 else 0.0
+        # Use consistent possessions-per-minute rate (100 poss per 48 min)
+        poss_per_min = 100.0 / 48.0  # ~2.08 poss/min
+        if on_min > 0:
+            on_poss_est = on_min * poss_per_min
+            on_ortg_adj = on_for_adj * 100.0 / on_poss_est
+            on_drtg_adj = on_against_adj * 100.0 / on_poss_est
         else:
             on_ortg_adj = on_drtg_adj = 0.0
-            off_poss_est = 0.0
 
-        if off_poss_est > 0:
+        if off_min > 0:
+            off_poss_est = off_min * poss_per_min
             off_ortg_adj = off_for_adj * 100.0 / off_poss_est
             off_drtg_adj = off_against_adj * 100.0 / off_poss_est
         else:

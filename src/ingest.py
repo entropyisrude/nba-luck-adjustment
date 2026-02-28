@@ -10,6 +10,10 @@ import pandas as pd
 import requests
 
 from nba_api.stats.endpoints import playercareerstats
+from nba_api.stats.endpoints import leaguegamefinder
+from nba_api.stats.endpoints import boxscoretraditionalv2
+from nba_api.stats.endpoints import boxscoresummaryv2
+from nba_api.stats.endpoints import playbyplayv2
 
 
 # Cache for player career stats (in-memory)
@@ -18,6 +22,7 @@ _cache_loaded = False
 
 # File-based cache path
 CAREER_CACHE_PATH = Path("data/career_stats_cache.json")
+LOCAL_PBP_DIR = Path("data/pbp")
 
 
 def _load_career_cache() -> None:
@@ -93,16 +98,30 @@ DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 5
 BASE_SLEEP = 0.8
 JITTER = 0.6
+STATS_TIMEOUT = 12
+STATS_MAX_RETRIES = 5
 
 # Cache for schedule (loaded once)
 _schedule_cache: dict[str, list[str]] | None = None
+_local_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
+_season_schedule_cache: dict[str, dict[str, list[str]]] = {}
+_stats_boxscore_cache: dict[str, dict[str, pd.DataFrame]] = {}
+_stats_summary_cache: dict[str, tuple[int, int]] = {}
+
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+    "Accept": "application/json,text/plain,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://www.nba.com",
+    "Referer": "https://www.nba.com/",
+}
 
 
 def _get_json(url: str) -> dict[str, Any]:
     last_err: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            r = requests.get(url, timeout=DEFAULT_TIMEOUT)
+            r = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=DEFAULT_HEADERS)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -154,13 +173,228 @@ def _mmddyyyy_to_yyyymmdd(mmddyyyy: str) -> str:
     return f"{yyyy}{mm}{dd}"
 
 
-def get_game_ids_for_date(game_date_mmddyyyy: str) -> list[str]:
+def _season_start_year_from_mmddyyyy(game_date_mmddyyyy: str) -> int:
+    mm, dd, yyyy = game_date_mmddyyyy.split("/")
+    y = int(yyyy)
+    m = int(mm)
+    return y if m >= 7 else y - 1
+
+
+def _season_from_mmddyyyy(game_date_mmddyyyy: str) -> str:
+    start = _season_start_year_from_mmddyyyy(game_date_mmddyyyy)
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def _normalize_statsv3_actions(actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    for a in actions:
+        at = str(a.get("actionType", "") or "")
+        desc = str(a.get("description", "") or "")
+        desc_lower = str(desc).lower()
+        if at in {"Made Shot", "Missed Shot"}:
+            if "3pt" in desc_lower or "3-pt" in desc_lower or "3 pt" in desc_lower:
+                a["actionType"] = "3pt"
+            if not a.get("shotResult"):
+                a["shotResult"] = "Made" if at == "Made Shot" else "Missed"
+        if "orderNumber" not in a and a.get("actionNumber") is not None:
+            a["orderNumber"] = a.get("actionNumber")
+    return actions
+
+
+def _normalize_name(name: str) -> str:
+    return "".join(ch for ch in (name or "").lower() if ch.isalnum())
+
+
+def _expand_local_substitutions(actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    team_map: dict[int, dict[str, int]] = {}
+    for a in actions:
+        try:
+            team_id = int(a.get("teamId", 0) or 0)
+            pid = int(a.get("personId", 0) or 0)
+        except Exception:
+            continue
+        if team_id <= 0 or pid <= 0:
+            continue
+        name = str(a.get("playerName", "") or "")
+        name_i = str(a.get("playerNameI", "") or "")
+        m = team_map.setdefault(team_id, {})
+        key_full = _normalize_name(name)
+        if key_full:
+            m[key_full] = pid
+            parts = [p for p in key_full.split() if p]
+            if parts:
+                m[parts[-1]] = pid
+        raw_parts = [p for p in str(name).replace(".", " ").split(" ") if p]
+        if raw_parts:
+            m[_normalize_name(raw_parts[-1])] = pid
+        if name_i:
+            m[_normalize_name(name_i)] = pid
+
+    expanded: list[dict[str, Any]] = []
+    for a in actions:
+        at = str(a.get("actionType", "")).lower()
+        if at != "substitution":
+            expanded.append(a)
+            continue
+        desc = str(a.get("description", "") or "")
+        if "SUB:" not in desc or " FOR " not in desc:
+            expanded.append(a)
+            continue
+        team_id = int(a.get("teamId", 0) or 0)
+        body = desc.split("SUB:", 1)[1].strip()
+        try:
+            in_name, out_name = body.split(" FOR ", 1)
+        except Exception:
+            expanded.append(a)
+            continue
+        team_lookup = team_map.get(team_id, {})
+        in_pid = team_lookup.get(_normalize_name(in_name.strip()), 0)
+        out_pid = team_lookup.get(_normalize_name(out_name.strip()), 0)
+        pid_raw = int(a.get("personId", 0) or 0)
+        if pid_raw > 0:
+            if in_pid == 0 and out_pid != pid_raw:
+                in_pid = pid_raw
+            elif out_pid == 0 and in_pid != pid_raw:
+                out_pid = pid_raw
+            elif in_pid == 0 and out_pid == 0:
+                in_pid = pid_raw
+        if out_pid > 0 and out_pid != in_pid:
+            out_row = dict(a)
+            out_row["personId"] = out_pid
+            out_row["subType"] = "out"
+            expanded.append(out_row)
+        in_row = dict(a)
+        in_row["personId"] = int(in_pid or 0)
+        in_row["subType"] = "in"
+        expanded.append(in_row)
+    return expanded
+
+
+def _load_local_pbp_season(season_start_year: int) -> dict[str, list[dict[str, Any]]] | None:
+    path = LOCAL_PBP_DIR / f"nbastatsv3_{season_start_year}.csv"
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, dtype={"gameId": str})
+    if df.empty:
+        return {}
+    df["gameId"] = df["gameId"].astype(str).str.lstrip("0")
+    out: dict[str, list[dict[str, Any]]] = {}
+    for gid, grp in df.groupby("gameId"):
+        actions = grp.to_dict(orient="records")
+        out[gid] = _normalize_statsv3_actions(actions)
+    return out
+
+
+def _get_game_ids_for_date_from_stats_api(
+    game_date_mmddyyyy: str, season_type: str = "Regular Season", season_override: str | None = None
+) -> list[str]:
+    season = season_override if season_override else _season_from_mmddyyyy(game_date_mmddyyyy)
+    cache_key = f"{season}_{season_type}"
+    if cache_key not in _season_schedule_cache:
+        _season_schedule_cache[cache_key] = _load_season_schedule_from_stats_api(season, season_type)
+    return _season_schedule_cache.get(cache_key, {}).get(game_date_mmddyyyy, [])
+
+
+def _load_season_schedule_from_stats_api(season: str, season_type: str = "Regular Season") -> dict[str, list[str]]:
+    """
+    Load schedule for a season from the NBA stats API.
+
+    Args:
+        season: Season string like "2024-25"
+        season_type: "Regular Season" or "Playoffs"
+    """
+    # Game ID prefix: 002 = Regular Season, 004 = Playoffs
+    game_id_prefix = "004" if season_type == "Playoffs" else "002"
+
+    last_err: Exception | None = None
+    for attempt in range(1, STATS_MAX_RETRIES + 1):
+        try:
+            lg = leaguegamefinder.LeagueGameFinder(
+                season_nullable=season,
+                season_type_nullable=season_type,
+                player_or_team_abbreviation="T",
+                league_id_nullable="00",
+                timeout=STATS_TIMEOUT,
+            )
+            df = lg.get_data_frames()[0]
+            if df.empty:
+                return {}
+
+            out: dict[str, list[str]] = {}
+            games = df[["GAME_ID", "GAME_DATE"]].drop_duplicates()
+            for _, r in games.iterrows():
+                gid = str(r["GAME_ID"])
+                if not gid.startswith(game_id_prefix):
+                    continue
+                y, m, d = str(r["GAME_DATE"]).split("-")
+                mmddyyyy = f"{m}/{d}/{y}"
+                out.setdefault(mmddyyyy, []).append(gid)
+            return out
+        except Exception as e:
+            last_err = e
+            sleep_s = BASE_SLEEP * (2 ** (attempt - 1)) + random.random() * JITTER
+            time.sleep(sleep_s)
+    if last_err:
+        raise last_err
+    return {}
+
+
+def _load_stats_boxscore(game_id: str) -> dict[str, pd.DataFrame]:
+    gid = str(game_id)
+    if gid in _stats_boxscore_cache:
+        return _stats_boxscore_cache[gid]
+
+    bs = boxscoretraditionalv2.BoxScoreTraditionalV2(
+        game_id=gid,
+        timeout=max(STATS_TIMEOUT, 45),
+    )
+    dfs = bs.get_data_frames()
+    players = dfs[0] if len(dfs) > 0 else pd.DataFrame()
+    teams = dfs[1] if len(dfs) > 1 else pd.DataFrame()
+    out = {"players": players, "teams": teams}
+    _stats_boxscore_cache[gid] = out
+    return out
+
+
+def _load_stats_home_away(game_id: str) -> tuple[int, int]:
+    gid = str(game_id)
+    if gid in _stats_summary_cache:
+        return _stats_summary_cache[gid]
+    sm = boxscoresummaryv2.BoxScoreSummaryV2(
+        game_id=gid,
+        timeout=max(STATS_TIMEOUT, 45),
+    )
+    dfs = sm.get_data_frames()
+    if not dfs or dfs[0].empty:
+        raise RuntimeError(f"boxscoresummaryv2 empty for {gid}")
+    row = dfs[0].iloc[0]
+    home_id = int(row.get("HOME_TEAM_ID") or 0)
+    away_id = int(row.get("VISITOR_TEAM_ID") or 0)
+    out = (home_id, away_id)
+    _stats_summary_cache[gid] = out
+    return out
+
+
+def get_game_ids_for_date(
+    game_date_mmddyyyy: str, season_type: str = "Regular Season", season_override: str | None = None
+) -> list[str]:
     """
     Return list of NBA gameIds for a given date (MM/DD/YYYY) using schedule.
-    Only returns completed regular season games.
+
+    Args:
+        game_date_mmddyyyy: Date in MM/DD/YYYY format
+        season_type: "Regular Season" or "Playoffs"
+        season_override: Optional season string (e.g., "2019-20") to override automatic detection.
+                        Useful for edge cases like the COVID bubble where games are played outside
+                        the normal season dates.
     """
-    schedule = _load_schedule()
-    return schedule.get(game_date_mmddyyyy, [])
+    ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
+    if ids:
+        return ids
+    # Fallback to CDN schedule (only works for regular season)
+    if season_type == "Regular Season" and not season_override:
+        schedule = _load_schedule()
+        return schedule.get(game_date_mmddyyyy, [])
+    return []
 
 
 def _get_boxscore_json(game_id: str, game_date_mmddyyyy: str) -> dict[str, Any]:
@@ -172,13 +406,18 @@ def get_game_home_away_team_ids(game_id: str, game_date_mmddyyyy: str) -> tuple[
     """
     Returns (home_team_id, away_team_id) from cdn.nba.com boxscore.
     """
-    js = _get_boxscore_json(game_id, game_date_mmddyyyy)
-    game = js.get("game", {}) or {}
-    home = game.get("homeTeam", {}) or {}
-    away = game.get("awayTeam", {}) or {}
-    home_id = int(home.get("teamId", 0))
-    away_id = int(away.get("teamId", 0))
-    return home_id, away_id
+    try:
+        js = _get_boxscore_json(game_id, game_date_mmddyyyy)
+        game = js.get("game", {}) or {}
+        home = game.get("homeTeam", {}) or {}
+        away = game.get("awayTeam", {}) or {}
+        home_id = int(home.get("teamId", 0))
+        away_id = int(away.get("teamId", 0))
+        if home_id > 0 and away_id > 0:
+            return home_id, away_id
+    except Exception:
+        pass
+    return _load_stats_home_away(game_id)
 
 
 def get_boxscore_team_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
@@ -186,44 +425,60 @@ def get_boxscore_team_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
     Team totals from cdn.nba.com boxscore.
     Returns columns: GAME_ID, TEAM_ID, TEAM_ABBREVIATION, PTS, FG3M, FG3A
     """
-    js = _get_boxscore_json(game_id, game_date_mmddyyyy)
-    game = js.get("game", {}) or {}
+    try:
+        js = _get_boxscore_json(game_id, game_date_mmddyyyy)
+        game = js.get("game", {}) or {}
 
-    home = game.get("homeTeam", {}) or {}
-    away = game.get("awayTeam", {}) or {}
+        home = game.get("homeTeam", {}) or {}
+        away = game.get("awayTeam", {}) or {}
 
-    def _num(x):
-        try:
-            return float(x)
-        except Exception:
-            return 0.0
+        def _num(x):
+            try:
+                return float(x)
+            except Exception:
+                return 0.0
 
-    rows = []
-    for team in [home, away]:
-        team_id = int(team.get("teamId", 0))
-        tricode = team.get("teamTricode", "") or team.get("triCode", "") or ""
-        score = _num(team.get("score", 0))
+        rows = []
+        for team in [home, away]:
+            team_id = int(team.get("teamId", 0))
+            tricode = team.get("teamTricode", "") or team.get("triCode", "") or ""
+            score = _num(team.get("score", 0))
 
-        # Team statistics contain 3PT data
-        stats = team.get("statistics", {}) or {}
-        fg3m = _num(stats.get("threePointersMade", 0))
-        fg3a = _num(stats.get("threePointersAttempted", 0))
+            # Team statistics contain 3PT data
+            stats = team.get("statistics", {}) or {}
+            fg3m = _num(stats.get("threePointersMade", 0))
+            fg3a = _num(stats.get("threePointersAttempted", 0))
 
-        # Use score from team level, or points from statistics
-        pts = score if score > 0 else _num(stats.get("points", 0))
+            # Use score from team level, or points from statistics
+            pts = score if score > 0 else _num(stats.get("points", 0))
 
-        rows.append(
+            rows.append(
+                {
+                    "GAME_ID": str(game_id),
+                    "TEAM_ID": team_id,
+                    "TEAM_ABBREVIATION": str(tricode),
+                    "PTS": pts,
+                    "FG3M": fg3m,
+                    "FG3A": fg3a,
+                }
+            )
+
+        return pd.DataFrame(rows)
+    except Exception:
+        stats = _load_stats_boxscore(game_id)["teams"]
+        if stats.empty:
+            return pd.DataFrame(columns=["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "PTS", "FG3M", "FG3A"])
+        out = pd.DataFrame(
             {
-                "GAME_ID": str(game_id),
-                "TEAM_ID": team_id,
-                "TEAM_ABBREVIATION": str(tricode),
-                "PTS": pts,
-                "FG3M": fg3m,
-                "FG3A": fg3a,
+                "GAME_ID": stats["GAME_ID"].astype(str),
+                "TEAM_ID": stats["TEAM_ID"].astype(int),
+                "TEAM_ABBREVIATION": stats["TEAM_ABBREVIATION"].astype(str),
+                "PTS": pd.to_numeric(stats["PTS"], errors="coerce").fillna(0.0),
+                "FG3M": pd.to_numeric(stats["FG3M"], errors="coerce").fillna(0.0),
+                "FG3A": pd.to_numeric(stats["FG3A"], errors="coerce").fillna(0.0),
             }
         )
-
-    return pd.DataFrame(rows)
+        return out
 
 
 def get_boxscore_player_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
@@ -231,54 +486,72 @@ def get_boxscore_player_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFram
     Player rows from cdn.nba.com boxscore.
     Returns columns: GAME_ID, TEAM_ID, PLAYER_ID, PLAYER_NAME, FG3M, FG3A
     """
-    js = _get_boxscore_json(game_id, game_date_mmddyyyy)
-    game = js.get("game", {}) or {}
+    try:
+        js = _get_boxscore_json(game_id, game_date_mmddyyyy)
+        game = js.get("game", {}) or {}
 
-    home = game.get("homeTeam", {}) or {}
-    away = game.get("awayTeam", {}) or {}
+        home = game.get("homeTeam", {}) or {}
+        away = game.get("awayTeam", {}) or {}
 
-    def _num(x):
-        try:
-            return float(x)
-        except Exception:
-            return 0.0
+        def _num(x):
+            try:
+                return float(x)
+            except Exception:
+                return 0.0
 
-    rows = []
-    for team in [home, away]:
-        team_id = int(team.get("teamId", 0))
-        players = team.get("players", []) or []
+        rows = []
+        for team in [home, away]:
+            team_id = int(team.get("teamId", 0))
+            players = team.get("players", []) or []
 
-        for p in players:
-            # Skip players who didn't play
-            if p.get("played") != "1":
-                continue
+            for p in players:
+                # Skip players who didn't play
+                if p.get("played") != "1":
+                    continue
 
-            pid = p.get("personId")
-            if pid is None:
-                continue
+                pid = p.get("personId")
+                if pid is None:
+                    continue
 
-            # Build player name
-            first = p.get("firstName", "") or ""
-            last = p.get("familyName", "") or p.get("lastName", "") or ""
-            name = (first + " " + last).strip() or p.get("name", "") or p.get("nameI", "") or ""
+                # Build player name
+                first = p.get("firstName", "") or ""
+                last = p.get("familyName", "") or p.get("lastName", "") or ""
+                name = (first + " " + last).strip() or p.get("name", "") or p.get("nameI", "") or ""
 
-            # Player statistics
-            stats = p.get("statistics", {}) or {}
-            fg3m = _num(stats.get("threePointersMade", 0))
-            fg3a = _num(stats.get("threePointersAttempted", 0))
+                # Player statistics
+                stats = p.get("statistics", {}) or {}
+                fg3m = _num(stats.get("threePointersMade", 0))
+                fg3a = _num(stats.get("threePointersAttempted", 0))
 
-            rows.append(
-                {
-                    "GAME_ID": str(game_id),
-                    "TEAM_ID": team_id,
-                    "PLAYER_ID": int(pid),
-                    "PLAYER_NAME": str(name),
-                    "FG3M": fg3m,
-                    "FG3A": fg3a,
-                }
-            )
+                rows.append(
+                    {
+                        "GAME_ID": str(game_id),
+                        "TEAM_ID": team_id,
+                        "PLAYER_ID": int(pid),
+                        "PLAYER_NAME": str(name),
+                        "FG3M": fg3m,
+                        "FG3A": fg3a,
+                    }
+                )
 
-    return pd.DataFrame(rows)
+        return pd.DataFrame(rows)
+    except Exception:
+        players = _load_stats_boxscore(game_id)["players"]
+        if players.empty:
+            return pd.DataFrame(columns=["GAME_ID", "TEAM_ID", "PLAYER_ID", "PLAYER_NAME", "FG3M", "FG3A"])
+        mins = players["MIN"].map(_parse_minutes_any)
+        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
+        p = players.loc[played].copy()
+        return pd.DataFrame(
+            {
+                "GAME_ID": p["GAME_ID"].astype(str),
+                "TEAM_ID": p["TEAM_ID"].astype(int),
+                "PLAYER_ID": p["PLAYER_ID"].astype(int),
+                "PLAYER_NAME": p["PLAYER_NAME"].astype(str),
+                "FG3M": pd.to_numeric(p["FG3M"], errors="coerce").fillna(0.0),
+                "FG3A": pd.to_numeric(p["FG3A"], errors="coerce").fillna(0.0),
+            }
+        )
 
 
 def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
@@ -288,42 +561,76 @@ def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
         GAME_ID, TEAM_ID, PLAYER_ID, PLAYER_NAME, STARTER, ONCOURT, PLAYED,
         PLUS_MINUS, MINUTES
     """
-    js = _get_boxscore_json(game_id, game_date_mmddyyyy)
-    game = js.get("game", {}) or {}
+    try:
+        js = _get_boxscore_json(game_id, game_date_mmddyyyy)
+        game = js.get("game", {}) or {}
 
-    home = game.get("homeTeam", {}) or {}
-    away = game.get("awayTeam", {}) or {}
+        home = game.get("homeTeam", {}) or {}
+        away = game.get("awayTeam", {}) or {}
 
-    rows = []
-    for team in [home, away]:
-        team_id = int(team.get("teamId", 0))
-        players = team.get("players", []) or []
+        rows = []
+        for team in [home, away]:
+            team_id = int(team.get("teamId", 0))
+            players = team.get("players", []) or []
 
-        for p in players:
-            pid = p.get("personId")
-            if pid is None:
-                continue
+            for p in players:
+                pid = p.get("personId")
+                if pid is None:
+                    continue
 
-            # Build player name
-            first = p.get("firstName", "") or ""
-            last = p.get("familyName", "") or p.get("lastName", "") or ""
-            name = (first + " " + last).strip() or p.get("name", "") or p.get("nameI", "") or ""
+                # Build player name
+                first = p.get("firstName", "") or ""
+                last = p.get("familyName", "") or p.get("lastName", "") or ""
+                name = (first + " " + last).strip() or p.get("name", "") or p.get("nameI", "") or ""
 
-            rows.append(
-                {
-                    "GAME_ID": str(game_id),
-                    "TEAM_ID": team_id,
-                    "PLAYER_ID": int(pid),
-                    "PLAYER_NAME": str(name),
-                    "STARTER": str(p.get("starter", "0") or "0"),
-                    "ONCOURT": str(p.get("oncourt", "0") or "0"),
-                    "PLAYED": str(p.get("played", "0") or "0"),
-                    "PLUS_MINUS": float((p.get("statistics", {}) or {}).get("plusMinusPoints") or 0.0),
-                    "MINUTES": _iso_duration_to_minutes((p.get("statistics", {}) or {}).get("minutes")),
-                }
+                rows.append(
+                    {
+                        "GAME_ID": str(game_id),
+                        "TEAM_ID": team_id,
+                        "PLAYER_ID": int(pid),
+                        "PLAYER_NAME": str(name),
+                        "STARTER": str(p.get("starter", "0") or "0"),
+                        "ONCOURT": str(p.get("oncourt", "0") or "0"),
+                        "PLAYED": str(p.get("played", "0") or "0"),
+                        "PLUS_MINUS": float((p.get("statistics", {}) or {}).get("plusMinusPoints") or 0.0),
+                        "MINUTES": _iso_duration_to_minutes((p.get("statistics", {}) or {}).get("minutes")),
+                    }
+                )
+
+        return pd.DataFrame(rows)
+    except Exception:
+        players = _load_stats_boxscore(game_id)["players"]
+        if players.empty:
+            return pd.DataFrame(
+                columns=[
+                    "GAME_ID",
+                    "TEAM_ID",
+                    "PLAYER_ID",
+                    "PLAYER_NAME",
+                    "STARTER",
+                    "ONCOURT",
+                    "PLAYED",
+                    "PLUS_MINUS",
+                    "MINUTES",
+                ]
             )
-
-    return pd.DataFrame(rows)
+        mins = players["MIN"].map(_parse_minutes_any)
+        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
+        starter = players["START_POSITION"].fillna("").astype(str).str.strip().ne("")
+        return pd.DataFrame(
+            {
+                "GAME_ID": players["GAME_ID"].astype(str),
+                "TEAM_ID": players["TEAM_ID"].astype(int),
+                "PLAYER_ID": players["PLAYER_ID"].astype(int),
+                "PLAYER_NAME": players["PLAYER_NAME"].astype(str),
+                "NAME_I": players["NICKNAME"].astype(str),
+                "STARTER": starter.map(lambda x: "1" if x else "0"),
+                "ONCOURT": "0",
+                "PLAYED": played.map(lambda x: "1" if x else "0"),
+                "PLUS_MINUS": pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0),
+                "MINUTES": mins,
+            }
+        )
 
 
 def _iso_duration_to_minutes(value: str | None) -> float:
@@ -347,6 +654,26 @@ def _iso_duration_to_minutes(value: str | None) -> float:
         return 0.0
 
 
+def _parse_minutes_any(value: Any) -> float:
+    if value is None:
+        return 0.0
+    s = str(value).strip()
+    if not s:
+        return 0.0
+    if s.startswith("PT"):
+        return _iso_duration_to_minutes(s)
+    if ":" in s:
+        try:
+            mm, ss = s.split(":", 1)
+            return round(int(mm) + float(ss) / 60.0, 4)
+        except Exception:
+            return 0.0
+    try:
+        return float(s)
+    except Exception:
+        return 0.0
+
+
 def get_starters_by_team(game_id: str, game_date_mmddyyyy: str) -> dict[int, list[int]]:
     """
     Return starters per team_id from boxscore.
@@ -365,14 +692,158 @@ def get_starters_by_team(game_id: str, game_date_mmddyyyy: str) -> dict[int, lis
     return starters
 
 
+def _load_pbp_from_stats_api(game_id: str) -> list[dict[str, Any]]:
+    """
+    Load play-by-play from NBA stats API (fallback for historical games).
+    Converts the stats API format to match CDN format.
+    """
+    gid = str(game_id)
+    last_err: Exception | None = None
+    for attempt in range(1, STATS_MAX_RETRIES + 1):
+        try:
+            time.sleep(0.5)  # Rate limiting
+            pbp = playbyplayv2.PlayByPlayV2(game_id=gid, timeout=max(STATS_TIMEOUT, 60))
+            df = pbp.get_data_frames()[0]
+            if df.empty:
+                return []
+
+            actions = []
+            for _, row in df.iterrows():
+                # Map stats API fields to CDN-like format
+                action = {
+                    "actionNumber": int(row.get("EVENTNUM", 0) or 0),
+                    "period": int(row.get("PERIOD", 0) or 0),
+                    "clock": row.get("PCTIMESTRING", ""),
+                    "teamId": int(row.get("PLAYER1_TEAM_ID", 0) or 0),
+                    "personId": int(row.get("PLAYER1_ID", 0) or 0),
+                    "playerName": str(row.get("PLAYER1_NAME", "") or ""),
+                    "description": str(row.get("HOMEDESCRIPTION", "") or "") + str(row.get("VISITORDESCRIPTION", "") or "") + str(row.get("NEUTRALDESCRIPTION", "") or ""),
+                }
+
+                # Determine action type from event message type
+                event_type = int(row.get("EVENTMSGTYPE", 0) or 0)
+                event_action = int(row.get("EVENTMSGACTIONTYPE", 0) or 0)
+                desc = action["description"].lower()
+
+                if event_type == 1:  # Made shot
+                    if "3pt" in desc or "3-pt" in desc:
+                        action["actionType"] = "3pt"
+                        action["shotResult"] = "Made"
+                    else:
+                        action["actionType"] = "Made Shot"
+                elif event_type == 2:  # Missed shot
+                    if "3pt" in desc or "3-pt" in desc:
+                        action["actionType"] = "3pt"
+                        action["shotResult"] = "Missed"
+                    else:
+                        action["actionType"] = "Missed Shot"
+                elif event_type == 8:  # Substitution
+                    action["actionType"] = "substitution"
+                    # Player 1 is entering, Player 2 is leaving
+                    p2_id = int(row.get("PLAYER2_ID", 0) or 0)
+                    if p2_id > 0:
+                        action["description"] = f"SUB: {row.get('PLAYER1_NAME', '')} FOR {row.get('PLAYER2_NAME', '')}"
+                else:
+                    action["actionType"] = str(event_type)
+
+                actions.append(action)
+
+            return actions
+        except Exception as e:
+            last_err = e
+            sleep_s = BASE_SLEEP * (2 ** (attempt - 1)) + random.random() * JITTER
+            time.sleep(sleep_s)
+
+    if last_err:
+        raise last_err
+    return []
+
+
 def get_playbyplay_actions(game_id: str, game_date_mmddyyyy: str) -> list[dict[str, Any]]:
     """
     Fetch play-by-play data and return all actions.
+    Tries local cache first, then CDN, then stats API as fallback.
     """
-    url = PLAYBYPLAY_URL.format(game_id=game_id)
-    pbp_data = _get_json(url)
-    game = pbp_data.get("game", {}) or {}
-    return game.get("actions", []) or []
+    gid = str(game_id).lstrip("0")
+    season_start = _season_start_year_from_mmddyyyy(game_date_mmddyyyy)
+    if season_start not in _local_pbp_cache:
+        local = _load_local_pbp_season(season_start)
+        if local is not None:
+            _local_pbp_cache[season_start] = local
+    local_season = _local_pbp_cache.get(season_start)
+    if local_season and gid in local_season:
+        actions = local_season[gid]
+        return _expand_local_substitutions(actions)
+
+    # Try CDN first
+    try:
+        url = PLAYBYPLAY_URL.format(game_id=game_id)
+        pbp_data = _get_json(url)
+        game = pbp_data.get("game", {}) or {}
+        actions = game.get("actions", []) or []
+        if actions:
+            return actions
+    except Exception:
+        pass
+
+    # Fallback to stats API for historical games
+    try:
+        return _load_pbp_from_stats_api(game_id)
+    except Exception:
+        return []
+
+
+def get_player_3pt_df_from_pbp(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
+    """
+    Build per-player 3PT attempts/makes for a game from play-by-play.
+    Returns columns: GAME_ID, TEAM_ID, PLAYER_ID, PLAYER_NAME, FG3M, FG3A
+    """
+    actions = get_playbyplay_actions(game_id, game_date_mmddyyyy)
+    if not actions:
+        return pd.DataFrame(columns=["GAME_ID", "TEAM_ID", "PLAYER_ID", "PLAYER_NAME", "FG3M", "FG3A"])
+
+    counts: dict[int, dict[str, Any]] = {}
+    for a in actions:
+        at = str(a.get("actionType") or "").lower()
+        if at != "3pt":
+            continue
+        try:
+            pid = int(a.get("personId", 0) or 0)
+        except Exception:
+            pid = 0
+        if pid <= 0:
+            continue
+        try:
+            team_id = int(a.get("teamId", 0) or 0)
+        except Exception:
+            team_id = 0
+        name = str(a.get("playerName") or a.get("playerNameI") or "").strip()
+        made = str(a.get("shotResult") or "").lower() == "made"
+
+        rec = counts.setdefault(pid, {"TEAM_ID": team_id, "PLAYER_NAME": name, "FG3A": 0.0, "FG3M": 0.0})
+        if not rec.get("PLAYER_NAME") and name:
+            rec["PLAYER_NAME"] = name
+        if rec.get("TEAM_ID", 0) in (0, None) and team_id:
+            rec["TEAM_ID"] = team_id
+        rec["FG3A"] += 1.0
+        if made:
+            rec["FG3M"] += 1.0
+
+    rows = []
+    for pid, rec in counts.items():
+        rows.append(
+            {
+                "GAME_ID": str(game_id),
+                "TEAM_ID": int(rec.get("TEAM_ID") or 0),
+                "PLAYER_ID": int(pid),
+                "PLAYER_NAME": str(rec.get("PLAYER_NAME") or ""),
+                "FG3M": float(rec.get("FG3M") or 0.0),
+                "FG3A": float(rec.get("FG3A") or 0.0),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 
 
 def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
@@ -394,7 +865,7 @@ def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFr
     shots = []
     for action in actions:
         desc = action.get("description", "")
-        desc_lower = desc.lower()
+        desc_lower = str(desc).lower()
 
         # Look for 3PT shots by description
         is_3pt = "3pt" in desc_lower or "3-pt" in desc_lower
@@ -404,7 +875,7 @@ def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFr
             made = 0 if desc_lower.startswith("miss") else 1
 
             # Get area (corner vs above break)
-            area_raw = (action.get("area", "") or "").lower()
+            area_raw = str(action.get("area", "") or "").lower()
             if "corner" in area_raw:
                 area = "corner"
             else:
