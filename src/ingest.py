@@ -13,7 +13,7 @@ from nba_api.stats.endpoints import playercareerstats
 from nba_api.stats.endpoints import leaguegamefinder
 from nba_api.stats.endpoints import boxscoretraditionalv2
 from nba_api.stats.endpoints import boxscoresummaryv2
-from nba_api.stats.endpoints import playbyplayv2
+from nba_api.stats.endpoints import playbyplayv3
 
 
 # Cache for player career stats (in-memory)
@@ -696,60 +696,20 @@ def get_starters_by_team(game_id: str, game_date_mmddyyyy: str) -> dict[int, lis
 def _load_pbp_from_stats_api(game_id: str) -> list[dict[str, Any]]:
     """
     Load play-by-play from NBA stats API (fallback for historical games).
-    Converts the stats API format to match CDN format.
+    Uses PlayByPlayV3 which returns CDN-like action schema.
     """
     gid = str(game_id)
     last_err: Exception | None = None
     for attempt in range(1, STATS_MAX_RETRIES + 1):
         try:
             time.sleep(0.5)  # Rate limiting
-            pbp = playbyplayv2.PlayByPlayV2(game_id=gid, timeout=max(STATS_TIMEOUT, 60))
-            df = pbp.get_data_frames()[0]
-            if df.empty:
-                return []
-
-            actions = []
-            for _, row in df.iterrows():
-                # Map stats API fields to CDN-like format
-                action = {
-                    "actionNumber": int(row.get("EVENTNUM", 0) or 0),
-                    "period": int(row.get("PERIOD", 0) or 0),
-                    "clock": row.get("PCTIMESTRING", ""),
-                    "teamId": int(row.get("PLAYER1_TEAM_ID", 0) or 0),
-                    "personId": int(row.get("PLAYER1_ID", 0) or 0),
-                    "playerName": str(row.get("PLAYER1_NAME", "") or ""),
-                    "description": str(row.get("HOMEDESCRIPTION", "") or "") + str(row.get("VISITORDESCRIPTION", "") or "") + str(row.get("NEUTRALDESCRIPTION", "") or ""),
-                }
-
-                # Determine action type from event message type
-                event_type = int(row.get("EVENTMSGTYPE", 0) or 0)
-                event_action = int(row.get("EVENTMSGACTIONTYPE", 0) or 0)
-                desc = action["description"].lower()
-
-                if event_type == 1:  # Made shot
-                    if "3pt" in desc or "3-pt" in desc:
-                        action["actionType"] = "3pt"
-                        action["shotResult"] = "Made"
-                    else:
-                        action["actionType"] = "Made Shot"
-                elif event_type == 2:  # Missed shot
-                    if "3pt" in desc or "3-pt" in desc:
-                        action["actionType"] = "3pt"
-                        action["shotResult"] = "Missed"
-                    else:
-                        action["actionType"] = "Missed Shot"
-                elif event_type == 8:  # Substitution
-                    action["actionType"] = "substitution"
-                    # Player 1 is entering, Player 2 is leaving
-                    p2_id = int(row.get("PLAYER2_ID", 0) or 0)
-                    if p2_id > 0:
-                        action["description"] = f"SUB: {row.get('PLAYER1_NAME', '')} FOR {row.get('PLAYER2_NAME', '')}"
-                else:
-                    action["actionType"] = str(event_type)
-
-                actions.append(action)
-
-            return actions
+            pbp = playbyplayv3.PlayByPlayV3(game_id=gid, timeout=max(STATS_TIMEOUT, 60))
+            data = pbp.get_dict() or {}
+            game = data.get("game", {}) or {}
+            actions = game.get("actions", []) or []
+            if actions:
+                return actions
+            return []
         except Exception as e:
             last_err = e
             sleep_s = BASE_SLEEP * (2 ** (attempt - 1)) + random.random() * JITTER
