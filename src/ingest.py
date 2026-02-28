@@ -313,7 +313,7 @@ def _load_season_schedule_from_stats_api(season: str, season_type: str = "Regula
                 season_type_nullable=season_type,
                 player_or_team_abbreviation="T",
                 league_id_nullable="00",
-                timeout=STATS_TIMEOUT,
+                timeout=max(STATS_TIMEOUT, 45),
             )
             df = lg.get_data_frames()[0]
             if df.empty:
@@ -387,14 +387,15 @@ def get_game_ids_for_date(
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.
     """
-    ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
-    if ids:
-        return ids
-    # Fallback to CDN schedule (only works for regular season)
+    # Try CDN schedule first for regular season (faster and more reliable)
     if season_type == "Regular Season" and not season_override:
         schedule = _load_schedule()
-        return schedule.get(game_date_mmddyyyy, [])
-    return []
+        ids = schedule.get(game_date_mmddyyyy, [])
+        if ids:
+            return ids
+    # Fall back to stats API (required for playoffs and season overrides)
+    ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
+    return ids if ids else []
 
 
 def _get_boxscore_json(game_id: str, game_date_mmddyyyy: str) -> dict[str, Any]:
