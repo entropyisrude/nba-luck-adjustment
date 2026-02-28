@@ -712,13 +712,13 @@
                 }];
             }
 
-            // Split by team and get top 2 per team with |delta| > 4
+            // Split by team and get top 2 per team with |delta| >= 2
             const awayPlayers = topPlayers
-                .filter(p => p.team === game.away_team && Math.abs(p.delta) > 4)
+                .filter(p => p.team === game.away_team && Math.abs(p.delta) >= 2)
                 .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
                 .slice(0, 2);
             const homePlayers = topPlayers
-                .filter(p => p.team === game.home_team && Math.abs(p.delta) > 4)
+                .filter(p => p.team === game.home_team && Math.abs(p.delta) >= 2)
                 .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
                 .slice(0, 2);
 
