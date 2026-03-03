@@ -93,11 +93,22 @@ def _prepare_games_meta() -> dict[str, dict]:
     return out
 
 
+def _current_season_start(latest_date: str) -> str:
+    """Return the Oct 1 cutoff for the season containing latest_date."""
+    import datetime
+    d = datetime.date.fromisoformat(latest_date)
+    year = d.year if d.month >= 7 else d.year - 1
+    return f"{year}-10-01"
+
+
 def generate_daily_boxscores_report() -> Path:
     box = _prepare_box()
     meta = _prepare_games_meta()
 
     latest_date = box["date"].max()
+    season_start = _current_season_start(latest_date)
+    box = box[box["date"] >= season_start]
+
     all_dates = sorted(box["date"].unique().tolist())
 
     records = []
