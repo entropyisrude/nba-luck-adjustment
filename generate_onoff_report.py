@@ -460,12 +460,22 @@ def generate_onoff_report() -> Path:
     }}
     th:first-child, td:first-child,
     th:nth-child(2), td:nth-child(2) {{ text-align: left; }}
+    td:first-child {{
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: var(--card);
+    }}
     thead th {{
       position: sticky;
       top: 0;
       z-index: 2;
       background: #edf3fc;
       color: #123154;
+    }}
+    thead th:first-child {{
+      left: 0;
+      z-index: 3;
     }}
     thead th.sortable {{ cursor: pointer; }}
     thead th.sortable:hover {{ background: #e4edf9; }}
