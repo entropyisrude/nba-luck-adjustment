@@ -220,77 +220,81 @@ def run_rapm(X, y, weights, alpha: float = 2500.0):
 
 
 def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "") -> dict:
-    """Get player names and teams from the stint data, onoff data, and historical PBP."""
+    """Get player names and teams from historical PBP (full names) and onoff data."""
     player_info = {}
     needed_ids = set(player_ids)
 
-    # First load from regular season data (has most complete player names)
-    regular_path = DATA_DIR / "adjusted_onoff.csv"
-    if regular_path.exists():
-        onoff = pd.read_csv(regular_path, dtype={"player_id": int})
+    def is_full_name(name) -> bool:
+        """Check if name appears to be a full name (has space and multiple parts)."""
+        if not name or not isinstance(name, str):
+            return False
+        if name.startswith("Player "):
+            return False
+        parts = name.strip().split()
+        return len(parts) >= 2
+
+    # First, scan historical PBP files for full names (these have "First Last" format)
+    print("Loading player names from historical PBP...")
+    historical_dir = DATA_DIR / "historical_pbp"
+    if historical_dir.exists():
+        for pbp_file in sorted(historical_dir.glob("nbastats_po_*.csv")):
+            try:
+                pbp = pd.read_csv(pbp_file, usecols=[
+                    "PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID",
+                    "PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID",
+                    "PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID",
+                ])
+                for player_col, name_col, team_col in [
+                    ("PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID"),
+                    ("PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID"),
+                    ("PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID"),
+                ]:
+                    subset = pbp[[player_col, name_col, team_col]].dropna(subset=[player_col, name_col])
+                    subset = subset.drop_duplicates(subset=[player_col])
+                    for _, row in subset.iterrows():
+                        pid = int(row[player_col])
+                        if pid in needed_ids:
+                            name = str(row[name_col])
+                            # Only update if we don't have a full name yet
+                            if pid not in player_info or not is_full_name(player_info[pid].get("name", "")):
+                                if is_full_name(name):
+                                    player_info[pid] = {
+                                        "name": name,
+                                        "team_id": int(row[team_col]) if pd.notna(row[team_col]) else 0,
+                                    }
+            except Exception as e:
+                print(f"Warning: Error reading {pbp_file}: {e}")
+
+    # Then load from onoff data for any still missing or to get better names
+    for path in [DATA_DIR / "adjusted_onoff.csv", DATA_DIR / f"adjusted_onoff{suffix}.csv"]:
+        if not path.exists():
+            continue
+        onoff = pd.read_csv(path, dtype={"player_id": int})
         onoff = onoff.sort_values("date").drop_duplicates(subset=["player_id"], keep="last")
         for _, row in onoff.iterrows():
             pid = int(row["player_id"])
-            player_info[pid] = {
-                "name": row.get("player_name", f"Player {pid}"),
-                "team_id": int(row.get("team_id", 0)),
-            }
+            if pid not in needed_ids:
+                continue
+            name = row.get("player_name")
+            if pd.isna(name):
+                name = f"Player {pid}"
+            else:
+                name = str(name)
+            team_id = int(row.get("team_id", 0)) if pd.notna(row.get("team_id")) else 0
+            # Only use if we don't have info yet, or if this is a fuller name
+            if pid not in player_info:
+                player_info[pid] = {"name": name, "team_id": team_id}
+            elif is_full_name(name) and not is_full_name(player_info[pid].get("name", "")):
+                player_info[pid]["name"] = name
+                player_info[pid]["team_id"] = team_id
 
-    # Then overlay with playoff-specific data if available (for more accurate team assignments)
-    if suffix:
-        onoff_path = DATA_DIR / f"adjusted_onoff{suffix}.csv"
-        if onoff_path.exists():
-            onoff = pd.read_csv(onoff_path, dtype={"player_id": int})
-            onoff = onoff.sort_values("date").drop_duplicates(subset=["player_id"], keep="last")
-            for _, row in onoff.iterrows():
-                pid = int(row["player_id"])
-                # Update or add player info from playoffs
-                if pid not in player_info:
-                    player_info[pid] = {
-                        "name": row.get("player_name", f"Player {pid}"),
-                        "team_id": int(row.get("team_id", 0)),
-                    }
-                else:
-                    # Update team from playoffs if available
-                    player_info[pid]["team_id"] = int(row.get("team_id", player_info[pid]["team_id"]))
+    # Fill in any still missing
+    for pid in needed_ids:
+        if pid not in player_info:
+            player_info[pid] = {"name": f"Player {pid}", "team_id": 0}
 
-    # Find players still missing names
-    missing_ids = needed_ids - set(player_info.keys())
-    if missing_ids:
-        print(f"Looking up {len(missing_ids)} player names from historical PBP...")
-        # Scan historical PBP files for missing player names
-        historical_dir = DATA_DIR / "historical_pbp"
-        if historical_dir.exists():
-            for pbp_file in sorted(historical_dir.glob("nbastats_po_*.csv")):
-                if not missing_ids:
-                    break
-                try:
-                    pbp = pd.read_csv(pbp_file, usecols=[
-                        "PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID",
-                        "PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID",
-                        "PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID",
-                    ])
-                    # Process each player column set efficiently
-                    for player_col, name_col, team_col in [
-                        ("PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID"),
-                        ("PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID"),
-                        ("PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID"),
-                    ]:
-                        # Get unique player entries
-                        subset = pbp[[player_col, name_col, team_col]].dropna(subset=[player_col, name_col])
-                        subset = subset.drop_duplicates(subset=[player_col])
-                        for _, row in subset.iterrows():
-                            pid = int(row[player_col])
-                            if pid in missing_ids:
-                                player_info[pid] = {
-                                    "name": str(row[name_col]),
-                                    "team_id": int(row[team_col]) if pd.notna(row[team_col]) else 0,
-                                }
-                                missing_ids.discard(pid)
-                except Exception as e:
-                    print(f"Warning: Error reading {pbp_file}: {e}")
-        if missing_ids:
-            print(f"  Still missing names for {len(missing_ids)} players")
+    found_full = sum(1 for p in player_info.values() if is_full_name(p.get("name", "")))
+    print(f"  Found {found_full}/{len(needed_ids)} players with full names")
 
     return player_info
 
@@ -360,16 +364,23 @@ def main():
     # Get player info
     player_info = get_player_info(player_list, stints, suffix)
 
-    # Calculate minutes per player from stint data
+    # Calculate minutes per player and per player-team from stint data
     player_minutes = {}
-    for col_set, sign in [(["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], 1),
-                          (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], -1)]:
+    player_team_minutes = {}  # {player_id: {team_id: minutes}}
+    for col_set, team_col in [(["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
+                               (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id")]:
         for col in col_set:
             for _, row in stints.iterrows():
                 pid = row[col]
                 if pd.notna(pid):
                     pid = int(pid)
-                    player_minutes[pid] = player_minutes.get(pid, 0) + row["seconds"] / 60.0
+                    mins = row["seconds"] / 60.0
+                    player_minutes[pid] = player_minutes.get(pid, 0) + mins
+                    # Track by team
+                    team_id = int(row[team_col])
+                    if pid not in player_team_minutes:
+                        player_team_minutes[pid] = {}
+                    player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0) + mins
 
     # Build results DataFrame
     results = []
@@ -378,11 +389,17 @@ def main():
         minutes = player_minutes.get(pid, 0)
         if minutes < args.min_minutes:
             continue
+        # Use team where player has most minutes
+        team_mins = player_team_minutes.get(pid, {})
+        if team_mins:
+            primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
+        else:
+            primary_team_id = info.get("team_id", 0)
         results.append({
             "player_id": pid,
             "player_name": info.get("name", f"Player {pid}"),
-            "team_id": info.get("team_id", 0),
-            "team_abbr": TEAM_ID_TO_ABBR.get(info.get("team_id", 0), "???"),
+            "team_id": primary_team_id,
+            "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
             "minutes": round(minutes, 1),
             "rapm": round(coefficients[i], 2),
         })
