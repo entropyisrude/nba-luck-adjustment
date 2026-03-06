@@ -1,13 +1,15 @@
-"""Generate playoff RAPM HTML report from rapm_playoffs.csv."""
+"""Generate playoff RAPM HTML report with multi-year period options."""
 
 import json
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
 DATA_DIR = Path("data")
-RAPM_CSV = DATA_DIR / "rapm_playoffs.csv"
+STINTS_PATH = DATA_DIR / "stints_playoffs.csv"
 OUTPUT_PATH = Path("rapm-playoffs.html")
 
 TEAM_ID_TO_ABBR = {
@@ -21,28 +23,117 @@ TEAM_ID_TO_ABBR = {
     1610612762: "UTA", 1610612764: "WAS",
 }
 
+# Define periods to pre-compute
+PERIODS = {
+    "all": {"label": "All Time (1996-2025)", "start": None, "end": None},
+    "last5": {"label": "Last 5 Years", "years_back": 4},
+    "last10": {"label": "Last 10 Years", "years_back": 9},
+    "2020s": {"label": "2020s", "start_year": 2020, "end_year": 2029},
+    "2010s": {"label": "2010s", "start_year": 2010, "end_year": 2019},
+    "2000s": {"label": "2000s", "start_year": 2000, "end_year": 2009},
+}
 
-def generate_rapm_report_playoffs():
-    if not RAPM_CSV.exists():
-        print(f"Error: {RAPM_CSV} not found. Run: python run_rapm.py --playoffs")
-        return
 
-    df = pd.read_csv(RAPM_CSV)
-    print(f"Loaded {len(df)} players from {RAPM_CSV}")
+def compute_rapm_for_period(stints: pd.DataFrame, period_key: str, latest_year: int) -> list[dict]:
+    """Compute RAPM for a specific period by filtering stints and running regression."""
+    from run_rapm import (
+        build_design_matrix,
+        run_rapm,
+        get_player_info,
+    )
 
-    # Convert to records for JSON
-    records = []
-    for _, row in df.iterrows():
-        records.append({
-            "player_id": int(row["player_id"]),
-            "player_name": str(row["player_name"]),
-            "team_abbr": str(row["team_abbr"]),
-            "minutes": int(row["minutes"]),
-            "rapm": round(float(row["rapm"]), 2),
+    period = PERIODS[period_key]
+    df = stints.copy()
+
+    # Filter by period
+    if "years_back" in period:
+        min_year = latest_year - period["years_back"]
+        df = df[df["playoff_year"] >= min_year]
+    elif "start_year" in period:
+        df = df[(df["playoff_year"] >= period["start_year"]) & (df["playoff_year"] <= period["end_year"])]
+
+    if df.empty:
+        return []
+
+    # Build design matrix and run RAPM
+    X, y, weights, player_list, player_to_idx = build_design_matrix(df, use_adjusted=True)
+    coefficients, intercept = run_rapm(X, y, weights, alpha=2500.0)
+
+    # Get player info
+    player_info = get_player_info(player_list, df, "_playoffs")
+
+    # Calculate minutes per player per team
+    player_minutes = {}
+    player_team_minutes = {}
+    for col_set, team_col in [(["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
+                               (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id")]:
+        for col in col_set:
+            for _, row in df.iterrows():
+                pid = row[col]
+                if pd.notna(pid):
+                    pid = int(pid)
+                    mins = row["seconds"] / 60.0
+                    player_minutes[pid] = player_minutes.get(pid, 0) + mins
+                    team_id = int(row[team_col])
+                    if pid not in player_team_minutes:
+                        player_team_minutes[pid] = {}
+                    player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0) + mins
+
+    # Build results
+    results = []
+    min_minutes = 50 if period_key != "all" else 100
+    for i, pid in enumerate(player_list):
+        info = player_info.get(pid, {})
+        minutes = player_minutes.get(pid, 0)
+        if minutes < min_minutes:
+            continue
+        # Use team where player has most minutes
+        team_mins = player_team_minutes.get(pid, {})
+        if team_mins:
+            primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
+        else:
+            primary_team_id = info.get("team_id", 0)
+        results.append({
+            "player_id": int(pid),
+            "player_name": info.get("name", f"Player {pid}"),
+            "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
+            "minutes": int(round(minutes)),
+            "rapm": round(float(coefficients[i]), 2),
         })
 
+    return sorted(results, key=lambda x: x["rapm"], reverse=True)
+
+
+def generate_rapm_report_playoffs():
+    if not STINTS_PATH.exists():
+        print(f"Error: {STINTS_PATH} not found")
+        return
+
+    print("Loading stints...")
+    stints = pd.read_csv(STINTS_PATH, dtype={"game_id": str})
+    stints["date"] = pd.to_datetime(stints["date"])
+    # Extract playoff year (playoffs happen in spring, so year of the date is the end of the season)
+    stints["playoff_year"] = stints["date"].dt.year
+
+    latest_year = stints["playoff_year"].max()
+    print(f"Latest playoff year: {latest_year}")
+
+    # Compute RAPM for each period
+    all_data = {}
+    for period_key in PERIODS.keys():
+        print(f"Computing RAPM for {period_key}...")
+        results = compute_rapm_for_period(stints, period_key, latest_year)
+        all_data[period_key] = results
+        print(f"  {len(results)} players")
+
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    page_title = "3PT Luck Adjusted RAPM: Playoffs (1996-2025)"
+    page_title = "3PT Luck Adjusted RAPM: Playoffs"
+
+    # Build period options HTML
+    period_options = "\n".join([
+        f'<option value="{k}">{v["label"]}</option>'
+        for k, v in PERIODS.items()
+    ])
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -122,8 +213,9 @@ def generate_rapm_report_playoffs():
       text-align: right;
       white-space: nowrap;
     }}
-    th:first-child, td:first-child {{ text-align: left; }}
+    th:first-child, td:first-child {{ text-align: center; }}
     th:nth-child(2), td:nth-child(2) {{ text-align: left; }}
+    th:nth-child(3), td:nth-child(3) {{ text-align: left; }}
     thead th {{
       position: sticky;
       top: 0;
@@ -144,9 +236,8 @@ def generate_rapm_report_playoffs():
     <section class="hero">
       <h1>{page_title}</h1>
       <div class="meta">
-        <span class="chip">Players: {len(records):,}</span>
-        <span class="chip">Min 100 playoff minutes</span>
         <span class="chip">Alpha: 2500</span>
+        <span class="chip">3PT Luck Adjusted</span>
       </div>
       <div class="nav">
         <a href="index.html">Main 3PT Luck Page</a>
@@ -158,6 +249,11 @@ def generate_rapm_report_playoffs():
     <section class="card">
       <h2>Playoff RAPM Leaderboard</h2>
       <div class="controls">
+        <label>Period
+          <select id="period-filter">
+            {period_options}
+          </select>
+        </label>
         <label>Team
           <select id="team-filter">
             <option value="">All Teams</option>
@@ -171,7 +267,7 @@ def generate_rapm_report_playoffs():
         </label>
       </div>
       <p class="muted" style="margin: 0 0 8px; font-size: 11px;">
-        RAPM = Regularized Adjusted Plus-Minus per 100 possessions, 3PT-luck adjusted
+        RAPM = Regularized Adjusted Plus-Minus per 100 possessions
       </p>
       <div class="table-wrap">
         <table id="rapm-table">
@@ -189,10 +285,10 @@ def generate_rapm_report_playoffs():
       </div>
     </section>
 
-    <p class="muted">Generated {generated_ts} | Source: data/rapm_playoffs.csv</p>
+    <p class="muted">Generated {generated_ts} | Source: data/stints_playoffs.csv</p>
   </div>
   <script>
-    const ROWS = {json.dumps(records)};
+    const ALL_DATA = {json.dumps(all_data)};
 
     let sortKey = "rapm";
     let sortDir = "desc";
@@ -200,12 +296,18 @@ def generate_rapm_report_playoffs():
     const fmt = (x, d=1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
 
-    function getFilteredRows() {{
+    function getRows() {{
+      const period = document.getElementById("period-filter").value;
+      return ALL_DATA[period] || [];
+    }}
+
+    function render() {{
+      const rows = getRows();
       const team = document.getElementById("team-filter").value;
       const minMin = Number(document.getElementById("min-minutes").value || 0);
       const search = document.getElementById("search").value.toLowerCase();
 
-      return ROWS
+      const filtered = rows
         .filter(r => !team || r.team_abbr === team)
         .filter(r => r.minutes >= minMin)
         .filter(r => !search || r.player_name.toLowerCase().includes(search))
@@ -216,13 +318,9 @@ def generate_rapm_report_playoffs():
           }}
           return dir * (Number(a[sortKey] || 0) - Number(b[sortKey] || 0));
         }});
-    }}
 
-    function render() {{
-      const rows = getFilteredRows();
       const tbody = document.querySelector("#rapm-table tbody");
-
-      tbody.innerHTML = rows.map((r, i) => `
+      tbody.innerHTML = filtered.map((r, i) => `
         <tr>
           <td class="rank">${{i + 1}}</td>
           <td>${{r.player_name}}</td>
@@ -231,25 +329,26 @@ def generate_rapm_report_playoffs():
           <td class="${{cls(r.rapm)}}">${{fmt(r.rapm, 2)}}</td>
         </tr>
       `).join("");
-    }}
 
-    function init() {{
-      // Populate team filter
-      const teams = [...new Set(ROWS.map(r => r.team_abbr))].sort();
+      // Update team filter for current period
+      const teams = [...new Set(rows.map(r => r.team_abbr))].sort();
       const teamSel = document.getElementById("team-filter");
+      const currentTeam = teamSel.value;
+      teamSel.innerHTML = '<option value="">All Teams</option>';
       teams.forEach(t => {{
         const o = document.createElement("option");
         o.value = t;
         o.textContent = t;
+        if (t === currentTeam) o.selected = true;
         teamSel.appendChild(o);
       }});
+    }}
 
-      // Event listeners
-      ["team-filter", "min-minutes", "search"].forEach(id => {{
+    function init() {{
+      ["period-filter", "team-filter", "min-minutes", "search"].forEach(id => {{
         document.getElementById(id).addEventListener("input", render);
       }});
 
-      // Sort on header click
       document.querySelectorAll("#rapm-table thead th").forEach(th => {{
         th.addEventListener("click", () => {{
           const key = th.dataset.key;
