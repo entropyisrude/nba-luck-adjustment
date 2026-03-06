@@ -220,8 +220,9 @@ def run_rapm(X, y, weights, alpha: float = 2500.0):
 
 
 def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "") -> dict:
-    """Get player names and teams from the stint data and onoff data."""
+    """Get player names and teams from the stint data, onoff data, and historical PBP."""
     player_info = {}
+    needed_ids = set(player_ids)
 
     # First load from regular season data (has most complete player names)
     regular_path = DATA_DIR / "adjusted_onoff.csv"
@@ -252,6 +253,44 @@ def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "
                 else:
                     # Update team from playoffs if available
                     player_info[pid]["team_id"] = int(row.get("team_id", player_info[pid]["team_id"]))
+
+    # Find players still missing names
+    missing_ids = needed_ids - set(player_info.keys())
+    if missing_ids:
+        print(f"Looking up {len(missing_ids)} player names from historical PBP...")
+        # Scan historical PBP files for missing player names
+        historical_dir = DATA_DIR / "historical_pbp"
+        if historical_dir.exists():
+            for pbp_file in sorted(historical_dir.glob("nbastats_po_*.csv")):
+                if not missing_ids:
+                    break
+                try:
+                    pbp = pd.read_csv(pbp_file, usecols=[
+                        "PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID",
+                        "PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID",
+                        "PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID",
+                    ])
+                    # Process each player column set efficiently
+                    for player_col, name_col, team_col in [
+                        ("PLAYER1_ID", "PLAYER1_NAME", "PLAYER1_TEAM_ID"),
+                        ("PLAYER2_ID", "PLAYER2_NAME", "PLAYER2_TEAM_ID"),
+                        ("PLAYER3_ID", "PLAYER3_NAME", "PLAYER3_TEAM_ID"),
+                    ]:
+                        # Get unique player entries
+                        subset = pbp[[player_col, name_col, team_col]].dropna(subset=[player_col, name_col])
+                        subset = subset.drop_duplicates(subset=[player_col])
+                        for _, row in subset.iterrows():
+                            pid = int(row[player_col])
+                            if pid in missing_ids:
+                                player_info[pid] = {
+                                    "name": str(row[name_col]),
+                                    "team_id": int(row[team_col]) if pd.notna(row[team_col]) else 0,
+                                }
+                                missing_ids.discard(pid)
+                except Exception as e:
+                    print(f"Warning: Error reading {pbp_file}: {e}")
+        if missing_ids:
+            print(f"  Still missing names for {len(missing_ids)} players")
 
     return player_info
 
