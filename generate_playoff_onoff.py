@@ -122,46 +122,63 @@ def compute_player_game_stats(game_stints: pd.DataFrame, player_id: int, team_id
     }
 
 
+def is_full_name(name) -> bool:
+    """Check if name appears to be a full name (has space and multiple parts)."""
+    if not name or not isinstance(name, str):
+        return False
+    if name.startswith("Player "):
+        return False
+    parts = name.strip().split()
+    return len(parts) >= 2
+
+
 def get_player_names(player_ids: set, stints: pd.DataFrame) -> dict:
-    """Get player names from various sources."""
+    """Get player names from various sources, prioritizing full names from historical PBP."""
     player_names = {}
+    needed_ids = set(player_ids)
 
-    # First try regular season on/off
-    regular_path = DATA_DIR / "adjusted_onoff.csv"
-    if regular_path.exists():
-        df = pd.read_csv(regular_path, dtype={"player_id": int})
-        for _, row in df.drop_duplicates(subset=["player_id"]).iterrows():
-            pid = int(row["player_id"])
-            if pid in player_ids:
-                player_names[pid] = row.get("player_name", f"Player {pid}")
+    # First, scan historical PBP files for full names (these have "First Last" format)
+    print("Loading player names from historical PBP...")
+    historical_dir = DATA_DIR / "historical_pbp"
+    if historical_dir.exists():
+        for pbp_file in sorted(historical_dir.glob("nbastats_po_*.csv")):
+            if not needed_ids:
+                break
+            try:
+                pbp = pd.read_csv(pbp_file, usecols=[
+                    "PLAYER1_ID", "PLAYER1_NAME",
+                    "PLAYER2_ID", "PLAYER2_NAME",
+                    "PLAYER3_ID", "PLAYER3_NAME",
+                ])
+                for player_col, name_col in [
+                    ("PLAYER1_ID", "PLAYER1_NAME"),
+                    ("PLAYER2_ID", "PLAYER2_NAME"),
+                    ("PLAYER3_ID", "PLAYER3_NAME"),
+                ]:
+                    subset = pbp[[player_col, name_col]].dropna().drop_duplicates()
+                    for _, row in subset.iterrows():
+                        pid = int(row[player_col])
+                        name = str(row[name_col])
+                        if pid in needed_ids and is_full_name(name):
+                            if pid not in player_names or not is_full_name(player_names[pid]):
+                                player_names[pid] = name
+                                needed_ids.discard(pid)
+            except Exception:
+                pass
 
-    # Then try historical PBP
+    found_full = sum(1 for n in player_names.values() if is_full_name(n))
+    print(f"  Found {found_full}/{len(player_ids)} players with full names from historical PBP")
+
+    # Fallback to regular season on/off for any remaining players
     missing = player_ids - set(player_names.keys())
     if missing:
-        historical_dir = DATA_DIR / "historical_pbp"
-        if historical_dir.exists():
-            for pbp_file in sorted(historical_dir.glob("nbastats_po_*.csv")):
-                if not missing:
-                    break
-                try:
-                    pbp = pd.read_csv(pbp_file, usecols=[
-                        "PLAYER1_ID", "PLAYER1_NAME",
-                        "PLAYER2_ID", "PLAYER2_NAME",
-                        "PLAYER3_ID", "PLAYER3_NAME",
-                    ])
-                    for player_col, name_col in [
-                        ("PLAYER1_ID", "PLAYER1_NAME"),
-                        ("PLAYER2_ID", "PLAYER2_NAME"),
-                        ("PLAYER3_ID", "PLAYER3_NAME"),
-                    ]:
-                        subset = pbp[[player_col, name_col]].dropna().drop_duplicates()
-                        for _, row in subset.iterrows():
-                            pid = int(row[player_col])
-                            if pid in missing:
-                                player_names[pid] = str(row[name_col])
-                                missing.discard(pid)
-                except Exception:
-                    pass
+        regular_path = DATA_DIR / "adjusted_onoff.csv"
+        if regular_path.exists():
+            df = pd.read_csv(regular_path, dtype={"player_id": int})
+            for _, row in df.drop_duplicates(subset=["player_id"]).iterrows():
+                pid = int(row["player_id"])
+                if pid in missing:
+                    player_names[pid] = row.get("player_name", f"Player {pid}")
 
     # Fill remaining with placeholder
     for pid in player_ids:
