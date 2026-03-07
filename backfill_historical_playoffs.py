@@ -195,6 +195,56 @@ def parse_clock_to_seconds(clock_str: str) -> float:
     return float(clock_str)
 
 
+def derive_date_from_game_id(game_id: str) -> str:
+    """
+    Derive an approximate date from game ID.
+
+    Game ID format:
+    - 4XXYYZZZZ: XX is season year (e.g., 20 = 2020-21), YY is game type (00 = playoffs)
+    - 496XXXXX: 1996 playoffs (older format)
+
+    Playoffs run April-June, so we estimate dates within that range.
+    """
+    game_id = str(game_id)
+
+    if game_id.startswith("49"):
+        # 1996-1999 format: 496, 497, 498, 499
+        year = 1990 + int(game_id[2])
+        game_num = int(game_id[3:])
+    elif game_id.startswith("4"):
+        # Modern format: 4XXYYZZZZ
+        season_code = int(game_id[1:3])
+        if season_code >= 96:
+            year = 1900 + season_code
+        else:
+            year = 2000 + season_code
+        game_num = int(game_id[5:]) if len(game_id) > 5 else 1
+    else:
+        # Fallback
+        return ""
+
+    # Estimate month based on game number
+    # Playoffs have ~80-90 games total
+    # Round 1: games 1-48 (April)
+    # Round 2: games 49-72 (May)
+    # Conf Finals: games 73-84 (May-June)
+    # Finals: games 85+ (June)
+    if game_num <= 48:
+        month = 4  # April
+        day = min(15 + (game_num // 4), 30)
+    elif game_num <= 72:
+        month = 5  # May
+        day = min(1 + ((game_num - 48) // 2), 31)
+    elif game_num <= 84:
+        month = 5  # Late May
+        day = min(20 + ((game_num - 72) // 2), 31)
+    else:
+        month = 6  # June
+        day = min(1 + ((game_num - 84) // 2), 30)
+
+    return f"{year}-{month:02d}-{day:02d}"
+
+
 def calculate_elapsed_seconds(period: int, clock_seconds: float) -> float:
     """Calculate elapsed game seconds from period and clock."""
     period_length = 720 if period <= 4 else 300
@@ -228,6 +278,13 @@ def process_game_to_stints(
 
     if game_pbp.empty:
         return pd.DataFrame()
+
+    # Forward-fill the SCORE column so non-scoring events have valid scores
+    # SCORE is only populated on made baskets, so we need to carry forward
+    game_pbp = game_pbp.copy()
+    game_pbp["SCORE"] = game_pbp["SCORE"].ffill()
+    # Also back-fill for events at the very start before any score
+    game_pbp["SCORE"] = game_pbp["SCORE"].bfill()
 
     # Determine which team columns are home/away
     team1_id = game_pbp["TEAM1_ID"].iloc[0] if "TEAM1_ID" in game_pbp.columns else 0
@@ -340,7 +397,8 @@ def process_game_to_stints(
 
     # Convert to DataFrame
     game_id = game_pbp["GAME_ID"].iloc[0]
-    game_date = str(game_pbp.get("GAME_DATE", pd.Series()).iloc[0] if "GAME_DATE" in game_pbp.columns else "")[:10]
+    # Derive date from game ID since historical PBP doesn't have GAME_DATE
+    game_date = derive_date_from_game_id(game_id)
 
     rows = []
     for i, s in enumerate(stints):
