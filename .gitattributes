@@ -1,5 +1,5 @@
-data/adjusted_onoff.csv filter=lfs diff=lfs merge=lfs -text
 data/stints.csv filter=lfs diff=lfs merge=lfs -text
+data/adjusted_onoff.csv filter=lfs diff=lfs merge=lfs -text
 data/player_daily_boxscore.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_pre2006.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_backup_2006_onwards.csv filter=lfs diff=lfs merge=lfs -text
