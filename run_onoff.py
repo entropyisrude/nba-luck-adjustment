@@ -80,8 +80,17 @@ def main():
 
     player_state = load_player_state(state_path)
     if out_path.exists():
-        existing = pd.read_csv(out_path, dtype={"game_id": str, "player_id": int})
-        existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
+        existing = pd.read_csv(out_path)
+        if "game_id" in existing.columns:
+            existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
+            if "player_id" in existing.columns:
+                try:
+                    existing["player_id"] = existing["player_id"].astype(int)
+                except Exception:
+                    pass
+        else:
+            # Likely an LFS pointer or malformed file; treat as empty.
+            existing = pd.DataFrame()
     else:
         existing = pd.DataFrame()
 
