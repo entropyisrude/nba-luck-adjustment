@@ -107,6 +107,7 @@ _local_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
 _season_schedule_cache: dict[str, dict[str, list[str]]] = {}
 _stats_boxscore_cache: dict[str, dict[str, pd.DataFrame]] = {}
 _stats_summary_cache: dict[str, tuple[int, int]] = {}
+_stats_date_cache: dict[str, str] = {}
 
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
@@ -372,6 +373,47 @@ def _load_stats_home_away(game_id: str) -> tuple[int, int]:
     out = (home_id, away_id)
     _stats_summary_cache[gid] = out
     return out
+
+
+def get_game_date_mmddyyyy(game_id: str) -> str:
+    """
+    Return MM/DD/YYYY date for a game from stats API boxscore summary.
+    """
+    gid = str(game_id)
+    if gid in _stats_date_cache:
+        return _stats_date_cache[gid]
+    sm = boxscoresummaryv2.BoxScoreSummaryV2(
+        game_id=gid,
+        timeout=max(STATS_TIMEOUT, 45),
+    )
+    dfs = sm.get_data_frames()
+    if not dfs or dfs[0].empty:
+        raise RuntimeError(f"boxscoresummaryv2 empty for {gid}")
+    row = dfs[0].iloc[0]
+    date_est = row.get("GAME_DATE_EST") or row.get("GAME_DATE")
+    if not date_est:
+        raise RuntimeError(f"missing GAME_DATE_EST for {gid}")
+    date_str = str(date_est)
+    if "T" in date_str:
+        date_str = date_str.split("T", 1)[0]
+    if " " in date_str:
+        date_str = date_str.split(" ", 1)[0]
+    y, m, d = date_str.split("-")
+    mmddyyyy = f"{m}/{d}/{y}"
+    _stats_date_cache[gid] = mmddyyyy
+    return mmddyyyy
+
+
+def get_local_game_ids_for_season(season_start_year: int) -> list[str]:
+    path = LOCAL_PBP_DIR / f"nbastatsv3_{season_start_year}.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path, usecols=["gameId"], dtype={"gameId": str})
+    if df.empty:
+        return []
+    ids = df["gameId"].astype(str).str.lstrip("0").unique().tolist()
+    ids.sort()
+    return ids
 
 
 def get_game_ids_for_date(
