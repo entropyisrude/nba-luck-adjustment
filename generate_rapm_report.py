@@ -205,7 +205,7 @@ def _name_word_count(name: str | None) -> int:
 
 
 def apply_player_names(rapm: dict, player_map: dict) -> None:
-    """Prefer full names from player_map when current name is missing/one-word."""
+    """Force names from player_map when available to avoid mislabels."""
     for _, rows in rapm.items():
         if not isinstance(rows, list):
             continue
@@ -217,14 +217,9 @@ def apply_player_names(rapm: dict, player_map: dict) -> None:
                 continue
             info = player_map.get(str(pid)) or player_map.get(pid) or {}
             mapped = info.get("name")
-            current = row.get("player_name")
             if not mapped:
                 continue
-            if (not current) or str(current).startswith("Player "):
-                row["player_name"] = mapped
-                continue
-            if _name_word_count(mapped) >= 2 and _name_word_count(str(current)) < 2:
-                row["player_name"] = mapped
+            row["player_name"] = mapped
 
 
 def main() -> None:
