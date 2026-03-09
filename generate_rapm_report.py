@@ -119,6 +119,18 @@ def update_player_info_map() -> Dict[str, dict]:
     if PLAYER_INFO_MAP.exists():
         info = json.loads(PLAYER_INFO_MAP.read_text(encoding="utf-8"))
 
+    api_names: Dict[int, str] = {}
+    try:
+        from nba_api.stats.static import players
+
+        for p in players.get_players():
+            pid = p.get("id")
+            name = p.get("full_name")
+            if pid and name:
+                api_names[int(pid)] = name
+    except Exception as exc:
+        print(f"Warning: nba_api unavailable for player names ({exc})")
+
     candidates: Dict[int, Tuple[int, str]] = {}
     for path in [DATA_DIR / "adjusted_onoff.csv", DATA_DIR / "player_onoff_history.csv"]:
         if not path.exists():
@@ -127,7 +139,7 @@ def update_player_info_map() -> Dict[str, dict]:
         for _, row in df.iterrows():
             pid = int(row["player_id"])
             name = row.get("player_name")
-            if isinstance(name, str):
+            if isinstance(name, str) and pid not in api_names:
                 s = score_name(name)
                 if s >= 0:
                     prev = candidates.get(pid)
@@ -149,6 +161,11 @@ def update_player_info_map() -> Dict[str, dict]:
         if score_name(existing) >= score_name(name):
             info[str(pid)] = rec
             continue
+        rec["name"] = name
+        info[str(pid)] = rec
+
+    for pid, name in api_names.items():
+        rec = info.get(str(pid), {})
         rec["name"] = name
         info[str(pid)] = rec
 
