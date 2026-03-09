@@ -598,6 +598,51 @@ def generate_onoff_report() -> Path:
     </section>
 
     <section class=\"card\">
+      <h2>Multi-Year (All Teams)</h2>
+      <div class=\"controls\">
+        <label>Season Group
+          <select id=\"multi-season-filter\"></select>
+        </label>
+        <label>Min games
+          <input id=\"multi-min-games\" type=\"number\" min=\"0\" step=\"1\" value=\"20\" />
+        </label>
+        <label>Min total minutes
+          <input id=\"multi-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"500\" />
+        </label>
+      </div>
+      <div class=\"toggle-row\">
+        <button class=\"toggle-btn\" data-cols=\"ortg-adj\" onclick=\"toggleCols('ortg-adj')\">Show ORtg Adj</button>
+        <button class=\"toggle-btn\" data-cols=\"drtg-adj\" onclick=\"toggleCols('drtg-adj')\">Show DRtg Adj</button>
+      </div>
+      <p class=\"muted\" style=\"margin: 0 0 8px; font-size: 11px;\">All stats per 100 possessions</p>
+      <div class=\"table-wrap\">
+        <table id=\"multi-table\">
+          <thead>
+            <tr>
+              <th class=\"sortable\" data-key=\"player_name\" data-type=\"str\">Player</th>
+              <th class=\"sortable\" data-key=\"team_abbr\" data-type=\"str\">Teams</th>
+              <th class=\"sortable\" data-key=\"games\" data-type=\"num\">G</th>
+              <th class=\"sortable\" data-key=\"minutes_total\" data-type=\"num\">Min</th>
+              <th class=\"sortable\" data-key=\"pm_actual_100\" data-type=\"num\">PM</th>
+              <th class=\"sortable\" data-key=\"pm_adj_100\" data-type=\"num\">PM Adj</th>
+              <th class=\"sortable\" data-key=\"pm_delta_100\" data-type=\"num\">PM Delta</th>
+              <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">OnOff</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">OnOff Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">OnOff Adj Off</th>
+              <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is ON court\">On ORtg Adj</th>
+              <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is OFF court\">Off ORtg Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">OnOff Adj Def</th>
+              <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is ON court\">On DRtg Adj</th>
+              <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is OFF court\">Off DRtg Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_delta_100\" data-type=\"num\">OnOff Delta</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class=\"card\">
       <h2>Season Leaderboard (Sortable)</h2>
       <div class=\"controls\">
         <label>Min games
@@ -655,6 +700,78 @@ def generate_onoff_report() -> Path:
     let teamSortDir = "desc";
     let lbSortKey = "pm_adj_100";
     let lbSortDir = "desc";
+    let multiSortKey = "pm_adj_100";
+    let multiSortDir = "desc";
+
+    const METRIC_KEYS = [
+      "pm_actual_100",
+      "pm_adj_100",
+      "pm_delta_100",
+      "onoff_actual_100",
+      "onoff_adj_100",
+      "onoff_adj_off_100",
+      "onoff_adj_def_100",
+      "onoff_delta_100",
+      "on_ortg_adj",
+      "off_ortg_adj",
+      "on_drtg_adj",
+      "off_drtg_adj",
+    ];
+
+    function aggregateRows(rows) {{
+      const map = new Map();
+      rows.forEach(r => {{
+        const pid = r.player_id;
+        if (!map.has(pid)) {{
+          map.set(pid, {{
+            player_id: pid,
+            player_name: r.player_name,
+            team_abbrs: new Set(),
+            games: 0,
+            minutes_total: 0,
+            sums: Object.fromEntries(METRIC_KEYS.map(k => [k, 0]))
+          }});
+        }}
+        const agg = map.get(pid);
+        const mins = Number(r.minutes_total || 0);
+        agg.games += Number(r.games || 0);
+        agg.minutes_total += mins;
+        if (r.team_abbr) agg.team_abbrs.add(r.team_abbr);
+        METRIC_KEYS.forEach(k => {{
+          agg.sums[k] += mins * Number(r[k] || 0);
+        }});
+      }});
+      return Array.from(map.values()).map(a => {{
+        const mins = a.minutes_total || 0;
+        const out = {{
+          player_id: a.player_id,
+          player_name: a.player_name,
+          team_abbr: Array.from(a.team_abbrs).filter(Boolean).sort().join(", "),
+          games: a.games,
+          minutes_total: a.minutes_total
+        }};
+        METRIC_KEYS.forEach(k => {{
+          out[k] = mins ? (a.sums[k] / mins) : 0;
+        }});
+        return out;
+      }});
+    }}
+
+    function buildSeasonGroups() {{
+      const seasons = SEASONS.slice().sort();
+      const last3 = seasons.slice(-3);
+      const last5 = seasons.slice(-5);
+      const groups = [
+        {{ key: "Last3", label: `Last 3 Seasons (${{last3[0]}}-${{last3[last3.length-1]}})`, seasons: last3 }},
+        {{ key: "Last5", label: `Last 5 Seasons (${{last5[0]}}-${{last5[last5.length-1]}})`, seasons: last5 }},
+        {{ key: "2020s", label: "2020s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2020) }},
+        {{ key: "2010s", label: "2010s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2010 && Number(s.slice(0,4)) < 2020) }},
+        {{ key: "2000s", label: "2000s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2000 && Number(s.slice(0,4)) < 2010) }},
+        {{ key: "1996-99", label: "1996-99", seasons: seasons.filter(s => Number(s.slice(0,4)) < 2000) }},
+        {{ key: "All", label: "All Seasons", seasons }}
+      ].filter(g => g.seasons.length);
+      return groups;
+    }}
 
     function toggleCols(colGroup) {{
       const btns = document.querySelectorAll(`.toggle-btn[data-cols="${{colGroup}}"]`);
@@ -695,9 +812,12 @@ def generate_onoff_report() -> Path:
       const minMin = Number(document.getElementById("team-min-minutes").value || 0);
       const tbody = document.querySelector("#team-table tbody");
 
-      const rows = ROWS
-        .filter(r => r.season === season)
-        .filter(r => r.team_id === team)
+      const base = ROWS.filter(r => r.season === season);
+      const filtered = team === "__all__"
+        ? aggregateRows(base)
+        : base.filter(r => r.team_id === team);
+
+      const rows = filtered
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
         .slice()
@@ -734,6 +854,29 @@ def generate_onoff_report() -> Path:
       tbody.innerHTML = rows.map(rowHtml).join("");
     }}
 
+    function renderMultiTable() {{
+      const groupKey = document.getElementById("multi-season-filter").value;
+      const minGames = Number(document.getElementById("multi-min-games").value || 0);
+      const minMin = Number(document.getElementById("multi-min-minutes").value || 0);
+      const tbody = document.querySelector("#multi-table tbody");
+
+      const groups = buildSeasonGroups();
+      const group = groups.find(g => g.key === groupKey) || groups[0];
+      const rows = aggregateRows(ROWS.filter(r => group.seasons.includes(r.season)))
+        .filter(r => Number(r.games || 0) >= minGames)
+        .filter(r => Number(r.minutes_total || 0) >= minMin)
+        .slice()
+        .sort((a,b) => {{
+          const dir = multiSortDir === "asc" ? 1 : -1;
+          if (multiSortKey === "player_name" || multiSortKey === "team_abbr") {{
+            return dir * String(a[multiSortKey]).localeCompare(String(b[multiSortKey]));
+          }}
+          return dir * (Number(a[multiSortKey] || 0) - Number(b[multiSortKey] || 0));
+        }});
+
+      tbody.innerHTML = rows.map(rowHtml).join("");
+    }}
+
     function init() {{
       const seasonSel = document.getElementById("season-filter");
       const teamSel = document.getElementById("team-filter");
@@ -750,6 +893,10 @@ def generate_onoff_report() -> Path:
         const seasonTeams = [...new Set(ROWS.filter(r => r.season === season).map(r => r.team_id))]
           .sort((a, b) => String(TEAM_MAP[a] || a).localeCompare(String(TEAM_MAP[b] || b)));
         teamSel.innerHTML = "";
+        const allOpt = document.createElement("option");
+        allOpt.value = "__all__";
+        allOpt.textContent = "All Teams";
+        teamSel.appendChild(allOpt);
         seasonTeams.forEach(tid => {{
           const o = document.createElement("option");
           o.value = tid;
@@ -763,6 +910,15 @@ def generate_onoff_report() -> Path:
 
       refreshTeamOptions();
 
+      const multiSel = document.getElementById("multi-season-filter");
+      buildSeasonGroups().forEach(g => {{
+        const o = document.createElement("option");
+        o.value = g.key;
+        o.textContent = g.label;
+        multiSel.appendChild(o);
+      }});
+      multiSel.value = "Last3";
+
       ["season-filter","team-filter","team-min-games","team-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", () => {{
           if (id === "season-filter") {{
@@ -775,6 +931,10 @@ def generate_onoff_report() -> Path:
 
       ["lb-min-games","lb-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderLeaderboard)
+      );
+
+      ["multi-season-filter","multi-min-games","multi-min-minutes"].forEach(id =>
+        document.getElementById(id).addEventListener("input", renderMultiTable)
       );
 
       document.querySelectorAll("#lb-table thead th.sortable").forEach(th => {{
@@ -801,9 +961,22 @@ def generate_onoff_report() -> Path:
           renderTeamTable();
         }});
       }});
+      document.querySelectorAll("#multi-table thead th.sortable").forEach(th => {{
+        th.addEventListener("click", () => {{
+          const key = th.dataset.key;
+          if (multiSortKey === key) {{
+            multiSortDir = multiSortDir === "desc" ? "asc" : "desc";
+          }} else {{
+            multiSortKey = key;
+            multiSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+          }}
+          renderMultiTable();
+        }});
+      }});
 
       renderTeamTable();
       renderLeaderboard();
+      renderMultiTable();
     }}
 
     init();
