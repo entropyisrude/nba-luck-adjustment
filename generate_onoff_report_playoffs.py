@@ -249,6 +249,8 @@ def generate_onoff_report_playoffs() -> Path:
     }}
     th:first-child, td:first-child,
     th:nth-child(2), td:nth-child(2) {{ text-align: left; }}
+    #main-table th:nth-child(2),
+    #main-table td:nth-child(2) {{ text-align: right; }}
     thead th {{
       position: sticky;
       top: 0;
@@ -279,6 +281,47 @@ def generate_onoff_report_playoffs() -> Path:
     </section>
 
     <section class="card">
+      <h2>Playoff Season Totals (Team by Team)</h2>
+      <div class="controls">
+        <label>Season
+          <select id="season-filter"></select>
+        </label>
+        <label>Team
+          <select id="season-team-filter">
+            <option value="__all__">All Teams</option>
+          </select>
+        </label>
+        <label>Min Games
+          <input id="season-min-games" type="number" min="0" step="1" value="4" />
+        </label>
+        <label>Min Minutes
+          <input id="season-min-minutes" type="number" min="0" step="10" value="50" />
+        </label>
+        <label>Search
+          <input id="season-search" type="text" placeholder="Player name..." />
+        </label>
+      </div>
+      <p class="muted" style="margin: 0 0 8px; font-size: 11px;">All stats per 48 minutes. One row per player/team/season.</p>
+      <div class="table-wrap">
+        <table id="season-table">
+          <thead>
+            <tr>
+              <th data-key="player_name">Player</th>
+              <th data-key="team_abbr">Team</th>
+              <th data-key="games">G</th>
+              <th data-key="minutes">Min</th>
+              <th data-key="pm_adj" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
+              <th data-key="onoff_adj" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
+              <th data-key="onoff_adj_off" title="Offensive On-Off (team ORtg impact)">Off</th>
+              <th data-key="onoff_adj_def" title="Defensive On-Off (team DRtg impact)">Def</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Playoff Leaderboard</h2>
       <div class="controls">
         <label>Period
@@ -291,11 +334,6 @@ def generate_onoff_report_playoffs() -> Path:
             <option value="2010s">2010s</option>
             <option value="2000s">2000s</option>
             <option value="1990s">1990s</option>
-          </select>
-        </label>
-        <label>Team
-          <select id="team-filter">
-            <option value="">All Teams</option>
           </select>
         </label>
         <label>Min Games
@@ -314,7 +352,6 @@ def generate_onoff_report_playoffs() -> Path:
           <thead>
             <tr>
               <th data-key="player_name">Player</th>
-              <th data-key="team_abbr">Team</th>
               <th data-key="games">G</th>
               <th data-key="minutes">Min</th>
               <th data-key="pm_adj" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
@@ -338,6 +375,8 @@ def generate_onoff_report_playoffs() -> Path:
 
     let sortKey = "onoff_adj";
     let sortDir = "desc";
+    let seasonSortKey = "onoff_adj";
+    let seasonSortDir = "desc";
 
     // Get seasons for a period
     function getSeasonsForPeriod(period) {{
@@ -387,7 +426,6 @@ def generate_onoff_report_playoffs() -> Path:
           agg[key] = {{
             player_id: r.player_id,
             player_name: r.player_name,
-            teams: {{}},
             games: 0,
             minutes_on: 0,
             minutes_off: 0,
@@ -413,24 +451,12 @@ def generate_onoff_report_playoffs() -> Path:
         a.on_pts_against_adj += r.on_pts_against_adj;
         a.off_pts_for_adj += r.off_pts_for_adj;
         a.off_pts_against_adj += r.off_pts_against_adj;
-        // Track minutes per team
-        a.teams[r.team_id] = (a.teams[r.team_id] || 0) + r.minutes_on;
       }}
 
       // Convert to array with computed stats
       return Object.values(agg).map(a => {{
         const onMin = a.minutes_on;
         const offMin = a.minutes_off;
-
-        // Primary team (most minutes)
-        let primaryTeam = "";
-        let maxMins = 0;
-        for (const [tid, mins] of Object.entries(a.teams)) {{
-          if (mins > maxMins) {{
-            maxMins = mins;
-            primaryTeam = tid;
-          }}
-        }}
 
         // Per-48 stats
         const pm_adj = onMin > 0 ? (a.on_diff_adj * 48.0 / onMin) : 0;
@@ -451,8 +477,6 @@ def generate_onoff_report_playoffs() -> Path:
         return {{
           player_id: a.player_id,
           player_name: a.player_name,
-          team_id: primaryTeam,
-          team_abbr: TEAM_MAP[primaryTeam] || "???",
           games: a.games,
           minutes: Math.round(onMin),
           pm_adj: pm_adj,
@@ -466,27 +490,92 @@ def generate_onoff_report_playoffs() -> Path:
     const fmt = (x, d=1) => Number.isFinite(x) ? x.toFixed(d) : "";
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
 
+    function rowToStats(r) {{
+      const onMin = r.minutes_on;
+      const offMin = r.minutes_off;
+      const pm_adj = onMin > 0 ? (r.on_diff_adj * 48.0 / onMin) : 0;
+      const off_pm_adj = offMin > 0 ? (r.off_diff_adj * 48.0 / offMin) : 0;
+      const onoff_adj = pm_adj - off_pm_adj;
+
+      const poss_per_min = 100.0 / 48.0;
+      const on_poss = onMin * poss_per_min;
+      const off_poss = offMin * poss_per_min;
+      const on_ortg = on_poss > 0 ? (r.on_pts_for_adj * 100.0 / on_poss) : 0;
+      const on_drtg = on_poss > 0 ? (r.on_pts_against_adj * 100.0 / on_poss) : 0;
+      const off_ortg = off_poss > 0 ? (r.off_pts_for_adj * 100.0 / off_poss) : 0;
+      const off_drtg = off_poss > 0 ? (r.off_pts_against_adj * 100.0 / off_poss) : 0;
+      const onoff_adj_off = on_ortg - off_ortg;
+      const onoff_adj_def = off_drtg - on_drtg;
+
+      return {{
+        player_id: r.player_id,
+        player_name: r.player_name,
+        team_id: r.team_id,
+        team_abbr: TEAM_MAP[r.team_id] || "???",
+        games: r.games,
+        minutes: Math.round(onMin),
+        pm_adj: pm_adj,
+        onoff_adj: onoff_adj,
+        onoff_adj_off: onoff_adj_off,
+        onoff_adj_def: onoff_adj_def,
+      }};
+    }}
+
     function render() {{
       const period = document.getElementById("period-filter").value;
-      const teamFilter = document.getElementById("team-filter").value;
       const minGames = Number(document.getElementById("min-games").value || 0);
       const minMin = Number(document.getElementById("min-minutes").value || 0);
       const search = document.getElementById("search").value.toLowerCase();
 
       const rows = aggregateForPeriod(period)
-        .filter(r => !teamFilter || r.team_id === teamFilter)
         .filter(r => r.games >= minGames)
         .filter(r => r.minutes >= minMin)
         .filter(r => !search || r.player_name.toLowerCase().includes(search))
         .sort((a, b) => {{
           const dir = sortDir === "asc" ? 1 : -1;
-          if (sortKey === "player_name" || sortKey === "team_abbr") {{
+          if (sortKey === "player_name") {{
             return dir * String(a[sortKey]).localeCompare(String(b[sortKey]));
           }}
           return dir * ((a[sortKey] || 0) - (b[sortKey] || 0));
         }});
 
       const tbody = document.querySelector("#main-table tbody");
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${{r.player_name}}</td>
+          <td>${{r.games}}</td>
+          <td>${{r.minutes.toLocaleString()}}</td>
+          <td class="${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
+          <td class="${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
+          <td class="${{cls(r.onoff_adj_off)}}">${{fmt(r.onoff_adj_off)}}</td>
+          <td class="${{cls(r.onoff_adj_def)}}">${{fmt(r.onoff_adj_def)}}</td>
+        </tr>
+      `).join("");
+    }}
+
+    function renderSeasonTable() {{
+      const season = document.getElementById("season-filter").value;
+      const teamFilter = document.getElementById("season-team-filter").value;
+      const minGames = Number(document.getElementById("season-min-games").value || 0);
+      const minMin = Number(document.getElementById("season-min-minutes").value || 0);
+      const search = document.getElementById("season-search").value.toLowerCase();
+
+      const rows = RAW_ROWS
+        .filter(r => r.season === season)
+        .filter(r => teamFilter === "__all__" || r.team_id === teamFilter)
+        .map(rowToStats)
+        .filter(r => r.games >= minGames)
+        .filter(r => r.minutes >= minMin)
+        .filter(r => !search || r.player_name.toLowerCase().includes(search))
+        .sort((a, b) => {{
+          const dir = seasonSortDir === "asc" ? 1 : -1;
+          if (seasonSortKey === "player_name" || seasonSortKey === "team_abbr") {{
+            return dir * String(a[seasonSortKey]).localeCompare(String(b[seasonSortKey]));
+          }}
+          return dir * ((a[seasonSortKey] || 0) - (b[seasonSortKey] || 0));
+        }});
+
+      const tbody = document.querySelector("#season-table tbody");
       tbody.innerHTML = rows.map(r => `
         <tr>
           <td>${{r.player_name}}</td>
@@ -502,20 +591,47 @@ def generate_onoff_report_playoffs() -> Path:
     }}
 
     function init() {{
-      // Populate team filter
-      const teams = [...new Set(RAW_ROWS.map(r => r.team_id))];
-      const teamSel = document.getElementById("team-filter");
-      teams.sort((a, b) => (TEAM_MAP[a] || a).localeCompare(TEAM_MAP[b] || b));
-      teams.forEach(tid => {{
+      const seasonSel = document.getElementById("season-filter");
+      const seasonTeamSel = document.getElementById("season-team-filter");
+      SEASONS.forEach(s => {{
         const o = document.createElement("option");
-        o.value = tid;
-        o.textContent = TEAM_MAP[tid] || tid;
-        teamSel.appendChild(o);
+        o.value = s;
+        o.textContent = s;
+        seasonSel.appendChild(o);
       }});
+      seasonSel.value = LATEST_SEASON;
+
+      function refreshSeasonTeams() {{
+        const season = seasonSel.value;
+        const seasonTeams = [...new Set(RAW_ROWS.filter(r => r.season === season).map(r => r.team_id))]
+          .sort((a, b) => (TEAM_MAP[a] || a).localeCompare(TEAM_MAP[b] || b));
+        seasonTeamSel.innerHTML = "";
+        const allOpt = document.createElement("option");
+        allOpt.value = "__all__";
+        allOpt.textContent = "All Teams";
+        seasonTeamSel.appendChild(allOpt);
+        seasonTeams.forEach(tid => {{
+          const o = document.createElement("option");
+          o.value = tid;
+          o.textContent = TEAM_MAP[tid] || tid;
+          seasonTeamSel.appendChild(o);
+        }});
+        seasonTeamSel.selectedIndex = 0;
+      }}
+
+      refreshSeasonTeams();
 
       // Event listeners
-      ["period-filter", "team-filter", "min-games", "min-minutes", "search"].forEach(id => {{
+      ["period-filter", "min-games", "min-minutes", "search"].forEach(id => {{
         document.getElementById(id).addEventListener("input", render);
+      }});
+      ["season-filter", "season-team-filter", "season-min-games", "season-min-minutes", "season-search"].forEach(id => {{
+        document.getElementById(id).addEventListener("input", () => {{
+          if (id === "season-filter") {{
+            refreshSeasonTeams();
+          }}
+          renderSeasonTable();
+        }});
       }});
 
       // Sort on header click
@@ -526,12 +642,26 @@ def generate_onoff_report_playoffs() -> Path:
             sortDir = sortDir === "desc" ? "asc" : "desc";
           }} else {{
             sortKey = key;
-            sortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+            sortDir = key === "player_name" ? "asc" : "desc";
           }}
           render();
         }});
       }});
 
+      document.querySelectorAll("#season-table thead th").forEach(th => {{
+        th.addEventListener("click", () => {{
+          const key = th.dataset.key;
+          if (seasonSortKey === key) {{
+            seasonSortDir = seasonSortDir === "desc" ? "asc" : "desc";
+          }} else {{
+            seasonSortKey = key;
+            seasonSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+          }}
+          renderSeasonTable();
+        }});
+      }});
+
+      renderSeasonTable();
       render();
     }}
 

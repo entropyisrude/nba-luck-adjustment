@@ -497,6 +497,8 @@ def generate_onoff_report() -> Path:
     }}
     th:first-child, td:first-child,
     th:nth-child(2), td:nth-child(2) {{ text-align: left; }}
+    #multi-table th:nth-child(2),
+    #multi-table td:nth-child(2) {{ text-align: right; }}
     td:first-child {{
       position: sticky;
       left: 0;
@@ -620,7 +622,6 @@ def generate_onoff_report() -> Path:
           <thead>
             <tr>
               <th class=\"sortable\" data-key=\"player_name\" data-type=\"str\">Player</th>
-              <th class=\"sortable\" data-key=\"team_abbr\" data-type=\"str\">Teams</th>
               <th class=\"sortable\" data-key=\"games\" data-type=\"num\">G</th>
               <th class=\"sortable\" data-key=\"minutes_total\" data-type=\"num\">Min</th>
               <th class=\"sortable\" data-key=\"pm_actual_100\" data-type=\"num\">PM</th>
@@ -805,6 +806,28 @@ def generate_onoff_report() -> Path:
       </tr>`;
     }}
 
+    function rowHtmlNoTeam(r) {{
+      const ortgHidden = !document.querySelector('.toggle-btn[data-cols="ortg-adj"]')?.classList.contains('active');
+      const drtgHidden = !document.querySelector('.toggle-btn[data-cols="drtg-adj"]')?.classList.contains('active');
+      return `<tr>
+        <td>${{r.player_name}}</td>
+        <td>${{fmt(r.games,0)}}</td>
+        <td>${{fmt(r.minutes_total,1)}}</td>
+        <td class="${{cls(r.pm_actual_100)}}">${{fmt(r.pm_actual_100,1)}}</td>
+        <td class="${{cls(r.pm_adj_100)}}">${{fmt(r.pm_adj_100,1)}}</td>
+        <td class="${{cls(r.pm_delta_100)}}">${{fmt(r.pm_delta_100,1)}}</td>
+        <td class="${{cls(r.onoff_actual_100)}}">${{fmt(r.onoff_actual_100,1)}}</td>
+        <td class="${{cls(r.onoff_adj_100)}}">${{fmt(r.onoff_adj_100,1)}}</td>
+        <td class="${{cls(r.onoff_adj_off_100)}}">${{fmt(r.onoff_adj_off_100,1)}}</td>
+        <td class="col-ortg-adj${{ortgHidden ? ' col-hidden' : ''}}">${{fmt(r.on_ortg_adj,1)}}</td>
+        <td class="col-ortg-adj${{ortgHidden ? ' col-hidden' : ''}}">${{fmt(r.off_ortg_adj,1)}}</td>
+        <td class="${{cls(r.onoff_adj_def_100)}}">${{fmt(r.onoff_adj_def_100,1)}}</td>
+        <td class="col-drtg-adj${{drtgHidden ? ' col-hidden' : ''}}">${{fmt(r.on_drtg_adj,1)}}</td>
+        <td class="col-drtg-adj${{drtgHidden ? ' col-hidden' : ''}}">${{fmt(r.off_drtg_adj,1)}}</td>
+        <td class="${{cls(r.onoff_delta_100)}}">${{fmt(r.onoff_delta_100,1)}}</td>
+      </tr>`;
+    }}
+
     function renderTeamTable() {{
       const season = document.getElementById("season-filter").value;
       const team = document.getElementById("team-filter").value;
@@ -868,13 +891,13 @@ def generate_onoff_report() -> Path:
         .slice()
         .sort((a,b) => {{
           const dir = multiSortDir === "asc" ? 1 : -1;
-          if (multiSortKey === "player_name" || multiSortKey === "team_abbr") {{
+          if (multiSortKey === "player_name") {{
             return dir * String(a[multiSortKey]).localeCompare(String(b[multiSortKey]));
           }}
           return dir * (Number(a[multiSortKey] || 0) - Number(b[multiSortKey] || 0));
         }});
 
-      tbody.innerHTML = rows.map(rowHtml).join("");
+      tbody.innerHTML = rows.map(rowHtmlNoTeam).join("");
     }}
 
     function init() {{
