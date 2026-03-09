@@ -11,6 +11,7 @@ import requests
 
 DATA_DIR = Path("data")
 ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
+ONOFF_PRE2006_PATH = DATA_DIR / "adjusted_onoff_pre2006.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 
@@ -73,19 +74,26 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     game_ids: set[str] = set()
     team_game_minutes: dict[tuple[str, str, str], float] = {}
 
-    with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for r in reader:
-            rows.append(r)
-            d = str(r["date"])
-            if d > latest_date:
-                latest_date = d
-            gid = str(r["game_id"])
-            tid = str(r["team_id"])
-            game_ids.add(gid)
-            key = (d, gid, tid)
-            # summed player minutes / 5 gives team minutes for that game.
-            team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
+    def ingest(path: Path) -> None:
+        nonlocal latest_date
+        if not path.exists():
+            return
+        with path.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                rows.append(r)
+                d = str(r["date"])
+                if d > latest_date:
+                    latest_date = d
+                gid = str(r["game_id"])
+                tid = str(r["team_id"])
+                game_ids.add(gid)
+                key = (d, gid, tid)
+                # summed player minutes / 5 gives team minutes for that game.
+                team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
+
+    ingest(ONOFF_PRE2006_PATH)
+    ingest(ONOFF_PATH)
 
     agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
@@ -602,7 +610,7 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class=\"muted\">Generated {generated_ts} | Source: `data/adjusted_onoff.csv` + pbpstats possession totals.</p>
+    <p class=\"muted\">Generated {generated_ts} | Source: `data/adjusted_onoff.csv` + `data/adjusted_onoff_pre2006.csv` + pbpstats possession totals.</p>
   </div>
   <script>
     const ROWS = {json.dumps(records)};

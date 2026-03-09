@@ -293,20 +293,10 @@ def compute_adjusted_onoff_for_game(
         nonlocal stint_start_home_adj, stint_start_away_adj
         nonlocal stint_start_period, stint_start_clock
         duration = prev_elapsed - stint_start_elapsed
-        if duration > 0:
-            home_lineup = tuple(sorted(lineups.get(home_id, set())))
-            away_lineup = tuple(sorted(lineups.get(away_id, set())))
-            home_complete = len(home_lineup) == 5
-            away_complete = len(away_lineup) == 5
-            if len(home_lineup) < 5:
-                home_lineup = home_lineup + (0,) * (5 - len(home_lineup))
-            if len(away_lineup) < 5:
-                away_lineup = away_lineup + (0,) * (5 - len(away_lineup))
+        if duration > 0 and len(lineups.get(home_id, set())) == 5 and len(lineups.get(away_id, set())) == 5:
             stints.append({
-                "home_lineup": home_lineup,
-                "away_lineup": away_lineup,
-                "home_lineup_complete": home_complete,
-                "away_lineup_complete": away_complete,
+                "home_lineup": tuple(sorted(lineups[home_id])),
+                "away_lineup": tuple(sorted(lineups[away_id])),
                 "seconds": duration,
                 "home_pts": prev_home - stint_start_home,
                 "away_pts": prev_away - stint_start_away,
@@ -525,8 +515,6 @@ def compute_adjusted_onoff_for_game(
             "away_p3": away_lineup[2] if len(away_lineup) > 2 else None,
             "away_p4": away_lineup[3] if len(away_lineup) > 3 else None,
             "away_p5": away_lineup[4] if len(away_lineup) > 4 else None,
-            "home_lineup_complete": s.get("home_lineup_complete", False),
-            "away_lineup_complete": s.get("away_lineup_complete", False),
             "seconds": s["seconds"],
             "home_pts": round(s["home_pts"], 3),
             "away_pts": round(s["away_pts"], 3),
