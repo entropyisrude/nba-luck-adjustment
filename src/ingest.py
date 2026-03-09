@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 import random
 import time
 from pathlib import Path
@@ -823,6 +824,7 @@ def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFr
     game = pbp_data.get("game", {})
     actions = game.get("actions", [])
 
+    season = _season_from_mmddyyyy(game_date_mmddyyyy)
     shots = []
     for action in actions:
         desc = action.get("description", "")
@@ -853,6 +855,7 @@ def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFr
                 "MADE": made,
                 "AREA": area,
                 "SHOT_TYPE": shot_type,
+                "SEASON": season,
             })
 
     return pd.DataFrame(shots)
@@ -871,5 +874,12 @@ def _classify_shot_type(desc_lower: str) -> str:
     elif "turnaround" in desc_lower or "turn around" in desc_lower:
         return "turnaround"
     else:
-        # Default to catch-and-shoot (most common for unspecified 3PT)
-        return "catch_shoot"
+        # Unknown shot type; caller can apply season-average mix
+        return "unknown"
+
+
+def _season_from_mmddyyyy(date_str: str) -> str:
+    """Convert MM/DD/YYYY to season label like 2019-20."""
+    d = datetime.strptime(date_str, "%m/%d/%Y")
+    start = d.year if d.month >= 7 else d.year - 1
+    return f"{start}-{(start + 1) % 100:02d}"

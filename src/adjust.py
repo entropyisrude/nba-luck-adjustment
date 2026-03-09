@@ -23,6 +23,8 @@ ASSISTED_MULTIPLIER = 0.95   # ~36/38
 
 # Cache for assisted/unassisted data (loaded once)
 _ASSISTED_UNASSISTED_DATA: dict[int, dict] | None = None
+_SEASON_CS_RATE: dict[str, float] | None = None
+_GLOBAL_CS_RATE: float | None = None
 
 
 def load_assisted_unassisted_data() -> dict[int, dict]:
@@ -47,6 +49,54 @@ def load_assisted_unassisted_data() -> dict[int, dict]:
         int(p["player_id"]): p for p in raw_data
     }
     return _ASSISTED_UNASSISTED_DATA
+
+
+def _load_season_cs_rate() -> tuple[dict[str, float], float]:
+    """Load season-level catch-and-shoot rate from calibration.csv.
+
+    Returns (season_to_cs_rate, global_cs_rate).
+    """
+    global _SEASON_CS_RATE, _GLOBAL_CS_RATE
+    if _SEASON_CS_RATE is not None and _GLOBAL_CS_RATE is not None:
+        return _SEASON_CS_RATE, _GLOBAL_CS_RATE
+
+    calib_path = Path(__file__).parent.parent / "shooter_model" / "data" / "calibration.csv"
+    season_to_totals: dict[str, dict[str, float]] = {}
+    total_cs = 0.0
+    total_3pa = 0.0
+
+    if calib_path.exists():
+        df = pd.read_csv(calib_path)
+        for _, r in df.iterrows():
+            season = str(r.get("SEASON") or "")
+            fg3a = float(r.get("FG3A") or 0.0)
+            cs_a = float(r.get("CATCH_SHOOT_FG3A") or 0.0)
+            if not season or fg3a <= 0:
+                continue
+            bucket = season_to_totals.setdefault(season, {"cs": 0.0, "total": 0.0})
+            bucket["cs"] += cs_a
+            bucket["total"] += fg3a
+            total_cs += cs_a
+            total_3pa += fg3a
+
+    season_to_rate = {}
+    for season, vals in season_to_totals.items():
+        if vals["total"] > 0:
+            season_to_rate[season] = vals["cs"] / vals["total"]
+
+    global_rate = (total_cs / total_3pa) if total_3pa > 0 else 0.67
+
+    _SEASON_CS_RATE = season_to_rate
+    _GLOBAL_CS_RATE = global_rate
+    return season_to_rate, global_rate
+
+
+def get_season_cs_rate(season: str | None) -> float:
+    """Get league-average catch-and-shoot rate for a season, fallback to global."""
+    season_to_rate, global_rate = _load_season_cs_rate()
+    if not season:
+        return global_rate
+    return season_to_rate.get(season, global_rate)
 
 
 def get_shot_mix_adjustment(player_id: int) -> float:
@@ -96,6 +146,17 @@ DEFAULT_MULTIPLIER = 1.0
 def get_shot_multiplier(area: str, shot_type: str) -> float:
     """Get the difficulty multiplier for a shot based on area and type."""
     return SHOT_TYPE_MULTIPLIERS.get((area, shot_type), DEFAULT_MULTIPLIER)
+
+
+def get_context_multiplier(area: str, shot_type: str, season: str | None) -> float:
+    """Get multiplier, using season-average shot mix if type is unknown."""
+    if shot_type != "unknown":
+        return get_shot_multiplier(area, shot_type)
+
+    cs_rate = get_season_cs_rate(season)
+    cs_mult = get_shot_multiplier(area, "catch_shoot")
+    pu_mult = get_shot_multiplier(area, "pullup")
+    return cs_rate * cs_mult + (1.0 - cs_rate) * pu_mult
 
 
 def get_player_prior(A_r: float, player_id: int | None = None) -> tuple[float, float]:
@@ -203,10 +264,11 @@ def compute_team_expected_3pm_with_context(
             mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
             player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
 
-            # Get shot difficulty multiplier
+            # Get shot difficulty multiplier (season mix fallback for unknown)
             area = shot.get("AREA", "above_break")
-            shot_type = shot.get("SHOT_TYPE", "catch_shoot")
-            multiplier = get_shot_multiplier(area, shot_type)
+            shot_type = shot.get("SHOT_TYPE", "unknown")
+            season = shot.get("SEASON")
+            multiplier = get_context_multiplier(area, shot_type, season)
 
             # Multiplicative adjustment: player skill × shot difficulty
             # Clamp to reasonable range [0.15, 0.55]
@@ -256,10 +318,11 @@ def compute_player_deltas_with_context(
         mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
         player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
 
-        # Get shot difficulty multiplier
+        # Get shot difficulty multiplier (season mix fallback for unknown)
         area = shot.get("AREA", "above_break")
-        shot_type = shot.get("SHOT_TYPE", "catch_shoot")
-        multiplier = get_shot_multiplier(area, shot_type)
+        shot_type = shot.get("SHOT_TYPE", "unknown")
+        season = shot.get("SEASON")
+        multiplier = get_context_multiplier(area, shot_type, season)
 
         # Expected make probability for this shot
         expected_make_prob = max(0.15, min(0.55, player_p_hat * multiplier))
