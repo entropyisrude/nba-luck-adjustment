@@ -5,3 +5,4 @@ data/stints_*.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_*_inferred.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_pre2006.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_backup_2006_onwards.csv filter=lfs diff=lfs merge=lfs -text
+data/onoff_daily_boxscores.html filter=lfs diff=lfs merge=lfs -text
