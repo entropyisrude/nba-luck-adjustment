@@ -52,11 +52,25 @@ def _load_player_name_map() -> dict[int, str]:
     return out
 
 
-def _season_from_date(date_str: str) -> str:
-    """Convert date to season string (e.g., '2020-05-15' -> '2019-20')."""
-    d = datetime.strptime(date_str, "%Y-%m-%d")
-    start = d.year - 1 if d.month <= 8 else d.year
-    return f"{start}-{(start + 1) % 100:02d}"
+def _season_from_game_id(game_id: str, date_str: str | None = None) -> str:
+    """
+    Convert playoff game_id to season string (e.g., '0042400121' -> '2024-25').
+
+    Falls back to date if game_id isn't parseable.
+    """
+    gid = str(game_id).lstrip("0")
+    if gid.startswith("4") and len(gid) >= 3:
+        try:
+            season_code = int(gid[1:3])
+            year = 1900 + season_code if season_code >= 96 else 2000 + season_code
+            return f"{year}-{(year + 1) % 100:02d}"
+        except Exception:
+            pass
+    if date_str:
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+        start = d.year - 1 if d.month <= 8 else d.year
+        return f"{start}-{(start + 1) % 100:02d}"
+    return "Unknown"
 
 
 def _load_season_totals() -> tuple[list[dict], str, int]:
@@ -93,7 +107,7 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
     # Aggregate by (season, team, player)
     agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
-        season = _season_from_date(str(r["date"]))
+        season = _season_from_game_id(r.get("game_id"), str(r.get("date", "")))
         team_id = str(r["team_id"])
         player_id = str(r["player_id"])
         key = (season, team_id, player_id)
@@ -163,8 +177,8 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
 
 def generate_onoff_report_playoffs() -> Path:
     raw_rows, latest_date, game_count = _load_season_totals()
-    latest_season = _season_from_date(latest_date)
-    season_values = sorted({r["season"] for r in raw_rows}, reverse=True)
+    season_values = sorted({r["season"] for r in raw_rows}, key=lambda s: int(s.split("-")[0]), reverse=True)
+    latest_season = season_values[0] if season_values else _season_from_game_id("", latest_date)
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     page_title = "3PT Luck Adjusted Plus Minus: Playoffs"
