@@ -13,6 +13,7 @@ BOX_PATH = DATA_DIR / "player_daily_boxscore.csv"
 GAMES_PATH = DATA_DIR / "adjusted_games.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_daily_boxscores.html"
 OUTPUT_SITE_PATH = Path("onoff-daily.html")
+PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 
 TEAM_ID_TO_ABBR = {
     1610612737: "ATL",
@@ -47,6 +48,26 @@ TEAM_ID_TO_ABBR = {
     1610612764: "WAS",
 }
 TEAM_ABBR_TO_ID = {abbr: tid for tid, abbr in TEAM_ID_TO_ABBR.items()}
+
+
+def _load_player_name_map() -> dict[int, str]:
+    if not PLAYER_INFO_MAP.exists():
+        return {}
+    try:
+        raw = json.loads(PLAYER_INFO_MAP.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: dict[int, str] = {}
+    for pid, rec in raw.items():
+        try:
+            pid_int = int(pid)
+        except Exception:
+            continue
+        if isinstance(rec, dict):
+            name = rec.get("name")
+            if isinstance(name, str) and name.strip():
+                out[pid_int] = name.strip()
+    return out
 
 
 def _prepare_box() -> pd.DataFrame:
@@ -111,8 +132,11 @@ def generate_daily_boxscores_report() -> Path:
 
     all_dates = sorted(box["date"].unique().tolist())
 
+    name_map = _load_player_name_map()
     records = []
     for _, r in box.iterrows():
+        pid = int(r["player_id"])
+        name = name_map.get(pid, str(r["player_name"]))
         records.append(
             {
                 "date": r["date"],
@@ -120,7 +144,7 @@ def generate_daily_boxscores_report() -> Path:
                 "team_id": int(r["team_id"]),
                 "team_abbr": TEAM_ID_TO_ABBR.get(int(r["team_id"]), str(int(r["team_id"]))),
                 "player_id": int(r["player_id"]),
-                "player_name": str(r["player_name"]),
+                "player_name": name,
                 "minutes_on": float(r["minutes_on"]) if pd.notna(r["minutes_on"]) else None,
                 "plus_minus_actual": float(r["plus_minus_actual"]) if pd.notna(r["plus_minus_actual"]) else None,
                 "plus_minus_adjusted": float(r["plus_minus_adjusted"]) if pd.notna(r["plus_minus_adjusted"]) else None,

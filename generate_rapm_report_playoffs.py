@@ -11,6 +11,7 @@ import pandas as pd
 DATA_DIR = Path("data")
 STINTS_PATH = DATA_DIR / "stints_playoffs.csv"
 OUTPUT_PATH = Path("rapm-playoffs.html")
+PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 
 TEAM_ID_TO_ABBR = {
     1610612737: "ATL", 1610612738: "BOS", 1610612751: "BKN", 1610612766: "CHA",
@@ -82,6 +83,14 @@ def compute_rapm_for_period(stints: pd.DataFrame, period_key: str, latest_year: 
     # Build results
     results = []
     min_minutes = 50 if period_key != "all" else 100
+    name_map = {}
+    if PLAYER_INFO_MAP.exists():
+        try:
+            raw = json.loads(PLAYER_INFO_MAP.read_text(encoding="utf-8"))
+            name_map = {int(k): v.get("name") for k, v in raw.items() if isinstance(v, dict)}
+        except Exception:
+            name_map = {}
+
     for i, pid in enumerate(player_list):
         info = player_info.get(pid, {})
         minutes = player_minutes.get(pid, 0)
@@ -93,9 +102,11 @@ def compute_rapm_for_period(stints: pd.DataFrame, period_key: str, latest_year: 
             primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
         else:
             primary_team_id = info.get("team_id", 0)
+        mapped = name_map.get(int(pid))
+        name = mapped or info.get("name", f"Player {pid}")
         results.append({
             "player_id": int(pid),
-            "player_name": info.get("name", f"Player {pid}"),
+            "player_name": name,
             "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
             "minutes": int(round(minutes)),
             "rapm": round(float(coefficients[i]), 2),

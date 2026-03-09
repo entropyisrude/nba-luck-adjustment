@@ -145,6 +145,10 @@ def update_player_info_map() -> Dict[str, dict]:
 
     for pid, (_, name) in candidates.items():
         rec = info.get(str(pid), {})
+        existing = rec.get("name")
+        if score_name(existing) >= score_name(name):
+            info[str(pid)] = rec
+            continue
         rec["name"] = name
         info[str(pid)] = rec
 
@@ -177,12 +181,41 @@ def embed_rapm_html(rapm: dict, player_map: dict) -> None:
     RAPM_HTML.write_text(prefix + new_block + suffix, encoding="utf-8")
 
 
+def _name_word_count(name: str | None) -> int:
+    if not name:
+        return 0
+    return len(name.strip().split())
+
+
+def apply_player_names(rapm: dict, player_map: dict) -> None:
+    """Prefer full names from player_map when current name is missing/one-word."""
+    for _, rows in rapm.items():
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            pid = row.get("player_id")
+            if pid is None:
+                continue
+            info = player_map.get(str(pid)) or player_map.get(pid) or {}
+            mapped = info.get("name")
+            current = row.get("player_name")
+            if not mapped:
+                continue
+            if (not current) or str(current).startswith("Player "):
+                row["player_name"] = mapped
+                continue
+            if _name_word_count(mapped) >= 2 and _name_word_count(str(current)) < 2:
+                row["player_name"] = mapped
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--min-minutes", type=int, default=200)
     parser.add_argument(
         "--season-alphas",
-        default="1,10,50,250,500,1000,2500",
+        default="1,500,2500",
         help="Comma-separated alphas for latest season",
     )
     parser.add_argument(
@@ -244,9 +277,10 @@ def main() -> None:
     if "Last3_a2500" in rapm:
         rapm["Last3"] = rapm["Last3_a2500"]
 
-    RAPM_JSON.write_text(json.dumps(rapm, separators=(",", ":")), encoding="utf-8")
-
     player_map = update_player_info_map()
+    apply_player_names(rapm, player_map)
+
+    RAPM_JSON.write_text(json.dumps(rapm, separators=(",", ":")), encoding="utf-8")
     embed_rapm_html(rapm, player_map)
 
     print(f"Updated RAPM for {latest_season} and Last3 ({', '.join(last3)})")

@@ -11,6 +11,7 @@ DATA_DIR = Path("data")
 ONOFF_PATH = DATA_DIR / "adjusted_onoff_playoffs.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report_playoffs.html"
 OUTPUT_SITE_PATH = Path("onoff-playoffs.html")
+PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 
 TEAM_ID_TO_ABBR = {
     "1610612737": "ATL", "1610612738": "BOS", "1610612751": "BKN", "1610612766": "CHA",
@@ -31,6 +32,26 @@ def _f(v: object) -> float:
         return 0.0
 
 
+def _load_player_name_map() -> dict[int, str]:
+    if not PLAYER_INFO_MAP.exists():
+        return {}
+    try:
+        raw = json.loads(PLAYER_INFO_MAP.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: dict[int, str] = {}
+    for pid, rec in raw.items():
+        try:
+            pid_int = int(pid)
+        except Exception:
+            continue
+        if isinstance(rec, dict):
+            name = rec.get("name")
+            if isinstance(name, str) and name.strip():
+                out[pid_int] = name.strip()
+    return out
+
+
 def _season_from_date(date_str: str) -> str:
     """Convert date to season string (e.g., '2020-05-15' -> '2019-20')."""
     d = datetime.strptime(date_str, "%Y-%m-%d")
@@ -44,6 +65,7 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
         raise FileNotFoundError(f"Missing {ONOFF_PATH}")
 
     rows: list[dict] = []
+    name_map = _load_player_name_map()
     latest_date = ""
     game_ids: set[str] = set()
     team_game_minutes: dict[tuple[str, str, str], float] = {}
@@ -51,6 +73,13 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
     with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
+            pid = r.get("player_id")
+            try:
+                pid_int = int(pid) if pid is not None else None
+            except Exception:
+                pid_int = None
+            if pid_int is not None and pid_int in name_map:
+                r["player_name"] = name_map[pid_int]
             rows.append(r)
             d = str(r["date"])
             if d > latest_date:
