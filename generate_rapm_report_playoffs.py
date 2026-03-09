@@ -33,9 +33,16 @@ PERIODS = {
     "2010s": {"label": "2010s", "start_year": 2010, "end_year": 2019},
     "2000s": {"label": "2000s", "start_year": 2000, "end_year": 2009},
 }
+ALPHAS = [10, 500]
+DEFAULT_ALPHA = 500
 
 
-def compute_rapm_for_period(stints: pd.DataFrame, period_key: str, latest_year: int) -> list[dict]:
+def compute_rapm_for_period(
+    stints: pd.DataFrame,
+    period_key: str,
+    latest_year: int,
+    alpha: float,
+) -> list[dict]:
     """Compute RAPM for a specific period by filtering stints and running regression."""
     from run_rapm import (
         build_design_matrix,
@@ -58,7 +65,7 @@ def compute_rapm_for_period(stints: pd.DataFrame, period_key: str, latest_year: 
 
     # Build design matrix and run RAPM
     X, y, weights, player_list, player_to_idx = build_design_matrix(df, use_adjusted=True)
-    coefficients, intercept = run_rapm(X, y, weights, alpha=2500.0)
+    coefficients, intercept = run_rapm(X, y, weights, alpha=alpha)
 
     # Get player info
     player_info = get_player_info(player_list, df, "_playoffs")
@@ -129,13 +136,16 @@ def generate_rapm_report_playoffs():
     latest_year = stints["playoff_year"].max()
     print(f"Latest playoff year: {latest_year}")
 
-    # Compute RAPM for each period
+    # Compute RAPM for each period and alpha
     all_data = {}
     for period_key in PERIODS.keys():
-        print(f"Computing RAPM for {period_key}...")
-        results = compute_rapm_for_period(stints, period_key, latest_year)
-        all_data[period_key] = results
-        print(f"  {len(results)} players")
+        for alpha in ALPHAS:
+            print(f"Computing RAPM for {period_key} (alpha={alpha})...")
+            results = compute_rapm_for_period(stints, period_key, latest_year, alpha)
+            all_data[f"{period_key}_a{alpha}"] = results
+            if alpha == DEFAULT_ALPHA:
+                all_data[period_key] = results
+            print(f"  {len(results)} players")
 
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     page_title = "3PT Luck Adjusted RAPM: Playoffs"
@@ -247,7 +257,7 @@ def generate_rapm_report_playoffs():
     <section class="hero">
       <h1>{page_title}</h1>
       <div class="meta">
-        <span class="chip">Alpha: 2500</span>
+        <span class="chip">Alpha: 500</span>
         <span class="chip">3PT Luck Adjusted</span>
       </div>
       <div class="nav">
@@ -263,6 +273,12 @@ def generate_rapm_report_playoffs():
         <label>Period
           <select id="period-filter">
             {period_options}
+          </select>
+        </label>
+        <label>Alpha
+          <select id="alpha-filter">
+            <option value="500">α=500 (default)</option>
+            <option value="10">α=10</option>
           </select>
         </label>
         <label>Team
@@ -300,6 +316,7 @@ def generate_rapm_report_playoffs():
   </div>
   <script>
     const ALL_DATA = {json.dumps(all_data)};
+    const DEFAULT_ALPHA = {DEFAULT_ALPHA};
 
     let sortKey = "rapm";
     let sortDir = "desc";
@@ -309,7 +326,9 @@ def generate_rapm_report_playoffs():
 
     function getRows() {{
       const period = document.getElementById("period-filter").value;
-      return ALL_DATA[period] || [];
+      const alphaVal = document.getElementById("alpha-filter").value;
+      const key = alphaVal ? `${{period}}_a${{alphaVal}}` : period;
+      return ALL_DATA[key] || ALL_DATA[period] || [];
     }}
 
     function render() {{
@@ -356,7 +375,7 @@ def generate_rapm_report_playoffs():
     }}
 
     function init() {{
-      ["period-filter", "team-filter", "min-minutes", "search"].forEach(id => {{
+      ["period-filter", "alpha-filter", "team-filter", "min-minutes", "search"].forEach(id => {{
         document.getElementById(id).addEventListener("input", render);
       }});
 

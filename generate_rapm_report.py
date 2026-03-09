@@ -215,12 +215,12 @@ def main() -> None:
     parser.add_argument("--min-minutes", type=int, default=200)
     parser.add_argument(
         "--season-alphas",
-        default="1,500,2500",
+        default="10,500",
         help="Comma-separated alphas for latest season",
     )
     parser.add_argument(
         "--last3-alphas",
-        default="1,500,2500",
+        default="10,500",
         help="Comma-separated alphas for Last3",
     )
     args = parser.parse_args()
@@ -249,33 +249,39 @@ def main() -> None:
 
     rapm = json.loads(RAPM_JSON.read_text(encoding="utf-8")) if RAPM_JSON.exists() else {}
 
-    # Drop unsupported alpha variants
+    # Keep only alpha=10/500 variants (plus season keys/Last3 base)
     for k in list(rapm.keys()):
-        if k.endswith("_a25") or k.endswith("_a100"):
-            rapm.pop(k, None)
         if k == "Last3_seasons":
             rapm.pop(k, None)
+            continue
+        if "_a" in k:
+            if not (k.endswith("_a10") or k.endswith("_a500")):
+                rapm.pop(k, None)
 
     # Update latest season
     season_df = stints[stints["season"] == latest_season].copy()
     for alpha in season_alphas:
         rapm[f"{latest_season}_a{int(alpha)}"] = compute_for_df(season_df, alpha, args.min_minutes)
-    if f"{latest_season}_a2500" in rapm:
-        rapm[latest_season] = rapm[f"{latest_season}_a2500"]
+    if f"{latest_season}_a500" in rapm:
+        rapm[latest_season] = rapm[f"{latest_season}_a500"]
 
-    # Ensure alpha=1 exists for all seasons if missing (do not recompute existing)
+    # Ensure alpha=10/500 exists for all seasons if missing (do not recompute existing)
     for season in seasons:
-        key = f"{season}_a1"
-        if key not in rapm:
-            df = stints[stints["season"] == season].copy()
-            rapm[key] = compute_for_df(df, 1.0, args.min_minutes)
+        df = stints[stints["season"] == season].copy()
+        key10 = f"{season}_a10"
+        key500 = f"{season}_a500"
+        if key10 not in rapm:
+            rapm[key10] = compute_for_df(df, 10.0, args.min_minutes)
+        if key500 not in rapm:
+            rapm[key500] = compute_for_df(df, 500.0, args.min_minutes)
+        rapm[season] = rapm[key500]
 
     # Update rolling Last3
     rolling_df = stints[stints["season"].isin(last3)].copy()
     for alpha in last3_alphas:
         rapm[f"Last3_a{int(alpha)}"] = compute_for_df(rolling_df, alpha, args.min_minutes)
-    if "Last3_a2500" in rapm:
-        rapm["Last3"] = rapm["Last3_a2500"]
+    if "Last3_a500" in rapm:
+        rapm["Last3"] = rapm["Last3_a500"]
 
     player_map = update_player_info_map()
     apply_player_names(rapm, player_map)
