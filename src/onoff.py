@@ -105,6 +105,52 @@ def _classify_area(action: dict[str, Any]) -> str:
     return "above_break"
 
 
+def _is_offensive_rebound(action: dict[str, Any]) -> bool | None:
+    """
+    Determine if a rebound is offensive or defensive.
+    Returns True for offensive, False for defensive, None if unclear.
+    """
+    desc = str(action.get("description") or "").lower()
+    # Check for explicit "offensive" or "defensive" keywords
+    if "offensive" in desc:
+        return True
+    if "defensive" in desc:
+        return False
+    # Check for (Off:X Def:Y) pattern - if Off > 0 at end, it was offensive
+    # Actually, the numbers are cumulative. We need to check the last rebound type.
+    # A simpler heuristic: if "off:" appears before a non-zero, it's offensive
+    import re
+    match = re.search(r'\(off:(\d+)\s+def:(\d+)\)', desc)
+    if match:
+        # This shows cumulative counts, not helpful for single rebound
+        # But if only one is non-zero, we can infer
+        off_count = int(match.group(1))
+        def_count = int(match.group(2))
+        # Can't determine from cumulative alone, need context
+        pass
+    return None
+
+
+def _is_last_free_throw(action: dict[str, Any]) -> bool:
+    """Check if this free throw is the last in a sequence (e.g., '2 of 2')."""
+    desc = str(action.get("description") or "")
+    import re
+    match = re.search(r'(\d+)\s+of\s+(\d+)', desc)
+    if match:
+        current = int(match.group(1))
+        total = int(match.group(2))
+        return current == total
+    return False
+
+
+def _get_ft_points(action: dict[str, Any]) -> int:
+    """Get points from a free throw (1 if made, 0 if missed)."""
+    desc = str(action.get("description") or "").lower()
+    if desc.startswith("miss"):
+        return 0
+    return 1
+
+
 def _infer_home_away_from_actions(actions: list[dict[str, Any]]) -> tuple[int, int]:
     home_votes: dict[int, int] = {}
     away_votes: dict[int, int] = {}
@@ -325,6 +371,38 @@ def compute_adjusted_onoff_for_game(
         stint_start_period = last_period
         stint_start_clock = last_clock
 
+    # Possession tracking for possession-level RAPM
+    possessions: list[dict] = []
+    possession_team: int | None = None  # Team currently with the ball
+    possession_pts: int = 0  # Points scored this possession
+    possession_pts_adj: float = 0.0  # Adjusted points this possession
+    possession_start_idx: int = 0  # Action index where possession started
+    last_shot_team: int | None = None  # Track who took the last shot (for rebound context)
+
+    def _close_possession(ended_by: str) -> None:
+        nonlocal possession_team, possession_pts, possession_pts_adj, possession_start_idx
+        if possession_team is None:
+            return
+        if len(lineups.get(home_id, set())) != 5 or len(lineups.get(away_id, set())) != 5:
+            # Skip possessions with incomplete lineups
+            possession_pts = 0
+            possession_pts_adj = 0.0
+            return
+        offense_team = possession_team
+        defense_team = away_id if offense_team == home_id else home_id
+        possessions.append({
+            "offense_team": offense_team,
+            "defense_team": defense_team,
+            "offense_lineup": tuple(sorted(lineups[offense_team])),
+            "defense_lineup": tuple(sorted(lineups[defense_team])),
+            "points": possession_pts,
+            "points_adj": possession_pts_adj,
+            "ended_by": ended_by,
+            "period": last_period,
+        })
+        possession_pts = 0
+        possession_pts_adj = 0.0
+
     i = 0
     while i < len(actions):
         action = actions[i]
@@ -418,6 +496,7 @@ def compute_adjusted_onoff_for_game(
         prev_home, prev_away = new_home, new_away
 
         # 3PT adjustment (made or missed)
+        three_pt_adj_delta = 0.0
         if action_type == "3pt":
             team_id = action.get("teamId")
             pid = action.get("personId")
@@ -428,17 +507,121 @@ def compute_adjusted_onoff_for_game(
                 area = _classify_area(action)
                 exp_prob = _expected_make_prob(pid, player_state, area, shot_type)
                 actual_make = 1 if str(action.get("shotResult") or "").lower() == "made" else 0
-                adj_delta = (exp_prob - actual_make) * adj_factor
-                _apply_points(team_id, float(adj_delta), adjusted=True)
+                three_pt_adj_delta = (exp_prob - actual_make) * adj_factor
+                _apply_points(team_id, float(three_pt_adj_delta), adjusted=True)
                 if team_id == home_id:
-                    adj_home += float(adj_delta)
+                    adj_home += float(three_pt_adj_delta)
                 elif team_id == away_id:
-                    adj_away += float(adj_delta)
+                    adj_away += float(three_pt_adj_delta)
+
+        # === POSSESSION TRACKING ===
+        action_team_id = action.get("teamId")
+        if action_team_id is not None:
+            try:
+                action_team_id = int(action_team_id)
+            except Exception:
+                action_team_id = None
+
+        # Jump ball - possession starts
+        if action_type == "jump ball" or action_type == "jumpball":
+            if action_team_id and action_team_id in (home_id, away_id):
+                possession_team = action_team_id
+                possession_start_idx = i
+
+        # Period start/end - close any open possession
+        elif action_type == "period":
+            desc = str(action.get("description") or "").lower()
+            if "end" in desc or "start" in desc:
+                _close_possession("period")
+                possession_team = None
+
+        # Shot attempts (2pt, 3pt, heave)
+        elif action_type in ("2pt", "3pt", "heave"):
+            shot_result = str(action.get("shotResult") or "").lower()
+            if action_team_id:
+                last_shot_team = action_team_id
+                # If we don't know possession yet, infer from shot
+                if possession_team is None:
+                    possession_team = action_team_id
+
+            if shot_result == "made":
+                # Score the points
+                pts = delta_home if action_team_id == home_id else delta_away
+                possession_pts += pts
+                possession_pts_adj += pts + three_pt_adj_delta
+                # Made shot ends possession, other team gets ball
+                _close_possession("made_shot")
+                possession_team = away_id if action_team_id == home_id else home_id
+            # Missed shot - possession continues until rebound
+
+        # Rebounds
+        elif action_type == "rebound":
+            desc = str(action.get("description") or "").lower()
+            is_offensive = "offensive" in desc
+            is_defensive = "defensive" in desc
+
+            if is_defensive:
+                # Defensive rebound - possession changes
+                _close_possession("defensive_rebound")
+                if action_team_id:
+                    possession_team = action_team_id
+            elif is_offensive:
+                # Offensive rebound - possession continues with same team
+                # Update possession_team if we know it from the rebound
+                if action_team_id and action_team_id in (home_id, away_id):
+                    possession_team = action_team_id
+            else:
+                # Can't determine - try to infer from context
+                if action_team_id and last_shot_team:
+                    if action_team_id == last_shot_team:
+                        # Same team got rebound = offensive
+                        possession_team = action_team_id
+                    else:
+                        # Different team = defensive
+                        _close_possession("defensive_rebound")
+                        possession_team = action_team_id
+
+        # Turnovers
+        elif action_type == "turnover":
+            _close_possession("turnover")
+            # Possession goes to other team
+            if action_team_id == home_id:
+                possession_team = away_id
+            elif action_team_id == away_id:
+                possession_team = home_id
+
+        # Free throws
+        elif action_type == "free throw" or action_type == "freethrow":
+            # Track FT points
+            ft_pts = _get_ft_points(action)
+            if action_team_id:
+                if possession_team is None:
+                    possession_team = action_team_id
+                possession_pts += ft_pts
+                possession_pts_adj += ft_pts
+
+            # If last free throw in sequence, possession changes
+            if _is_last_free_throw(action):
+                _close_possession("free_throw")
+                # Possession goes to other team after last FT
+                if action_team_id == home_id:
+                    possession_team = away_id
+                elif action_team_id == away_id:
+                    possession_team = home_id
+
+        # Steals - other team had the ball, now this team has it
+        elif action_type == "steal":
+            # The team that got the steal now has possession
+            # Close previous possession as turnover (steal is the flip side)
+            if action_team_id:
+                _close_possession("steal")
+                possession_team = action_team_id
 
         i += 1
 
-    # Close final stint
+    # Close final stint and possession
     _close_stint()
+    _close_possession("end_of_game")
 
     # Team totals (actual and adjusted)
     team_totals_actual = {home_id: float(prev_home), away_id: float(prev_away)}
@@ -537,4 +720,31 @@ def compute_adjusted_onoff_for_game(
         })
     stint_df = pd.DataFrame(stint_rows)
 
-    return player_df, stint_df
+    # Build possession DataFrame
+    poss_rows = []
+    for idx, p in enumerate(possessions):
+        off_lineup = p["offense_lineup"]
+        def_lineup = p["defense_lineup"]
+        poss_rows.append({
+            "game_id": str(game_id).lstrip("0"),
+            "poss_index": idx,
+            "offense_team": p["offense_team"],
+            "defense_team": p["defense_team"],
+            "off_p1": off_lineup[0] if len(off_lineup) > 0 else None,
+            "off_p2": off_lineup[1] if len(off_lineup) > 1 else None,
+            "off_p3": off_lineup[2] if len(off_lineup) > 2 else None,
+            "off_p4": off_lineup[3] if len(off_lineup) > 3 else None,
+            "off_p5": off_lineup[4] if len(off_lineup) > 4 else None,
+            "def_p1": def_lineup[0] if len(def_lineup) > 0 else None,
+            "def_p2": def_lineup[1] if len(def_lineup) > 1 else None,
+            "def_p3": def_lineup[2] if len(def_lineup) > 2 else None,
+            "def_p4": def_lineup[3] if len(def_lineup) > 3 else None,
+            "def_p5": def_lineup[4] if len(def_lineup) > 4 else None,
+            "points": p["points"],
+            "points_adj": round(p["points_adj"], 3),
+            "ended_by": p["ended_by"],
+            "period": p["period"],
+        })
+    poss_df = pd.DataFrame(poss_rows)
+
+    return player_df, stint_df, poss_df

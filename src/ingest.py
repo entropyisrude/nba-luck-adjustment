@@ -194,8 +194,16 @@ def _normalize_statsv3_actions(actions: list[dict[str, Any]]) -> list[dict[str, 
         if at in {"Made Shot", "Missed Shot"}:
             if "3pt" in desc_lower or "3-pt" in desc_lower or "3 pt" in desc_lower:
                 a["actionType"] = "3pt"
+            else:
+                # Non-3PT field goals are 2PT
+                a["actionType"] = "2pt"
             if not a.get("shotResult"):
                 a["shotResult"] = "Made" if at == "Made Shot" else "Missed"
+        # Normalize free throws and jump balls for consistent lowercase matching
+        elif at == "Free Throw":
+            a["actionType"] = "freethrow"
+        elif at == "Jump Ball":
+            a["actionType"] = "jumpball"
         if "orderNumber" not in a and a.get("actionNumber") is not None:
             a["orderNumber"] = a.get("actionNumber")
     return actions
