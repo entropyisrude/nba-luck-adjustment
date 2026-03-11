@@ -202,6 +202,151 @@ def build_design_matrix_orapm(stints: pd.DataFrame, use_adjusted: bool = True):
     return X, y, weights, player_list, player_to_idx
 
 
+def build_design_matrix_drapm(stints: pd.DataFrame, use_adjusted: bool = True):
+    """
+    Build design matrix for Defensive RAPM (DRAPM).
+
+    Similar to ORAPM but targets points ALLOWED (negated so positive = good defense).
+    """
+    player_list, player_to_idx = get_player_list_and_index(stints)
+    n_players = len(player_list)
+    n_stints = len(stints)
+    n_rows = n_stints * 2
+
+    print(f"Building DRAPM design matrix: {n_stints} stints -> {n_rows} rows, {n_players} players")
+
+    row_indices = []
+    col_indices = []
+    data = []
+
+    for stint_idx, row in enumerate(stints.itertuples()):
+        # Row 2*stint_idx: Home team defense (target = -away_pts, so positive = good)
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(1.0)
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(-1.0)
+
+        # Row 2*stint_idx+1: Away team defense (target = -home_pts)
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx + 1)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(1.0)
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx + 1)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(-1.0)
+
+    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_rows, n_players))
+
+    possessions = stints["seconds"].values / 24.0
+    possessions = np.maximum(possessions, 0.1)
+
+    if use_adjusted:
+        home_pts = stints["home_pts_adj"].values
+        away_pts = stints["away_pts_adj"].values
+    else:
+        home_pts = stints["home_pts"].values
+        away_pts = stints["away_pts"].values
+
+    # Target: NEGATIVE points allowed per 100 possessions (so positive = good defense)
+    y = np.zeros(n_rows)
+    y[0::2] = (-away_pts / possessions) * 100.0  # Home defense (negative of away offense)
+    y[1::2] = (-home_pts / possessions) * 100.0  # Away defense (negative of home offense)
+
+    weights = np.zeros(n_rows)
+    weights[0::2] = np.sqrt(possessions)
+    weights[1::2] = np.sqrt(possessions)
+
+    return X, y, weights, player_list, player_to_idx
+
+
+def build_design_matrix_possession_od(possessions: pd.DataFrame, use_adjusted: bool = True):
+    """
+    Build unified O/D design matrix from possession-level data.
+
+    This is the proper RAPM formulation where:
+    - Each possession is one observation
+    - Design matrix has 2*n_players columns (first half for offense, second half for defense)
+    - Offensive players get +1 in their offensive column
+    - Defensive players get -1 in their defensive column
+    - Target is points scored on that possession (per-100 scaled)
+
+    This allows simultaneous estimation of ORAPM and DRAPM with implicit opponent adjustment.
+    """
+    # Get all unique player IDs from both offense and defense columns
+    off_cols = ["off_p1", "off_p2", "off_p3", "off_p4", "off_p5"]
+    def_cols = ["def_p1", "def_p2", "def_p3", "def_p4", "def_p5"]
+
+    all_players = set()
+    for col in off_cols + def_cols:
+        all_players.update(possessions[col].dropna().astype(int).unique())
+
+    player_list = sorted(all_players)
+    player_to_idx = {pid: idx for idx, pid in enumerate(player_list)}
+    n_players = len(player_list)
+    n_poss = len(possessions)
+
+    print(f"Building unified O/D design matrix: {n_poss} possessions, {n_players} players, {2*n_players} columns")
+
+    row_indices = []
+    col_indices = []
+    data = []
+
+    for poss_idx, row in enumerate(possessions.itertuples()):
+        # Offensive players: +1 in their offensive column (first half of matrix)
+        for col in off_cols:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(poss_idx)
+                    col_indices.append(player_to_idx[pid])  # Offensive column
+                    data.append(1.0)
+
+        # Defensive players: -1 in their defensive column (second half of matrix)
+        for col in def_cols:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(poss_idx)
+                    col_indices.append(n_players + player_to_idx[pid])  # Defensive column
+                    data.append(-1.0)
+
+    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_poss, 2 * n_players))
+
+    # Target: points scored on possession, scaled to per-100
+    if use_adjusted:
+        y = possessions["points_adj"].values.astype(float) * 100.0
+    else:
+        y = possessions["points"].values.astype(float) * 100.0
+
+    # Equal weights for all possessions
+    weights = np.ones(n_poss)
+
+    return X, y, weights, player_list, player_to_idx, n_players
+
+
 def run_rapm(X, y, weights, alpha: float = 2500.0):
     """
     Run ridge regression to estimate RAPM values.
@@ -217,6 +362,41 @@ def run_rapm(X, y, weights, alpha: float = 2500.0):
     model.fit(X_weighted, y_weighted)
 
     return model.coef_, model.intercept_
+
+
+def run_rapm_od(X, y, weights, n_players: int, alpha_off: float = 2500.0, alpha_def: float = 2500.0):
+    """
+    Run ridge regression with separate regularization for O and D coefficients.
+
+    X has 2*n_players columns: first half for offense, second half for defense.
+    """
+    # Build regularization vector with different alphas for O and D
+    alphas = np.concatenate([
+        np.full(n_players, alpha_off),
+        np.full(n_players, alpha_def)
+    ])
+
+    # Apply weights
+    X_weighted = X.multiply(weights[:, np.newaxis])
+    y_weighted = y * weights
+
+    # Ridge regression with per-feature regularization
+    # Using sklearn's Ridge with a diagonal regularization matrix equivalent
+    model = Ridge(alpha=1.0, fit_intercept=True)
+
+    # Scale columns by 1/sqrt(alpha) to achieve per-feature regularization
+    scale = 1.0 / np.sqrt(alphas)
+    X_scaled = X_weighted.multiply(scale)
+
+    model.fit(X_scaled, y_weighted)
+
+    # Unscale coefficients
+    coef = model.coef_ * scale
+
+    coef_off = coef[:n_players]
+    coef_def = coef[n_players:]
+
+    return coef_off, coef_def, model.intercept_
 
 
 def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "") -> dict:
