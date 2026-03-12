@@ -109,6 +109,42 @@ PLAYER_COLS = [
 ]
 
 
+def normalize_game_ids(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    if "game_id" in df.columns:
+        df["game_id"] = df["game_id"].astype(str).str.lstrip("0")
+    return df
+
+
+def load_possessions(paths: list[Path]) -> pd.DataFrame | None:
+    frames: list[pd.DataFrame] = []
+    for path in paths:
+        if not path.exists():
+            continue
+        print(f"Loading possession-level data from {path}...")
+        df = normalize_game_ids(pd.read_csv(path))
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"], errors="coerce")
+            df = df[df["date"].notna()].copy()
+            df["season"] = df["date"].apply(season_key)
+        elif "season_year" in df.columns:
+            df["season"] = df["season_year"].apply(lambda y: f"{int(y)}-{(int(y) + 1) % 100:02d}")
+        else:
+            print(f"  Skipping {path}: no date or season_year column")
+            continue
+        frames.append(df)
+        print(f"  Loaded {len(df)} possessions")
+
+    if not frames:
+        return None
+
+    combined = pd.concat(frames, ignore_index=True)
+    dedupe_cols = [col for col in ["game_id", "poss_index"] if col in combined.columns]
+    if dedupe_cols:
+        combined = combined.drop_duplicates(subset=dedupe_cols, keep="last")
+    return combined
+
+
 def season_key(dt: pd.Timestamp) -> str:
     y = dt.year
     if dt.month >= 7:
@@ -142,6 +178,40 @@ def compute_minutes(df: pd.DataFrame) -> Dict[int, float]:
     flat_secs = flat_secs[mask]
     minutes = pd.Series(flat_secs / 60.0, index=flat_players).groupby(level=0).sum()
     return minutes.to_dict()
+
+
+def possession_subset_with_coverage(
+    poss_df: pd.DataFrame | None,
+    stints_df: pd.DataFrame,
+    label: str,
+    min_ratio: float = 0.98,
+) -> pd.DataFrame | None:
+    """
+    Only use possession-level RAPM when possession rows cover nearly all stint games.
+
+    Partial possession backfills can otherwise overwrite season RAPM with a
+    regression fit on a tiny subset of games.
+    """
+    if poss_df is None or poss_df.empty:
+        return None
+    if "game_id" not in poss_df.columns or "game_id" not in stints_df.columns:
+        return None
+
+    stint_games = set(stints_df["game_id"].dropna().astype(str).str.lstrip("0").unique())
+    poss_games = set(poss_df["game_id"].dropna().astype(str).str.lstrip("0").unique())
+    if not stint_games:
+        return None
+
+    overlap = stint_games & poss_games
+    coverage = len(overlap) / len(stint_games)
+    if coverage < min_ratio:
+        print(
+            f"Skipping possession-level RAPM for {label}: "
+            f"coverage {len(overlap)}/{len(stint_games)} games ({coverage:.1%}) is below {min_ratio:.0%}"
+        )
+        return None
+
+    return poss_df[poss_df["game_id"].astype(str).str.lstrip("0").isin(overlap)].copy()
 
 
 def compute_for_df(df: pd.DataFrame, alpha: float, min_minutes: int, od_alpha_mult: float = 5.0) -> List[dict]:
@@ -442,41 +512,29 @@ def main() -> None:
         help="Recompute RAPM for all seasons (not just latest).",
     )
     parser.add_argument(
-        "--possessions-file",
+        "--possessions-files",
         type=str,
-        default="possessions.csv",
-        help="Possession file name in data/ directory (default: possessions.csv).",
+        default="possessions_historical.csv,possessions.csv",
+        help="Comma-separated possession file names in data/ (default: possessions_historical.csv,possessions.csv).",
     )
     args = parser.parse_args()
 
     stints_path = DATA_DIR / "stints.csv"
-    poss_path = DATA_DIR / args.possessions_file
+    poss_paths = [DATA_DIR / name.strip() for name in args.possessions_files.split(",") if name.strip()]
 
     if not stints_path.exists():
         print("stints.csv not found; run run_onoff.py first.")
         return
 
-    stints = pd.read_csv(stints_path)
+    stints = normalize_game_ids(pd.read_csv(stints_path))
     stints["date"] = pd.to_datetime(stints["date"], errors="coerce")
     stints = stints[stints["date"].notna()].copy()
     stints["season"] = stints["date"].apply(season_key)
 
     # Load possessions if available and requested
     possessions = None
-    if args.use_possessions and poss_path.exists():
-        print(f"Loading possession-level data from {poss_path}...")
-        possessions = pd.read_csv(poss_path)
-        # Handle both formats: with 'date' column or with 'season_year' column
-        if "date" in possessions.columns:
-            possessions["date"] = pd.to_datetime(possessions["date"], errors="coerce")
-            possessions = possessions[possessions["date"].notna()].copy()
-            possessions["season"] = possessions["date"].apply(season_key)
-        elif "season_year" in possessions.columns:
-            # Convert season_year (e.g., 2024) to season format (e.g., "2024-25")
-            def year_to_season(y: int) -> str:
-                return f"{y}-{(y + 1) % 100:02d}"
-            possessions["season"] = possessions["season_year"].apply(year_to_season)
-        print(f"  Loaded {len(possessions)} possessions")
+    if args.use_possessions:
+        possessions = load_possessions(poss_paths)
 
     seasons = sorted(stints["season"].dropna().unique())
     seasons = [s for s in seasons if len(s) == 7 and s[4] == "-"]
@@ -505,7 +563,11 @@ def main() -> None:
     season_df = stints[stints["season"] == latest_season].copy()
     season_poss = None
     if possessions is not None:
-        season_poss = possessions[possessions["season"] == latest_season].copy()
+        season_poss = possession_subset_with_coverage(
+            possessions[possessions["season"] == latest_season].copy(),
+            season_df,
+            latest_season,
+        )
 
     for alpha in season_alphas:
         if season_poss is not None and len(season_poss) > 0:
@@ -530,9 +592,11 @@ def main() -> None:
         # Check if we have possessions for this season
         season_poss_hist = None
         if possessions is not None:
-            season_poss_hist = possessions[possessions["season"] == season].copy()
-            if len(season_poss_hist) == 0:
-                season_poss_hist = None
+            season_poss_hist = possession_subset_with_coverage(
+                possessions[possessions["season"] == season].copy(),
+                df,
+                season,
+            )
 
         # Recompute if --recompute-all or if using possessions (to get proper O/D RAPM)
         should_recompute = args.recompute_all or (season_poss_hist is not None)
@@ -563,7 +627,11 @@ def main() -> None:
     rolling_df = stints[stints["season"].isin(last3)].copy()
     rolling_poss = None
     if possessions is not None:
-        rolling_poss = possessions[possessions["season"].isin(last3)].copy()
+        rolling_poss = possession_subset_with_coverage(
+            possessions[possessions["season"].isin(last3)].copy(),
+            rolling_df,
+            f"Last3 ({', '.join(last3)})",
+        )
 
     for alpha in last3_alphas:
         if rolling_poss is not None and len(rolling_poss) > 0:

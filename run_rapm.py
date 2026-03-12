@@ -42,7 +42,8 @@ def get_player_list_and_index(stints: pd.DataFrame):
                    "away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]
     all_players = set()
     for col in player_cols:
-        all_players.update(stints[col].dropna().astype(int).unique())
+        players = stints[col].dropna().astype(int)
+        all_players.update(pid for pid in players.unique() if pid > 0)
     player_list = sorted(all_players)
     player_to_idx = {pid: i for i, pid in enumerate(player_list)}
     return player_list, player_to_idx
@@ -449,8 +450,23 @@ def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "
     for path in [DATA_DIR / "adjusted_onoff.csv", DATA_DIR / f"adjusted_onoff{suffix}.csv"]:
         if not path.exists():
             continue
-        onoff = pd.read_csv(path, dtype={"player_id": int})
-        onoff = onoff.sort_values("date").drop_duplicates(subset=["player_id"], keep="last")
+        try:
+            onoff = pd.read_csv(path)
+        except Exception as e:
+            print(f"Warning: could not read {path}: {e}")
+            continue
+        required_cols = {"player_id", "player_name"}
+        if not required_cols.issubset(onoff.columns):
+            print(f"Warning: skipping {path}; missing required columns {sorted(required_cols - set(onoff.columns))}")
+            continue
+        try:
+            onoff["player_id"] = onoff["player_id"].astype(int)
+        except Exception:
+            print(f"Warning: skipping {path}; player_id column is not parseable")
+            continue
+        if "date" in onoff.columns:
+            onoff = onoff.sort_values("date")
+        onoff = onoff.drop_duplicates(subset=["player_id"], keep="last")
         for _, row in onoff.iterrows():
             pid = int(row["player_id"])
             if pid not in needed_ids:

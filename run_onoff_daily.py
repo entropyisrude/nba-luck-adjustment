@@ -57,7 +57,7 @@ def main() -> None:
     subprocess.run(cmd, check=True)
 
     if not args.skip_rapm:
-        rapm_cmd = [sys.executable, "generate_rapm_report.py"]
+        rapm_cmd = [sys.executable, "generate_rapm_report.py", "--use-possessions"]
         print("Running:", " ".join(rapm_cmd))
         subprocess.run(rapm_cmd, check=True)
 
