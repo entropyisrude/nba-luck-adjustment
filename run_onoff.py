@@ -76,6 +76,7 @@ def main():
     suffix = "_playoffs" if args.playoffs else ""
     out_path = DATA_DIR / f"adjusted_onoff{suffix}.csv"
     stint_path = DATA_DIR / f"stints{suffix}.csv"
+    poss_path = DATA_DIR / f"possessions{suffix}.csv"
     state_path = DATA_DIR / f"player_state{suffix}.csv"
 
     player_state = load_player_state(state_path)
@@ -97,6 +98,7 @@ def main():
     processed_games = set(existing["game_id"].unique().tolist()) if not existing.empty else set()
     rows = []
     stint_rows = []
+    poss_rows = []
 
     for d in daterange(start, end):
         game_date_mmddyyyy = d.strftime("%m/%d/%Y")
@@ -114,7 +116,7 @@ def main():
                 if not player_df.empty:
                     player_state = ensure_players_exist(player_state, player_df)
 
-                onoff_df, stint_df = compute_adjusted_onoff_for_game(
+                onoff_df, stint_df, poss_df = compute_adjusted_onoff_for_game(
                     game_id=game_id,
                     game_date_mmddyyyy=game_date_mmddyyyy,
                     player_state=player_state,
@@ -129,6 +131,9 @@ def main():
                     if not stint_df.empty:
                         stint_df["date"] = d.isoformat()
                         stint_rows.append(stint_df)
+                    if not poss_df.empty:
+                        poss_df["date"] = d.isoformat()
+                        poss_rows.append(poss_df)
 
                 if not player_df.empty:
                     player_state = update_player_state_attempt_decay(
@@ -174,6 +179,24 @@ def main():
         ).sort_values(["date", "game_id"])
         stint_combined.to_csv(stint_path, index=False)
         print(f"Wrote: {stint_path} (stints={len(stint_combined)})")
+
+    if poss_rows:
+        poss_combined = pd.concat(poss_rows, ignore_index=True)
+        if poss_path.exists():
+            existing_poss = pd.read_csv(poss_path, dtype={"game_id": str})
+            existing_poss["game_id"] = existing_poss["game_id"].astype(str).str.lstrip("0")
+            poss_combined = pd.concat([existing_poss, poss_combined], ignore_index=True)
+        poss_combined = poss_combined.drop_duplicates(
+            subset=[
+                "game_id", "offense_team", "defense_team",
+                "off_p1", "off_p2", "off_p3", "off_p4", "off_p5",
+                "def_p1", "def_p2", "def_p3", "def_p4", "def_p5",
+                "points", "points_adj", "ended_by", "period",
+            ],
+            keep="last",
+        ).sort_values(["date", "game_id", "poss_index"])
+        poss_combined.to_csv(poss_path, index=False)
+        print(f"Wrote: {poss_path} (possessions={len(poss_combined)})")
 
     save_player_state(player_state, state_path)
     print(f"Wrote: {state_path} (players={len(player_state)})")

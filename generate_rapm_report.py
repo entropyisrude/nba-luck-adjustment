@@ -5,16 +5,88 @@ from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 
-from run_rapm import (
-    TEAM_ID_TO_ABBR,
-    build_design_matrix,
-    build_design_matrix_orapm,
-    build_design_matrix_drapm,
-    build_design_matrix_possession_od,
-    get_player_info,
-    run_rapm,
-    run_rapm_od,
+import run_rapm as run_rapm_module
+
+TEAM_ID_TO_ABBR = run_rapm_module.TEAM_ID_TO_ABBR
+build_design_matrix = run_rapm_module.build_design_matrix
+build_design_matrix_orapm = run_rapm_module.build_design_matrix_orapm
+build_design_matrix_possession_od = run_rapm_module.build_design_matrix_possession_od
+get_player_info = run_rapm_module.get_player_info
+run_rapm = run_rapm_module.run_rapm
+run_rapm_od = run_rapm_module.run_rapm_od
+
+
+def _build_design_matrix_drapm_compat(stints: pd.DataFrame, use_adjusted: bool = True):
+    player_list, player_to_idx = run_rapm_module.get_player_list_and_index(stints)
+    n_players = len(player_list)
+    n_stints = len(stints)
+    n_rows = n_stints * 2
+
+    row_indices: list[int] = []
+    col_indices: list[int] = []
+    data: list[float] = []
+
+    for stint_idx, row in enumerate(stints.itertuples()):
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(1.0)
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(-1.0)
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx + 1)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(1.0)
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                if pid in player_to_idx:
+                    row_indices.append(2 * stint_idx + 1)
+                    col_indices.append(player_to_idx[pid])
+                    data.append(-1.0)
+
+    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_rows, n_players))
+    possessions = np.maximum(stints["seconds"].values / 24.0, 0.1)
+
+    if use_adjusted:
+        home_pts = stints["home_pts_adj"].values
+        away_pts = stints["away_pts_adj"].values
+    else:
+        home_pts = stints["home_pts"].values
+        away_pts = stints["away_pts"].values
+
+    y = np.zeros(n_rows)
+    y[0::2] = (-away_pts / possessions) * 100.0
+    y[1::2] = (-home_pts / possessions) * 100.0
+
+    weights = np.zeros(n_rows)
+    weights[0::2] = np.sqrt(possessions)
+    weights[1::2] = np.sqrt(possessions)
+
+    return X, y, weights, player_list, player_to_idx
+
+
+build_design_matrix_drapm = getattr(
+    run_rapm_module,
+    "build_design_matrix_drapm",
+    _build_design_matrix_drapm_compat,
 )
 
 DATA_DIR = Path("data")
