@@ -285,8 +285,6 @@ def compute_for_possessions(
     stints_df: pd.DataFrame,
     alpha: float,
     min_minutes: int,
-    alpha_off: float = 2500.0,
-    alpha_def: float = 2500.0,
 ) -> List[dict]:
     """
     Compute RAPM, ORAPM, and DRAPM using possession-level data with unified O/D regression.
@@ -298,35 +296,24 @@ def compute_for_possessions(
 
     Args:
         poss_df: Possession-level DataFrame
-        stints_df: Stint-level DataFrame (for combined RAPM and minutes)
-        alpha: Regularization for combined RAPM
+        stints_df: Stint-level DataFrame (for minutes and player info)
+        alpha: Shared regularization for the unified O/D model
         min_minutes: Minimum minutes threshold
-        alpha_off: Regularization for offensive coefficients
-        alpha_def: Regularization for defensive coefficients
     """
-    # Combined RAPM from stints (traditional approach)
-    X_adj, y_adj, w_adj, players_adj, _ = build_design_matrix(stints_df, use_adjusted=True)
-    coef_adj, _ = run_rapm(X_adj, y_adj, w_adj, alpha=alpha)
-
-    X_raw, y_raw, w_raw, players_raw, _ = build_design_matrix(stints_df, use_adjusted=False)
-    coef_raw, _ = run_rapm(X_raw, y_raw, w_raw, alpha=alpha)
-
-    rapm_adj = dict(zip(players_adj, coef_adj))
-    rapm_raw = dict(zip(players_raw, coef_raw))
-
-    # Unified O/D RAPM from possessions
+    # Unified O/D RAPM from possessions. We use the same alpha for offense and
+    # defense so RAPM remains the coherent sum of ORAPM and DRAPM.
     X_od_adj, y_od_adj, w_od_adj, players_od, _, n_players = build_design_matrix_possession_od(
         poss_df, use_adjusted=True
     )
     coef_o_adj, coef_d_adj, _ = run_rapm_od(
-        X_od_adj, y_od_adj, w_od_adj, n_players, alpha_off=alpha_off, alpha_def=alpha_def
+        X_od_adj, y_od_adj, w_od_adj, n_players, alpha_off=alpha, alpha_def=alpha
     )
 
     X_od_raw, y_od_raw, w_od_raw, _, _, _ = build_design_matrix_possession_od(
         poss_df, use_adjusted=False
     )
     coef_o_raw, coef_d_raw, _ = run_rapm_od(
-        X_od_raw, y_od_raw, w_od_raw, n_players, alpha_off=alpha_off, alpha_def=alpha_def
+        X_od_raw, y_od_raw, w_od_raw, n_players, alpha_off=alpha, alpha_def=alpha
     )
 
     orapm_adj = dict(zip(players_od, coef_o_adj))
@@ -336,25 +323,27 @@ def compute_for_possessions(
 
     # Minutes from stints
     minutes = compute_minutes(stints_df)
-    info = get_player_info(players_adj, stints_df)
+    info = get_player_info(players_od, stints_df)
 
     rows = []
-    for pid in players_adj:
+    for pid in players_od:
         mins = minutes.get(pid, 0.0)
         if mins < min_minutes:
             continue
         pinfo = info.get(pid, {})
         team_id = pinfo.get("team_id", 0)
+        rapm_adj = float(orapm_adj.get(pid, 0.0) + drapm_adj.get(pid, 0.0))
+        rapm_raw = float(orapm_raw.get(pid, 0.0) + drapm_raw.get(pid, 0.0))
         rows.append(
             {
                 "player_id": int(pid),
                 "player_name": pinfo.get("name", f"Player {pid}"),
                 "team_abbr": TEAM_ID_TO_ABBR.get(team_id, "???"),
                 "minutes": int(round(mins)),
-                "rapm": float(rapm_adj.get(pid, 0.0)),
+                "rapm": rapm_adj,
                 "orapm": float(orapm_adj.get(pid, 0.0)),
                 "drapm": float(drapm_adj.get(pid, 0.0)),
-                "rapm_raw": float(rapm_raw.get(pid, 0.0)),
+                "rapm_raw": rapm_raw,
                 "orapm_raw": float(orapm_raw.get(pid, 0.0)),
                 "drapm_raw": float(drapm_raw.get(pid, 0.0)),
             }
@@ -490,18 +479,6 @@ def main() -> None:
         help="Multiplier for O/D alpha for stint-level fallback (default: 5.0).",
     )
     parser.add_argument(
-        "--alpha-off",
-        type=float,
-        default=4000.0,
-        help="Alpha for offensive coefficients in possession-level RAPM (default: 4000).",
-    )
-    parser.add_argument(
-        "--alpha-def",
-        type=float,
-        default=6000.0,
-        help="Alpha for defensive coefficients in possession-level RAPM (default: 6000).",
-    )
-    parser.add_argument(
         "--use-possessions",
         action="store_true",
         help="Use possession-level RAPM when possessions.csv is available.",
@@ -573,8 +550,7 @@ def main() -> None:
         if season_poss is not None and len(season_poss) > 0:
             print(f"Computing possession-level RAPM for {latest_season} (alpha={alpha})...")
             rapm[f"{latest_season}_a{int(alpha)}"] = compute_for_possessions(
-                season_poss, season_df, alpha, args.min_minutes,
-                alpha_off=args.alpha_off, alpha_def=args.alpha_def
+                season_poss, season_df, alpha, args.min_minutes
             )
         else:
             rapm[f"{latest_season}_a{int(alpha)}"] = compute_for_df(
@@ -605,8 +581,7 @@ def main() -> None:
             if season_poss_hist is not None and len(season_poss_hist) > 0:
                 print(f"Computing possession-level RAPM for {season} (alpha=10)...")
                 rapm[key10] = compute_for_possessions(
-                    season_poss_hist, df, 10.0, args.min_minutes,
-                    alpha_off=args.alpha_off, alpha_def=args.alpha_def
+                    season_poss_hist, df, 10.0, args.min_minutes
                 )
             else:
                 rapm[key10] = compute_for_df(df, 10.0, args.min_minutes, args.od_alpha_mult)
@@ -615,8 +590,7 @@ def main() -> None:
             if season_poss_hist is not None and len(season_poss_hist) > 0:
                 print(f"Computing possession-level RAPM for {season} (alpha=500)...")
                 rapm[key500] = compute_for_possessions(
-                    season_poss_hist, df, 500.0, args.min_minutes,
-                    alpha_off=args.alpha_off, alpha_def=args.alpha_def
+                    season_poss_hist, df, 500.0, args.min_minutes
                 )
             else:
                 rapm[key500] = compute_for_df(df, 500.0, args.min_minutes, args.od_alpha_mult)
@@ -637,8 +611,7 @@ def main() -> None:
         if rolling_poss is not None and len(rolling_poss) > 0:
             print(f"Computing possession-level RAPM for Last3 (alpha={alpha})...")
             rapm[f"Last3_a{int(alpha)}"] = compute_for_possessions(
-                rolling_poss, rolling_df, alpha, args.min_minutes,
-                alpha_off=args.alpha_off, alpha_def=args.alpha_def
+                rolling_poss, rolling_df, alpha, args.min_minutes
             )
         else:
             rapm[f"Last3_a{int(alpha)}"] = compute_for_df(
