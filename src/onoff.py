@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
 import pandas as pd
@@ -65,10 +66,24 @@ def _elapsed_game_seconds(period: int | None, clock_str: str | None) -> int | No
 
 
 def _sort_actions(actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    def _key(a: dict[str, Any]) -> tuple[int, int]:
+    def _key(a: dict[str, Any]) -> tuple[int, int, int]:
+        elapsed = _elapsed_game_seconds(a.get("period"), a.get("clock"))
+        if elapsed is None:
+            elapsed = 0
+        boundary_rank = 2
+        if str(a.get("actionType") or "").lower() == "period":
+            desc = str(a.get("description") or "").lower()
+            if "end" in desc:
+                boundary_rank = 0
+            elif "start" in desc:
+                boundary_rank = 1
         order = a.get("orderNumber")
         action = a.get("actionNumber")
-        return (int(order) if order is not None else 0, int(action) if action is not None else 0)
+        return (
+            int(elapsed),
+            boundary_rank,
+            int(order) if order is not None else int(action) if action is not None else 0,
+        )
     return sorted(actions, key=_key)
 
 
@@ -184,16 +199,96 @@ def _infer_home_away_from_actions(actions: list[dict[str, Any]]) -> tuple[int, i
 
 
 def _infer_starters_from_actions(actions: list[dict[str, Any]]) -> dict[int, list[int]]:
-    # Collect players appearing early in the game as starter proxy.
-    starters: dict[int, list[int]] = {}
-    cutoff_seconds = [120, 300, 600]  # widen window if needed
-
     def elapsed(a: dict[str, Any]) -> int | None:
         period = a.get("period")
         clock = a.get("clock")
         return _elapsed_game_seconds(period, clock)
 
+    def norm_name(name: str | None) -> str:
+        return "".join(ch for ch in str(name or "").lower() if ch.isalnum())
+
     actions_sorted = _sort_actions(actions)
+    team_aliases: dict[int, dict[str, int]] = {}
+    for a in actions_sorted:
+        try:
+            team_id = int(a.get("teamId", 0) or 0)
+            pid = int(a.get("personId", 0) or 0)
+        except Exception:
+            continue
+        if team_id <= 0 or pid <= 0:
+            continue
+        aliases = team_aliases.setdefault(team_id, {})
+        for raw in [a.get("playerName"), a.get("playerNameI")]:
+            text = str(raw or "").strip()
+            if not text:
+                continue
+            key = norm_name(text)
+            if key:
+                aliases[key] = pid
+            parts = [p for p in re.split(r"[\s.]+", text) if p]
+            if parts:
+                aliases[norm_name(parts[-1])] = pid
+
+    # First try a stronger local-only inference: starters are the players active
+    # before a team's first substitution, plus anyone subbed out at that first
+    # substitution time. This avoids promoting bench players who touch the ball
+    # early while quiet starters have not yet recorded an event.
+    first_sub_elapsed: dict[int, int] = {}
+    first_subtype_by_player: dict[tuple[int, int], str] = {}
+    starters: dict[int, list[int]] = {}
+    for a in actions_sorted:
+        if str(a.get("actionType") or "").lower() != "substitution":
+            continue
+        try:
+            team_id = int(a.get("teamId", 0) or 0)
+            pid = int(a.get("personId", 0) or 0)
+        except Exception:
+            continue
+        e = elapsed(a)
+        if team_id > 0 and e is not None and team_id not in first_sub_elapsed:
+            first_sub_elapsed[team_id] = e
+        sub_type = str(a.get("subType") or "").lower()
+        if team_id > 0 and pid > 0 and sub_type in {"in", "out"} and (team_id, pid) not in first_subtype_by_player:
+            first_subtype_by_player[(team_id, pid)] = sub_type
+
+    if first_sub_elapsed:
+        for (team_id, pid), sub_type in first_subtype_by_player.items():
+            if sub_type == "out":
+                starters.setdefault(team_id, []).append(pid)
+        for a in actions_sorted:
+            e = elapsed(a)
+            try:
+                team_id = int(a.get("teamId", 0) or 0)
+                pid = int(a.get("personId", 0) or 0)
+            except Exception:
+                continue
+            if team_id <= 0 or pid <= 0 or e is None:
+                continue
+            cutoff = first_sub_elapsed.get(team_id)
+            if cutoff is None or e > cutoff:
+                continue
+            if first_subtype_by_player.get((team_id, pid)) == "in":
+                continue
+            if str(a.get("actionType") or "").lower() == "substitution" and str(a.get("subType") or "").lower() != "out":
+                continue
+            lst = starters.setdefault(team_id, [])
+            if pid not in lst:
+                lst.append(pid)
+            # Some starters only appear in early descriptions (e.g. as the
+            # assister) before recording a primary action row themselves.
+            if str(a.get("actionType") or "").lower() != "substitution":
+                desc = str(a.get("description") or "")
+                aliases = team_aliases.get(team_id, {})
+                for token in re.findall(r"[A-Za-z][A-Za-z'.-]+", desc):
+                    alias_pid = aliases.get(norm_name(token))
+                    if alias_pid and first_subtype_by_player.get((team_id, alias_pid)) != "in" and alias_pid not in lst:
+                        lst.append(alias_pid)
+        if starters and all(len(v) >= 5 for v in starters.values()):
+            return {k: v[:5] for k, v in starters.items()}
+
+    # Fallback: collect players appearing early in the game as a starter proxy.
+    starters = {}
+    cutoff_seconds = [120, 300, 600]
     for limit in cutoff_seconds:
         starters = {}
         for a in actions_sorted:
@@ -240,25 +335,45 @@ def compute_adjusted_onoff_for_game(
     player_state: pd.DataFrame,
     orb_rate: float,
     ppp: float,
+    starters_override: dict[int, list[int]] | None = None,
+    period_start_overrides: dict[int, dict[int, list[int]]] | None = None,
+    elapsed_lineup_overrides: dict[int, dict[int, list[int]]] | None = None,
 ) -> pd.DataFrame:
     """
     Compute per-player on/off plus-minus for a single game, with 3PT luck adjustment.
     """
     actions = _sort_actions(get_playbyplay_actions(game_id, game_date_mmddyyyy))
     if not actions:
-        return pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     home_id, away_id = _infer_home_away_from_actions(actions)
     if home_id == 0 or away_id == 0:
         home_id, away_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)
 
-    starters = _infer_starters_from_actions(actions)
+    starters = starters_override or {}
+    if home_id not in starters or away_id not in starters or len(starters.get(home_id, [])) < 5 or len(starters.get(away_id, [])) < 5:
+        starters = _infer_starters_from_actions(actions)
     if home_id not in starters or away_id not in starters or len(starters.get(home_id, [])) < 5 or len(starters.get(away_id, [])) < 5:
         starters = get_starters_by_team(game_id, game_date_mmddyyyy)
 
+    period_start_overrides = period_start_overrides or {}
+    elapsed_lineup_overrides = elapsed_lineup_overrides or {}
+
+    def _normalize_lineup(players: list[int] | tuple[int, ...] | set[int]) -> set[int]:
+        lineup: list[int] = []
+        for raw in players:
+            try:
+                pid = int(raw)
+            except Exception:
+                continue
+            if pid > 0 and pid not in lineup:
+                lineup.append(pid)
+        return set(lineup[:5])
+
+    period1_override = period_start_overrides.get(1, {})
     lineups: dict[int, set[int]] = {
-        home_id: set(starters.get(home_id, [])),
-        away_id: set(starters.get(away_id, [])),
+        home_id: _normalize_lineup(period1_override.get(home_id, starters.get(home_id, []))),
+        away_id: _normalize_lineup(period1_override.get(away_id, starters.get(away_id, []))),
     }
 
     # Build player info from actions to avoid boxscore dependency.
@@ -425,10 +540,40 @@ def compute_adjusted_onoff_for_game(
                         stats[pid].seconds_on += delta_t
             prev_elapsed = elapsed
 
+        # When we have trusted stint boundary lineups, prefer them to any
+        # ambiguous local substitution text at that exact elapsed mark.
+        if elapsed is not None:
+            override = elapsed_lineup_overrides.get(int(elapsed))
+            if override:
+                home_override = _normalize_lineup(override.get(home_id, []))
+                away_override = _normalize_lineup(override.get(away_id, []))
+                if len(home_override) == 5 and len(away_override) == 5:
+                    if lineups.get(home_id) != home_override or lineups.get(away_id) != away_override:
+                        _close_stint()
+                        lineups[home_id] = home_override
+                        lineups[away_id] = away_override
+
         action_type = str(action.get("actionType") or "").lower()
 
         # Batch substitutions at the same time/team
         if action_type == "substitution":
+            if elapsed is not None and int(elapsed) in elapsed_lineup_overrides:
+                # The trusted stint boundary already defines the on-court players
+                # at this timestamp; re-applying the ambiguous local substitution
+                # rows can move the lineup away from that known-good state.
+                j = i
+                team_id = action.get("teamId")
+                period = action.get("period")
+                clock = action.get("clock")
+                while j < len(actions):
+                    a = actions[j]
+                    if str(a.get("actionType") or "").lower() != "substitution":
+                        break
+                    if a.get("teamId") != team_id or a.get("period") != period or a.get("clock") != clock:
+                        break
+                    j += 1
+                i = j
+                continue
             _close_stint()  # Save stint before lineup changes
             team_id = action.get("teamId")
             if team_id is None:
@@ -455,14 +600,39 @@ def compute_adjusted_onoff_for_game(
             outs = [b for b in batch if str(b.get("subType") or "").lower() == "out"]
             ins = [b for b in batch if str(b.get("subType") or "").lower() == "in"]
 
+            def _resolve_sub_pid(sub_action: dict[str, Any], mode: str) -> int | None:
+                pid = sub_action.get("personId")
+                try:
+                    pid_int = int(pid)
+                except Exception:
+                    pid_int = 0
+                if pid_int > 0:
+                    return pid_int
+                candidates = sub_action.get("candidatePersonIds") or []
+                resolved: list[int] = []
+                for raw in candidates:
+                    try:
+                        cand = int(raw)
+                    except Exception:
+                        continue
+                    if cand <= 0:
+                        continue
+                    if mode == "out" and cand in lineups[team_id]:
+                        resolved.append(cand)
+                    elif mode == "in" and cand not in lineups[team_id]:
+                        resolved.append(cand)
+                if len(resolved) == 1:
+                    return resolved[0]
+                return None
+
             for b in outs:
-                pid = b.get("personId")
+                pid = _resolve_sub_pid(b, "out")
                 if pid is None:
                     continue
                 lineups[team_id].discard(int(pid))
 
             for b in ins:
-                pid = b.get("personId")
+                pid = _resolve_sub_pid(b, "in")
                 if pid is None:
                     continue
                 lineups[team_id].add(int(pid))
@@ -534,6 +704,19 @@ def compute_adjusted_onoff_for_game(
             if "end" in desc or "start" in desc:
                 _close_possession("period")
                 possession_team = None
+            if "start" in desc:
+                try:
+                    period_num = int(period or 0)
+                except Exception:
+                    period_num = 0
+                override = period_start_overrides.get(period_num)
+                if override:
+                    _close_stint()
+                    home_override = _normalize_lineup(override.get(home_id, []))
+                    away_override = _normalize_lineup(override.get(away_id, []))
+                    if len(home_override) == 5 and len(away_override) == 5:
+                        lineups[home_id] = home_override
+                        lineups[away_id] = away_override
 
         # Shot attempts (2pt, 3pt, heave)
         elif action_type in ("2pt", "3pt", "heave"):
@@ -609,12 +792,11 @@ def compute_adjusted_onoff_for_game(
                 elif action_team_id == away_id:
                     possession_team = home_id
 
-        # Steals - other team had the ball, now this team has it
+        # Steals are often logged alongside turnover events. The turnover should
+        # terminate the possession; this event should only confirm who has the
+        # ball next, not create a second zero-point possession.
         elif action_type == "steal":
-            # The team that got the steal now has possession
-            # Close previous possession as turnover (steal is the flip side)
-            if action_team_id:
-                _close_possession("steal")
+            if action_team_id and possession_team is None:
                 possession_team = action_team_id
 
         i += 1

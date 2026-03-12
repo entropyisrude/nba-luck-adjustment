@@ -105,6 +105,7 @@ STATS_MAX_RETRIES = 5
 # Cache for schedule (loaded once)
 _schedule_cache: dict[str, list[str]] | None = None
 _local_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
+_local_team_alias_cache: dict[int, dict[int, dict[str, set[int]]]] = {}
 _season_schedule_cache: dict[str, dict[str, list[str]]] = {}
 _stats_boxscore_cache: dict[str, dict[str, pd.DataFrame]] = {}
 _stats_summary_cache: dict[str, tuple[int, int]] = {}
@@ -213,8 +214,65 @@ def _normalize_name(name: str) -> str:
     return "".join(ch for ch in (name or "").lower() if ch.isalnum())
 
 
-def _expand_local_substitutions(actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    team_map: dict[int, dict[str, int]] = {}
+def _description_player_key(description: str) -> str:
+    """
+    Extract the leading player token from a local PBP description.
+
+    Examples:
+    - "MISS Sengun 25' 3PT Jump Shot" -> "sengun"
+    - "Hansen BLOCK (1 BLK)" -> "hansen"
+    - "Love Free Throw 1 of 2" -> "love"
+    """
+    desc = str(description or "").strip()
+    if not desc:
+        return ""
+    if desc.upper().startswith("MISS "):
+        desc = desc[5:].strip()
+    parts = [p.strip(" ,.:;()") for p in desc.split() if p.strip(" ,.:;()")]
+    if not parts:
+        return ""
+    suffixes = {"jr", "sr", "ii", "iii", "iv"}
+    tokens = [parts[0]]
+    if len(parts) > 1 and _normalize_name(parts[1]) in suffixes:
+        tokens.append(parts[1])
+    return _normalize_name("".join(tokens))
+
+
+def _name_aliases(name: str, name_i: str, desc: str) -> set[str]:
+    aliases: set[str] = set()
+    suffixes = {"jr", "sr", "ii", "iii", "iv"}
+
+    def add_name(raw: str) -> None:
+        text = str(raw or "").strip()
+        if not text:
+            return
+        norm = _normalize_name(text)
+        if norm:
+            aliases.add(norm)
+        parts = [p for p in text.replace(".", " ").split(" ") if p]
+        if not parts:
+            return
+        norm_parts = [_normalize_name(p) for p in parts if _normalize_name(p)]
+        if not norm_parts:
+            return
+        if len(norm_parts) >= 2 and norm_parts[-1] in suffixes:
+            aliases.add("".join(norm_parts[-2:]))
+        else:
+            aliases.add(norm_parts[-1])
+
+    add_name(name)
+    add_name(name_i)
+    desc_key = _description_player_key(desc)
+    if desc_key:
+        aliases.add(desc_key)
+    return {a for a in aliases if a}
+
+
+def _expand_local_substitutions(
+    actions: list[dict[str, Any]],
+    season_team_map: dict[int, dict[str, set[int]]] | None = None,
+) -> list[dict[str, Any]]:
+    team_map: dict[int, dict[str, set[int]]] = {}
     for a in actions:
         try:
             team_id = int(a.get("teamId", 0) or 0)
@@ -225,18 +283,15 @@ def _expand_local_substitutions(actions: list[dict[str, Any]]) -> list[dict[str,
             continue
         name = str(a.get("playerName", "") or "")
         name_i = str(a.get("playerNameI", "") or "")
+        desc = str(a.get("description", "") or "")
         m = team_map.setdefault(team_id, {})
-        key_full = _normalize_name(name)
-        if key_full:
-            m[key_full] = pid
-            parts = [p for p in key_full.split() if p]
-            if parts:
-                m[parts[-1]] = pid
-        raw_parts = [p for p in str(name).replace(".", " ").split(" ") if p]
-        if raw_parts:
-            m[_normalize_name(raw_parts[-1])] = pid
-        if name_i:
-            m[_normalize_name(name_i)] = pid
+        for alias in _name_aliases(name, name_i, desc):
+            m.setdefault(alias, set()).add(pid)
+    if season_team_map:
+        for team_id, alias_map in season_team_map.items():
+            merged = team_map.setdefault(int(team_id), {})
+            for alias, pids in alias_map.items():
+                merged.setdefault(alias, set()).update(int(pid) for pid in pids if int(pid) > 0)
 
     expanded: list[dict[str, Any]] = []
     for a in actions:
@@ -256,8 +311,15 @@ def _expand_local_substitutions(actions: list[dict[str, Any]]) -> list[dict[str,
             expanded.append(a)
             continue
         team_lookup = team_map.get(team_id, {})
-        in_pid = team_lookup.get(_normalize_name(in_name.strip()), 0)
-        out_pid = team_lookup.get(_normalize_name(out_name.strip()), 0)
+
+        def _resolve_pid(raw_name: str) -> tuple[int, list[int]]:
+            candidates = sorted(int(pid) for pid in team_lookup.get(_normalize_name(raw_name.strip()), set()) if int(pid) > 0)
+            if len(candidates) == 1:
+                return candidates[0], candidates
+            return 0, candidates
+
+        in_pid, in_candidates = _resolve_pid(in_name)
+        out_pid, out_candidates = _resolve_pid(out_name)
         pid_raw = int(a.get("personId", 0) or 0)
         if pid_raw > 0:
             if in_pid == 0 and out_pid != pid_raw:
@@ -270,10 +332,14 @@ def _expand_local_substitutions(actions: list[dict[str, Any]]) -> list[dict[str,
             out_row = dict(a)
             out_row["personId"] = out_pid
             out_row["subType"] = "out"
+            if len(out_candidates) > 1:
+                out_row["candidatePersonIds"] = out_candidates
             expanded.append(out_row)
         in_row = dict(a)
         in_row["personId"] = int(in_pid or 0)
         in_row["subType"] = "in"
+        if len(in_candidates) > 1:
+            in_row["candidatePersonIds"] = in_candidates
         expanded.append(in_row)
     return expanded
 
@@ -286,6 +352,26 @@ def _load_local_pbp_season(season_start_year: int) -> dict[str, list[dict[str, A
     if df.empty:
         return {}
     df["gameId"] = df["gameId"].astype(str).str.lstrip("0")
+    team_alias_map: dict[int, dict[str, set[int]]] = {}
+    for row in df.itertuples(index=False):
+        try:
+            team_id = int(getattr(row, "teamId", 0) or 0)
+            pid = int(getattr(row, "personId", 0) or 0)
+        except Exception:
+            continue
+        if team_id <= 0 or pid <= 0:
+            continue
+        aliases = _name_aliases(
+            str(getattr(row, "playerName", "") or ""),
+            str(getattr(row, "playerNameI", "") or ""),
+            str(getattr(row, "description", "") or ""),
+        )
+        if not aliases:
+            continue
+        team_entry = team_alias_map.setdefault(team_id, {})
+        for alias in aliases:
+            team_entry.setdefault(alias, set()).add(pid)
+    _local_team_alias_cache[season_start_year] = team_alias_map
     out: dict[str, list[dict[str, Any]]] = {}
     for gid, grp in df.groupby("gameId"):
         actions = grp.to_dict(orient="records")
@@ -743,7 +829,7 @@ def get_playbyplay_actions(game_id: str, game_date_mmddyyyy: str) -> list[dict[s
     local_season = _local_pbp_cache.get(season_start)
     if local_season and gid in local_season:
         actions = local_season[gid]
-        return _expand_local_substitutions(actions)
+        return _expand_local_substitutions(actions, _local_team_alias_cache.get(season_start))
 
     # Try CDN first
     try:
