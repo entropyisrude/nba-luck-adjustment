@@ -6,7 +6,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from scipy import sparse
 
 DATA_DIR = Path("data")
 STINTS_PATH = DATA_DIR / "stints_playoffs.csv"
@@ -37,6 +39,72 @@ ALPHAS = [10, 500]
 DEFAULT_ALPHA = 500
 
 
+def build_design_matrix_stint_od(stints: pd.DataFrame) -> tuple:
+    """
+    Build a unified offensive/defensive design matrix from stints.
+
+    Two rows per stint:
+    - home offense vs away defense
+    - away offense vs home defense
+    """
+    from run_rapm import get_player_list_and_index
+
+    player_list, player_to_idx = get_player_list_and_index(stints)
+    n_players = len(player_list)
+    n_stints = len(stints)
+    n_rows = n_stints * 2
+
+    row_indices = []
+    col_indices = []
+    data = []
+
+    for stint_idx, row in enumerate(stints.itertuples()):
+        home_row = 2 * stint_idx
+        away_row = home_row + 1
+
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                idx = player_to_idx.get(pid)
+                if idx is not None:
+                    row_indices.append(home_row)
+                    col_indices.append(idx)
+                    data.append(1.0)
+                    row_indices.append(away_row)
+                    col_indices.append(n_players + idx)
+                    data.append(-1.0)
+
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                idx = player_to_idx.get(pid)
+                if idx is not None:
+                    row_indices.append(home_row)
+                    col_indices.append(n_players + idx)
+                    data.append(-1.0)
+                    row_indices.append(away_row)
+                    col_indices.append(idx)
+                    data.append(1.0)
+
+    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_rows, 2 * n_players))
+
+    possessions = np.maximum(stints["seconds"].to_numpy(dtype=float) / 24.0, 0.1)
+    home_pts = stints["home_pts_adj"].to_numpy(dtype=float)
+    away_pts = stints["away_pts_adj"].to_numpy(dtype=float)
+
+    y = np.zeros(n_rows)
+    y[0::2] = (home_pts / possessions) * 100.0
+    y[1::2] = (away_pts / possessions) * 100.0
+
+    weights = np.zeros(n_rows)
+    weights[0::2] = np.sqrt(possessions)
+    weights[1::2] = np.sqrt(possessions)
+
+    return X, y, weights, player_list, n_players
+
+
 def compute_rapm_for_period(
     stints: pd.DataFrame,
     period_key: str,
@@ -46,9 +114,8 @@ def compute_rapm_for_period(
     """Compute RAPM for a specific period by filtering stints and running regression."""
     from run_rapm import (
         build_design_matrix,
-        build_design_matrix_orapm,
-        build_design_matrix_drapm,
         run_rapm,
+        run_rapm_od,
         get_player_info,
     )
 
@@ -66,14 +133,12 @@ def compute_rapm_for_period(
         return []
 
     # Build design matrix and run RAPM
-    X, y, weights, player_list, player_to_idx = build_design_matrix(df, use_adjusted=True)
-    coefficients, intercept = run_rapm(X, y, weights, alpha=alpha)
-    Xo, yo, wo, players_o, _ = build_design_matrix_orapm(df, use_adjusted=True)
-    coef_o, _ = run_rapm(Xo, yo, wo, alpha=alpha)
-    Xd, yd, wd, players_d, _ = build_design_matrix_drapm(df, use_adjusted=True)
-    coef_d, _ = run_rapm(Xd, yd, wd, alpha=alpha)
-    orapm = dict(zip(players_o, coef_o))
-    drapm = dict(zip(players_d, coef_d))
+    X_od, y_od, w_od, player_list, n_players = build_design_matrix_stint_od(df)
+    coef_o, coef_d, intercept = run_rapm_od(
+        X_od, y_od, w_od, n_players, alpha_off=alpha, alpha_def=alpha
+    )
+    orapm = dict(zip(player_list, coef_o))
+    drapm = dict(zip(player_list, coef_d))
 
     # Get player info
     player_info = get_player_info(player_list, df, "_playoffs")
@@ -119,14 +184,16 @@ def compute_rapm_for_period(
             primary_team_id = info.get("team_id", 0)
         mapped = name_map.get(int(pid))
         name = mapped or info.get("name", f"Player {pid}")
+        orapm_val = round(float(orapm.get(pid, 0.0)), 2)
+        drapm_val = round(float(drapm.get(pid, 0.0)), 2)
         results.append({
             "player_id": int(pid),
             "player_name": name,
             "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
             "minutes": int(round(minutes)),
-            "rapm": round(float(coefficients[i]), 2),
-            "orapm": round(float(orapm.get(pid, 0.0)), 2),
-            "drapm": round(float(drapm.get(pid, 0.0)), 2),
+            "rapm": round(orapm_val + drapm_val, 2),
+            "orapm": orapm_val,
+            "drapm": drapm_val,
         })
 
     return sorted(results, key=lambda x: x["rapm"], reverse=True)
