@@ -46,6 +46,8 @@ def compute_rapm_for_period(
     """Compute RAPM for a specific period by filtering stints and running regression."""
     from run_rapm import (
         build_design_matrix,
+        build_design_matrix_orapm,
+        build_design_matrix_drapm,
         run_rapm,
         get_player_info,
     )
@@ -66,6 +68,12 @@ def compute_rapm_for_period(
     # Build design matrix and run RAPM
     X, y, weights, player_list, player_to_idx = build_design_matrix(df, use_adjusted=True)
     coefficients, intercept = run_rapm(X, y, weights, alpha=alpha)
+    Xo, yo, wo, players_o, _ = build_design_matrix_orapm(df, use_adjusted=True)
+    coef_o, _ = run_rapm(Xo, yo, wo, alpha=alpha)
+    Xd, yd, wd, players_d, _ = build_design_matrix_drapm(df, use_adjusted=True)
+    coef_d, _ = run_rapm(Xd, yd, wd, alpha=alpha)
+    orapm = dict(zip(players_o, coef_o))
+    drapm = dict(zip(players_d, coef_d))
 
     # Get player info
     player_info = get_player_info(player_list, df, "_playoffs")
@@ -117,6 +125,8 @@ def compute_rapm_for_period(
             "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
             "minutes": int(round(minutes)),
             "rapm": round(float(coefficients[i]), 2),
+            "orapm": round(float(orapm.get(pid, 0.0)), 2),
+            "drapm": round(float(drapm.get(pid, 0.0)), 2),
         })
 
     return sorted(results, key=lambda x: x["rapm"], reverse=True)
@@ -294,7 +304,7 @@ def generate_rapm_report_playoffs():
         </label>
       </div>
       <p class="muted" style="margin: 0 0 8px; font-size: 11px;">
-        RAPM = Regularized Adjusted Plus-Minus per 100 possessions
+        RAPM, ORAPM, and DRAPM are per 100 possessions
       </p>
       <div class="table-wrap">
         <table id="rapm-table">
@@ -305,6 +315,8 @@ def generate_rapm_report_playoffs():
               <th data-key="team_abbr">Team</th>
               <th data-key="minutes">Min</th>
               <th data-key="rapm">RAPM</th>
+              <th data-key="orapm">ORAPM</th>
+              <th data-key="drapm">DRAPM</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -357,6 +369,8 @@ def generate_rapm_report_playoffs():
           <td>${{r.team_abbr}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
           <td class="${{cls(r.rapm)}}">${{fmt(r.rapm, 2)}}</td>
+          <td class="${{cls(r.orapm)}}">${{fmt(r.orapm, 2)}}</td>
+          <td class="${{cls(r.drapm)}}">${{fmt(r.drapm, 2)}}</td>
         </tr>
       `).join("");
 
