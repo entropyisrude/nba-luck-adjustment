@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Detailed Example: PHI @ MIN - NBA 3PT Luck Analysis</title>
+    <title>Method</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -14,9 +14,22 @@
         h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }
         h2 { color: #16213e; margin-top: 30px; }
         h3 { color: #1a1a2e; margin-top: 25px; }
-        .back-link { margin-bottom: 20px; }
-        .back-link a { color: #e94560; text-decoration: none; font-weight: 500; }
-        .back-link a:hover { text-decoration: underline; }
+        .site-nav {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .site-nav a {
+            color: #e94560;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 7px 11px;
+            border: 1px solid #f3b5bf;
+            border-radius: 999px;
+            background: white;
+        }
+        .site-nav a:hover { background: #fff6f8; }
         .summary-box {
             background: white;
             padding: 20px;
@@ -92,9 +105,17 @@
     </style>
 </head>
 <body>
-    <div class="back-link"><a href="index.html">&larr; Back to Main Report</a></div>
+    <div class="site-nav">
+        <a href="index.html">Overview</a>
+        <a href="onoff-daily.html">Daily</a>
+        <a href="onoff.html">Totals</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="onoff-playoffs.html">Playoff Totals</a>
+        <a href="rapm-playoffs.html">Playoff RAPM</a>
+        <a href="example.html">Method</a>
+    </div>
 
-    <h1>How the Luck Adjustment Works</h1>
+    <h1>Method</h1>
     <p>A detailed breakdown using the <strong>PHI @ MIN</strong> game from <strong>2026-02-22</strong></p>
 
     <div class="summary-box">

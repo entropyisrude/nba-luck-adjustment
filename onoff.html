@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>3PT Luck Adjusted Plus Minus: Totals</title>
+  <title>Season On/Off</title>
   <style>
     :root {
       --bg: #f2f6fb;
@@ -41,8 +41,15 @@
       border-radius: 999px;
       font-size: 12px;
     }
-    .nav { margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-    .nav a { color: #e5f6ff; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
     .card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -120,15 +127,20 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <h1>3PT Luck Adjusted Plus Minus: Totals</h1>
+      <h1>Season On/Off</h1>
       <div class="meta">
         <span class="chip">Data through 2026-03-06</span>
         <span class="chip">Games: 942</span>
         <span class="chip">Rows: 624</span>
       </div>
       <div class="nav">
-        <a href="index.html">Main 3PT Luck Page</a>
-        <a href="onoff-daily.html">3PT Luck Adjust Plus Minus: Games</a>
+        <a href="index.html">Overview</a>
+        <a href="onoff-daily.html">Daily</a>
+        <a href="onoff.html">Totals</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="onoff-playoffs.html">Playoff Totals</a>
+        <a href="rapm-playoffs.html">Playoff RAPM</a>
+        <a href="example.html">Method</a>
       </div>
     </section>
 
