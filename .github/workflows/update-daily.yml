@@ -2,8 +2,9 @@ name: Update NBA 3PT Luck Report
 
 on:
   schedule:
-    # Run at 11 AM UTC (6 AM EST / 3 AM PST), only during NBA season months (Oct-Jun)
-    - cron: '0 11 * 10-12,1-6 *'
+    # Run at 11:07 UTC year-round (6:07 AM EST / 7:07 AM EDT), only during NBA season months (Oct-Jun).
+    # GitHub schedules are UTC and can be delayed at the top of the hour, so avoid :00.
+    - cron: '7 11 * 10-12,1-6 *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
