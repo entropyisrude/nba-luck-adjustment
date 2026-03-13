@@ -11,6 +11,7 @@ import lzma
 from pathlib import Path
 from collections import defaultdict
 import json
+import re
 
 import pandas as pd
 import numpy as np
@@ -73,6 +74,37 @@ def download_playoff_data(seasons: list[int]):
             print(f"  Error downloading {season_str}: {e}")
 
 
+def parse_clock_to_seconds(clock_str: str) -> float:
+    """Parse clock string (MM:SS or MM:SS.x) to seconds."""
+    if pd.isna(clock_str):
+        return 720.0
+    clock_str = str(clock_str).strip()
+    if ":" in clock_str:
+        parts = clock_str.split(":")
+        mins = int(parts[0])
+        secs = float(parts[1])
+        return mins * 60 + secs
+    return float(clock_str)
+
+
+def sort_pbp_chronologically(pbp: pd.DataFrame) -> pd.DataFrame:
+    """Sort play-by-play by actual in-game time, not raw EVENTNUM alone."""
+    if pbp.empty:
+        return pbp.copy()
+
+    ordered = pbp.copy()
+    ordered["_clock_seconds"] = ordered["PCTIMESTRING"].apply(parse_clock_to_seconds)
+    ordered["_boundary_rank"] = 1
+    ordered.loc[ordered["EVENTMSGTYPE"] == EVENT_PERIOD_START, "_boundary_rank"] = 0
+    ordered.loc[ordered["EVENTMSGTYPE"] == EVENT_PERIOD_END, "_boundary_rank"] = 2
+    ordered = ordered.sort_values(
+        ["PERIOD", "_clock_seconds", "_boundary_rank", "EVENTNUM"],
+        ascending=[True, False, True, True],
+        kind="mergesort",
+    )
+    return ordered.drop(columns=["_clock_seconds", "_boundary_rank"])
+
+
 def get_starters_from_period(pbp: pd.DataFrame, period: int, game_id: str) -> dict[int, list[int]]:
     """
     Infer starters for a period by looking at early events.
@@ -82,44 +114,83 @@ def get_starters_from_period(pbp: pd.DataFrame, period: int, game_id: str) -> di
     if period_df.empty:
         return {}
 
-    starters = defaultdict(set)
+    period_df = sort_pbp_chronologically(period_df)
 
-    # Look at first few events to find players
-    for _, row in period_df.head(50).iterrows():
+    def add_player(bucket: dict[int, list[int]], team_id: int, player_id: int):
+        if team_id <= 0 or player_id <= 0:
+            return
+        lst = bucket.setdefault(team_id, [])
+        if player_id not in lst:
+            lst.append(player_id)
+
+    def as_int(value) -> int:
+        if pd.isna(value):
+            return 0
+        try:
+            return int(value)
+        except Exception:
+            return 0
+
+    # Build the set of players seen for each team in the period, and the first
+    # substitution direction for players who appear in a sub row. This lets us
+    # keep quiet starters like Jason Kidd while excluding clear bench players
+    # whose first recorded appearance is checking in.
+    seen_players: dict[int, list[int]] = {}
+    first_subtype_by_player: dict[tuple[int, int], str] = {}
+    early_players: dict[int, list[int]] = {}
+    first_sub_eventnum: dict[int, int] = {}
+
+    for _, row in period_df.iterrows():
+        eventnum = int(row.get("EVENTNUM", 0) or 0)
         for player_col, team_col in [
             ("PLAYER1_ID", "PLAYER1_TEAM_ID"),
             ("PLAYER2_ID", "PLAYER2_TEAM_ID"),
             ("PLAYER3_ID", "PLAYER3_TEAM_ID"),
         ]:
-            pid = row.get(player_col)
-            tid = row.get(team_col)
-            if pd.notna(pid) and pd.notna(tid) and int(pid) > 0 and int(tid) > 0:
-                starters[int(tid)].add(int(pid))
+            pid = as_int(row.get(player_col, 0))
+            tid = as_int(row.get(team_col, 0))
+            if pid > 0 and tid > 0:
+                add_player(seen_players, tid, pid)
+                cutoff = first_sub_eventnum.get(tid)
+                if cutoff is None or eventnum <= cutoff:
+                    add_player(early_players, tid, pid)
 
-    # Also track substitutions to know who was ON court at start
-    current_on = defaultdict(set)
-    for tid, players in starters.items():
-        current_on[tid] = players.copy()
+        if int(row.get("EVENTMSGTYPE", 0) or 0) != EVENT_SUBSTITUTION:
+            continue
 
-    for _, row in period_df.iterrows():
-        if row["EVENTMSGTYPE"] == EVENT_SUBSTITUTION:
-            player_in = int(row["PLAYER2_ID"]) if pd.notna(row.get("PLAYER2_ID")) else 0
-            player_out = int(row["PLAYER1_ID"]) if pd.notna(row.get("PLAYER1_ID")) else 0
-            team_id = int(row["PLAYER1_TEAM_ID"]) if pd.notna(row.get("PLAYER1_TEAM_ID")) else 0
+        player_out = as_int(row.get("PLAYER1_ID", 0))
+        player_in = as_int(row.get("PLAYER2_ID", 0))
+        team_id = as_int(row.get("PLAYER1_TEAM_ID", 0))
+        if team_id <= 0:
+            continue
+        first_sub_eventnum.setdefault(team_id, eventnum)
+        if player_out > 0 and (team_id, player_out) not in first_subtype_by_player:
+            first_subtype_by_player[(team_id, player_out)] = "out"
+        if player_in > 0 and (team_id, player_in) not in first_subtype_by_player:
+            first_subtype_by_player[(team_id, player_in)] = "in"
 
-            if player_out > 0 and team_id > 0:
-                # Player going out was a starter
-                starters[team_id].add(player_out)
-            if player_in > 0 and team_id > 0:
-                # Player coming in was NOT a starter (unless they were subbed out first)
-                pass
+    starters: dict[int, list[int]] = {}
+    for team_id, players in seen_players.items():
+        # Clear starters: anyone not first seen as a substitution-in.
+        primary = [
+            pid for pid in players
+            if first_subtype_by_player.get((team_id, pid)) != "in"
+        ]
+        for pid in primary:
+            add_player(starters, team_id, pid)
 
-    # Limit to 5 per team
-    result = {}
-    for tid, players in starters.items():
-        result[tid] = list(players)[:5]
+        # Prefer players active before the first sub as tie-breakers if we still
+        # need to fill out a lineup.
+        for pid in early_players.get(team_id, []):
+            add_player(starters, team_id, pid)
 
-    return result
+        # Last fallback: keep original period order so we still return a lineup.
+        for pid in players:
+            add_player(starters, team_id, pid)
+
+        starters[team_id] = starters.get(team_id, [])[:5]
+
+    return starters
 
 
 def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
@@ -127,7 +198,7 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
     Track lineups throughout a game based on substitutions.
     Returns the pbp with added lineup columns.
     """
-    game_pbp = game_pbp.sort_values(["PERIOD", "EVENTNUM"]).copy()
+    game_pbp = sort_pbp_chronologically(game_pbp)
 
     # Get team IDs
     team_ids = set()
@@ -180,20 +251,6 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
         results.append(row_dict)
 
     return pd.DataFrame(results)
-
-
-def parse_clock_to_seconds(clock_str: str) -> float:
-    """Parse clock string (MM:SS or MM:SS.x) to seconds."""
-    if pd.isna(clock_str):
-        return 720.0
-    clock_str = str(clock_str).strip()
-    if ":" in clock_str:
-        parts = clock_str.split(":")
-        mins = int(parts[0])
-        secs = float(parts[1])
-        return mins * 60 + secs
-    return float(clock_str)
-
 
 def derive_date_from_game_id(game_id: str) -> str:
     """
