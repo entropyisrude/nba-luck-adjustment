@@ -425,12 +425,16 @@ def embed_rapm_html(rapm: dict, player_map: dict) -> None:
     start = html.find("const DATA = ")
     if start == -1:
         raise RuntimeError("const DATA not found in rapm.html")
-    let_idx = html.find("let sortKey", start)
-    if let_idx == -1:
-        raise RuntimeError("let sortKey not found in rapm.html")
+    marker_idx = -1
+    for marker in ("const sortState =", "const DEFAULT_ALPHA =", "function getPlayerInfo("):
+        marker_idx = html.find(marker, start)
+        if marker_idx != -1:
+            break
+    if marker_idx == -1:
+        raise RuntimeError("RAPM script marker not found in rapm.html")
 
     prefix = html[:start]
-    suffix = html[let_idx:]
+    suffix = html[marker_idx:]
     new_block = f"const DATA = {json_data};\n    const PLAYER_MAP = {json_map};\n\n    "
     RAPM_HTML.write_text(prefix + new_block + suffix, encoding="utf-8")
 
