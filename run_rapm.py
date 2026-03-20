@@ -281,6 +281,79 @@ def build_design_matrix_drapm(stints: pd.DataFrame, use_adjusted: bool = True):
     return X, y, weights, player_list, player_to_idx
 
 
+def build_design_matrix_stint_od(stints: pd.DataFrame, use_adjusted: bool = True):
+    """
+    Build a unified offensive/defensive design matrix from stint data.
+
+    Two rows per stint:
+    - home offense vs away defense
+    - away offense vs home defense
+
+    This estimates ORAPM and DRAPM in one regression, with RAPM defined as
+    ORAPM + DRAPM from the same fit.
+    """
+    player_list, player_to_idx = get_player_list_and_index(stints)
+    n_players = len(player_list)
+    n_stints = len(stints)
+    n_rows = n_stints * 2
+
+    row_indices = []
+    col_indices = []
+    data = []
+
+    for stint_idx, row in enumerate(stints.itertuples()):
+        home_row = 2 * stint_idx
+        away_row = home_row + 1
+
+        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                idx = player_to_idx.get(pid)
+                if idx is None:
+                    continue
+                row_indices.append(home_row)
+                col_indices.append(idx)
+                data.append(1.0)
+                row_indices.append(away_row)
+                col_indices.append(n_players + idx)
+                data.append(-1.0)
+
+        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
+            pid = getattr(row, col)
+            if pd.notna(pid):
+                pid = int(pid)
+                idx = player_to_idx.get(pid)
+                if idx is None:
+                    continue
+                row_indices.append(home_row)
+                col_indices.append(n_players + idx)
+                data.append(-1.0)
+                row_indices.append(away_row)
+                col_indices.append(idx)
+                data.append(1.0)
+
+    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_rows, 2 * n_players))
+
+    possessions = np.maximum(stints["seconds"].to_numpy(dtype=float) / 24.0, 0.1)
+    if use_adjusted:
+        home_pts = stints["home_pts_adj"].to_numpy(dtype=float)
+        away_pts = stints["away_pts_adj"].to_numpy(dtype=float)
+    else:
+        home_pts = stints["home_pts"].to_numpy(dtype=float)
+        away_pts = stints["away_pts"].to_numpy(dtype=float)
+
+    y = np.zeros(n_rows)
+    y[0::2] = (home_pts / possessions) * 100.0
+    y[1::2] = (away_pts / possessions) * 100.0
+
+    weights = np.zeros(n_rows)
+    weights[0::2] = np.sqrt(possessions)
+    weights[1::2] = np.sqrt(possessions)
+
+    return X, y, weights, player_list, player_to_idx, n_players
+
+
 def build_design_matrix_possession_od(possessions: pd.DataFrame, use_adjusted: bool = True):
     """
     Build unified O/D design matrix from possession-level data.
@@ -396,8 +469,104 @@ def run_rapm_od(X, y, weights, n_players: int, alpha_off: float = 2500.0, alpha_
 
     coef_off = coef[:n_players]
     coef_def = coef[n_players:]
+    intercept = float(model.intercept_)
 
-    return coef_off, coef_def, model.intercept_
+    # The unified O/D design has a location indeterminacy:
+    # adding a constant to every offensive and defensive coefficient can be
+    # offset by the intercept without changing predictions. Anchor the split by
+    # centering offense and defense separately, then adjusting the intercept so
+    # fitted values are unchanged.
+    off_mean = float(np.mean(coef_off))
+    def_mean = float(np.mean(coef_def))
+    coef_off = coef_off - off_mean
+    coef_def = coef_def - def_mean
+    intercept = intercept + 5.0 * (off_mean - def_mean)
+
+    return coef_off, coef_def, intercept
+
+
+def compute_unified_stint_rapm_rows(
+    stints: pd.DataFrame,
+    alpha: float,
+    min_minutes: float,
+    suffix: str = "",
+) -> list[dict]:
+    """
+    Compute adjusted and raw RAPM/ORAPM/DRAPM together from stint data.
+
+    This is the unified fallback when possession-level RAPM is unavailable.
+    """
+    X_adj, y_adj, w_adj, player_list, _, n_players = build_design_matrix_stint_od(
+        stints, use_adjusted=True
+    )
+    coef_o_adj, coef_d_adj, _ = run_rapm_od(
+        X_adj, y_adj, w_adj, n_players, alpha_off=alpha, alpha_def=alpha
+    )
+
+    X_raw, y_raw, w_raw, _, _, _ = build_design_matrix_stint_od(
+        stints, use_adjusted=False
+    )
+    coef_o_raw, coef_d_raw, _ = run_rapm_od(
+        X_raw, y_raw, w_raw, n_players, alpha_off=alpha, alpha_def=alpha
+    )
+
+    orapm_adj = dict(zip(player_list, coef_o_adj))
+    drapm_adj = dict(zip(player_list, coef_d_adj))
+    orapm_raw = dict(zip(player_list, coef_o_raw))
+    drapm_raw = dict(zip(player_list, coef_d_raw))
+
+    player_info = get_player_info(player_list, stints, suffix)
+    player_minutes = {}
+    player_team_minutes = {}
+    for col_set, team_col in [
+        (["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
+        (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id"),
+    ]:
+        for col in col_set:
+            for _, row in stints.iterrows():
+                pid = row[col]
+                if pd.isna(pid):
+                    continue
+                pid = int(pid)
+                mins = row["seconds"] / 60.0
+                player_minutes[pid] = player_minutes.get(pid, 0.0) + mins
+                team_id = int(row[team_col])
+                if pid not in player_team_minutes:
+                    player_team_minutes[pid] = {}
+                player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0.0) + mins
+
+    rows = []
+    for pid in player_list:
+        minutes = player_minutes.get(pid, 0.0)
+        if minutes < min_minutes:
+            continue
+        info = player_info.get(pid, {})
+        team_mins = player_team_minutes.get(pid, {})
+        if team_mins:
+            primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
+        else:
+            primary_team_id = info.get("team_id", 0)
+
+        rapm_adj = float(orapm_adj.get(pid, 0.0) + drapm_adj.get(pid, 0.0))
+        rapm_raw = float(orapm_raw.get(pid, 0.0) + drapm_raw.get(pid, 0.0))
+
+        rows.append(
+            {
+                "player_id": int(pid),
+                "player_name": info.get("name", f"Player {pid}"),
+                "team_id": primary_team_id,
+                "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
+                "minutes": round(minutes, 1),
+                "rapm": rapm_adj,
+                "orapm": float(orapm_adj.get(pid, 0.0)),
+                "drapm": float(drapm_adj.get(pid, 0.0)),
+                "rapm_raw": rapm_raw,
+                "orapm_raw": float(orapm_raw.get(pid, 0.0)),
+                "drapm_raw": float(drapm_raw.get(pid, 0.0)),
+            }
+        )
+
+    return rows
 
 
 def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "") -> dict:
@@ -547,61 +716,18 @@ def main():
 
     print(f"Loaded {len(stints)} stints")
 
-    # Build design matrix
-    use_adjusted = not args.use_raw
-    X, y, weights, player_list, player_to_idx = build_design_matrix(stints, use_adjusted=use_adjusted)
-
-    # Run RAPM
-    print(f"Running ridge regression with alpha={args.alpha}...")
-    coefficients, intercept = run_rapm(X, y, weights, alpha=args.alpha)
-
-    print(f"Intercept (league average): {intercept:.2f}")
-
-    # Get player info
-    player_info = get_player_info(player_list, stints, suffix)
-
-    # Calculate minutes per player and per player-team from stint data
-    player_minutes = {}
-    player_team_minutes = {}  # {player_id: {team_id: minutes}}
-    for col_set, team_col in [(["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
-                               (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id")]:
-        for col in col_set:
-            for _, row in stints.iterrows():
-                pid = row[col]
-                if pd.notna(pid):
-                    pid = int(pid)
-                    mins = row["seconds"] / 60.0
-                    player_minutes[pid] = player_minutes.get(pid, 0) + mins
-                    # Track by team
-                    team_id = int(row[team_col])
-                    if pid not in player_team_minutes:
-                        player_team_minutes[pid] = {}
-                    player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0) + mins
-
-    # Build results DataFrame
-    results = []
-    for i, pid in enumerate(player_list):
-        info = player_info.get(pid, {})
-        minutes = player_minutes.get(pid, 0)
-        if minutes < args.min_minutes:
-            continue
-        # Use team where player has most minutes
-        team_mins = player_team_minutes.get(pid, {})
-        if team_mins:
-            primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
-        else:
-            primary_team_id = info.get("team_id", 0)
-        results.append({
-            "player_id": pid,
-            "player_name": info.get("name", f"Player {pid}"),
-            "team_id": primary_team_id,
-            "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
-            "minutes": round(minutes, 1),
-            "rapm": round(coefficients[i], 2),
-        })
+    print(f"Running unified O/D RAPM with alpha={args.alpha}...")
+    results = compute_unified_stint_rapm_rows(
+        stints,
+        alpha=args.alpha,
+        min_minutes=args.min_minutes,
+        suffix=suffix,
+    )
 
     results_df = pd.DataFrame(results)
-    results_df = results_df.sort_values("rapm", ascending=False)
+    primary_col = "rapm_raw" if args.use_raw else "rapm"
+    if not results_df.empty:
+        results_df = results_df.sort_values(primary_col, ascending=False)
 
     # Save results
     output_path = DATA_DIR / f"rapm{suffix}.csv"
@@ -610,21 +736,21 @@ def main():
     print(f"\nWrote: {output_path} (players={len(results_df)}) [{game_type}]")
 
     # Print top and bottom players
-    adj_label = "3PT-ADJUSTED " if use_adjusted else ""
+    adj_label = "RAW " if args.use_raw else "3PT-ADJUSTED "
     playoff_label = "PLAYOFF " if args.playoffs else ""
     print("\n" + "="*60)
     print(f"TOP 20 PLAYERS BY {playoff_label}{adj_label}RAPM")
     print("="*60)
     for _, row in results_df.head(20).iterrows():
         name = row['player_name'].encode('ascii', 'replace').decode('ascii')
-        print(f"{name:25s} {row['team_abbr']:4s} {row['minutes']:6.0f} min  {row['rapm']:+6.2f}")
+        print(f"{name:25s} {row['team_abbr']:4s} {row['minutes']:6.0f} min  {row[primary_col]:+6.2f}")
 
     print("\n" + "="*60)
     print(f"BOTTOM 20 PLAYERS BY {playoff_label}{adj_label}RAPM")
     print("="*60)
     for _, row in results_df.tail(20).iterrows():
         name = row['player_name'].encode('ascii', 'replace').decode('ascii')
-        print(f"{name:25s} {row['team_abbr']:4s} {row['minutes']:6.0f} min  {row['rapm']:+6.2f}")
+        print(f"{name:25s} {row['team_abbr']:4s} {row['minutes']:6.0f} min  {row[primary_col]:+6.2f}")
 
 
 if __name__ == "__main__":

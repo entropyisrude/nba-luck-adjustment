@@ -13,6 +13,7 @@ TEAM_ID_TO_ABBR = run_rapm_module.TEAM_ID_TO_ABBR
 build_design_matrix = run_rapm_module.build_design_matrix
 build_design_matrix_orapm = run_rapm_module.build_design_matrix_orapm
 build_design_matrix_possession_od = run_rapm_module.build_design_matrix_possession_od
+compute_unified_stint_rapm_rows = run_rapm_module.compute_unified_stint_rapm_rows
 get_player_info = run_rapm_module.get_player_info
 run_rapm = run_rapm_module.run_rapm
 run_rapm_od = run_rapm_module.run_rapm_od
@@ -94,6 +95,16 @@ RAPM_JSON = DATA_DIR / "rapm_all.json"
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 RAPM_HTML = Path("rapm.html")
 
+POOLED_GROUP_LABELS = {
+    "Last3": "Last 3 Years",
+    "Last5": "Last 5 Years",
+    "2020s": "2020s",
+    "2010s": "2010s",
+    "2000s": "2000s",
+    "1996-99": "1996-99",
+    "All": "All Seasons",
+}
+
 
 PLAYER_COLS = [
     "home_p1",
@@ -114,6 +125,38 @@ def normalize_game_ids(df: pd.DataFrame) -> pd.DataFrame:
     if "game_id" in df.columns:
         df["game_id"] = df["game_id"].astype(str).str.lstrip("0")
     return df
+
+
+def load_stints(paths: list[Path]) -> pd.DataFrame | None:
+    frames: list[pd.DataFrame] = []
+    common_cols: list[str] | None = None
+    for path in paths:
+        if not path.exists():
+            continue
+        print(f"Loading regular-season stints from {path}...")
+        df = normalize_game_ids(pd.read_csv(path))
+        if "date" not in df.columns:
+            print(f"  Skipping {path}: no date column")
+            continue
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df = df[df["date"].notna()].copy()
+        if common_cols is None:
+            common_cols = list(df.columns)
+        else:
+            common_cols = [col for col in common_cols if col in df.columns]
+        frames.append(df)
+        print(f"  Loaded {len(df)} stints")
+
+    if not frames or common_cols is None:
+        return None
+
+    trimmed = [frame[common_cols].copy() for frame in frames]
+    combined = pd.concat(trimmed, ignore_index=True)
+    dedupe_cols = [col for col in ["game_id", "stint_index"] if col in combined.columns]
+    if dedupe_cols:
+        combined = combined.drop_duplicates(subset=dedupe_cols, keep="last")
+    combined["season"] = combined["date"].apply(season_key)
+    return combined
 
 
 def load_possessions(paths: list[Path]) -> pd.DataFrame | None:
@@ -153,6 +196,30 @@ def season_key(dt: pd.Timestamp) -> str:
         start = y - 1
     end2 = (start + 1) % 100
     return f"{start}-{end2:02d}"
+
+
+def season_start_year(season: str) -> int:
+    return int(str(season)[:4])
+
+
+def build_pooled_windows(seasons: list[str]) -> dict[str, list[str]]:
+    if not seasons:
+        return {}
+
+    windows: dict[str, list[str]] = {}
+
+    def add(key: str, season_list: list[str]) -> None:
+        if season_list:
+            windows[key] = season_list
+
+    add("Last3", seasons[-3:])
+    add("Last5", seasons[-5:])
+    add("2020s", [s for s in seasons if season_start_year(s) >= 2020])
+    add("2010s", [s for s in seasons if 2010 <= season_start_year(s) < 2020])
+    add("2000s", [s for s in seasons if 2000 <= season_start_year(s) < 2010])
+    add("1996-99", [s for s in seasons if season_start_year(s) < 2000])
+    add("All", list(seasons))
+    return windows
 
 
 def score_name(name: str | None) -> int:
@@ -215,69 +282,8 @@ def possession_subset_with_coverage(
 
 
 def compute_for_df(df: pd.DataFrame, alpha: float, min_minutes: int, od_alpha_mult: float = 5.0) -> List[dict]:
-    """
-    Compute RAPM, ORAPM, and DRAPM for all players in the dataframe (stint-level fallback).
-
-    DRAPM uses a SEPARATE regression with different targets than ORAPM:
-    - ORAPM: target = points SCORED by offensive team
-    - DRAPM: target = points ALLOWED by defensive team (negated so positive = good)
-
-    O/D regressions use higher alpha (od_alpha_mult * alpha) because each player
-    only appears in half the observations, requiring more regularization.
-    """
-    od_alpha = alpha * od_alpha_mult
-
-    X_adj, y_adj, w_adj, players_adj, _ = build_design_matrix(df, use_adjusted=True)
-    coef_adj, _ = run_rapm(X_adj, y_adj, w_adj, alpha=alpha)
-
-    X_raw, y_raw, w_raw, players_raw, _ = build_design_matrix(df, use_adjusted=False)
-    coef_raw, _ = run_rapm(X_raw, y_raw, w_raw, alpha=alpha)
-
-    Xo_adj, yo_adj, wo_adj, players_o_adj, _ = build_design_matrix_orapm(df, use_adjusted=True)
-    coef_o_adj, _ = run_rapm(Xo_adj, yo_adj, wo_adj, alpha=od_alpha)
-
-    Xo_raw, yo_raw, wo_raw, players_o_raw, _ = build_design_matrix_orapm(df, use_adjusted=False)
-    coef_o_raw, _ = run_rapm(Xo_raw, yo_raw, wo_raw, alpha=od_alpha)
-
-    # DRAPM uses separate regression with points ALLOWED as target
-    Xd_adj, yd_adj, wd_adj, players_d_adj, _ = build_design_matrix_drapm(df, use_adjusted=True)
-    coef_d_adj, _ = run_rapm(Xd_adj, yd_adj, wd_adj, alpha=od_alpha)
-
-    Xd_raw, yd_raw, wd_raw, players_d_raw, _ = build_design_matrix_drapm(df, use_adjusted=False)
-    coef_d_raw, _ = run_rapm(Xd_raw, yd_raw, wd_raw, alpha=od_alpha)
-
-    rapm_adj = dict(zip(players_adj, coef_adj))
-    rapm_raw = dict(zip(players_raw, coef_raw))
-    orapm_adj = dict(zip(players_o_adj, coef_o_adj))
-    orapm_raw = dict(zip(players_o_raw, coef_o_raw))
-    drapm_adj = dict(zip(players_d_adj, coef_d_adj))
-    drapm_raw = dict(zip(players_d_raw, coef_d_raw))
-
-    minutes = compute_minutes(df)
-    info = get_player_info(players_adj, df)
-
-    rows = []
-    for pid in players_adj:
-        mins = minutes.get(pid, 0.0)
-        if mins < min_minutes:
-            continue
-        pinfo = info.get(pid, {})
-        team_id = pinfo.get("team_id", 0)
-        rows.append(
-            {
-                "player_id": int(pid),
-                "player_name": pinfo.get("name", f"Player {pid}"),
-                "team_abbr": TEAM_ID_TO_ABBR.get(team_id, "???"),
-                "minutes": int(round(mins)),
-                "rapm": float(rapm_adj.get(pid, 0.0)),
-                "orapm": float(orapm_adj.get(pid, 0.0)),
-                "drapm": float(drapm_adj.get(pid, 0.0)),
-                "rapm_raw": float(rapm_raw.get(pid, 0.0)),
-                "orapm_raw": float(orapm_raw.get(pid, 0.0)),
-                "drapm_raw": float(drapm_raw.get(pid, 0.0)),
-            }
-        )
-    return rows
+    """Compute unified adjusted and raw RAPM/ORAPM/DRAPM from stints."""
+    return compute_unified_stint_rapm_rows(df, alpha=alpha, min_minutes=min_minutes)
 
 
 def compute_for_possessions(
@@ -498,19 +504,25 @@ def main() -> None:
         default="possessions_historical.csv,possessions.csv",
         help="Comma-separated possession file names in data/ (default: possessions_historical.csv,possessions.csv).",
     )
+    parser.add_argument(
+        "--stints-files",
+        type=str,
+        default="stints_historical.csv,stints.csv",
+        help="Comma-separated stint file names in data/ (default: stints_historical.csv,stints.csv).",
+    )
     args = parser.parse_args()
 
-    stints_path = DATA_DIR / "stints.csv"
+    stint_paths = [DATA_DIR / name.strip() for name in args.stints_files.split(",") if name.strip()]
     poss_paths = [DATA_DIR / name.strip() for name in args.possessions_files.split(",") if name.strip()]
 
-    if not stints_path.exists():
-        print("stints.csv not found; run run_onoff.py first.")
+    if not any(path.exists() for path in stint_paths):
+        print("No stint files found; run run_onoff.py first.")
         return
 
-    stints = normalize_game_ids(pd.read_csv(stints_path))
-    stints["date"] = pd.to_datetime(stints["date"], errors="coerce")
-    stints = stints[stints["date"].notna()].copy()
-    stints["season"] = stints["date"].apply(season_key)
+    stints = load_stints(stint_paths)
+    if stints is None or stints.empty:
+        print("No valid stints found in configured stint files.")
+        return
 
     # Load possessions if available and requested
     possessions = None
@@ -524,16 +536,17 @@ def main() -> None:
         return
 
     latest_season = seasons[-1]
-    last3 = seasons[-3:] if len(seasons) >= 3 else seasons
+    pooled_windows = build_pooled_windows(seasons)
 
     season_alphas = [float(a) for a in args.season_alphas.split(",") if a.strip()]
     last3_alphas = [float(a) for a in args.last3_alphas.split(",") if a.strip()]
+    pooled_alphas = sorted({int(a) for a in season_alphas + last3_alphas + [10.0, 500.0]})
 
     rapm = json.loads(RAPM_JSON.read_text(encoding="utf-8")) if RAPM_JSON.exists() else {}
 
-    # Keep only alpha=10/500 variants (plus season keys/Last3 base)
+    # Keep only alpha=10/500 variants (plus season/window base rows and metadata)
     for k in list(rapm.keys()):
-        if k == "Last3_seasons":
+        if k.endswith("_seasons"):
             rapm.pop(k, None)
             continue
         if "_a" in k:
@@ -578,8 +591,10 @@ def main() -> None:
                 season,
             )
 
-        # Recompute if --recompute-all or if using possessions (to get proper O/D RAPM)
-        should_recompute = args.recompute_all or (season_poss_hist is not None)
+        # Keep existing season entries unless explicitly recomputing all or
+        # the key is missing. Pooled leaderboard windows are the new work here;
+        # recomputing every historical season on every page refresh is wasteful.
+        should_recompute = args.recompute_all
 
         if should_recompute or key10 not in rapm:
             if season_poss_hist is not None and len(season_poss_hist) > 0:
@@ -601,28 +616,33 @@ def main() -> None:
 
         rapm[season] = rapm[key500]
 
-    # Update rolling Last3
-    rolling_df = stints[stints["season"].isin(last3)].copy()
-    rolling_poss = None
-    if possessions is not None:
-        rolling_poss = possession_subset_with_coverage(
-            possessions[possessions["season"].isin(last3)].copy(),
-            rolling_df,
-            f"Last3 ({', '.join(last3)})",
-        )
+    # Update pooled leaderboard windows
+    for window_key, window_seasons in pooled_windows.items():
+        window_df = stints[stints["season"].isin(window_seasons)].copy()
+        if window_df.empty:
+            continue
+        window_poss = None
+        if possessions is not None:
+            window_poss = possession_subset_with_coverage(
+                possessions[possessions["season"].isin(window_seasons)].copy(),
+                window_df,
+                f"{window_key} ({', '.join(window_seasons)})",
+            )
 
-    for alpha in last3_alphas:
-        if rolling_poss is not None and len(rolling_poss) > 0:
-            print(f"Computing possession-level RAPM for Last3 (alpha={alpha})...")
-            rapm[f"Last3_a{int(alpha)}"] = compute_for_possessions(
-                rolling_poss, rolling_df, alpha, args.min_minutes
-            )
-        else:
-            rapm[f"Last3_a{int(alpha)}"] = compute_for_df(
-                rolling_df, alpha, args.min_minutes, args.od_alpha_mult
-            )
-    if "Last3_a500" in rapm:
-        rapm["Last3"] = rapm["Last3_a500"]
+        for alpha in pooled_alphas:
+            if window_poss is not None and len(window_poss) > 0:
+                print(f"Computing possession-level RAPM for {window_key} (alpha={alpha})...")
+                rapm[f"{window_key}_a{int(alpha)}"] = compute_for_possessions(
+                    window_poss, window_df, float(alpha), args.min_minutes
+                )
+            else:
+                rapm[f"{window_key}_a{int(alpha)}"] = compute_for_df(
+                    window_df, float(alpha), args.min_minutes, args.od_alpha_mult
+                )
+
+        if f"{window_key}_a500" in rapm:
+            rapm[window_key] = rapm[f"{window_key}_a500"]
+        rapm[f"{window_key}_seasons"] = window_seasons
 
     player_map = update_player_info_map()
     apply_player_names(rapm, player_map)
@@ -630,7 +650,10 @@ def main() -> None:
     RAPM_JSON.write_text(json.dumps(rapm, separators=(",", ":")), encoding="utf-8")
     embed_rapm_html(rapm, player_map)
 
-    print(f"Updated RAPM for {latest_season} and Last3 ({', '.join(last3)})")
+    print(
+        f"Updated RAPM for {latest_season} and pooled windows: "
+        + ", ".join(f"{k} ({', '.join(v)})" for k, v in pooled_windows.items())
+    )
 
 
 if __name__ == "__main__":
