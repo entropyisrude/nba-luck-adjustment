@@ -138,97 +138,102 @@
         <strong>Get Every 3-Point Attempt</strong>
         <p>We fetch play-by-play data and extract each 3-point shot with its context:</p>
         <ul>
-            <li><strong>Court location:</strong> Corner 3 vs Above-the-break 3</li>
-            <li><strong>Shot type:</strong> Catch-and-shoot, Pullup, Stepback, Running, etc.</li>
+            <li><strong>Shot type:</strong> Catch-and-shoot vs Pull-up (stepback, running, etc.)</li>
+            <li><strong>Player history:</strong> Career 3PA/3PM with recency weighting</li>
+            <li><strong>Free throw percentage:</strong> Used to anchor the prior expectation</li>
         </ul>
         <p>This game had <strong>70 total 3-point attempts</strong>.</p>
     </div>
 
     <div class="step">
         <span class="step-number">2</span>
-        <strong>Calculate Each Player's Expected 3P%</strong>
-        <p>Using Bayesian estimation with a sliding prior, adjusted for shot difficulty. Player stats are weighted with exponential decay (recent shots matter more):</p>
-        <div class="formula">
-Player Expected 3P% = (Weighted Makes + &kappa; × Adjusted Prior) / (Weighted Attempts + &kappa;)
+        <strong>Calculate Each Player's Expected 3P% Using FT%-Based Prior</strong>
+        <p>We use a Bayesian Beta-Binomial model where the prior is anchored to the player's free throw percentage.
+        FT% is a stable indicator of shooting skill that predicts 3PT ability.</p>
 
-Where:
-  - Base prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
-  - <strong>Shot mix adjustment</strong>: Prior adjusted based on career assisted vs unassisted 3PA:
-      • Pull-up (unassisted) shooters: prior ×1.12 — harder shots depress career %
-      • Catch-and-shoot (assisted) shooters: prior ×0.95 — easier shots inflate career %
-  - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
-  - Weighted stats use exponential decay so recent performance matters more
+        <div class="formula">
+<strong>Step 1: Calculate FT%-based prior mean</strong>
+Prior 3P% = intercept + slope x FT%
+
+Context-specific parameters (calibrated from 10 seasons of data):
+  Overall:         prior = 0.207 + 0.193 x FT%    kappa = 437
+  Catch-and-shoot: prior = 0.199 + 0.221 x FT%    kappa = 418
+  Pull-up:         prior = 0.174 + 0.207 x FT%    kappa = 270
+
+<strong>Step 2: Combine prior with observed shooting (Beta-Binomial)</strong>
+alpha = (prior x kappa) + weighted_makes
+beta  = ((1 - prior) x kappa) + (weighted_attempts - weighted_makes)
+
+<strong>Step 3: Posterior expected 3P%</strong>
+Expected 3P% = alpha / (alpha + beta)
         </div>
 
         <h4>Worked Examples: Veteran vs Rookie</h4>
-        <table style="max-width: 800px;">
+        <table style="max-width: 900px;">
             <tr>
                 <th>Player</th>
-                <th>Weighted 3PA</th>
-                <th>Weighted 3PM</th>
-                <th>Career %</th>
-                <th>Shot Mix</th>
-                <th>Adjusted Prior (μ)</th>
-                <th>Prior Strength (κ)</th>
+                <th>FT%</th>
+                <th>Prior</th>
+                <th>kappa</th>
+                <th>Weighted 3P</th>
+                <th>alpha</th>
+                <th>beta</th>
                 <th>Expected 3P%</th>
             </tr>
             <tr>
                 <td><strong>T. Maxey</strong> (veteran)</td>
-                <td>2405.3</td>
-                <td>911.9</td>
-                <td>37.9%</td>
-                <td>45% ast / 55% unast</td>
-                <td>37.6%</td>
-                <td>300</td>
-                <td><strong>37.8%</strong></td>
+                <td>87.9%</td>
+                <td>37.7%</td>
+                <td>437</td>
+                <td>911.9/2405.3</td>
+                <td>1076.6</td>
+                <td>1766.0</td>
+                <td><strong>37.9%</strong></td>
             </tr>
             <tr>
                 <td><strong>V. Edgecombe</strong> (rookie)</td>
-                <td>562.5</td>
-                <td>203.4</td>
-                <td>36.2%</td>
-                <td>no data (×1.0)</td>
-                <td>34.2%</td>
-                <td>256</td>
-                <td><strong>35.6%</strong></td>
+                <td>75.0%</td>
+                <td>35.2%</td>
+                <td>437</td>
+                <td>203.4/562.5</td>
+                <td>357.2</td>
+                <td>642.6</td>
+                <td><strong>35.7%</strong></td>
             </tr>
         </table>
 
         <div class="formula">
-<strong>T. Maxey:</strong> (55% unassisted — creates his own shots)
-  Scale = min(2405.3 / 1000, 1.0) = 1.000
-  Base μ = 32% + (36% - 32%) × 1.000 = 36.0%
-  Shot mix multiplier = 0.45 × 0.95 + 0.55 × 1.12 = 1.043
-  Adjusted μ = 36.0% × 1.043 = <strong>37.6%</strong>
-  κ = 200 + (300 - 200) × 1.000 = 300
-  Expected = (911.9 + 300 × 0.376) / (2405.3 + 300)
-           = 1024.7 / 2705.3 = <strong>37.8%</strong>
+<strong>T. Maxey:</strong> (87.9% FT shooter, high-volume veteran)
+  Prior = 0.207 + 0.193 x 0.879 = 0.377 (37.7%)
+  alpha = (0.377 x 437) + 911.9 = 164.7 + 911.9 = 1076.6
+  beta  = (0.623 x 437) + (2405.3 - 911.9) = 272.3 + 1493.4 = 1766.0
+  Expected = 1076.6 / (1076.6 + 1766.0) = <strong>37.9%</strong>
 
-<strong>V. Edgecombe:</strong> (rookie — no shot mix data, uses ×1.0)
-  Scale = min(562.5 / 1000, 1.0) = 0.562
-  μ = 32% + (36% - 32%) × 0.562 = 34.2% (no adjustment)
-  κ = 200 + (300 - 200) × 0.562 = 256
-  Expected = (203.4 + 256 × 0.342) / (562.5 + 256)
-           = 291.2 / 818.7 = <strong>35.6%</strong>
+<strong>V. Edgecombe:</strong> (75% FT shooter, rookie with limited data)
+  Prior = 0.207 + 0.193 x 0.750 = 0.352 (35.2%)
+  alpha = (0.352 x 437) + 203.4 = 153.8 + 203.4 = 357.2
+  beta  = (0.648 x 437) + (562.5 - 203.4) = 283.2 + 359.1 = 642.6
+  Expected = 357.2 / (357.2 + 642.6) = <strong>35.7%</strong>
+
+Note: The FT%-based prior gives Maxey a higher baseline (37.7%) than Edgecombe (35.2%)
+because better free throw shooters tend to be better 3PT shooters.
         </div>
-
-
     </div>
 
     <div class="step">
         <span class="step-number">3</span>
-        <strong>Apply Shot Difficulty Multiplier</strong>
-        <p>Each shot type has a difficulty multiplier based on league-average make rates:</p>
+        <strong>Apply Context-Specific Adjustments</strong>
+        <p>For each shot, we adjust the player's expected % based on shot type:</p>
         <div class="formula">
-Final Expected % = Player Expected % × Shot Difficulty Multiplier
+Catch-and-shoot shots: Higher expected % (easier shots)
+  C&S prior = 0.199 + 0.221 x FT%
 
-Multipliers (relative to league avg {LEAGUE_AVG_3P*100:.1f}%):
-  Corner + Catch-and-shoot: 1.12× (easiest)
-  Above-break + Catch-and-shoot: 1.04×
-  Corner + Pullup: 1.01×
-  Above-break + Pullup: 0.93×
-  Above-break + Stepback: 0.90×
-  Running shots: ~0.88× (hardest)
+Pull-up shots (stepback, running, etc.): Lower expected % (harder shots)
+  Pull-up prior = 0.174 + 0.207 x FT%
+
+Example for T. Maxey (87.9% FT):
+  C&S expected:    ~39.5% (prior = 39.3%)
+  Pull-up expected: ~35.8% (prior = 35.6%)
         </div>
     </div>
 
@@ -238,396 +243,328 @@ Multipliers (relative to league avg {LEAGUE_AVG_3P*100:.1f}%):
         <p>Sum up expected make probabilities for each team, compare to actual makes:</p>
         <div class="formula">
 Luck = Actual Makes - Expected Makes
-Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
-                 ≈ 2.7 points per make above/below expectation
+Point Adjustment = 3 x Luck - (ORB Rate x PPP x |Luck|)
+                 = 2.7 points per make above/below expectation
         </div>
     </div>
 
-    <h2>{home_team} Shot-by-Shot Breakdown</h2>
-    <p>Each 3-point attempt by {home_team} with the full calculation:</p>
+    <h2>MIN Shot-by-Shot Breakdown</h2>
+    <p>Each 3-point attempt by MIN with the full calculation:</p>
     <table>
         <tr>
             <th>Player</th>
             <th>Result</th>
-            <th>Location</th>
             <th>Shot Type</th>
+            <th>FT%</th>
             <th>Weighted 3P</th>
-            <th>Prior (μ, κ)</th>
-            <th>Player Exp%</th>
-            <th>Multiplier</th>
+            <th>Posterior</th>
             <th>Final Exp%</th>
         </tr>
         <tr>
             <td>J. Randle</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>937.7/2826.2 (33.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.5%</td>
-            <td>1.041</td>
-            <td>34.8%</td>
+            <td>80.6%</td>
+            <td>937.7/2826.2</td>
+            <td>33.6%</td>
+            <td>34.9%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>1.123</td>
-            <td>41.7%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>38.7%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Pullup</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.932</td>
-            <td>34.6%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
         </tr>
         <tr>
             <td>T. Shannon Jr.</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>40.6/105.9 (38.3%)</td>
-            <td>(32.4%, 211)</td>
-            <td>34.4%</td>
-            <td>1.123</td>
-            <td>38.6%</td>
+            <td>81.0%</td>
+            <td>40.6/105.9</td>
+            <td>36.7%</td>
+            <td>38.2%</td>
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1161.0/3060.7 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.8%</td>
-            <td>1.123</td>
-            <td>42.4%</td>
+            <td>77.8%</td>
+            <td>1161.0/3060.7</td>
+            <td>37.7%</td>
+            <td>39.2%</td>
         </tr>
         <tr>
             <td>J. McDaniels</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Pullup</td>
-            <td>576.5/1558.9 (37.0%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.8%</td>
-            <td>0.932</td>
-            <td>34.3%</td>
+            <td>81.3%</td>
+            <td>576.5/1558.9</td>
+            <td>36.9%</td>
+            <td>34.7%</td>
         </tr>
         <tr>
             <td>A. Dosunmu</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>555.8/1401.4 (39.7%)</td>
-            <td>(36.0%, 300)</td>
-            <td>39.0%</td>
-            <td>1.123</td>
-            <td>43.8%</td>
+            <td>78.5%</td>
+            <td>555.8/1401.4</td>
+            <td>38.8%</td>
+            <td>40.2%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.986</td>
-            <td>36.6%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
         </tr>
         <tr>
             <td>J. McDaniels</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>576.5/1558.9 (37.0%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.8%</td>
-            <td>1.123</td>
-            <td>41.4%</td>
-        </tr>
-        <tr>
-            <td>B. Hyland</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Stepback</td>
-            <td>570.5/1538.9 (37.1%)</td>
-            <td>(36.0%, 300)</td>
+            <td>81.3%</td>
+            <td>576.5/1558.9</td>
             <td>36.9%</td>
-            <td>0.904</td>
-            <td>33.4%</td>
-        </tr>
-        <tr>
-            <td>B. Hyland</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>570.5/1538.9 (37.1%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.9%</td>
-            <td>1.041</td>
             <td>38.4%</td>
         </tr>
         <tr>
-            <td>J. Randle</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td>B. Hyland</td>
+            <td class="negative">X Miss</td>
+            <td>Stepback</td>
+            <td>88.5%</td>
+            <td>570.5/1538.9</td>
+            <td>37.2%</td>
+            <td>35.1%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>937.7/2826.2 (33.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.5%</td>
-            <td>1.123</td>
-            <td>37.6%</td>
+            <td>88.5%</td>
+            <td>570.5/1538.9</td>
+            <td>37.2%</td>
+            <td>38.9%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="positive">+ Made</td>
+            <td>Catch Shoot</td>
+            <td>80.6%</td>
+            <td>937.7/2826.2</td>
+            <td>33.6%</td>
+            <td>34.9%</td>
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>1161.0/3060.7 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.8%</td>
-            <td>0.986</td>
-            <td>37.2%</td>
+            <td>77.8%</td>
+            <td>1161.0/3060.7</td>
+            <td>37.7%</td>
+            <td>35.4%</td>
         </tr>
         <tr>
             <td>J. Randle</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Pullup</td>
-            <td>937.7/2826.2 (33.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.5%</td>
-            <td>0.932</td>
-            <td>31.2%</td>
+            <td>80.6%</td>
+            <td>937.7/2826.2</td>
+            <td>33.6%</td>
+            <td>31.6%</td>
         </tr>
         <tr>
             <td>J. Clark</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Running</td>
-            <td>62.7/192.1 (32.6%)</td>
-            <td>(32.8%, 219)</td>
-            <td>32.7%</td>
-            <td>0.932</td>
-            <td>30.5%</td>
+            <td>78.4%</td>
+            <td>62.7/192.1</td>
+            <td>34.9%</td>
+            <td>32.8%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Stepback</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.904</td>
-            <td>33.6%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Running</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.877</td>
-            <td>32.5%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>1.041</td>
-            <td>38.6%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>38.7%</td>
         </tr>
         <tr>
             <td>M. Conley</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>2053.0/5335.5 (38.5%)</td>
-            <td>(36.0%, 300)</td>
-            <td>38.3%</td>
-            <td>1.041</td>
-            <td>39.9%</td>
+            <td>90.0%</td>
+            <td>2053.0/5335.5</td>
+            <td>38.4%</td>
+            <td>40.1%</td>
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1161.0/3060.7 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.8%</td>
-            <td>1.041</td>
-            <td>39.3%</td>
+            <td>77.8%</td>
+            <td>1161.0/3060.7</td>
+            <td>37.7%</td>
+            <td>39.2%</td>
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1161.0/3060.7 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.8%</td>
-            <td>1.041</td>
-            <td>39.3%</td>
+            <td>77.8%</td>
+            <td>1161.0/3060.7</td>
+            <td>37.7%</td>
+            <td>39.2%</td>
         </tr>
         <tr>
             <td>A. Dosunmu</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>555.8/1401.4 (39.7%)</td>
-            <td>(36.0%, 300)</td>
-            <td>39.0%</td>
-            <td>1.123</td>
-            <td>43.8%</td>
+            <td>78.5%</td>
+            <td>555.8/1401.4</td>
+            <td>38.8%</td>
+            <td>40.2%</td>
         </tr>
         <tr>
             <td>J. Randle</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>937.7/2826.2 (33.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.5%</td>
-            <td>1.041</td>
-            <td>34.8%</td>
+            <td>80.6%</td>
+            <td>937.7/2826.2</td>
+            <td>33.6%</td>
+            <td>34.9%</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.904</td>
-            <td>33.6%</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>1161.0/3060.7 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.8%</td>
-            <td>1.123</td>
-            <td>42.4%</td>
+            <td>77.8%</td>
+            <td>1161.0/3060.7</td>
+            <td>37.7%</td>
+            <td>39.2%</td>
         </tr>
         <tr>
             <td>J. McDaniels</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>576.5/1558.9 (37.0%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.8%</td>
-            <td>1.123</td>
-            <td>41.4%</td>
-        </tr>
-        <tr>
-            <td>J. McDaniels</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Stepback</td>
-            <td>576.5/1558.9 (37.0%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.8%</td>
-            <td>0.904</td>
-            <td>33.3%</td>
-        </tr>
-        <tr>
-            <td>A. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Pullup</td>
-            <td>1256.8/3376.4 (37.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.1%</td>
-            <td>0.932</td>
-            <td>34.6%</td>
-        </tr>
-        <tr>
-            <td>B. Hyland</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
-            <td>Running</td>
-            <td>570.5/1538.9 (37.1%)</td>
-            <td>(36.0%, 300)</td>
+            <td>81.3%</td>
+            <td>576.5/1558.9</td>
             <td>36.9%</td>
-            <td>0.877</td>
-            <td>32.3%</td>
-        </tr>
-        <tr>
-            <td>M. Conley</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
-            <td>Catch Shoot</td>
-            <td>2053.0/5335.5 (38.5%)</td>
-            <td>(36.0%, 300)</td>
-            <td>38.3%</td>
-            <td>1.123</td>
-            <td>43.1%</td>
-        </tr>
-        <tr>
-            <td>J. Randle</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>937.7/2826.2 (33.2%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.5%</td>
-            <td>1.041</td>
-            <td>34.8%</td>
-        </tr>
-        <tr>
-            <td>B. Hyland</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>570.5/1538.9 (37.1%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.9%</td>
-            <td>1.041</td>
             <td>38.4%</td>
         </tr>
         <tr>
-            <td>A. Dosunmu</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td>J. McDaniels</td>
+            <td class="negative">X Miss</td>
+            <td>Stepback</td>
+            <td>81.3%</td>
+            <td>576.5/1558.9</td>
+            <td>36.9%</td>
+            <td>34.7%</td>
+        </tr>
+        <tr>
+            <td>A. Edwards</td>
+            <td class="negative">X Miss</td>
+            <td>Pullup</td>
+            <td>83.7%</td>
+            <td>1256.8/3376.4</td>
+            <td>37.2%</td>
+            <td>35.0%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="positive">+ Made</td>
             <td>Running</td>
-            <td>555.8/1401.4 (39.7%)</td>
-            <td>(36.0%, 300)</td>
-            <td>39.0%</td>
-            <td>0.932</td>
-            <td>36.3%</td>
+            <td>88.5%</td>
+            <td>570.5/1538.9</td>
+            <td>37.2%</td>
+            <td>35.1%</td>
+        </tr>
+        <tr>
+            <td>M. Conley</td>
+            <td class="negative">X Miss</td>
+            <td>Catch Shoot</td>
+            <td>90.0%</td>
+            <td>2053.0/5335.5</td>
+            <td>38.4%</td>
+            <td>40.1%</td>
+        </tr>
+        <tr>
+            <td>J. Randle</td>
+            <td class="negative">X Miss</td>
+            <td>Catch Shoot</td>
+            <td>80.6%</td>
+            <td>937.7/2826.2</td>
+            <td>33.6%</td>
+            <td>34.9%</td>
+        </tr>
+        <tr>
+            <td>B. Hyland</td>
+            <td class="negative">X Miss</td>
+            <td>Catch Shoot</td>
+            <td>88.5%</td>
+            <td>570.5/1538.9</td>
+            <td>37.2%</td>
+            <td>38.9%</td>
+        </tr>
+        <tr>
+            <td>A. Dosunmu</td>
+            <td class="positive">+ Made</td>
+            <td>Running</td>
+            <td>78.5%</td>
+            <td>555.8/1401.4</td>
+            <td>38.8%</td>
+            <td>36.5%</td>
         </tr>
         <tr class="totals-row">
             <td colspan="2"><strong>TOTALS</strong></td>
-            <td colspan="6"></td>
+            <td colspan="4"></td>
             <td><strong>12.3 exp</strong></td>
         </tr>
         <tr class="totals-row">
             <td colspan="2"><strong>Actual: 10 made</strong></td>
-            <td colspan="6"></td>
+            <td colspan="4"></td>
             <td class="negative"><strong>-2.3 luck</strong></td>
         </tr>
     </table>
@@ -636,6 +573,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
     <table>
         <tr>
             <th>Player</th>
+            <th>FT%</th>
             <th>Shots</th>
             <th>Made</th>
             <th>Expected Makes</th>
@@ -644,83 +582,93 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </tr>
         <tr>
             <td>D. DiVincenzo</td>
+            <td>77.8%</td>
             <td>5</td>
             <td>3</td>
-            <td>2.01</td>
-            <td class="positive">+0.99</td>
-            <td class="positive">+2.7</td>
+            <td>1.93</td>
+            <td class="positive">+1.07</td>
+            <td class="positive">+2.9</td>
         </tr>
         <tr>
             <td>A. Dosunmu</td>
+            <td>78.5%</td>
             <td>3</td>
             <td>2</td>
-            <td>1.24</td>
-            <td class="positive">+0.76</td>
-            <td class="positive">+2.1</td>
+            <td>1.17</td>
+            <td class="positive">+0.83</td>
+            <td class="positive">+2.2</td>
         </tr>
         <tr>
             <td>A. Edwards</td>
+            <td>83.7%</td>
             <td>8</td>
             <td>3</td>
-            <td>2.86</td>
-            <td class="positive">+0.14</td>
+            <td>2.87</td>
+            <td class="positive">+0.13</td>
             <td class="positive">+0.4</td>
         </tr>
         <tr>
             <td>J. Clark</td>
+            <td>78.4%</td>
             <td>1</td>
             <td>0</td>
-            <td>0.30</td>
-            <td class="negative">-0.30</td>
-            <td class="negative">-0.8</td>
+            <td>0.33</td>
+            <td class="negative">-0.33</td>
+            <td class="negative">-0.9</td>
         </tr>
         <tr>
             <td>T. Shannon Jr.</td>
+            <td>81.0%</td>
             <td>1</td>
             <td>0</td>
-            <td>0.39</td>
-            <td class="negative">-0.39</td>
+            <td>0.38</td>
+            <td class="negative">-0.38</td>
             <td class="negative">-1.0</td>
         </tr>
         <tr>
             <td>B. Hyland</td>
+            <td>88.5%</td>
             <td>4</td>
             <td>1</td>
-            <td>1.43</td>
-            <td class="negative">-0.43</td>
-            <td class="negative">-1.1</td>
+            <td>1.48</td>
+            <td class="negative">-0.48</td>
+            <td class="negative">-1.3</td>
         </tr>
         <tr>
             <td>J. Randle</td>
+            <td>80.6%</td>
             <td>5</td>
             <td>1</td>
-            <td>1.73</td>
-            <td class="negative">-0.73</td>
-            <td class="negative">-2.0</td>
+            <td>1.71</td>
+            <td class="negative">-0.71</td>
+            <td class="negative">-1.9</td>
         </tr>
         <tr>
             <td>M. Conley</td>
+            <td>90.0%</td>
             <td>2</td>
             <td>0</td>
-            <td>0.83</td>
-            <td class="negative">-0.83</td>
+            <td>0.80</td>
+            <td class="negative">-0.80</td>
             <td class="negative">-2.2</td>
         </tr>
         <tr>
             <td>J. McDaniels</td>
+            <td>81.3%</td>
             <td>4</td>
             <td>0</td>
-            <td>1.50</td>
-            <td class="negative">-1.50</td>
-            <td class="negative">-4.1</td>
+            <td>1.46</td>
+            <td class="negative">-1.46</td>
+            <td class="negative">-3.9</td>
         </tr>
         <tr class="totals-row">
             <td><strong>TOTAL</strong></td>
+            <td></td>
             <td><strong>33</strong></td>
             <td><strong>10</strong></td>
-            <td><strong>12.29</strong></td>
-            <td class="negative"><strong>-2.29</strong></td>
-            <td class="negative"><strong>-6.2</strong></td>
+            <td><strong>12.14</strong></td>
+            <td class="negative"><strong>-2.14</strong></td>
+            <td class="negative"><strong>-5.8</strong></td>
         </tr>
     </table>
 
@@ -730,430 +678,354 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         <tr>
             <th>Player</th>
             <th>Result</th>
-            <th>Location</th>
             <th>Shot Type</th>
+            <th>FT%</th>
             <th>Weighted 3P</th>
-            <th>Prior (μ, κ)</th>
-            <th>Player Exp%</th>
-            <th>Multiplier</th>
+            <th>Posterior</th>
             <th>Final Exp%</th>
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
             <td>33.1%</td>
-            <td>1.041</td>
             <td>34.4%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>1.041</td>
-            <td>39.2%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>39.5%</td>
         </tr>
         <tr>
             <td>D. Barlow</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Running</td>
-            <td>45.2/166.0 (27.2%)</td>
-            <td>(32.7%, 217)</td>
-            <td>30.3%</td>
-            <td>0.932</td>
-            <td>28.2%</td>
+            <td>63.6%</td>
+            <td>45.2/166.0</td>
+            <td>31.4%</td>
+            <td>29.1%</td>
         </tr>
         <tr>
             <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>1.041</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
             <td>37.0%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Pullup</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.932</td>
-            <td>35.1%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>V. Edgecombe</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>0.904</td>
-            <td>32.2%</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>33.3%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.041</td>
-            <td>38.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>1.123</td>
-            <td>39.9%</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>37.0%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.041</td>
-            <td>38.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>0.904</td>
-            <td>33.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>34.2%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.904</td>
-            <td>34.1%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.932</td>
-            <td>35.1%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.123</td>
-            <td>41.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>C. Payne</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>704.1/1939.0 (36.3%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.3%</td>
-            <td>0.932</td>
-            <td>33.8%</td>
+            <td>90.7%</td>
+            <td>704.1/1939.0</td>
+            <td>36.7%</td>
+            <td>34.7%</td>
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
             <td>33.1%</td>
-            <td>1.123</td>
-            <td>37.1%</td>
-        </tr>
-        <tr>
-            <td>K. Oubre Jr.</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
-            <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.1%</td>
-            <td>1.123</td>
-            <td>37.1%</td>
-        </tr>
-        <tr>
-            <td>C. Payne</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Pullup</td>
-            <td>704.1/1939.0 (36.3%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.3%</td>
-            <td>0.932</td>
-            <td>33.8%</td>
-        </tr>
-        <tr>
-            <td>T. Maxey</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Stepback</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.904</td>
-            <td>34.1%</td>
-        </tr>
-        <tr>
-            <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>1.041</td>
-            <td>37.0%</td>
-        </tr>
-        <tr>
-            <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>1.041</td>
-            <td>37.0%</td>
-        </tr>
-        <tr>
-            <td>K. Oubre Jr.</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
-            <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>33.1%</td>
-            <td>1.041</td>
             <td>34.4%</td>
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
             <td>33.1%</td>
-            <td>1.041</td>
+            <td>34.4%</td>
+        </tr>
+        <tr>
+            <td>C. Payne</td>
+            <td class="negative">X Miss</td>
+            <td>Pullup</td>
+            <td>90.7%</td>
+            <td>704.1/1939.0</td>
+            <td>36.7%</td>
+            <td>34.7%</td>
+        </tr>
+        <tr>
+            <td>T. Maxey</td>
+            <td class="negative">X Miss</td>
+            <td>Stepback</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">+ Made</td>
+            <td>Catch Shoot</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>37.0%</td>
+        </tr>
+        <tr>
+            <td>V. Edgecombe</td>
+            <td class="positive">+ Made</td>
+            <td>Catch Shoot</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>37.0%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">X Miss</td>
+            <td>Catch Shoot</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
+            <td>33.1%</td>
+            <td>34.4%</td>
+        </tr>
+        <tr>
+            <td>K. Oubre Jr.</td>
+            <td class="negative">X Miss</td>
+            <td>Catch Shoot</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
+            <td>33.1%</td>
             <td>34.4%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.123</td>
-            <td>41.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>0.932</td>
-            <td>33.1%</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>33.3%</td>
         </tr>
         <tr>
             <td>J. Walker</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>122.3/396.3 (30.9%)</td>
-            <td>(33.6%, 240)</td>
-            <td>31.9%</td>
-            <td>1.041</td>
-            <td>33.2%</td>
+            <td>69.0%</td>
+            <td>122.3/396.3</td>
+            <td>32.5%</td>
+            <td>33.6%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Stepback</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>0.904</td>
-            <td>33.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>34.2%</td>
         </tr>
         <tr>
             <td>C. Payne</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Pullup</td>
-            <td>704.1/1939.0 (36.3%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.3%</td>
-            <td>0.932</td>
-            <td>33.8%</td>
+            <td>90.7%</td>
+            <td>704.1/1939.0</td>
+            <td>36.7%</td>
+            <td>34.7%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.932</td>
-            <td>35.1%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>V. Edgecombe</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Stepback</td>
-            <td>203.4/562.5 (36.2%)</td>
-            <td>(34.2%, 256)</td>
-            <td>35.6%</td>
-            <td>0.904</td>
-            <td>32.2%</td>
+            <td>75.0%</td>
+            <td>203.4/562.5</td>
+            <td>35.7%</td>
+            <td>33.3%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.041</td>
-            <td>38.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
-            <td class="negative">✗ Miss</td>
-            <td>Corner</td>
+            <td class="negative">X Miss</td>
             <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
             <td>33.1%</td>
-            <td>1.123</td>
-            <td>37.1%</td>
+            <td>34.4%</td>
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>1149.0/3502.0 (32.8%)</td>
-            <td>(36.0%, 300)</td>
+            <td>75.1%</td>
+            <td>1149.0/3502.0</td>
             <td>33.1%</td>
-            <td>1.123</td>
-            <td>37.1%</td>
+            <td>34.4%</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>911.9/2405.3 (37.9%)</td>
-            <td>(36.0%, 300)</td>
-            <td>37.7%</td>
-            <td>0.932</td>
-            <td>35.1%</td>
+            <td>87.9%</td>
+            <td>911.9/2405.3</td>
+            <td>37.9%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
-            <td class="positive">✓ Made</td>
-            <td>Corner</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>829.0/2255.1 (36.8%)</td>
-            <td>(36.0%, 300)</td>
-            <td>36.7%</td>
-            <td>1.123</td>
-            <td>41.2%</td>
+            <td>75.7%</td>
+            <td>829.0/2255.1</td>
+            <td>36.5%</td>
+            <td>37.9%</td>
         </tr>
         <tr>
             <td>J. Edwards</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Catch Shoot</td>
-            <td>140.2/400.4 (35.0%)</td>
-            <td>(33.6%, 240)</td>
-            <td>34.5%</td>
-            <td>1.041</td>
-            <td>35.9%</td>
+            <td>69.6%</td>
+            <td>140.2/400.4</td>
+            <td>34.6%</td>
+            <td>35.8%</td>
         </tr>
         <tr>
             <td>J. Edwards</td>
-            <td class="negative">✗ Miss</td>
-            <td>Above Break</td>
+            <td class="negative">X Miss</td>
             <td>Running</td>
-            <td>140.2/400.4 (35.0%)</td>
-            <td>(33.6%, 240)</td>
-            <td>34.5%</td>
-            <td>0.877</td>
-            <td>30.2%</td>
+            <td>69.6%</td>
+            <td>140.2/400.4</td>
+            <td>34.6%</td>
+            <td>32.3%</td>
         </tr>
         <tr>
             <td>D. Terry</td>
-            <td class="positive">✓ Made</td>
-            <td>Above Break</td>
+            <td class="positive">+ Made</td>
             <td>Pullup</td>
-            <td>119.2/343.7 (34.7%)</td>
-            <td>(33.4%, 234)</td>
-            <td>34.2%</td>
-            <td>0.932</td>
-            <td>31.8%</td>
+            <td>71.0%</td>
+            <td>119.2/343.7</td>
+            <td>34.5%</td>
+            <td>32.2%</td>
         </tr>
         <tr class="totals-row">
             <td colspan="2"><strong>TOTALS</strong></td>
-            <td colspan="6"></td>
-            <td><strong>13.1 exp</strong></td>
+            <td colspan="4"></td>
+            <td><strong>12.9 exp</strong></td>
         </tr>
         <tr class="totals-row">
             <td colspan="2"><strong>Actual: 21 made</strong></td>
-            <td colspan="6"></td>
-            <td class="positive"><strong>+7.9 luck</strong></td>
+            <td colspan="4"></td>
+            <td class="positive"><strong>+8.1 luck</strong></td>
         </tr>
     </table>
 
@@ -1161,6 +1033,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
     <table>
         <tr>
             <th>Player</th>
+            <th>FT%</th>
             <th>Shots</th>
             <th>Made</th>
             <th>Expected Makes</th>
@@ -1169,30 +1042,34 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </tr>
         <tr>
             <td>V. Edgecombe</td>
+            <td>75.0%</td>
             <td>7</td>
             <td>6</td>
-            <td>2.48</td>
-            <td class="positive">+3.52</td>
+            <td>2.47</td>
+            <td class="positive">+3.53</td>
             <td class="positive">+9.5</td>
         </tr>
         <tr>
             <td>Q. Grimes</td>
+            <td>75.7%</td>
             <td>8</td>
             <td>5</td>
-            <td>3.04</td>
-            <td class="positive">+1.96</td>
-            <td class="positive">+5.3</td>
+            <td>2.96</td>
+            <td class="positive">+2.04</td>
+            <td class="positive">+5.5</td>
         </tr>
         <tr>
             <td>T. Maxey</td>
+            <td>87.9%</td>
             <td>7</td>
             <td>4</td>
-            <td>2.48</td>
-            <td class="positive">+1.52</td>
-            <td class="positive">+4.1</td>
+            <td>2.56</td>
+            <td class="positive">+1.44</td>
+            <td class="positive">+3.9</td>
         </tr>
         <tr>
             <td>D. Terry</td>
+            <td>71.0%</td>
             <td>1</td>
             <td>1</td>
             <td>0.32</td>
@@ -1201,51 +1078,57 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </tr>
         <tr>
             <td>K. Oubre Jr.</td>
+            <td>75.1%</td>
             <td>7</td>
             <td>3</td>
-            <td>2.52</td>
-            <td class="positive">+0.48</td>
-            <td class="positive">+1.3</td>
+            <td>2.41</td>
+            <td class="positive">+0.59</td>
+            <td class="positive">+1.6</td>
         </tr>
         <tr>
             <td>J. Edwards</td>
+            <td>69.6%</td>
             <td>2</td>
             <td>1</td>
-            <td>0.66</td>
-            <td class="positive">+0.34</td>
+            <td>0.68</td>
+            <td class="positive">+0.32</td>
             <td class="positive">+0.9</td>
         </tr>
         <tr>
             <td>C. Payne</td>
+            <td>90.7%</td>
             <td>3</td>
             <td>1</td>
-            <td>1.01</td>
-            <td class="negative">-0.01</td>
-            <td class="negative">-0.0</td>
+            <td>1.04</td>
+            <td class="negative">-0.04</td>
+            <td class="negative">-0.1</td>
         </tr>
         <tr>
             <td>D. Barlow</td>
+            <td>63.6%</td>
             <td>1</td>
             <td>0</td>
-            <td>0.28</td>
-            <td class="negative">-0.28</td>
+            <td>0.29</td>
+            <td class="negative">-0.29</td>
             <td class="negative">-0.8</td>
         </tr>
         <tr>
             <td>J. Walker</td>
+            <td>69.0%</td>
             <td>1</td>
             <td>0</td>
-            <td>0.33</td>
-            <td class="negative">-0.33</td>
+            <td>0.34</td>
+            <td class="negative">-0.34</td>
             <td class="negative">-0.9</td>
         </tr>
         <tr class="totals-row">
             <td><strong>TOTAL</strong></td>
+            <td></td>
             <td><strong>37</strong></td>
             <td><strong>21</strong></td>
-            <td><strong>13.13</strong></td>
-            <td class="positive"><strong>+7.87</strong></td>
-            <td class="positive"><strong>+21.2</strong></td>
+            <td><strong>13.07</strong></td>
+            <td class="positive"><strong>+7.93</strong></td>
+            <td class="positive"><strong>+21.4</strong></td>
         </tr>
     </table>
 
@@ -1254,8 +1137,8 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         <h3>MIN</h3>
         <ul>
             <li>Actual 3PM: <strong>10</strong></li>
-            <li>Expected 3PM: <strong>12.3</strong></li>
-            <li>Luck (makes above/below expected): <strong class="negative">-2.3</strong></li>
+            <li>Expected 3PM: <strong>12.1</strong></li>
+            <li>Luck (makes above/below expected): <strong class="negative">-2.1</strong></li>
         </ul>
 
         <h3>PHI</h3>
@@ -1269,10 +1152,10 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         <p>Each lucky make isn't worth a full 3 points because missed 3s generate offensive rebounds (~27% ORB rate)
         that lead to additional scoring (~1.1 points per possession). We subtract this "lost opportunity" value:</p>
         <div class="formula">
-Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
-                 = (3 × Luck) − (ORB Rate × PPP × |Luck|)
-                 = (3 × Luck) − (0.27 × 1.1 × |Luck|)
-                 ≈ 2.7 × Luck
+Point Adjustment = Raw 3PT Value - ORB Opportunity Cost
+                 = (3 x Luck) - (ORB Rate x PPP x |Luck|)
+                 = (3 x Luck) - (0.27 x 1.1 x |Luck|)
+                 = 2.7 x Luck
         </div>
 
         <table style="max-width: 600px;">
@@ -1285,25 +1168,43 @@ Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
             </tr>
             <tr>
                 <td>MIN</td>
-                <td class="negative">-2.29</td>
-                <td>-6.9</td>
-                <td>+0.7</td>
-                <td class="negative"><strong>-6.2</strong></td>
+                <td class="negative">-2.14</td>
+                <td>-6.4</td>
+                <td>+0.6</td>
+                <td class="negative"><strong>-5.8</strong></td>
             </tr>
             <tr>
                 <td>PHI</td>
-                <td class="positive">+7.87</td>
-                <td>+23.6</td>
-                <td>-2.3</td>
-                <td class="positive"><strong>+21.2</strong></td>
+                <td class="positive">+7.93</td>
+                <td>+23.8</td>
+                <td>-2.4</td>
+                <td class="positive"><strong>+21.4</strong></td>
             </tr>
         </table>
 
         <h3>Net Result</h3>
-        <p>The luck differential of <strong>-10.2 makes</strong> in favor of PHI
-        translates to <strong>27.4 points</strong> of margin swing after ORB adjustment.</p>
+        <p>The luck differential of <strong>-10.1 makes</strong> in favor of PHI
+        translates to <strong>27.2 points</strong> of margin swing after ORB adjustment.</p>
         <p><strong>Actual margin:</strong> MIN -27</p>
-        <p><strong>Adjusted margin:</strong> MIN +0.6</p>
+        <p><strong>Adjusted margin:</strong> MIN +0.2</p>
+    </div>
+
+    <h2>Why FT% as a Prior?</h2>
+    <div class="summary-box">
+        <p>Free throw shooting is a strong predictor of three-point ability because both require:</p>
+        <ul>
+            <li>Consistent shooting mechanics</li>
+            <li>Touch and feel for the ball</li>
+            <li>Mental focus under pressure</li>
+        </ul>
+        <p>Our calibration across 10 seasons (3,073 player-seasons) found:</p>
+        <ul>
+            <li><strong>R-squared = 0.11</strong> for FT% predicting overall 3P%</li>
+            <li>A player with 90% FT expects ~38% 3P prior</li>
+            <li>A player with 70% FT expects ~34% 3P prior</li>
+        </ul>
+        <p>This anchors expectations appropriately: we don't expect poor free throw shooters to suddenly become elite 3PT shooters,
+        even if they've had a hot streak.</p>
     </div>
 
     <div class="back-link" style="margin-top: 30px;"><a href="index.html">&larr; Back to Main Report</a></div>

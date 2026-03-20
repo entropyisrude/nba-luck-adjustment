@@ -6,7 +6,87 @@ from typing import Any
 
 import pandas as pd
 
-from src.adjust import get_player_prior, get_shot_multiplier
+from shooter_model.model import ThreePTModel
+from pathlib import Path
+
+# Cache for ThreePTModel and player FT% data
+_THREE_PT_MODEL: ThreePTModel | None = None
+_PLAYER_FT_PCT: dict[int, float] | None = None
+
+
+def _load_three_pt_model() -> ThreePTModel:
+    """Load and cache the FT%-based 3PT model."""
+    global _THREE_PT_MODEL
+    if _THREE_PT_MODEL is None:
+        _THREE_PT_MODEL = ThreePTModel.from_params()
+    return _THREE_PT_MODEL
+
+
+def _load_player_ft_pct() -> dict[int, float]:
+    """
+    Load player FT% from calibration.csv, aggregated across seasons.
+    Uses recency-weighted FT% (more weight to recent seasons).
+    Returns dict mapping player_id -> ft_pct.
+    """
+    global _PLAYER_FT_PCT
+    if _PLAYER_FT_PCT is not None:
+        return _PLAYER_FT_PCT
+
+    calib_path = Path(__file__).parent.parent / "shooter_model" / "data" / "calibration.csv"
+    if not calib_path.exists():
+        _PLAYER_FT_PCT = {}
+        return _PLAYER_FT_PCT
+
+    df = pd.read_csv(calib_path)
+
+    # Aggregate FT% by player using weighted average (weight by FTA)
+    # More recent seasons get higher weight via exponential decay
+    from shooter_model.model import season_weights
+
+    player_ft: dict[int, float] = {}
+    player_data: dict[int, list[dict]] = {}
+
+    for _, row in df.iterrows():
+        pid = int(row.get("PLAYER_ID", 0))
+        fta = float(row.get("FTA", 0) or 0)
+        ft_pct = row.get("FT_PCT")
+        season = str(row.get("SEASON", ""))
+
+        if pid <= 0 or fta <= 0 or ft_pct is None or pd.isna(ft_pct):
+            continue
+
+        if pid not in player_data:
+            player_data[pid] = []
+        player_data[pid].append({
+            "season": season,
+            "fta": fta,
+            "ftm": fta * float(ft_pct),
+        })
+
+    # Compute weighted FT% for each player
+    for pid, rows in player_data.items():
+        if not rows:
+            continue
+        seasons = [r["season"] for r in rows]
+        weights = season_weights(seasons)
+
+        total_weighted_ftm = 0.0
+        total_weighted_fta = 0.0
+        for row, w in zip(rows, weights):
+            total_weighted_fta += w * row["fta"]
+            total_weighted_ftm += w * row["ftm"]
+
+        if total_weighted_fta > 0:
+            player_ft[pid] = total_weighted_ftm / total_weighted_fta
+
+    _PLAYER_FT_PCT = player_ft
+    return _PLAYER_FT_PCT
+
+
+# Default FT% for players not in the database (league average)
+DEFAULT_FT_PCT = 0.77
+
+
 from src.ingest import (
     get_boxscore_players,
     get_game_home_away_team_ids,
@@ -316,6 +396,15 @@ def _expected_make_prob(
     area: str,
     shot_type: str,
 ) -> float:
+    """
+    Compute expected make probability using FT%-based Bayesian model.
+
+    Uses the new ThreePTModel with:
+    - Prior based on player's FT%
+    - Context-specific parameters (catch_shoot vs pullup)
+    - Updated with player's recency-weighted 3PT attempts/makes
+    """
+    # Get player's recency-weighted 3PT data
     st = player_state.set_index("player_id")[["A_r", "M_r"]] if not player_state.empty else pd.DataFrame()
     if player_id in st.index:
         A_r = float(st.loc[player_id, "A_r"])
@@ -323,10 +412,33 @@ def _expected_make_prob(
     else:
         A_r = 0.0
         M_r = 0.0
-    mu_player, kappa_player = get_player_prior(A_r, player_id=player_id)
-    p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
-    multiplier = get_shot_multiplier(area, shot_type)
-    return max(0.15, min(0.55, p_hat * multiplier))
+
+    # Get player's FT%
+    ft_pct_data = _load_player_ft_pct()
+    ft_pct = ft_pct_data.get(player_id, DEFAULT_FT_PCT)
+
+    # Load the model
+    model = _load_three_pt_model()
+
+    # Determine context based on shot type
+    # catch_shoot shots use catch_shoot prior; all others use pullup prior
+    if shot_type == "catch_shoot":
+        context = "catch_shoot"
+    else:
+        context = "pullup"
+
+    # Compute posterior using FT%-based prior and observed data
+    # This uses the model's internal methods to get prior parameters
+    mu = model._prior_mean(ft_pct, context)
+    kappa = model._prior_kappa(context)
+
+    # Bayesian update: posterior mean = (prior_alpha + makes) / (prior_alpha + prior_beta + attempts)
+    alpha0 = mu * kappa
+    beta0 = (1.0 - mu) * kappa
+    p_hat = (alpha0 + M_r) / (alpha0 + beta0 + A_r)
+
+    # Clip to reasonable range
+    return max(0.15, min(0.55, p_hat))
 
 
 def compute_adjusted_onoff_for_game(
