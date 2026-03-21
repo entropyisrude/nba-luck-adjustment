@@ -327,27 +327,9 @@ def compute_for_possessions(
     drapm_adj = dict(zip(players_od, coef_d_adj))
     drapm_raw = dict(zip(players_od, coef_d_raw))
 
-    # Minutes and primary team from the actual stint subset for this season/window.
+    # Minutes from stints
     minutes = compute_minutes(stints_df)
     info = get_player_info(players_od, stints_df)
-    player_team_minutes: Dict[int, Dict[int, float]] = {}
-    for col_set, team_col in [
-        (["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
-        (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id"),
-    ]:
-        for col in col_set:
-            for _, row in stints_df.iterrows():
-                pid = row[col]
-                if pd.isna(pid):
-                    continue
-                pid = int(pid)
-                team_id = int(row[team_col]) if pd.notna(row[team_col]) else 0
-                if not team_id:
-                    continue
-                mins = float(row["seconds"]) / 60.0
-                if pid not in player_team_minutes:
-                    player_team_minutes[pid] = {}
-                player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0.0) + mins
 
     rows = []
     for pid in players_od:
@@ -355,18 +337,13 @@ def compute_for_possessions(
         if mins < min_minutes:
             continue
         pinfo = info.get(pid, {})
-        team_mins = player_team_minutes.get(pid, {})
-        if team_mins:
-            team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
-        else:
-            team_id = pinfo.get("team_id", 0)
+        team_id = pinfo.get("team_id", 0)
         rapm_adj = float(orapm_adj.get(pid, 0.0) + drapm_adj.get(pid, 0.0))
         rapm_raw = float(orapm_raw.get(pid, 0.0) + drapm_raw.get(pid, 0.0))
         rows.append(
             {
                 "player_id": int(pid),
                 "player_name": pinfo.get("name", f"Player {pid}"),
-                "team_id": int(team_id) if team_id else 0,
                 "team_abbr": TEAM_ID_TO_ABBR.get(team_id, "???"),
                 "minutes": int(round(mins)),
                 "rapm": rapm_adj,
