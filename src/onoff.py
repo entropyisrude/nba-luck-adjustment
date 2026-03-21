@@ -488,9 +488,36 @@ def compute_adjusted_onoff_for_game(
         away_id: _normalize_lineup(period1_override.get(away_id, starters.get(away_id, []))),
     }
 
-    # Build player info from actions to avoid boxscore dependency.
+    # Pull official boxscore plus-minus when available. Raw daily-game PM should
+    # match the public NBA boxscore rather than our reconstructed stint totals.
     player_info: dict[int, dict[str, Any]] = {}
     official_plus_minus: dict[int, float] = {}
+    try:
+        box_players = get_boxscore_players(str(game_id).zfill(10), game_date_mmddyyyy)
+        if not box_players.empty:
+            for _, row in box_players.iterrows():
+                try:
+                    pid = int(row.get("PLAYER_ID", 0) or 0)
+                except Exception:
+                    continue
+                if pid <= 0:
+                    continue
+                try:
+                    official_plus_minus[pid] = float(row.get("PLUS_MINUS", 0.0) or 0.0)
+                except Exception:
+                    pass
+                if pid not in player_info:
+                    try:
+                        team_id = int(row.get("TEAM_ID", 0) or 0)
+                    except Exception:
+                        team_id = 0
+                    name = str(row.get("PLAYER_NAME") or "").strip()
+                    if name or team_id > 0:
+                        player_info[pid] = {"player_name": name, "team_id": team_id}
+    except Exception:
+        pass
+
+    # Backfill player info from actions when boxscore metadata is missing.
     for a in actions:
         try:
             pid = int(a.get("personId", 0) or 0)
