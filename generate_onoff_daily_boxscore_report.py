@@ -129,6 +129,8 @@ def generate_daily_boxscores_report() -> Path:
     latest_date = box["date"].max()
     season_start = _current_season_start(latest_date)
     box = box[box["date"] >= season_start]
+    # Drop rows that round to 0.0 minutes in the rendered table.
+    box = box[pd.to_numeric(box["minutes_on"], errors="coerce").fillna(0.0) >= 0.05].copy()
 
     all_dates = sorted(box["date"].unique().tolist())
 
