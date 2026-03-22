@@ -5,8 +5,63 @@ import math
 from pathlib import Path
 import pandas as pd
 
+from shooter_model.model import ThreePTModel
 
-# Sliding prior parameters
+# Cache for ThreePTModel and player FT% data
+_THREE_PT_MODEL: ThreePTModel | None = None
+_PLAYER_FT_PCT: dict[int, float] | None = None
+DEFAULT_FT_PCT = 0.77
+
+
+def _load_three_pt_model() -> ThreePTModel:
+    """Load and cache the ThreePTModel."""
+    global _THREE_PT_MODEL
+    if _THREE_PT_MODEL is None:
+        _THREE_PT_MODEL = ThreePTModel.from_params()
+    return _THREE_PT_MODEL
+
+
+def _load_player_ft_pct() -> dict[int, float]:
+    """
+    Load player FT% data from calibration.csv with recency weighting.
+    Returns dict mapping player_id -> ft_pct.
+    """
+    global _PLAYER_FT_PCT
+    if _PLAYER_FT_PCT is not None:
+        return _PLAYER_FT_PCT
+
+    calib_path = Path(__file__).parent.parent / "shooter_model" / "data" / "calibration.csv"
+    if not calib_path.exists():
+        _PLAYER_FT_PCT = {}
+        return _PLAYER_FT_PCT
+
+    df = pd.read_csv(calib_path)
+
+    from shooter_model.model import season_weights
+
+    # Group by player and compute recency-weighted FT%
+    player_ft: dict[int, float] = {}
+    for pid, grp in df.groupby("PLAYER_ID"):
+        rows = grp.to_dict("records")
+        seasons = [r["SEASON"] for r in rows]
+        weights = season_weights(seasons, half_life=2.0)
+        total_fta = 0.0
+        total_ftm = 0.0
+        for row, w in zip(rows, weights):
+            fta = row.get("FTA", 0) or 0
+            ft_pct = row.get("FT_PCT")
+            if fta <= 0 or ft_pct is None or pd.isna(ft_pct):
+                continue
+            total_fta += w * fta
+            total_ftm += w * fta * float(ft_pct)
+        if total_fta > 0:
+            player_ft[int(pid)] = total_ftm / total_fta
+
+    _PLAYER_FT_PCT = player_ft
+    return _PLAYER_FT_PCT
+
+
+# Sliding prior parameters (legacy - kept for fallback)
 MU_MIN = 0.32      # Prior for rookies (0 career attempts)
 MU_MAX = 0.36      # Prior for veterans (1000+ career attempts)
 KAPPA_MIN = 200    # Prior strength for rookies
@@ -227,8 +282,10 @@ def compute_team_expected_3pm_with_context(
     """
     Compute expected made threes by team using shot-level context.
 
-    Uses multiplicative adjustment:
-        expected_make_prob = player_bayesian_3p% × shot_difficulty_multiplier
+    Uses FT%-based Bayesian model with context-specific priors:
+        - Prior based on player's FT% (from calibration data)
+        - Separate parameters for catch_shoot vs pullup shots
+        - Updated with player's recency-weighted 3PT attempts/makes
 
     Args:
         shots_df: DataFrame with GAME_ID, TEAM_ID, PLAYER_ID, MADE, AREA, SHOT_TYPE
@@ -243,6 +300,10 @@ def compute_team_expected_3pm_with_context(
     st = player_state.set_index("player_id")[["A_r", "M_r"]]
     exp_by_team: dict[int, float] = {}
 
+    # Load FT%-based model and player FT% data
+    model = _load_three_pt_model()
+    ft_pct_data = _load_player_ft_pct()
+
     for team_id, grp in shots_df.groupby("TEAM_ID"):
         team_id = int(team_id)
         exp = 0.0
@@ -253,7 +314,7 @@ def compute_team_expected_3pm_with_context(
                 continue
             pid = int(pid)
 
-            # Get player's Bayesian expected 3P%
+            # Get player's recency-weighted 3PT data
             if pid in st.index:
                 A_r = float(st.loc[pid, "A_r"])
                 M_r = float(st.loc[pid, "M_r"])
@@ -261,18 +322,22 @@ def compute_team_expected_3pm_with_context(
                 A_r = 0.0
                 M_r = 0.0
 
-            mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
-            player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
+            # Get player's FT%
+            ft_pct = ft_pct_data.get(pid, DEFAULT_FT_PCT)
 
-            # Get shot difficulty multiplier (season mix fallback for unknown)
-            area = shot.get("AREA", "above_break")
+            # Determine context based on shot type
             shot_type = shot.get("SHOT_TYPE", "unknown")
-            season = shot.get("SEASON")
-            multiplier = get_context_multiplier(area, shot_type, season)
+            context = "catch_shoot" if shot_type == "catch_shoot" else "pullup"
 
-            # Multiplicative adjustment: player skill × shot difficulty
+            # Compute posterior using FT%-based prior and observed data
+            mu = model._prior_mean(ft_pct, context)
+            kappa = model._prior_kappa(context)
+            alpha0 = mu * kappa
+            beta0 = (1.0 - mu) * kappa
+            p_hat = (alpha0 + M_r) / (alpha0 + beta0 + A_r)
+
             # Clamp to reasonable range [0.15, 0.55]
-            expected_make_prob = max(0.15, min(0.55, player_p_hat * multiplier))
+            expected_make_prob = max(0.15, min(0.55, p_hat))
             exp += expected_make_prob
 
         exp_by_team[team_id] = exp
@@ -289,6 +354,8 @@ def compute_player_deltas_with_context(
     """
     Compute per-player point delta using shot-level context.
 
+    Uses FT%-based Bayesian model with context-specific priors.
+
     Returns list of dicts with player_id, player_name, team_id, fg3a, fg3m,
     exp_3pm, delta_pts (positive = player was lucky).
     """
@@ -297,6 +364,10 @@ def compute_player_deltas_with_context(
 
     haircut = orb_rate * ppp
     st = player_state.set_index("player_id")[["A_r", "M_r"]]
+
+    # Load FT%-based model and player FT% data
+    model = _load_three_pt_model()
+    ft_pct_data = _load_player_ft_pct()
 
     # Group shots by player
     player_results: dict[int, dict] = {}
@@ -307,7 +378,7 @@ def compute_player_deltas_with_context(
             continue
         pid = int(pid)
 
-        # Get player's Bayesian expected 3P%
+        # Get player's recency-weighted 3PT data
         if pid in st.index:
             A_r = float(st.loc[pid, "A_r"])
             M_r = float(st.loc[pid, "M_r"])
@@ -315,17 +386,22 @@ def compute_player_deltas_with_context(
             A_r = 0.0
             M_r = 0.0
 
-        mu_player, kappa_player = get_player_prior(A_r, player_id=pid)
-        player_p_hat = (M_r + kappa_player * mu_player) / (A_r + kappa_player)
+        # Get player's FT%
+        ft_pct = ft_pct_data.get(pid, DEFAULT_FT_PCT)
 
-        # Get shot difficulty multiplier (season mix fallback for unknown)
-        area = shot.get("AREA", "above_break")
+        # Determine context based on shot type
         shot_type = shot.get("SHOT_TYPE", "unknown")
-        season = shot.get("SEASON")
-        multiplier = get_context_multiplier(area, shot_type, season)
+        context = "catch_shoot" if shot_type == "catch_shoot" else "pullup"
+
+        # Compute posterior using FT%-based prior and observed data
+        mu = model._prior_mean(ft_pct, context)
+        kappa = model._prior_kappa(context)
+        alpha0 = mu * kappa
+        beta0 = (1.0 - mu) * kappa
+        p_hat = (alpha0 + M_r) / (alpha0 + beta0 + A_r)
 
         # Expected make probability for this shot
-        expected_make_prob = max(0.15, min(0.55, player_p_hat * multiplier))
+        expected_make_prob = max(0.15, min(0.55, p_hat))
 
         # Initialize player entry if needed
         if pid not in player_results:
