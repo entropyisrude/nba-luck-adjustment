@@ -1,0 +1,1623 @@
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+import duckdb
+
+
+ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+DATA_DIR = ROOT / "data"
+DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics.duckdb")))
+OUTPUT_DATA_PATH = Path(os.environ.get("PLAYER_SPAN_SEARCH_OUTPUT_DATA_PATH", str(DATA_DIR / "player_span_search.html")))
+OUTPUT_SITE_PATH = Path(os.environ.get("PLAYER_SPAN_SEARCH_OUTPUT_SITE_PATH", str(ROOT / "player-span-search.html")))
+CHUNK_DIR = Path(os.environ.get("PLAYER_SPAN_SEARCH_CHUNK_DIR", str(DATA_DIR / "player_span_chunks")))
+PAGE_TITLE = os.environ.get("PLAYER_SPAN_SEARCH_PAGE_TITLE", "Player Span Search")
+GAME_SEARCH_HREF = os.environ.get("PLAYER_GAME_SEARCH_HREF", "game-search.html")
+REGULAR_GAME_SEARCH_HREF = os.environ.get("REGULAR_GAME_SEARCH_HREF", "game-search.html")
+REGULAR_SPAN_SEARCH_HREF = os.environ.get("REGULAR_SPAN_SEARCH_HREF", "player-span-search.html")
+PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-search-playoffs.html")
+PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
+SOURCE_LABEL = os.environ.get("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
+ALLOW_PER100 = os.environ.get("PLAYER_SPAN_SEARCH_ALLOW_PER100", "1") != "0"
+
+
+def _season_start(season: str) -> int:
+    return int(str(season).split("-")[0])
+
+
+def _season_slug(season: str) -> str:
+    return season.replace("-", "_")
+
+
+def generate_player_span_search_report() -> Path:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    available_cols = {
+        row[1]
+        for row in con.execute("PRAGMA table_info('player_game_facts')").fetchall()
+    }
+
+    def select_col(name: str) -> str:
+        return name if name in available_cols else f"NULL AS {name}"
+
+    rows = con.execute(
+        """
+        SELECT
+            CAST(date AS VARCHAR) AS date,
+            season,
+            game_id,
+            player_id,
+            player_name,
+            team_abbr,
+            opp_team_abbr,
+            home_away,
+            win_loss,
+            starter,
+            minutes,
+            pts,
+            reb,
+            oreb,
+            dreb,
+            ast,
+            stl,
+            blk,
+            tov,
+            pf,
+            fgm,
+            fga,
+            fg2m,
+            fg2a,
+            fg2_pct,
+            fg3m,
+            fg3a,
+            fg3_pct,
+            ftm,
+            fta,
+            ft_pct,
+            assisted_2pm,
+            unassisted_2pm,
+            assisted_3pm,
+            unassisted_3pm,
+            assisted_fgm,
+            unassisted_fgm,
+            {listed_height},
+            {height_inches},
+            {age},
+            {career_year},
+            {draft_year},
+            {draft_overall_pick},
+            {layup_assists_created},
+            {dunk_assists_created},
+            {other_rim_assists_created},
+            {rim_assists_strict},
+            {rim_assists_all},
+            rim_anchor_signature,
+            rim_deterrence_signature,
+            rim_dfga,
+            rim_tracking_games,
+            rim_dfg_pct,
+            rim_dfg_pct_diff,
+            {contested_shots},
+            {contested_shots_2pt},
+            {contested_shots_3pt},
+            {deflections},
+            {charges_drawn},
+            {screen_assists},
+            {screen_ast_pts},
+            {loose_balls_recovered},
+            {box_outs},
+            on_possessions,
+            plus_minus_actual,
+            plus_minus_adjusted,
+            on_off_actual,
+            on_off_adjusted
+        FROM player_game_facts
+        WHERE pts IS NOT NULL
+        ORDER BY date DESC, pts DESC, plus_minus_adjusted DESC
+        """
+        .format(
+            contested_shots=select_col("contested_shots"),
+            contested_shots_2pt=select_col("contested_shots_2pt"),
+            contested_shots_3pt=select_col("contested_shots_3pt"),
+            deflections=select_col("deflections"),
+            charges_drawn=select_col("charges_drawn"),
+            screen_assists=select_col("screen_assists"),
+            screen_ast_pts=select_col("screen_ast_pts"),
+            loose_balls_recovered=select_col("loose_balls_recovered"),
+            box_outs=select_col("box_outs"),
+            listed_height=select_col("listed_height"),
+            height_inches=select_col("height_inches"),
+            age=select_col("age"),
+            career_year=select_col("career_year"),
+            draft_year=select_col("draft_year"),
+            draft_overall_pick=select_col("draft_overall_pick"),
+            layup_assists_created=select_col("layup_assists_created"),
+            dunk_assists_created=select_col("dunk_assists_created"),
+            other_rim_assists_created=select_col("other_rim_assists_created"),
+            rim_assists_strict=select_col("rim_assists_strict"),
+            rim_assists_all=select_col("rim_assists_all"),
+        )
+    ).fetchall()
+    cols = [d[0] for d in con.description]
+    con.close()
+
+    col_index = {name: idx for idx, name in enumerate(cols)}
+    compact_rows = [list(row) for row in rows]
+    seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
+    teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
+    opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
+    CHUNK_DIR.mkdir(parents=True, exist_ok=True)
+    season_files: dict[str, str] = {}
+    for season in seasons:
+        season_rows = [r for r in compact_rows if r[col_index["season"]] == season]
+        slug = _season_slug(season)
+        filename = f"{slug}.js"
+        season_files[season] = filename
+        chunk_js = (
+            "window.__PLAYER_SPAN_CHUNKS = window.__PLAYER_SPAN_CHUNKS || {};\n"
+            f"window.__PLAYER_SPAN_CHUNKS[{json.dumps(season)}] = "
+            f"{json.dumps(season_rows, ensure_ascii=False, separators=(',', ':'))};\n"
+        )
+        (CHUNK_DIR / filename).write_text(chunk_js, encoding="utf-8")
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{PAGE_TITLE}</title>
+  <style>
+    :root {{
+      --bg: #f2f6fb;
+      --card: #fff;
+      --line: #d6e1ef;
+      --ink: #192231;
+      --muted: #5b6778;
+      --good: #0f766e;
+      --bad: #b91c1c;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }}
+    .wrap {{ max-width: 1550px; margin: 0 auto; padding: 18px; }}
+    .hero {{
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      border: 1px solid #254b72;
+      margin-bottom: 14px;
+      text-align: center;
+    }}
+    h1 {{ margin: 0; font-size: 28px; }}
+    .nav {{ margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }}
+    .nav a {{
+      color: #e8f4ff;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }}
+    .card {{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06);
+      margin-bottom: 14px;
+    }}
+    .controls {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }}
+    .filter-group {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fbfdff;
+    }}
+    .filter-group h3 {{
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #123154;
+    }}
+    .controls label {{ font-size: 12px; color: var(--muted); display: grid; gap: 4px; }}
+    .range {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }}
+    select, input {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+      min-width: 100px;
+      background: #fff;
+      color: var(--ink);
+    }}
+    .table-wrap {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 700px;
+      background: #fff;
+    }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+    th, td {{
+      border-bottom: 1px solid #edf2f9;
+      padding: 7px 8px;
+      text-align: right;
+      white-space: nowrap;
+    }}
+    th:first-child, td:first-child,
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3) {{ text-align: left; }}
+    thead th {{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #edf3fc;
+      color: #123154;
+    }}
+    thead th.sortable {{ cursor: pointer; }}
+    .pos {{ color: var(--good); font-weight: 600; }}
+    .neg {{ color: var(--bad); font-weight: 600; }}
+    .muted {{ color: var(--muted); }}
+    .summary {{ display:flex; gap:18px; flex-wrap:wrap; margin-bottom: 8px; font-size:13px; color: var(--muted); }}
+    .actions {{ display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }}
+    button {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: #123154;
+      color: #fff;
+      cursor: pointer;
+    }}
+    button.secondary {{ background: #fff; color: var(--ink); }}
+    .th-wrap {{
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }}
+    th:first-child .th-wrap,
+    th:nth-child(2) .th-wrap,
+    th:nth-child(3) .th-wrap {{ justify-content: flex-start; }}
+    .mode-chip {{
+      border: 1px solid #b9c9dd;
+      background: #fff;
+      color: #23415f;
+      border-radius: 999px;
+      font-size: 10px;
+      padding: 1px 6px;
+      line-height: 1.4;
+      cursor: pointer;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>{PAGE_TITLE}</h1>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="{REGULAR_GAME_SEARCH_HREF}">Game Search</a>
+        <a href="{REGULAR_SPAN_SEARCH_HREF}">Player Span Search</a>
+        <a href="{PLAYOFF_GAME_SEARCH_HREF}">Game Search: Playoffs</a>
+        <a href="{PLAYOFF_SPAN_SEARCH_HREF}">Player Span Search: Playoffs</a>
+        <a href="onoff.html">+/- Stats</a>
+        <a href="rapm.html">RAPM</a>
+      </div>
+    </section>
+    <section class="card">
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated {ts} from <code>{SOURCE_LABEL}</code>. Season data loads on demand when you search.</p>
+      <div class="controls">
+        <label>Season start
+          <select id="season_start"><option value="ALL">All</option></select>
+        </label>
+        <label>Season end
+          <select id="season_end"><option value="ALL">All</option></select>
+        </label>
+        <label>Team
+          <select id="team"><option value="ALL">All</option></select>
+        </label>
+        <label>Opponent
+          <select id="opp"><option value="ALL">All</option></select>
+        </label>
+        <label>Player
+          <input id="player" type="text" placeholder="Name contains..." />
+        </label>
+        <label>Height
+          <div class="range">
+            <select id="min_height_inches"><option value="">Min</option></select>
+            <select id="max_height_inches"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Career Year
+          <div class="range">
+            <select id="min_career_year"><option value="">Min</option></select>
+            <select id="max_career_year"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Age
+          <div class="range">
+            <select id="min_age"><option value="">Min</option></select>
+            <select id="max_age"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Draft Year
+          <div class="range">
+            <select id="min_draft_year"><option value="">Min</option></select>
+            <select id="max_draft_year"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Draft Slot
+          <div class="range">
+            <select id="min_draft_overall_pick"><option value="">Min</option></select>
+            <select id="max_draft_overall_pick"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Stat mode
+          <select id="stat_mode">
+            <option value="totals">Totals</option>
+            <option value="pergame">Per Game</option>
+            <option value="per36">Per 36</option>
+            {"<option value=\"per100\">Per 100 poss</option>" if ALLOW_PER100 else ""}
+          </select>
+        </label>
+        <label>Date range
+          <div class="range">
+            <input id="date_from" type="date" />
+            <input id="date_to" type="date" />
+          </div>
+        </label>
+        <label>Games
+          <div class="range">
+            <input id="min_games" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_games" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Minutes
+          <div class="range">
+            <input id="min_minutes" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_minutes" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Points
+          <div class="range">
+            <input id="min_pts" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_pts" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Rebounds
+          <div class="range">
+            <input id="min_reb" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_reb" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>ORB
+          <div class="range">
+            <input id="min_oreb" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_oreb" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>DRB
+          <div class="range">
+            <input id="min_dreb" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_dreb" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Assists
+          <div class="range">
+            <input id="min_ast" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_ast" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>2PA
+          <div class="range">
+            <input id="min_fg2a" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_fg2a" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>2P%
+          <div class="range">
+            <input id="min_fg2_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_fg2_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>3PA
+          <div class="range">
+            <input id="min_fg3a" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_fg3a" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>3P%
+          <div class="range">
+            <input id="min_fg3_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_fg3_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FT%
+          <div class="range">
+            <input id="min_ft_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_ft_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Shot split filter 1
+          <div class="range">
+            <select id="split1_key"></select>
+            <input id="split1_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split1_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
+        </label>
+        <label>Shot split filter 2
+          <div class="range">
+            <select id="split2_key"></select>
+            <input id="split2_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split2_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
+        </label>
+        <label>Raw PM
+          <div class="range">
+            <input id="min_pm" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_pm" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Adj PM
+          <div class="range">
+            <input id="min_adj_pm" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_adj_pm" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Raw On/Off
+          <div class="range">
+            <input id="min_onoff_raw" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_onoff_raw" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Adj On/Off
+          <div class="range">
+            <input id="min_onoff_adj" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_onoff_adj" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Deconfounded player-level rim protection signature from your PBP/stint model. Higher is better; it reflects suppressing points allowed at the rim after teammate/opponent adjustment. This is season-level and does not change with Stat mode.">Rim Anchor (season)
+          <div class="range">
+            <input id="min_rim_anchor" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_rim_anchor" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Deconfounded player-level rim deterrence signature from your PBP/stint model. Higher is better; it reflects reducing rim attempt volume allowed after teammate/opponent adjustment. This is season-level and does not change with Stat mode.">Rim Deterrence (season)
+          <div class="range">
+            <input id="min_rim_det" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_rim_det" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA tracking stat: defended field-goal attempts at the rim (less than 6 feet). Higher usually means the defender was contesting more rim shots. In span search this is prorated across the selected games, then converted by Stat mode.">Rim DFGA
+          <div class="range">
+            <input id="min_rim_dfga" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_rim_dfga" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA tracking stat: opponent field-goal percentage on defended rim shots (less than 6 feet). Lower is better. This is season-level and does not change with Stat mode.">Rim DFG% (season)
+          <div class="range">
+            <input id="min_rim_dfg_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_rim_dfg_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA tracking stat: expected rim FG% minus actual rim FG% allowed on defended shots. Positive is better and means opponents finished worse than expected at the rim. This is season-level and does not change with Stat mode.">Rim DFG% Diff (season)
+          <div class="range">
+            <input id="min_rim_dfg_pct_diff" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_rim_dfg_pct_diff" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Assists that created layup makes. Converted across the selected span by Stat mode.">Layup Ast
+          <div class="range">
+            <input id="min_layup_assists_created" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_layup_assists_created" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Assists that created dunk makes. Converted across the selected span by Stat mode.">Dunk Ast
+          <div class="range">
+            <input id="min_dunk_assists_created" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_dunk_assists_created" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Assists that created non-layup, non-dunk rim makes. Historical regular seasons use the joined distance+passer event proof path where available; recent seasons use the richer recent-event pipeline. Converted across the selected span by Stat mode.">Other Rim Ast
+          <div class="range">
+            <input id="min_other_rim_assists_created" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_other_rim_assists_created" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="Strict rim assists: layup assists plus dunk assists. Converted across the selected span by Stat mode.">Rim Ast Strict
+          <div class="range">
+            <input id="min_rim_assists_strict" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_rim_assists_strict" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="All rim assists: layup assists, dunk assists, and other assisted rim makes under the distance filter where available. Converted across the selected span by Stat mode.">Rim Ast
+          <div class="range">
+            <input id="min_rim_assists_all" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_rim_assists_all" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: deflections. Converted across the selected span by Stat mode.">Deflections
+          <div class="range">
+            <input id="min_deflections" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_deflections" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: screen assists. Converted across the selected span by Stat mode.">Screen Ast
+          <div class="range">
+            <input id="min_screen_assists" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_screen_assists" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: contested shots. Converted across the selected span by Stat mode.">Contested Shots
+          <div class="range">
+            <input id="min_contested_shots" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_contested_shots" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: charges drawn. Converted across the selected span by Stat mode.">Charges
+          <div class="range">
+            <input id="min_charges_drawn" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_charges_drawn" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: loose balls recovered. Converted across the selected span by Stat mode.">Loose Balls
+          <div class="range">
+            <input id="min_loose_balls_recovered" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_loose_balls_recovered" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label title="NBA hustle stat: box outs. Converted across the selected span by Stat mode.">Box Outs
+          <div class="range">
+            <input id="min_box_outs" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_box_outs" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Custom metric 1
+          <div class="range">
+            <select id="expr1_left"></select>
+            <select id="expr1_op">
+              <option value="/">/</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr1_right"></select>
+            <input id="expr1_label" type="text" placeholder="Label" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr1_cmp">
+              <option value="">Off</option>
+              <option value=">=">>=</option>
+              <option value="=">=</option>
+              <option value="<="><=</option>
+            </select>
+            <input id="expr1_target" type="number" step="0.01" value="" placeholder="Value" />
+          </div>
+        </label>
+        <label>Custom metric 2
+          <div class="range">
+            <select id="expr2_left"></select>
+            <select id="expr2_op">
+              <option value="/">/</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr2_right"></select>
+            <input id="expr2_label" type="text" placeholder="Label" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr2_cmp">
+              <option value="">Off</option>
+              <option value=">=">>=</option>
+              <option value="=">=</option>
+              <option value="<="><=</option>
+            </select>
+            <input id="expr2_target" type="number" step="0.01" value="" placeholder="Value" />
+          </div>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="run_search" type="button">Search</button>
+        <button id="clear_filters" class="secondary" type="button">Clear</button>
+      </div>
+      <div class="summary">
+        <span id="row_count"></span>
+        <span id="mode_note"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="search-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="player_name"><div class="th-wrap"><span>Player</span></div></th>
+              <th class="sortable" data-key="listed_height"><div class="th-wrap"><span>Ht</span></div></th>
+              <th class="sortable" data-key="age"><div class="th-wrap"><span>Age</span></div></th>
+              <th class="sortable" data-key="career_year"><div class="th-wrap"><span>Yr</span></div></th>
+              <th class="sortable" data-key="draft_year"><div class="th-wrap"><span>Draft Yr</span></div></th>
+              <th class="sortable" data-key="draft_overall_pick"><div class="th-wrap"><span>Draft</span></div></th>
+              <th class="sortable" data-key="games"><div class="th-wrap"><span>Games</span></div></th>
+              <th class="sortable" data-key="minutes"><div class="th-wrap"><span>Min</span></div></th>
+              <th class="sortable" data-key="pts"><div class="th-wrap"><span>PTS</span></div></th>
+              <th class="sortable" data-key="reb"><div class="th-wrap"><span>REB</span></div></th>
+              <th class="sortable" data-key="ast"><div class="th-wrap"><span>AST</span></div></th>
+              <th class="sortable" data-key="stl"><div class="th-wrap"><span>STL</span></div></th>
+              <th class="sortable" data-key="blk"><div class="th-wrap"><span>BLK</span></div></th>
+              <th class="sortable" data-key="tov"><div class="th-wrap"><span>TOV</span></div></th>
+              <th class="sortable" data-key="fg2a"><div class="th-wrap"><span>2PA</span></div></th>
+              <th class="sortable" data-key="fg2_pct"><div class="th-wrap"><span>2P%</span></div></th>
+              <th class="sortable" data-key="fg3a"><div class="th-wrap"><span>3PA</span></div></th>
+              <th class="sortable" data-key="fg3_pct"><div class="th-wrap"><span>3P%</span></div></th>
+              <th class="sortable" data-key="ft_pct"><div class="th-wrap"><span>FT%</span></div></th>
+              <th class="sortable" data-key="fta"><div class="th-wrap"><span>FTA</span></div></th>
+              <th class="sortable" data-key="assisted_fgm"><div class="th-wrap"><span>Ast FGM</span></div></th>
+              <th class="sortable" data-key="unassisted_fgm"><div class="th-wrap"><span>Unast FGM</span></div></th>
+              <th class="sortable" data-key="ts_game"><div class="th-wrap"><span>TS</span></div></th>
+              <th class="sortable" data-key="plus_minus_actual"><div class="th-wrap"><span>Raw PM</span></div></th>
+              <th class="sortable" data-key="plus_minus_adjusted"><div class="th-wrap"><span>Adj PM</span></div></th>
+              <th class="sortable" data-key="on_off_actual"><div class="th-wrap"><span>Raw On/Off</span></div></th>
+              <th class="sortable" data-key="on_off_adjusted"><div class="th-wrap"><span>Adj On/Off</span></div></th>
+              <th class="sortable" data-key="rim_anchor_signature" title="Deconfounded player-level rim protection signature from your PBP/stint model. Higher is better; it reflects suppressing points allowed at the rim after teammate/opponent adjustment. This is season-level and does not change with Stat mode."><div class="th-wrap"><span>Rim Anchor (S)</span></div></th>
+              <th class="sortable" data-key="rim_deterrence_signature" title="Deconfounded player-level rim deterrence signature from your PBP/stint model. Higher is better; it reflects reducing rim attempt volume allowed after teammate/opponent adjustment. This is season-level and does not change with Stat mode."><div class="th-wrap"><span>Rim Det (S)</span></div></th>
+              <th class="sortable" data-key="rim_dfga" title="NBA tracking stat: defended field-goal attempts at the rim (less than 6 feet). Higher usually means the defender was contesting more rim shots. In span search this is prorated across the selected games, then converted by display mode."><div class="th-wrap"><span>Rim DFGA</span></div></th>
+              <th class="sortable" data-key="rim_dfg_pct" title="NBA tracking stat: opponent field-goal percentage on defended rim shots (less than 6 feet). Lower is better. This is season-level and does not change with Stat mode."><div class="th-wrap"><span>Rim DFG% (S)</span></div></th>
+              <th class="sortable" data-key="rim_dfg_pct_diff" title="NBA tracking stat: expected rim FG% minus actual rim FG% allowed on defended shots. Positive is better and means opponents finished worse than expected at the rim. This is season-level and does not change with Stat mode."><div class="th-wrap"><span>Rim DFG% Diff (S)</span></div></th>
+              <th class="sortable" data-key="layup_assists_created" title="Assists that created layup makes. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Layup Ast</span></div></th>
+              <th class="sortable" data-key="dunk_assists_created" title="Assists that created dunk makes. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Dunk Ast</span></div></th>
+              <th class="sortable" data-key="other_rim_assists_created" title="Assists that created non-layup, non-dunk rim makes under the distance filter where available. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Other Rim Ast</span></div></th>
+              <th class="sortable" data-key="rim_assists_strict" title="Strict rim assists: layup assists plus dunk assists. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Rim Ast Strict</span></div></th>
+              <th class="sortable" data-key="rim_assists_all" title="All rim assists: layup assists, dunk assists, and other assisted rim makes under the distance filter where available. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Rim Ast</span></div></th>
+              <th class="sortable" data-key="deflections" title="NBA hustle stat: deflections. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Defl</span></div></th>
+              <th class="sortable" data-key="screen_assists" title="NBA hustle stat: screen assists. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Scr Ast</span></div></th>
+              <th class="sortable" data-key="contested_shots" title="NBA hustle stat: contested shots. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Cont Sh</span></div></th>
+              <th class="sortable" data-key="charges_drawn" title="NBA hustle stat: charges drawn. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Charges</span></div></th>
+              <th class="sortable" data-key="loose_balls_recovered" title="NBA hustle stat: loose balls recovered. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Loose</span></div></th>
+              <th class="sortable" data-key="box_outs" title="NBA hustle stat: box outs. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Box Outs</span></div></th>
+              <th class="sortable" data-key="expr1"><div class="th-wrap"><span id="expr1_header">AST/TOV</span></div></th>
+              <th class="sortable" data-key="expr2"><div class="th-wrap"><span id="expr2_header">STL+BLK</span></div></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const COLS = {json.dumps(cols, ensure_ascii=False)};
+    const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
+    let ROWS = [];
+    window.__PLAYER_SPAN_CHUNKS = window.__PLAYER_SPAN_CHUNKS || {{}};
+    const DATA_FILES = {json.dumps(season_files, ensure_ascii=False)};
+    const LOADED_SEASONS = new Set();
+    const SEASONS = {json.dumps(seasons, ensure_ascii=False)};
+    const TEAMS = {json.dumps(teams, ensure_ascii=False)};
+    const OPPS = {json.dumps(opps, ensure_ascii=False)};
+    const HEIGHT_VALUES = {json.dumps(list(range(65, 92)), ensure_ascii=False)};
+    const AGE_VALUES = {json.dumps(list(range(18, 46)), ensure_ascii=False)};
+    const CAREER_YEAR_VALUES = {json.dumps(list(range(1, 24)), ensure_ascii=False)};
+    const DRAFT_YEAR_VALUES = {json.dumps(list(range(1963, 2026)), ensure_ascii=False)};
+    const DRAFT_PICK_VALUES = {json.dumps(list(range(1, 166)), ensure_ascii=False)};
+    const COUNT_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs"];
+    const DISPLAY_TOGGLE_KEYS = ["pts","reb","ast","stl","blk","tov","fg2a","fg3a","fta","assisted_fgm","unassisted_fgm","plus_minus_actual","plus_minus_adjusted","rim_dfga","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","deflections","screen_assists","contested_shots","charges_drawn","loose_balls_recovered","box_outs"];
+    const DISPLAY_MODE_ORDER = ["totals","pergame","per36","per100"];
+    const DISPLAY_MODE_LABELS = {{ totals: "Tot", pergame: "G", per36: "36", per100: "100" }};
+    const CUSTOM_KEYS = ["expr1","expr2"];
+    const NUMERIC_OPTIONS = [
+      ["pts","PTS"],["reb","REB"],["oreb","ORB"],["dreb","DRB"],["ast","AST"],["stl","STL"],["blk","BLK"],["tov","TOV"],
+      ["height_inches","Height"],["age","Age"],["career_year","Career Yr"],["draft_year","Draft Yr"],["draft_overall_pick","Draft Slot"],
+      ["fgm","FGM"],["fga","FGA"],["fg2m","2PM"],["fg2a","2PA"],["fg2_pct","2P%"],["fg3m","3PM"],["fg3a","3PA"],["fg3_pct","3P%"],["ftm","FTM"],["fta","FTA"],["ft_pct","FT%"],
+      ["assisted_2pm","Ast 2PM"],["unassisted_2pm","Unast 2PM"],["assisted_3pm","Ast 3PM"],["unassisted_3pm","Unast 3PM"],["assisted_fgm","Ast FGM"],["unassisted_fgm","Unast FGM"],["layup_assists_created","Layup Ast"],["dunk_assists_created","Dunk Ast"],["other_rim_assists_created","Other Rim Ast"],["rim_assists_strict","Rim Ast Strict"],["rim_assists_all","Rim Ast"],
+      ["plus_minus_actual","Raw PM"],["plus_minus_adjusted","Adj PM"],["on_off_actual","Raw On/Off"],["on_off_adjusted","Adj On/Off"],["rim_anchor_signature","Rim Anchor"],["rim_deterrence_signature","Rim Deterrence"],["rim_dfga","Rim DFGA"],["rim_dfg_pct","Rim DFG%"],["rim_dfg_pct_diff","Rim DFG% Diff"],["deflections","Deflections"],["screen_assists","Screen Assists"],["screen_ast_pts","Screen Ast Pts"],["contested_shots","Contested Shots"],["contested_shots_2pt","Contested Shots 2PT"],["contested_shots_3pt","Contested Shots 3PT"],["charges_drawn","Charges Drawn"],["loose_balls_recovered","Loose Balls"],["box_outs","Box Outs"]
+    ];
+    const SPLIT_FILTER_OPTIONS = [
+      ["", "Off"],
+      ["fgm", "FGM"],
+      ["fg2m", "2PM"],
+      ["fg3m", "3PM"],
+      ["assisted_fgm", "Ast FGM"],
+      ["unassisted_fgm", "Unast FGM"],
+      ["assisted_2pm", "Ast 2PM"],
+      ["unassisted_2pm", "Unast 2PM"],
+      ["assisted_3pm", "Ast 3PM"],
+      ["unassisted_3pm", "Unast 3PM"]
+    ];
+    const state = {{ key: "pts", dir: "desc" }};
+    const displayModes = Object.fromEntries(DISPLAY_TOGGLE_KEYS.map(key => [key, "match"]));
+    let lastResults = [];
+    const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
+
+    const fmt = (x, d=1) => (x === null || x === undefined || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
+    const cls = (x) => (Number(x) > 0 ? "pos" : (Number(x) < 0 ? "neg" : ""));
+    const inRange = (value, minVal, maxVal) => {{
+      const hasMin = minVal !== "";
+      const hasMax = maxVal !== "";
+      if (!hasMin && !hasMax) return true;
+      if (value === null || value === undefined || value === "") return false;
+      const n = Number(value);
+      if (Number.isNaN(n)) return false;
+      return (!hasMin || n >= Number(minVal)) && (!hasMax || n <= Number(maxVal));
+    }};
+    const compareVal = (value, cmp, target) => {{
+      if (!cmp || target === "") return true;
+      const n = Number(value);
+      const t = Number(target);
+      if (Number.isNaN(n) || Number.isNaN(t)) return false;
+      if (cmp === ">=") return n >= t;
+      if (cmp === "<=") return n <= t;
+      if (cmp === "=") return n === t;
+      return true;
+    }};
+    const v = (r, key) => r[IDX[key]];
+    const seasonStart = (season) => Number(String(season || "").split("-")[0] || 0);
+    const seasonMatches = (rowSeason, selectedStart, selectedEnd) => {{
+      const rowStart = seasonStart(rowSeason);
+      const startOk = selectedStart === "ALL" || rowStart >= Number(selectedStart);
+      const endOk = selectedEnd === "ALL" || rowStart <= Number(selectedEnd);
+      return startOk && endOk;
+    }};
+    function modeValue(obj, key, mode) {{
+      const useMode = mode === "match" ? document.getElementById("stat_mode").value : mode;
+      if (![...COUNT_KEYS, "plus_minus_actual", "plus_minus_adjusted", "rim_dfga"].includes(key)) return obj[key];
+      const base = Number(obj[key] || 0);
+      if (useMode === "pergame") return obj.games > 0 ? base / obj.games : null;
+      if (useMode === "per36") return obj.minutes > 0 ? base * 36 / obj.minutes : null;
+      if (useMode === "per100") return obj.on_possessions > 0 ? base * 100 / obj.on_possessions : null;
+      return base;
+    }}
+    const numericVal = (obj, key, mode="match") => Number(modeValue(obj, key, mode) || 0);
+    function splitFilterPass(obj, slot) {{
+      const key = document.getElementById(`${{slot}}_key`).value;
+      const minVal = document.getElementById(`${{slot}}_min`).value;
+      const maxVal = document.getElementById(`${{slot}}_max`).value;
+      if (!key) return true;
+      return inRange(modeValue(obj, key, document.getElementById("stat_mode").value), minVal, maxVal);
+    }}
+
+    function populate() {{
+      const opts = ['<option value="ALL">All</option>'].concat(
+        SEASONS.map(s => `<option value="${{seasonStart(s)}}">${{s}}</option>`)
+      ).join("");
+      document.getElementById("season_start").innerHTML = opts;
+      document.getElementById("season_end").innerHTML = opts;
+      document.getElementById("team").innerHTML = '<option value="ALL">All</option>' + TEAMS.map(t => `<option value="${{t}}">${{t}}</option>`).join("");
+      document.getElementById("opp").innerHTML = '<option value="ALL">All</option>' + OPPS.map(t => `<option value="${{t}}">${{t}}</option>`).join("");
+      const formatHeight = (inches) => {{
+        const feet = Math.floor(Number(inches) / 12);
+        const rem = Number(inches) % 12;
+        return `${{feet}}-${{rem}}`;
+      }};
+      const fillRangeSelects = (minId, maxId, values, formatter=null) => {{
+        const labelFor = (v) => formatter ? formatter(v) : v;
+        const opts = ['<option value="">Min</option>'].concat(values.map(v => `<option value="${{v}}">${{labelFor(v)}}</option>`)).join("");
+        const optsMax = ['<option value="">Max</option>'].concat(values.map(v => `<option value="${{v}}">${{labelFor(v)}}</option>`)).join("");
+        document.getElementById(minId).innerHTML = opts;
+        document.getElementById(maxId).innerHTML = optsMax;
+      }};
+      fillRangeSelects("min_height_inches", "max_height_inches", HEIGHT_VALUES, formatHeight);
+      fillRangeSelects("min_age", "max_age", AGE_VALUES);
+      fillRangeSelects("min_career_year", "max_career_year", CAREER_YEAR_VALUES);
+      fillRangeSelects("min_draft_year", "max_draft_year", DRAFT_YEAR_VALUES);
+      fillRangeSelects("min_draft_overall_pick", "max_draft_overall_pick", DRAFT_PICK_VALUES);
+      const exprOpts = NUMERIC_OPTIONS.map(([value, label]) => `<option value="${{value}}">${{label}}</option>`).join("");
+      ["expr1_left","expr1_right","expr2_left","expr2_right"].forEach(id => {{
+        document.getElementById(id).innerHTML = exprOpts;
+      }});
+      const splitOpts = SPLIT_FILTER_OPTIONS.map(([value, label]) => `<option value="${{value}}">${{label}}</option>`).join("");
+      document.getElementById("split1_key").innerHTML = splitOpts;
+      document.getElementById("split2_key").innerHTML = splitOpts;
+      document.getElementById("expr1_left").value = "ast";
+      document.getElementById("expr1_right").value = "tov";
+      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr2_left").value = "stl";
+      document.getElementById("expr2_right").value = "blk";
+      document.getElementById("expr2_op").value = "+";
+      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("split1_key").value = "";
+      document.getElementById("split2_key").value = "";
+      if (SEASONS.includes("2025-26")) {{
+        document.getElementById("season_start").value = "2025";
+        document.getElementById("season_end").value = "2025";
+      }}
+      updateCustomHeaders();
+      initHeaderModeToggles();
+      organizeFilterGroups();
+    }}
+
+    function organizeFilterGroups() {{
+      const root = document.querySelector(".card");
+      const original = document.querySelector(".controls");
+      if (!root || !original || original.dataset.grouped === "1") return;
+      const labelById = (id) => {{
+        const el = document.getElementById(id);
+        return el ? el.closest("label") : null;
+      }};
+      const groups = [
+        ["Scope", ["season_start","season_end","team","opp","player","stat_mode","date_from","date_to"]],
+        ["Bio", ["min_height_inches","max_height_inches","min_age","max_age","min_career_year","max_career_year","min_draft_year","max_draft_year","min_draft_overall_pick","max_draft_overall_pick"]],
+        ["Volume / Scoring", ["min_games","max_games","min_minutes","max_minutes","min_pts","max_pts","min_reb","max_reb","min_oreb","max_oreb","min_dreb","max_dreb","min_ast","max_ast","min_fg2a","max_fg2a","min_fg2_pct","max_fg2_pct","min_fg3a","max_fg3a","min_fg3_pct","max_fg3_pct","min_ft_pct","max_ft_pct","split1_key","split2_key"]],
+        ["Impact", ["min_pm","max_pm","min_adj_pm","max_adj_pm","min_onoff_raw","max_onoff_raw","min_onoff_adj","max_onoff_adj"]],
+        ["Rim / Hustle", ["min_rim_anchor","max_rim_anchor","min_rim_det","max_rim_det","min_rim_dfga","max_rim_dfga","min_rim_dfg_pct","max_rim_dfg_pct","min_rim_dfg_pct_diff","max_rim_dfg_pct_diff","min_layup_assists_created","max_layup_assists_created","min_dunk_assists_created","max_dunk_assists_created","min_other_rim_assists_created","max_other_rim_assists_created","min_rim_assists_strict","max_rim_assists_strict","min_rim_assists_all","max_rim_assists_all","min_deflections","max_deflections","min_screen_assists","max_screen_assists","min_contested_shots","max_contested_shots","min_charges_drawn","max_charges_drawn","min_loose_balls_recovered","max_loose_balls_recovered","min_box_outs","max_box_outs"]],
+        ["Custom", ["expr1_left","expr2_left"]],
+      ];
+      const seen = new Set();
+      const container = document.createElement("div");
+      groups.forEach(([title, ids]) => {{
+        const labels = [];
+        ids.forEach(id => {{
+          const label = labelById(id);
+          if (label && !seen.has(label)) {{
+            seen.add(label);
+            labels.push(label);
+          }}
+        }});
+        if (!labels.length) return;
+        const group = document.createElement("div");
+        group.className = "filter-group";
+        const heading = document.createElement("h3");
+        heading.textContent = title;
+        const controls = document.createElement("div");
+        controls.className = "controls";
+        labels.forEach(label => controls.appendChild(label));
+        group.appendChild(heading);
+        group.appendChild(controls);
+        container.appendChild(group);
+      }});
+      const leftovers = Array.from(original.querySelectorAll("label")).filter(label => !seen.has(label));
+      if (leftovers.length) {{
+        const group = document.createElement("div");
+        group.className = "filter-group";
+        const heading = document.createElement("h3");
+        heading.textContent = "Other";
+        const controls = document.createElement("div");
+        controls.className = "controls";
+        leftovers.forEach(label => controls.appendChild(label));
+        group.appendChild(heading);
+        group.appendChild(controls);
+        container.appendChild(group);
+      }}
+      original.replaceWith(container);
+      container.dataset.grouped = "1";
+    }}
+
+    function selectedSeasons() {{
+      const seasonStartVal = document.getElementById("season_start").value;
+      const seasonEndVal = document.getElementById("season_end").value;
+      if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
+      return SEASONS.filter(season => seasonMatches(season, seasonStartVal, seasonEndVal));
+    }}
+
+    async function loadSeasonChunk(season) {{
+      if (!season || LOADED_SEASONS.has(season)) return;
+      const file = DATA_FILES[season];
+      if (!file) return;
+      await new Promise((resolve, reject) => {{
+        const script = document.createElement("script");
+        script.src = CHUNK_BASE + file;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load season data for ${{season}}`));
+        document.head.appendChild(script);
+      }});
+      const chunk = window.__PLAYER_SPAN_CHUNKS[season] || [];
+      ROWS = ROWS.concat(chunk);
+      LOADED_SEASONS.add(season);
+    }}
+
+    async function ensureSelectedSeasonsLoaded() {{
+      const needed = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
+      for (const season of needed) {{
+        await loadSeasonChunk(season);
+      }}
+    }}
+
+    function updateCustomHeaders() {{
+      const customLabel = (slot) => {{
+        const leftEl = document.getElementById(`${{slot}}_left`);
+        const rightEl = document.getElementById(`${{slot}}_right`);
+        const op = document.getElementById(`${{slot}}_op`).value;
+        const manual = document.getElementById(`${{slot}}_label`).value.trim();
+        if (manual) return manual;
+        const leftText = leftEl.options[leftEl.selectedIndex]?.text || "Stat";
+        const rightText = rightEl.options[rightEl.selectedIndex]?.text || "Stat";
+        return `${{leftText}} ${{op}} ${{rightText}}`;
+      }};
+      document.getElementById("expr1_header").textContent = customLabel("expr1");
+      document.getElementById("expr2_header").textContent = customLabel("expr2");
+    }}
+
+    function initHeaderModeToggles() {{
+      document.querySelectorAll("#search-table thead th[data-key]").forEach(th => {{
+        const key = th.dataset.key;
+        if (!DISPLAY_TOGGLE_KEYS.includes(key)) return;
+        const wrap = th.querySelector(".th-wrap");
+        if (!wrap || wrap.querySelector(".mode-chip")) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "mode-chip";
+        const setLabel = () => {{
+          const mode = displayModes[key];
+          btn.textContent = mode === "match" ? "Match" : DISPLAY_MODE_LABELS[mode];
+          btn.title = "Toggle displayed result mode for this column";
+        }};
+        setLabel();
+        btn.addEventListener("click", (ev) => {{
+          ev.stopPropagation();
+          const order = ["match", ...DISPLAY_MODE_ORDER];
+          const idx = order.indexOf(displayModes[key]);
+          displayModes[key] = order[(idx + 1) % order.length];
+          setLabel();
+          if (lastResults.length) {{
+            lastResults = sortRows(lastResults);
+            renderRows(lastResults);
+          }}
+        }});
+        wrap.appendChild(btn);
+      }});
+    }}
+
+    function baseFilteredRows() {{
+      const seasonStartVal = document.getElementById("season_start").value;
+      const seasonEndVal = document.getElementById("season_end").value;
+      const team = document.getElementById("team").value;
+      const opp = document.getElementById("opp").value;
+      const player = document.getElementById("player").value.trim().toLowerCase();
+      const dateFrom = document.getElementById("date_from").value;
+      const dateTo = document.getElementById("date_to").value;
+      if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
+      return ROWS.filter(r =>
+        seasonMatches(v(r, "season"), seasonStartVal, seasonEndVal) &&
+        (team === "ALL" || v(r, "team_abbr") === team) &&
+        (opp === "ALL" || v(r, "opp_team_abbr") === opp) &&
+        (!player || String(v(r, "player_name") || "").toLowerCase().includes(player)) &&
+        (dateFrom === "" || String(v(r, "date") || "") >= dateFrom) &&
+        (dateTo === "" || String(v(r, "date") || "") <= dateTo)
+      );
+    }}
+
+    function aggregateRows() {{
+      const grouped = new Map();
+      for (const r of baseFilteredRows()) {{
+        const playerId = v(r, "player_id");
+        const key = String(playerId);
+        if (!grouped.has(key)) {{
+          grouped.set(key, {{
+            player_id: playerId,
+            player_name: v(r, "player_name"),
+            listed_height: v(r, "listed_height"),
+            height_inches: v(r, "height_inches"),
+            age: v(r, "age"),
+            career_year: v(r, "career_year"),
+            draft_year: v(r, "draft_year"),
+            draft_overall_pick: v(r, "draft_overall_pick"),
+            games: 0,
+            minutes: 0,
+            on_possessions: 0,
+            pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
+            assisted_2pm: 0, unassisted_2pm: 0, assisted_3pm: 0, unassisted_3pm: 0, assisted_fgm: 0, unassisted_fgm: 0,
+            rim_anchor_signature: null,
+            rim_deterrence_signature: null,
+            rim_dfga: null,
+            rim_dfg_pct: null,
+            rim_dfg_pct_diff: null,
+            layup_assists_created: null,
+            dunk_assists_created: null,
+            other_rim_assists_created: null,
+            rim_assists_strict: null,
+            rim_assists_all: null,
+            contested_shots: null,
+            contested_shots_2pt: null,
+            contested_shots_3pt: null,
+            deflections: null,
+            charges_drawn: null,
+            screen_assists: null,
+            screen_ast_pts: null,
+            loose_balls_recovered: null,
+            box_outs: null,
+            rim_selected_games_by_season: {{}},
+            rim_dfga_by_season: {{}},
+            rim_tracking_games_by_season: {{}},
+            rim_metric_seasons: new Set(),
+            hustle_metric_seasons: new Set(),
+            rim_anchor_sum: 0,
+            rim_det_sum: 0,
+            rim_dfga_sum: 0,
+            rim_dfg_pct_sum: 0,
+            rim_dfg_pct_diff_sum: 0,
+            rim_metric_count: 0,
+            rim_assist_metric_seasons: new Set(),
+            layup_assists_created_by_season: {{}},
+            dunk_assists_created_by_season: {{}},
+            other_rim_assists_created_by_season: {{}},
+            rim_assists_strict_by_season: {{}},
+            rim_assists_all_by_season: {{}},
+            contested_shots_sum: 0,
+            contested_shots_2pt_sum: 0,
+            contested_shots_3pt_sum: 0,
+            deflections_sum: 0,
+            charges_drawn_sum: 0,
+            screen_assists_sum: 0,
+            screen_ast_pts_sum: 0,
+            loose_balls_recovered_sum: 0,
+            box_outs_sum: 0,
+            hustle_metric_count: 0,
+            contested_shots_by_season: {{}},
+            contested_shots_2pt_by_season: {{}},
+            contested_shots_3pt_by_season: {{}},
+            deflections_by_season: {{}},
+            charges_drawn_by_season: {{}},
+            screen_assists_by_season: {{}},
+            screen_ast_pts_by_season: {{}},
+            loose_balls_recovered_by_season: {{}},
+            box_outs_by_season: {{}},
+            plus_minus_actual: 0,
+            plus_minus_adjusted: 0,
+            on_off_actual_weighted: 0,
+            on_off_adjusted_weighted: 0
+          }});
+        }}
+        const g = grouped.get(key);
+        if (!g.listed_height && v(r, "listed_height")) g.listed_height = v(r, "listed_height");
+        if ((g.height_inches === null || g.height_inches === undefined || g.height_inches === "") && v(r, "height_inches") !== null && v(r, "height_inches") !== undefined && v(r, "height_inches") !== "") g.height_inches = v(r, "height_inches");
+        const rowAge = v(r, "age");
+        if (rowAge !== null && rowAge !== undefined && rowAge !== "") {{
+          g.age = (g.age === null || g.age === undefined || g.age === "") ? rowAge : Math.min(Number(g.age), Number(rowAge));
+        }}
+        const rowCareerYear = v(r, "career_year");
+        if (rowCareerYear !== null && rowCareerYear !== undefined && rowCareerYear !== "") {{
+          g.career_year = (g.career_year === null || g.career_year === undefined || g.career_year === "") ? rowCareerYear : Math.min(Number(g.career_year), Number(rowCareerYear));
+        }}
+        if ((g.draft_year === null || g.draft_year === undefined || g.draft_year === "") && v(r, "draft_year") !== null && v(r, "draft_year") !== undefined && v(r, "draft_year") !== "") g.draft_year = v(r, "draft_year");
+        if ((g.draft_overall_pick === null || g.draft_overall_pick === undefined || g.draft_overall_pick === "") && v(r, "draft_overall_pick") !== null && v(r, "draft_overall_pick") !== undefined && v(r, "draft_overall_pick") !== "") g.draft_overall_pick = v(r, "draft_overall_pick");
+        const minutes = Number(v(r, "minutes") || 0);
+        const poss = Number(v(r, "on_possessions") || 0);
+        g.games += 1;
+        g.minutes += minutes;
+        g.on_possessions += poss;
+        const metricSeasonKey = String(v(r, "season") || "");
+        if (metricSeasonKey) {{
+          g.rim_selected_games_by_season[metricSeasonKey] = (g.rim_selected_games_by_season[metricSeasonKey] || 0) + 1;
+        }}
+        ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
+          g[stat] += Number(v(r, stat) || 0);
+        }});
+        g.plus_minus_actual += Number(v(r, "plus_minus_actual") || 0);
+        g.plus_minus_adjusted += Number(v(r, "plus_minus_adjusted") || 0);
+        g.on_off_actual_weighted += Number(v(r, "on_off_actual") || 0) * minutes;
+        g.on_off_adjusted_weighted += Number(v(r, "on_off_adjusted") || 0) * minutes;
+        if (metricSeasonKey && !g.rim_metric_seasons.has(metricSeasonKey)) {{
+          g.rim_metric_seasons.add(metricSeasonKey);
+          const rimAnchor = v(r, "rim_anchor_signature");
+          const rimDet = v(r, "rim_deterrence_signature");
+          const rimDfga = v(r, "rim_dfga");
+          const rimTrackingGames = v(r, "rim_tracking_games");
+          const rimDfgPct = v(r, "rim_dfg_pct");
+          const rimDfgPctDiff = v(r, "rim_dfg_pct_diff");
+          if (rimDfga !== null && rimDfga !== "") g.rim_dfga_by_season[metricSeasonKey] = Number(rimDfga);
+          if (rimTrackingGames !== null && rimTrackingGames !== "") g.rim_tracking_games_by_season[metricSeasonKey] = Number(rimTrackingGames);
+          if (rimAnchor !== null && rimAnchor !== "") g.rim_anchor_sum += Number(rimAnchor);
+          if (rimDet !== null && rimDet !== "") g.rim_det_sum += Number(rimDet);
+          if (rimDfga !== null && rimDfga !== "") g.rim_dfga_sum += Number(rimDfga);
+          if (rimDfgPct !== null && rimDfgPct !== "") g.rim_dfg_pct_sum += Number(rimDfgPct);
+          if (rimDfgPctDiff !== null && rimDfgPctDiff !== "") g.rim_dfg_pct_diff_sum += Number(rimDfgPctDiff);
+          g.rim_metric_count += 1;
+        }}
+        if (metricSeasonKey && !g.hustle_metric_seasons.has(metricSeasonKey)) {{
+          const contestedShots = v(r, "contested_shots");
+          const contestedShots2pt = v(r, "contested_shots_2pt");
+          const contestedShots3pt = v(r, "contested_shots_3pt");
+          const deflections = v(r, "deflections");
+          const chargesDrawn = v(r, "charges_drawn");
+          const screenAssists = v(r, "screen_assists");
+          const screenAstPts = v(r, "screen_ast_pts");
+          const looseBallsRecovered = v(r, "loose_balls_recovered");
+          const boxOuts = v(r, "box_outs");
+          const hasHustleMetric =
+            (contestedShots !== null && contestedShots !== "") ||
+            (contestedShots2pt !== null && contestedShots2pt !== "") ||
+            (contestedShots3pt !== null && contestedShots3pt !== "") ||
+            (deflections !== null && deflections !== "") ||
+            (chargesDrawn !== null && chargesDrawn !== "") ||
+            (screenAssists !== null && screenAssists !== "") ||
+            (screenAstPts !== null && screenAstPts !== "") ||
+            (looseBallsRecovered !== null && looseBallsRecovered !== "") ||
+            (boxOuts !== null && boxOuts !== "");
+          if (!hasHustleMetric) continue;
+          g.hustle_metric_seasons.add(metricSeasonKey);
+          if (contestedShots !== null && contestedShots !== "") g.contested_shots_by_season[metricSeasonKey] = Number(contestedShots);
+          if (contestedShots2pt !== null && contestedShots2pt !== "") g.contested_shots_2pt_by_season[metricSeasonKey] = Number(contestedShots2pt);
+          if (contestedShots3pt !== null && contestedShots3pt !== "") g.contested_shots_3pt_by_season[metricSeasonKey] = Number(contestedShots3pt);
+          if (deflections !== null && deflections !== "") g.deflections_by_season[metricSeasonKey] = Number(deflections);
+          if (chargesDrawn !== null && chargesDrawn !== "") g.charges_drawn_by_season[metricSeasonKey] = Number(chargesDrawn);
+          if (screenAssists !== null && screenAssists !== "") g.screen_assists_by_season[metricSeasonKey] = Number(screenAssists);
+          if (screenAstPts !== null && screenAstPts !== "") g.screen_ast_pts_by_season[metricSeasonKey] = Number(screenAstPts);
+          if (looseBallsRecovered !== null && looseBallsRecovered !== "") g.loose_balls_recovered_by_season[metricSeasonKey] = Number(looseBallsRecovered);
+          if (boxOuts !== null && boxOuts !== "") g.box_outs_by_season[metricSeasonKey] = Number(boxOuts);
+          if (contestedShots !== null && contestedShots !== "") g.contested_shots_sum += Number(contestedShots);
+          if (contestedShots2pt !== null && contestedShots2pt !== "") g.contested_shots_2pt_sum += Number(contestedShots2pt);
+          if (contestedShots3pt !== null && contestedShots3pt !== "") g.contested_shots_3pt_sum += Number(contestedShots3pt);
+          if (deflections !== null && deflections !== "") g.deflections_sum += Number(deflections);
+          if (chargesDrawn !== null && chargesDrawn !== "") g.charges_drawn_sum += Number(chargesDrawn);
+          if (screenAssists !== null && screenAssists !== "") g.screen_assists_sum += Number(screenAssists);
+          if (screenAstPts !== null && screenAstPts !== "") g.screen_ast_pts_sum += Number(screenAstPts);
+          if (looseBallsRecovered !== null && looseBallsRecovered !== "") g.loose_balls_recovered_sum += Number(looseBallsRecovered);
+          if (boxOuts !== null && boxOuts !== "") g.box_outs_sum += Number(boxOuts);
+          g.hustle_metric_count += 1;
+        }}
+        if (metricSeasonKey && !g.rim_assist_metric_seasons.has(metricSeasonKey)) {{
+          const layupAst = v(r, "layup_assists_created");
+          const dunkAst = v(r, "dunk_assists_created");
+          const otherRimAst = v(r, "other_rim_assists_created");
+          const rimAstStrict = v(r, "rim_assists_strict");
+          const rimAstAll = v(r, "rim_assists_all");
+          const hasRimAssistMetric =
+            (layupAst !== null && layupAst !== "") ||
+            (dunkAst !== null && dunkAst !== "") ||
+            (otherRimAst !== null && otherRimAst !== "") ||
+            (rimAstStrict !== null && rimAstStrict !== "") ||
+            (rimAstAll !== null && rimAstAll !== "");
+          if (hasRimAssistMetric) {{
+            g.rim_assist_metric_seasons.add(metricSeasonKey);
+            if (layupAst !== null && layupAst !== "") g.layup_assists_created_by_season[metricSeasonKey] = Number(layupAst);
+            if (dunkAst !== null && dunkAst !== "") g.dunk_assists_created_by_season[metricSeasonKey] = Number(dunkAst);
+            if (otherRimAst !== null && otherRimAst !== "") g.other_rim_assists_created_by_season[metricSeasonKey] = Number(otherRimAst);
+            if (rimAstStrict !== null && rimAstStrict !== "") g.rim_assists_strict_by_season[metricSeasonKey] = Number(rimAstStrict);
+            if (rimAstAll !== null && rimAstAll !== "") g.rim_assists_all_by_season[metricSeasonKey] = Number(rimAstAll);
+          }}
+        }}
+      }}
+
+      const results = Array.from(grouped.values()).map(g => {{
+        const ts = (g.fga + 0.44 * g.fta) > 0 ? g.pts / (2 * (g.fga + 0.44 * g.fta)) : null;
+        const onOffActual = g.minutes > 0 ? g.on_off_actual_weighted / g.minutes : null;
+        const onOffAdjusted = g.minutes > 0 ? g.on_off_adjusted_weighted / g.minutes : null;
+        let rimDfgaSelectedTotal = g.rim_metric_count > 0 ? 0 : null;
+        if (g.rim_metric_count > 0) {{
+          for (const seasonKey of g.rim_metric_seasons) {{
+            const seasonTotal = Number(g.rim_dfga_by_season[seasonKey] || 0);
+            const seasonGames = Number(g.rim_tracking_games_by_season[seasonKey] || 0);
+            const selectedGames = Number(g.rim_selected_games_by_season[seasonKey] || 0);
+            if (seasonGames > 0) rimDfgaSelectedTotal += seasonTotal * (selectedGames / seasonGames);
+          }}
+        }}
+        const proratedSeasonStatTotal = (metricBySeason) => {{
+          let total = 0;
+          let hasAny = false;
+          for (const seasonKey of g.hustle_metric_seasons) {{
+            const perGame = metricBySeason[seasonKey];
+            const selectedGames = Number(g.rim_selected_games_by_season[seasonKey] || 0);
+            if (perGame !== undefined && perGame !== null && selectedGames > 0) {{
+              total += Number(perGame) * selectedGames;
+              hasAny = true;
+            }}
+          }}
+          return hasAny ? total : null;
+        }};
+        const out = {{
+          ...g,
+          ts_game: ts,
+          fg2_pct: g.fg2a > 0 ? g.fg2m / g.fg2a : null,
+          fg3_pct: g.fg3a > 0 ? g.fg3m / g.fg3a : null,
+          ft_pct: g.fta > 0 ? g.ftm / g.fta : null,
+          rim_anchor_signature: g.rim_metric_count > 0 ? g.rim_anchor_sum / g.rim_metric_count : null,
+          rim_deterrence_signature: g.rim_metric_count > 0 ? g.rim_det_sum / g.rim_metric_count : null,
+          rim_dfga: rimDfgaSelectedTotal,
+          rim_dfg_pct: g.rim_metric_count > 0 ? g.rim_dfg_pct_sum / g.rim_metric_count : null,
+          rim_dfg_pct_diff: g.rim_metric_count > 0 ? g.rim_dfg_pct_diff_sum / g.rim_metric_count : null,
+          layup_assists_created: proratedSeasonStatTotal(g.layup_assists_created_by_season),
+          dunk_assists_created: proratedSeasonStatTotal(g.dunk_assists_created_by_season),
+          other_rim_assists_created: proratedSeasonStatTotal(g.other_rim_assists_created_by_season),
+          rim_assists_strict: proratedSeasonStatTotal(g.rim_assists_strict_by_season),
+          rim_assists_all: proratedSeasonStatTotal(g.rim_assists_all_by_season),
+          contested_shots: proratedSeasonStatTotal(g.contested_shots_by_season),
+          contested_shots_2pt: proratedSeasonStatTotal(g.contested_shots_2pt_by_season),
+          contested_shots_3pt: proratedSeasonStatTotal(g.contested_shots_3pt_by_season),
+          deflections: proratedSeasonStatTotal(g.deflections_by_season),
+          charges_drawn: proratedSeasonStatTotal(g.charges_drawn_by_season),
+          screen_assists: proratedSeasonStatTotal(g.screen_assists_by_season),
+          screen_ast_pts: proratedSeasonStatTotal(g.screen_ast_pts_by_season),
+          loose_balls_recovered: proratedSeasonStatTotal(g.loose_balls_recovered_by_season),
+          box_outs: proratedSeasonStatTotal(g.box_outs_by_season),
+          on_off_actual: onOffActual,
+          on_off_adjusted: onOffAdjusted
+        }};
+        return out;
+      }});
+      return results;
+    }}
+
+    function computeExpr(obj, slot, mode="match") {{
+      const left = document.getElementById(`${{slot}}_left`).value;
+      const op = document.getElementById(`${{slot}}_op`).value;
+      const right = document.getElementById(`${{slot}}_right`).value;
+      const a = numericVal(obj, left, mode);
+      const b = numericVal(obj, right, mode);
+      if (Number.isNaN(a) || Number.isNaN(b)) return null;
+      if (op === "/") {{
+        if (b === 0) return null;
+        return a / b;
+      }}
+      if (op === "+") return a + b;
+      if (op === "-") return a - b;
+      return null;
+    }}
+
+    function filteredAggRows() {{
+      const filterMode = document.getElementById("stat_mode").value;
+      const minHeightInches = document.getElementById("min_height_inches").value;
+      const maxHeightInches = document.getElementById("max_height_inches").value;
+      const minAge = document.getElementById("min_age").value;
+      const maxAge = document.getElementById("max_age").value;
+      const minCareerYear = document.getElementById("min_career_year").value;
+      const maxCareerYear = document.getElementById("max_career_year").value;
+      const minDraftYear = document.getElementById("min_draft_year").value;
+      const maxDraftYear = document.getElementById("max_draft_year").value;
+      const minDraftOverallPick = document.getElementById("min_draft_overall_pick").value;
+      const maxDraftOverallPick = document.getElementById("max_draft_overall_pick").value;
+      const minGames = document.getElementById("min_games").value;
+      const maxGames = document.getElementById("max_games").value;
+      const minMinutes = document.getElementById("min_minutes").value;
+      const maxMinutes = document.getElementById("max_minutes").value;
+      const minPts = document.getElementById("min_pts").value;
+      const maxPts = document.getElementById("max_pts").value;
+      const minReb = document.getElementById("min_reb").value;
+      const maxReb = document.getElementById("max_reb").value;
+      const minOreb = document.getElementById("min_oreb").value;
+      const maxOreb = document.getElementById("max_oreb").value;
+      const minDreb = document.getElementById("min_dreb").value;
+      const maxDreb = document.getElementById("max_dreb").value;
+      const minAst = document.getElementById("min_ast").value;
+      const maxAst = document.getElementById("max_ast").value;
+      const minFg2a = document.getElementById("min_fg2a").value;
+      const maxFg2a = document.getElementById("max_fg2a").value;
+      const minFg2Pct = document.getElementById("min_fg2_pct").value;
+      const maxFg2Pct = document.getElementById("max_fg2_pct").value;
+      const minFg3a = document.getElementById("min_fg3a").value;
+      const maxFg3a = document.getElementById("max_fg3a").value;
+      const minFg3Pct = document.getElementById("min_fg3_pct").value;
+      const maxFg3Pct = document.getElementById("max_fg3_pct").value;
+      const minFtPct = document.getElementById("min_ft_pct").value;
+      const maxFtPct = document.getElementById("max_ft_pct").value;
+      const minPm = document.getElementById("min_pm").value;
+      const maxPm = document.getElementById("max_pm").value;
+      const minAdjPm = document.getElementById("min_adj_pm").value;
+      const maxAdjPm = document.getElementById("max_adj_pm").value;
+      const minOnOffRaw = document.getElementById("min_onoff_raw").value;
+      const maxOnOffRaw = document.getElementById("max_onoff_raw").value;
+      const minOnOffAdj = document.getElementById("min_onoff_adj").value;
+      const maxOnOffAdj = document.getElementById("max_onoff_adj").value;
+      const minRimAnchor = document.getElementById("min_rim_anchor").value;
+      const maxRimAnchor = document.getElementById("max_rim_anchor").value;
+      const minRimDet = document.getElementById("min_rim_det").value;
+      const maxRimDet = document.getElementById("max_rim_det").value;
+      const minRimDfga = document.getElementById("min_rim_dfga").value;
+      const maxRimDfga = document.getElementById("max_rim_dfga").value;
+      const minRimDfgPct = document.getElementById("min_rim_dfg_pct").value;
+      const maxRimDfgPct = document.getElementById("max_rim_dfg_pct").value;
+      const minRimDfgPctDiff = document.getElementById("min_rim_dfg_pct_diff").value;
+      const maxRimDfgPctDiff = document.getElementById("max_rim_dfg_pct_diff").value;
+      const minLayupAssistsCreated = document.getElementById("min_layup_assists_created").value;
+      const maxLayupAssistsCreated = document.getElementById("max_layup_assists_created").value;
+      const minDunkAssistsCreated = document.getElementById("min_dunk_assists_created").value;
+      const maxDunkAssistsCreated = document.getElementById("max_dunk_assists_created").value;
+      const minOtherRimAssistsCreated = document.getElementById("min_other_rim_assists_created").value;
+      const maxOtherRimAssistsCreated = document.getElementById("max_other_rim_assists_created").value;
+      const minRimAssistsStrict = document.getElementById("min_rim_assists_strict").value;
+      const maxRimAssistsStrict = document.getElementById("max_rim_assists_strict").value;
+      const minRimAssistsAll = document.getElementById("min_rim_assists_all").value;
+      const maxRimAssistsAll = document.getElementById("max_rim_assists_all").value;
+      const minDeflections = document.getElementById("min_deflections").value;
+      const maxDeflections = document.getElementById("max_deflections").value;
+      const minScreenAssists = document.getElementById("min_screen_assists").value;
+      const maxScreenAssists = document.getElementById("max_screen_assists").value;
+      const minContestedShots = document.getElementById("min_contested_shots").value;
+      const maxContestedShots = document.getElementById("max_contested_shots").value;
+      const minChargesDrawn = document.getElementById("min_charges_drawn").value;
+      const maxChargesDrawn = document.getElementById("max_charges_drawn").value;
+      const minLooseBallsRecovered = document.getElementById("min_loose_balls_recovered").value;
+      const maxLooseBallsRecovered = document.getElementById("max_loose_balls_recovered").value;
+      const minBoxOuts = document.getElementById("min_box_outs").value;
+      const maxBoxOuts = document.getElementById("max_box_outs").value;
+      const expr1Cmp = document.getElementById("expr1_cmp").value;
+      const expr1Target = document.getElementById("expr1_target").value;
+      const expr2Cmp = document.getElementById("expr2_cmp").value;
+      const expr2Target = document.getElementById("expr2_target").value;
+      return aggregateRows().filter(r =>
+        inRange(r.height_inches, minHeightInches, maxHeightInches) &&
+        inRange(r.age, minAge, maxAge) &&
+        inRange(r.career_year, minCareerYear, maxCareerYear) &&
+        inRange(r.draft_year, minDraftYear, maxDraftYear) &&
+        inRange(r.draft_overall_pick, minDraftOverallPick, maxDraftOverallPick) &&
+        inRange(r.games, minGames, maxGames) &&
+        inRange(r.minutes, minMinutes, maxMinutes) &&
+        inRange(modeValue(r, "pts", filterMode), minPts, maxPts) &&
+        inRange(modeValue(r, "reb", filterMode), minReb, maxReb) &&
+        inRange(r.oreb, minOreb, maxOreb) &&
+        inRange(r.dreb, minDreb, maxDreb) &&
+        inRange(modeValue(r, "ast", filterMode), minAst, maxAst) &&
+        inRange(modeValue(r, "fg2a", filterMode), minFg2a, maxFg2a) &&
+        inRange(r.fg2_pct, minFg2Pct, maxFg2Pct) &&
+        inRange(modeValue(r, "fg3a", filterMode), minFg3a, maxFg3a) &&
+        inRange(r.fg3_pct, minFg3Pct, maxFg3Pct) &&
+        inRange(r.ft_pct, minFtPct, maxFtPct) &&
+        splitFilterPass(r, "split1") &&
+        splitFilterPass(r, "split2") &&
+        inRange(modeValue(r, "plus_minus_actual", filterMode), minPm, maxPm) &&
+        inRange(modeValue(r, "plus_minus_adjusted", filterMode), minAdjPm, maxAdjPm) &&
+        inRange(r.on_off_actual, minOnOffRaw, maxOnOffRaw) &&
+        inRange(r.on_off_adjusted, minOnOffAdj, maxOnOffAdj) &&
+        inRange(r.rim_anchor_signature, minRimAnchor, maxRimAnchor) &&
+        inRange(r.rim_deterrence_signature, minRimDet, maxRimDet) &&
+        inRange(modeValue(r, "rim_dfga", filterMode), minRimDfga, maxRimDfga) &&
+        inRange(r.rim_dfg_pct, minRimDfgPct, maxRimDfgPct) &&
+        inRange(r.rim_dfg_pct_diff, minRimDfgPctDiff, maxRimDfgPctDiff) &&
+        inRange(modeValue(r, "layup_assists_created", filterMode), minLayupAssistsCreated, maxLayupAssistsCreated) &&
+        inRange(modeValue(r, "dunk_assists_created", filterMode), minDunkAssistsCreated, maxDunkAssistsCreated) &&
+        inRange(modeValue(r, "other_rim_assists_created", filterMode), minOtherRimAssistsCreated, maxOtherRimAssistsCreated) &&
+        inRange(modeValue(r, "rim_assists_strict", filterMode), minRimAssistsStrict, maxRimAssistsStrict) &&
+        inRange(modeValue(r, "rim_assists_all", filterMode), minRimAssistsAll, maxRimAssistsAll) &&
+        inRange(modeValue(r, "deflections", filterMode), minDeflections, maxDeflections) &&
+        inRange(modeValue(r, "screen_assists", filterMode), minScreenAssists, maxScreenAssists) &&
+        inRange(modeValue(r, "contested_shots", filterMode), minContestedShots, maxContestedShots) &&
+        inRange(modeValue(r, "charges_drawn", filterMode), minChargesDrawn, maxChargesDrawn) &&
+        inRange(modeValue(r, "loose_balls_recovered", filterMode), minLooseBallsRecovered, maxLooseBallsRecovered) &&
+        inRange(modeValue(r, "box_outs", filterMode), minBoxOuts, maxBoxOuts) &&
+        compareVal(computeExpr(r, "expr1", filterMode), expr1Cmp, expr1Target) &&
+        compareVal(computeExpr(r, "expr2", filterMode), expr2Cmp, expr2Target)
+      );
+    }}
+
+    function sortRows(rows) {{
+      const mult = state.dir === "asc" ? 1 : -1;
+      return rows.slice().sort((a, b) => {{
+        const key = state.key;
+        if (["player_name", "listed_height"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
+        if (CUSTOM_KEYS.includes(key)) return mult * ((Number(computeExpr(a, key)) || 0) - (Number(computeExpr(b, key)) || 0));
+        if (DISPLAY_TOGGLE_KEYS.includes(key)) return mult * ((Number(modeValue(a, key, displayModes[key])) || 0) - (Number(modeValue(b, key, displayModes[key])) || 0));
+        return mult * ((Number(a[key]) || 0) - (Number(b[key]) || 0));
+      }});
+    }}
+
+    function activeColumnKeys() {{
+      const keys = [];
+      const maybePush = (active, key) => {{ if (active && key && !keys.includes(key)) keys.push(key); }};
+      maybePush(document.getElementById("min_height_inches").value !== "" || document.getElementById("max_height_inches").value !== "", "listed_height");
+      maybePush(document.getElementById("min_age").value !== "" || document.getElementById("max_age").value !== "", "age");
+      maybePush(document.getElementById("min_career_year").value !== "" || document.getElementById("max_career_year").value !== "", "career_year");
+      maybePush(document.getElementById("min_draft_year").value !== "" || document.getElementById("max_draft_year").value !== "", "draft_year");
+      maybePush(document.getElementById("min_draft_overall_pick").value !== "" || document.getElementById("max_draft_overall_pick").value !== "", "draft_overall_pick");
+      maybePush(document.getElementById("min_games").value !== "" || document.getElementById("max_games").value !== "", "games");
+      maybePush(document.getElementById("min_minutes").value !== "" || document.getElementById("max_minutes").value !== "", "minutes");
+      maybePush(document.getElementById("min_pts").value !== "" || document.getElementById("max_pts").value !== "", "pts");
+      maybePush(document.getElementById("min_reb").value !== "" || document.getElementById("max_reb").value !== "", "reb");
+      maybePush(document.getElementById("min_oreb").value !== "" || document.getElementById("max_oreb").value !== "", "oreb");
+      maybePush(document.getElementById("min_dreb").value !== "" || document.getElementById("max_dreb").value !== "", "dreb");
+      maybePush(document.getElementById("min_ast").value !== "" || document.getElementById("max_ast").value !== "", "ast");
+      maybePush(document.getElementById("min_fg2a").value !== "" || document.getElementById("max_fg2a").value !== "", "fg2a");
+      maybePush(document.getElementById("min_fg2_pct").value !== "" || document.getElementById("max_fg2_pct").value !== "", "fg2_pct");
+      maybePush(document.getElementById("min_fg3a").value !== "" || document.getElementById("max_fg3a").value !== "", "fg3a");
+      maybePush(document.getElementById("min_fg3_pct").value !== "" || document.getElementById("max_fg3_pct").value !== "", "fg3_pct");
+      maybePush(document.getElementById("min_ft_pct").value !== "" || document.getElementById("max_ft_pct").value !== "", "ft_pct");
+      maybePush(document.getElementById("min_pm").value !== "" || document.getElementById("max_pm").value !== "", "plus_minus_actual");
+      maybePush(document.getElementById("min_adj_pm").value !== "" || document.getElementById("max_adj_pm").value !== "", "plus_minus_adjusted");
+      maybePush(document.getElementById("min_onoff_raw").value !== "" || document.getElementById("max_onoff_raw").value !== "", "on_off_actual");
+      maybePush(document.getElementById("min_onoff_adj").value !== "" || document.getElementById("max_onoff_adj").value !== "", "on_off_adjusted");
+      maybePush(document.getElementById("min_rim_anchor").value !== "" || document.getElementById("max_rim_anchor").value !== "", "rim_anchor_signature");
+      maybePush(document.getElementById("min_rim_det").value !== "" || document.getElementById("max_rim_det").value !== "", "rim_deterrence_signature");
+      maybePush(document.getElementById("min_rim_dfga").value !== "" || document.getElementById("max_rim_dfga").value !== "", "rim_dfga");
+      maybePush(document.getElementById("min_rim_dfg_pct").value !== "" || document.getElementById("max_rim_dfg_pct").value !== "", "rim_dfg_pct");
+      maybePush(document.getElementById("min_rim_dfg_pct_diff").value !== "" || document.getElementById("max_rim_dfg_pct_diff").value !== "", "rim_dfg_pct_diff");
+      maybePush(document.getElementById("min_layup_assists_created").value !== "" || document.getElementById("max_layup_assists_created").value !== "", "layup_assists_created");
+      maybePush(document.getElementById("min_dunk_assists_created").value !== "" || document.getElementById("max_dunk_assists_created").value !== "", "dunk_assists_created");
+      maybePush(document.getElementById("min_other_rim_assists_created").value !== "" || document.getElementById("max_other_rim_assists_created").value !== "", "other_rim_assists_created");
+      maybePush(document.getElementById("min_rim_assists_strict").value !== "" || document.getElementById("max_rim_assists_strict").value !== "", "rim_assists_strict");
+      maybePush(document.getElementById("min_rim_assists_all").value !== "" || document.getElementById("max_rim_assists_all").value !== "", "rim_assists_all");
+      maybePush(document.getElementById("min_deflections").value !== "" || document.getElementById("max_deflections").value !== "", "deflections");
+      maybePush(document.getElementById("min_screen_assists").value !== "" || document.getElementById("max_screen_assists").value !== "", "screen_assists");
+      maybePush(document.getElementById("min_contested_shots").value !== "" || document.getElementById("max_contested_shots").value !== "", "contested_shots");
+      maybePush(document.getElementById("min_charges_drawn").value !== "" || document.getElementById("max_charges_drawn").value !== "", "charges_drawn");
+      maybePush(document.getElementById("min_loose_balls_recovered").value !== "" || document.getElementById("max_loose_balls_recovered").value !== "", "loose_balls_recovered");
+      maybePush(document.getElementById("min_box_outs").value !== "" || document.getElementById("max_box_outs").value !== "", "box_outs");
+      maybePush(document.getElementById("split1_key").value !== "", document.getElementById("split1_key").value);
+      maybePush(document.getElementById("split2_key").value !== "", document.getElementById("split2_key").value);
+      maybePush(document.getElementById("expr1_cmp").value !== "" && document.getElementById("expr1_target").value !== "", "expr1");
+      maybePush(document.getElementById("expr2_cmp").value !== "" && document.getElementById("expr2_target").value !== "", "expr2");
+      return keys;
+    }}
+
+    function applyColumnOrder() {{
+      const headerRow = document.querySelector("#search-table thead tr");
+      const headers = Array.from(headerRow.children);
+      const currentKeys = headers.map(th => th.dataset.key);
+      const desired = ["player_name"].concat(activeColumnKeys());
+      const orderedKeys = desired.concat(currentKeys.filter(key => !desired.includes(key)));
+      const indexByKey = Object.fromEntries(currentKeys.map((key, idx) => [key, idx]));
+      headerRow.replaceChildren(...orderedKeys.map(key => headers[indexByKey[key]]));
+      document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
+        const cells = Array.from(tr.children);
+        tr.replaceChildren(...orderedKeys.map(key => cells[indexByKey[key]]));
+      }});
+    }}
+
+    function renderRows(rows) {{
+      const tbody = document.querySelector("#search-table tbody");
+      const mode = document.getElementById("stat_mode").value;
+      const shown = (row, key) => modeValue(row, key, displayModes[key] || "match");
+      document.getElementById("row_count").textContent = `${{rows.length.toLocaleString()}} players${{rows.length > 1000 ? ' (showing first 1,000)' : ''}}`;
+      document.getElementById("mode_note").textContent =
+        mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
+        : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
+        : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"));
+      updateCustomHeaders();
+      tbody.innerHTML = rows.slice(0, 1000).map(r => `
+        <tr>
+          <td>${{r.player_name || ""}}</td>
+          <td>${{r.listed_height || ""}}</td>
+          <td>${{r.age || ""}}</td>
+          <td>${{r.career_year || ""}}</td>
+          <td>${{r.draft_year || ""}}</td>
+          <td>${{r.draft_overall_pick || ""}}</td>
+          <td>${{fmt(r.games,0)}}</td>
+          <td>${{fmt(r.minutes,1)}}</td>
+          <td>${{fmt(shown(r, "pts"), displayModes["pts"] === "totals" || (displayModes["pts"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "reb"), displayModes["reb"] === "totals" || (displayModes["reb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "ast"), displayModes["ast"] === "totals" || (displayModes["ast"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "stl"), displayModes["stl"] === "totals" || (displayModes["stl"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "blk"), displayModes["blk"] === "totals" || (displayModes["blk"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "tov"), displayModes["tov"] === "totals" || (displayModes["tov"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "fg2a"), displayModes["fg2a"] === "totals" || (displayModes["fg2a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(r.fg2_pct,3)}}</td>
+          <td>${{fmt(shown(r, "fg3a"), displayModes["fg3a"] === "totals" || (displayModes["fg3a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(r.fg3_pct,3)}}</td>
+          <td>${{fmt(r.ft_pct,3)}}</td>
+          <td>${{fmt(shown(r, "fta"), displayModes["fta"] === "totals" || (displayModes["fta"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "assisted_fgm"), displayModes["assisted_fgm"] === "totals" || (displayModes["assisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "unassisted_fgm"), displayModes["unassisted_fgm"] === "totals" || (displayModes["unassisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(r.ts_game,3)}}</td>
+          <td class="${{cls(shown(r, "plus_minus_actual"))}}">${{fmt(shown(r, "plus_minus_actual"), displayModes["plus_minus_actual"] === "totals" || (displayModes["plus_minus_actual"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td class="${{cls(shown(r, "plus_minus_adjusted"))}}">${{fmt(shown(r, "plus_minus_adjusted"), displayModes["plus_minus_adjusted"] === "totals" || (displayModes["plus_minus_adjusted"] === "match" && mode === "totals") ? 3 : 2)}}</td>
+          <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual,2)}}</td>
+          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted,3)}}</td>
+          <td>${{fmt(r.rim_anchor_signature,3)}}</td>
+          <td>${{fmt(r.rim_deterrence_signature,3)}}</td>
+          <td>${{fmt(shown(r, "rim_dfga"), displayModes["rim_dfga"] === "totals" || (displayModes["rim_dfga"] === "match" && mode === "totals") ? 1 : 2)}}</td>
+          <td>${{fmt(r.rim_dfg_pct,3)}}</td>
+          <td>${{fmt(r.rim_dfg_pct_diff,3)}}</td>
+          <td>${{fmt(shown(r, "layup_assists_created"), displayModes["layup_assists_created"] === "totals" || (displayModes["layup_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "dunk_assists_created"), displayModes["dunk_assists_created"] === "totals" || (displayModes["dunk_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "other_rim_assists_created"), displayModes["other_rim_assists_created"] === "totals" || (displayModes["other_rim_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "rim_assists_strict"), displayModes["rim_assists_strict"] === "totals" || (displayModes["rim_assists_strict"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "rim_assists_all"), displayModes["rim_assists_all"] === "totals" || (displayModes["rim_assists_all"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "deflections"), displayModes["deflections"] === "totals" || (displayModes["deflections"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "screen_assists"), displayModes["screen_assists"] === "totals" || (displayModes["screen_assists"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "contested_shots"), displayModes["contested_shots"] === "totals" || (displayModes["contested_shots"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "charges_drawn"), displayModes["charges_drawn"] === "totals" || (displayModes["charges_drawn"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "loose_balls_recovered"), displayModes["loose_balls_recovered"] === "totals" || (displayModes["loose_balls_recovered"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(shown(r, "box_outs"), displayModes["box_outs"] === "totals" || (displayModes["box_outs"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td>${{fmt(computeExpr(r,"expr1"),2)}}</td>
+          <td>${{fmt(computeExpr(r,"expr2"),2)}}</td>
+        </tr>
+      `).join("");
+      applyColumnOrder();
+    }}
+
+    async function runSearch() {{
+      const neededSeasons = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
+      if (neededSeasons.length > 8) {{
+        document.getElementById("row_count").textContent = `Search too broad for in-browser loading. Narrow the season range first (${{neededSeasons.length}} seasons selected).`;
+        document.getElementById("mode_note").textContent = "";
+        return;
+      }}
+      document.getElementById("row_count").textContent = "Loading season data...";
+      try {{
+        await ensureSelectedSeasonsLoaded();
+        lastResults = sortRows(filteredAggRows());
+        renderRows(lastResults);
+      }} catch (err) {{
+        document.getElementById("row_count").textContent = `Failed to load season data: ${{err && err.message ? err.message : err}}`;
+        document.getElementById("mode_note").textContent = "";
+      }}
+    }}
+
+    function clearFilters() {{
+      document.querySelectorAll('input').forEach(el => el.value = '');
+      if (SEASONS.includes("2025-26")) {{
+        document.getElementById('season_start').value = "2025";
+        document.getElementById('season_end').value = "2025";
+      }} else {{
+        document.getElementById('season_start').value = 'ALL';
+        document.getElementById('season_end').value = 'ALL';
+      }}
+      document.getElementById('team').value = 'ALL';
+      document.getElementById('opp').value = 'ALL';
+      document.getElementById('stat_mode').value = 'totals';
+      DISPLAY_TOGGLE_KEYS.forEach(key => displayModes[key] = "match");
+      document.querySelectorAll(".mode-chip").forEach(btn => btn.textContent = "Match");
+      document.getElementById("expr1_left").value = "ast";
+      document.getElementById("expr1_right").value = "tov";
+      document.getElementById("expr1_op").value = "/";
+      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr1_cmp").value = "";
+      document.getElementById("expr2_left").value = "stl";
+      document.getElementById("expr2_right").value = "blk";
+      document.getElementById("expr2_op").value = "+";
+      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("expr2_cmp").value = "";
+      document.getElementById("split1_key").value = "";
+      document.getElementById("split2_key").value = "";
+      lastResults = [];
+      document.getElementById("row_count").textContent = "Set filters, then press Search";
+      document.getElementById("mode_note").textContent = "";
+      document.querySelector("#search-table tbody").innerHTML = "";
+      updateCustomHeaders();
+    }}
+
+    document.getElementById("run_search").addEventListener("click", () => {{ runSearch(); }});
+    document.getElementById("clear_filters").addEventListener("click", clearFilters);
+    document.querySelectorAll("input").forEach(el => el.addEventListener("keydown", (e) => {{
+      if (e.key === "Enter") runSearch();
+    }}));
+    document.querySelectorAll("#expr1_left,#expr1_right,#expr1_op,#expr1_label,#expr2_left,#expr2_right,#expr2_op,#expr2_label").forEach(el => el.addEventListener("change", updateCustomHeaders));
+    document.querySelectorAll("thead th.sortable").forEach(th => {{
+      th.addEventListener("click", () => {{
+        if (!lastResults.length) return;
+        const key = th.dataset.key;
+        if (state.key === key) {{
+          state.dir = state.dir === "desc" ? "asc" : "desc";
+        }} else {{
+          state.key = key;
+          state.dir = key === "player_name" ? "asc" : "desc";
+        }}
+        lastResults = sortRows(lastResults);
+        renderRows(lastResults);
+      }});
+    }});
+
+    populate();
+    clearFilters();
+    if (SEASONS.includes("2025-26")) {{
+      setTimeout(() => {{
+        loadSeasonChunk("2025-26").catch(() => {{}});
+      }}, 0);
+    }}
+  </script>
+</body>
+</html>
+"""
+
+    OUTPUT_DATA_PATH.write_text(html, encoding="utf-8")
+    OUTPUT_SITE_PATH.write_text(html, encoding="utf-8")
+    print(f"Report saved to: {OUTPUT_DATA_PATH}")
+    print(f"Also saved to: {OUTPUT_SITE_PATH}")
+    return OUTPUT_SITE_PATH
+
+
+if __name__ == "__main__":
+    generate_player_span_search_report()

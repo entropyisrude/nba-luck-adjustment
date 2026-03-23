@@ -1,0 +1,1184 @@
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+import duckdb
+
+
+ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+DATA_DIR = ROOT / "data"
+DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics.duckdb")))
+OUTPUT_DATA_PATH = Path(os.environ.get("PLAYER_GAME_SEARCH_OUTPUT_DATA_PATH", str(DATA_DIR / "player_game_search.html")))
+OUTPUT_SITE_PATH = Path(os.environ.get("PLAYER_GAME_SEARCH_OUTPUT_SITE_PATH", str(ROOT / "game-search.html")))
+CHUNK_DIR = Path(os.environ.get("PLAYER_GAME_SEARCH_CHUNK_DIR", str(DATA_DIR / "player_game_chunks")))
+PAGE_TITLE = os.environ.get("PLAYER_GAME_SEARCH_PAGE_TITLE", "Player Game Search")
+SPAN_SEARCH_HREF = os.environ.get("PLAYER_SPAN_SEARCH_HREF", "player-span-search.html")
+REGULAR_GAME_SEARCH_HREF = os.environ.get("REGULAR_GAME_SEARCH_HREF", "game-search.html")
+REGULAR_SPAN_SEARCH_HREF = os.environ.get("REGULAR_SPAN_SEARCH_HREF", "player-span-search.html")
+PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-search-playoffs.html")
+PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
+SOURCE_LABEL = os.environ.get("PLAYER_GAME_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
+ALLOW_PER100 = os.environ.get("PLAYER_GAME_SEARCH_ALLOW_PER100", "1") != "0"
+
+
+def _season_start(season: str) -> int:
+    return int(str(season).split("-")[0])
+
+
+def _season_label(start: int, end: int) -> str:
+    return f"{start}-{end}"
+
+
+def _season_slug(season: str) -> str:
+    return season.replace("-", "_")
+
+
+def generate_player_game_search_report() -> Path:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    available_cols = {
+        row[1]
+        for row in con.execute("PRAGMA table_info('player_game_facts')").fetchall()
+    }
+
+    def select_col(name: str) -> str:
+        return name if name in available_cols else f"NULL AS {name}"
+
+    rows = con.execute(
+        """
+        SELECT
+            CAST(date AS VARCHAR) AS date,
+            season,
+            game_id,
+            player_id,
+            player_name,
+            team_abbr,
+            opp_team_abbr,
+            home_away,
+            win_loss,
+            starter,
+            minutes,
+            pts,
+            reb,
+            oreb,
+            dreb,
+            ast,
+            stl,
+            blk,
+            tov,
+            pf,
+            fgm,
+            fga,
+            fg2m,
+            fg2a,
+            fg2_pct,
+            fg3m,
+            fg3a,
+            fg3_pct,
+            ftm,
+            fta,
+            ft_pct,
+            assisted_2pm,
+            unassisted_2pm,
+            assisted_3pm,
+            unassisted_3pm,
+            assisted_fgm,
+            unassisted_fgm,
+            {listed_height},
+            {height_inches},
+            {age},
+            {career_year},
+            {draft_year},
+            {draft_overall_pick},
+            on_possessions,
+            ts_game,
+            double_double,
+            triple_double,
+            plus_minus_actual,
+            plus_minus_adjusted,
+            plus_minus_delta,
+            on_off_actual,
+            on_off_adjusted,
+            on_off_delta
+        FROM player_game_facts
+        WHERE pts IS NOT NULL
+        ORDER BY date DESC, pts DESC, plus_minus_adjusted DESC
+        """
+        .format(
+            listed_height=select_col("listed_height"),
+            height_inches=select_col("height_inches"),
+            age=select_col("age"),
+            career_year=select_col("career_year"),
+            draft_year=select_col("draft_year"),
+            draft_overall_pick=select_col("draft_overall_pick"),
+        )
+    ).fetchall()
+    cols = [d[0] for d in con.description]
+    con.close()
+
+    col_index = {name: idx for idx, name in enumerate(cols)}
+    compact_rows = [list(row) for row in rows]
+    seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
+    teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
+    opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
+    season_starts = sorted(_season_start(s) for s in seasons)
+    CHUNK_DIR.mkdir(parents=True, exist_ok=True)
+    season_files: dict[str, str] = {}
+    for season in seasons:
+        season_rows = [r for r in compact_rows if r[col_index["season"]] == season]
+        slug = _season_slug(season)
+        filename = f"{slug}.js"
+        season_files[season] = filename
+        chunk_js = (
+            "window.__PLAYER_GAME_CHUNKS = window.__PLAYER_GAME_CHUNKS || {};\n"
+            f"window.__PLAYER_GAME_CHUNKS[{json.dumps(season)}] = "
+            f"{json.dumps(season_rows, ensure_ascii=False, separators=(',', ':'))};\n"
+        )
+        (CHUNK_DIR / filename).write_text(chunk_js, encoding="utf-8")
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{PAGE_TITLE}</title>
+  <style>
+    :root {{
+      --bg: #f2f6fb;
+      --card: #fff;
+      --line: #d6e1ef;
+      --ink: #192231;
+      --muted: #5b6778;
+      --good: #0f766e;
+      --bad: #b91c1c;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }}
+    .wrap {{ max-width: 1500px; margin: 0 auto; padding: 18px; }}
+    .hero {{
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      border: 1px solid #254b72;
+      margin-bottom: 14px;
+      text-align: center;
+    }}
+    h1 {{ margin: 0; font-size: 28px; }}
+    .nav {{ margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }}
+    .nav a {{
+      color: #e8f4ff;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }}
+    .card {{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06);
+      margin-bottom: 14px;
+    }}
+    .controls {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }}
+    .filter-group {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fbfdff;
+    }}
+    .filter-group h3 {{
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #123154;
+    }}
+    .controls label {{ font-size: 12px; color: var(--muted); display: grid; gap: 4px; }}
+    .range {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }}
+    select, input {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+      min-width: 100px;
+      background: #fff;
+      color: var(--ink);
+    }}
+    .table-wrap {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 700px;
+      background: #fff;
+    }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+    th, td {{
+      border-bottom: 1px solid #edf2f9;
+      padding: 7px 8px;
+      text-align: right;
+      white-space: nowrap;
+    }}
+    th:first-child, td:first-child,
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4) {{ text-align: left; }}
+    thead th {{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #edf3fc;
+      color: #123154;
+    }}
+    thead th.sortable {{ cursor: pointer; }}
+    .pos {{ color: var(--good); font-weight: 600; }}
+    .neg {{ color: var(--bad); font-weight: 600; }}
+    .muted {{ color: var(--muted); }}
+    .summary {{ display:flex; gap:18px; flex-wrap:wrap; margin-bottom: 8px; font-size:13px; color: var(--muted); }}
+    .actions {{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }}
+    button {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: #123154;
+      color: #fff;
+      cursor: pointer;
+    }}
+    button.secondary {{
+      background: #fff;
+      color: var(--ink);
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>{PAGE_TITLE}</h1>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="{REGULAR_GAME_SEARCH_HREF}">Game Search</a>
+        <a href="{REGULAR_SPAN_SEARCH_HREF}">Player Span Search</a>
+        <a href="{PLAYOFF_GAME_SEARCH_HREF}">Game Search: Playoffs</a>
+        <a href="{PLAYOFF_SPAN_SEARCH_HREF}">Player Span Search: Playoffs</a>
+        <a href="onoff-daily.html">+/- Games</a>
+        <a href="onoff.html">+/- Stats</a>
+        <a href="rapm.html">RAPM</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="muted">Search player games by boxscore stats plus raw and adjusted plus-minus. Generated {ts} from <code>{SOURCE_LABEL}</code>. Season data loads on demand when you search.</p>
+      <div class="filter-group">
+        <h3>Scope</h3>
+        <div class="controls">
+        <label>Season start
+          <select id="season_start"><option value="ALL">All</option></select>
+        </label>
+        <label>Season end
+          <select id="season_end"><option value="ALL">All</option></select>
+        </label>
+        <label>Team
+          <select id="team"><option value="ALL">All</option></select>
+        </label>
+        <label>Opponent
+          <select id="opp"><option value="ALL">All</option></select>
+        </label>
+        <label>Stat mode
+          <select id="stat_mode">
+            <option value="totals">Totals</option>
+            <option value="per36">Per 36</option>
+            {"<option value=\"per100\">Per 100 poss</option>" if ALLOW_PER100 else ""}
+          </select>
+        </label>
+        <label>Date range
+          <div class="range">
+            <input id="date_from" type="date" />
+            <input id="date_to" type="date" />
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <h3>Bio</h3>
+        <div class="controls">
+        <label>Player
+          <input id="player" type="text" placeholder="Name contains..." />
+        </label>
+        <label>Height
+          <div class="range">
+            <select id="min_height_inches"><option value="">Min</option></select>
+            <select id="max_height_inches"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Age
+          <div class="range">
+            <select id="min_age"><option value="">Min</option></select>
+            <select id="max_age"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Career Year
+          <div class="range">
+            <select id="min_career_year"><option value="">Min</option></select>
+            <select id="max_career_year"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Draft Year
+          <div class="range">
+            <select id="min_draft_year"><option value="">Min</option></select>
+            <select id="max_draft_year"><option value="">Max</option></select>
+          </div>
+        </label>
+        <label>Draft Slot
+          <div class="range">
+            <select id="min_draft_overall_pick"><option value="">Min</option></select>
+            <select id="max_draft_overall_pick"><option value="">Max</option></select>
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <h3>Box Score</h3>
+        <div class="controls">
+        <label>Minutes
+          <div class="range">
+            <input id="min_minutes" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_minutes" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Points
+          <div class="range">
+            <input id="min_pts" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_pts" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Rebounds
+          <div class="range">
+            <input id="min_reb" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_reb" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>ORB
+          <div class="range">
+            <input id="min_oreb" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_oreb" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>DRB
+          <div class="range">
+            <input id="min_dreb" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_dreb" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Assists
+          <div class="range">
+            <input id="min_ast" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_ast" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Steals
+          <div class="range">
+            <input id="min_stl" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_stl" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Blocks
+          <div class="range">
+            <input id="min_blk" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_blk" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Turnovers
+          <div class="range">
+            <input id="min_tov" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_tov" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FGM
+          <div class="range">
+            <input id="min_fgm" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fgm" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FGA
+          <div class="range">
+            <input id="min_fga" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fga" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>2PA
+          <div class="range">
+            <input id="min_fg2a" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fg2a" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>2P%
+          <div class="range">
+            <input id="min_fg2_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_fg2_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>3PM
+          <div class="range">
+            <input id="min_fg3m" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fg3m" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>3PA
+          <div class="range">
+            <input id="min_fg3a" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fg3a" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>3P%
+          <div class="range">
+            <input id="min_fg3_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_fg3_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FTM
+          <div class="range">
+            <input id="min_ftm" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_ftm" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FTA
+          <div class="range">
+            <input id="min_fta" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_fta" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>FT%
+          <div class="range">
+            <input id="min_ft_pct" type="number" step="0.001" value="" placeholder="Min" />
+            <input id="max_ft_pct" type="number" step="0.001" value="" placeholder="Max" />
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <h3>Shot Creation</h3>
+        <div class="controls">
+        <label>Shot split filter 1
+          <div class="range">
+            <select id="split1_key"></select>
+            <input id="split1_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split1_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
+        </label>
+        <label>Shot split filter 2
+          <div class="range">
+            <select id="split2_key"></select>
+            <input id="split2_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split2_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <h3>Impact</h3>
+        <div class="controls">
+        <label>Raw PM
+          <div class="range">
+            <input id="min_pm" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_pm" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Adj PM
+          <div class="range">
+            <input id="min_adj_pm" type="number" step="1" value="" placeholder="Min" />
+            <input id="max_adj_pm" type="number" step="1" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Raw On/Off
+          <div class="range">
+            <input id="min_onoff_raw" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_onoff_raw" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>Adj On/Off
+          <div class="range">
+            <input id="min_onoff_adj" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_onoff_adj" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        <label>TS
+          <div class="range">
+            <input id="min_ts" type="number" step="0.01" value="" placeholder="Min" />
+            <input id="max_ts" type="number" step="0.01" value="" placeholder="Max" />
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <h3>Custom</h3>
+        <div class="controls">
+        <label>Custom metric 1
+          <div class="range">
+            <select id="expr1_left"></select>
+            <select id="expr1_op">
+              <option value="/">/</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr1_right"></select>
+            <input id="expr1_label" type="text" placeholder="Label" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr1_cmp">
+              <option value="">Off</option>
+              <option value=">=">>=</option>
+              <option value="=">=</option>
+              <option value="<="><=</option>
+            </select>
+            <input id="expr1_target" type="number" step="0.01" value="" placeholder="Value" />
+          </div>
+        </label>
+        <label>Custom metric 2
+          <div class="range">
+            <select id="expr2_left"></select>
+            <select id="expr2_op">
+              <option value="/">/</option>
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr2_right"></select>
+            <input id="expr2_label" type="text" placeholder="Label" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <select id="expr2_cmp">
+              <option value="">Off</option>
+              <option value=">=">>=</option>
+              <option value="=">=</option>
+              <option value="<="><=</option>
+            </select>
+            <input id="expr2_target" type="number" step="0.01" value="" placeholder="Value" />
+          </div>
+        </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="run_search" type="button">Search</button>
+        <button id="clear_filters" class="secondary" type="button">Clear</button>
+      </div>
+      <div class="summary">
+        <span id="row_count"></span>
+        <span id="mode_note"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="search-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="date">Date</th>
+              <th class="sortable" data-key="player_name">Player</th>
+              <th class="sortable" data-key="listed_height">Ht</th>
+              <th class="sortable" data-key="age">Age</th>
+              <th class="sortable" data-key="career_year">Yr</th>
+              <th class="sortable" data-key="draft_year">Draft Yr</th>
+              <th class="sortable" data-key="draft_overall_pick">Draft</th>
+              <th class="sortable" data-key="team_abbr">Team</th>
+              <th class="sortable" data-key="opp_team_abbr">Opp</th>
+              <th class="sortable" data-key="minutes">Min</th>
+              <th class="sortable" data-key="pts">PTS</th>
+              <th class="sortable" data-key="reb">REB</th>
+              <th class="sortable" data-key="ast">AST</th>
+              <th class="sortable" data-key="fgm">FGM</th>
+              <th class="sortable" data-key="fga">FGA</th>
+              <th class="sortable" data-key="fg2a">2PA</th>
+              <th class="sortable" data-key="fg2_pct">2P%</th>
+              <th class="sortable" data-key="fg3m">3PM</th>
+              <th class="sortable" data-key="fg3a">3PA</th>
+              <th class="sortable" data-key="fg3_pct">3P%</th>
+              <th class="sortable" data-key="ftm">FTM</th>
+              <th class="sortable" data-key="fta">FTA</th>
+              <th class="sortable" data-key="ft_pct">FT%</th>
+              <th class="sortable" data-key="assisted_fgm">Ast FGM</th>
+              <th class="sortable" data-key="unassisted_fgm">Unast FGM</th>
+              <th class="sortable" data-key="ts_game">TS</th>
+              <th class="sortable" data-key="plus_minus_actual">Raw PM</th>
+              <th class="sortable" data-key="plus_minus_adjusted">Adj PM</th>
+              <th class="sortable" data-key="on_off_actual">Raw On/Off</th>
+              <th class="sortable" data-key="on_off_adjusted">Adj On/Off</th>
+              <th class="sortable" data-key="expr1" id="expr1_header">AST/TOV</th>
+              <th class="sortable" data-key="expr2" id="expr2_header">STL+BLK</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const COLS = {json.dumps(cols, ensure_ascii=False)};
+    const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
+    let ROWS = [];
+    window.__PLAYER_GAME_CHUNKS = window.__PLAYER_GAME_CHUNKS || {{}};
+    const DATA_FILES = {json.dumps(season_files, ensure_ascii=False)};
+    const LOADED_SEASONS = new Set();
+    const SEASONS = {json.dumps(seasons, ensure_ascii=False)};
+    const SEASON_STARTS = {json.dumps(season_starts, ensure_ascii=False)};
+    const TEAMS = {json.dumps(teams, ensure_ascii=False)};
+    const OPPS = {json.dumps(opps, ensure_ascii=False)};
+    const HEIGHT_VALUES = {json.dumps(list(range(65, 92)), ensure_ascii=False)};
+    const AGE_VALUES = {json.dumps(list(range(18, 46)), ensure_ascii=False)};
+    const CAREER_YEAR_VALUES = {json.dumps(list(range(1, 24)), ensure_ascii=False)};
+    const DRAFT_YEAR_VALUES = {json.dumps(list(range(1963, 2026)), ensure_ascii=False)};
+    const DRAFT_PICK_VALUES = {json.dumps(list(range(1, 166)), ensure_ascii=False)};
+    const state = {{ key: "date", dir: "desc" }};
+    let lastResults = [];
+    const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
+
+    const COUNT_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"];
+    const CUSTOM_KEYS = ["expr1","expr2"];
+    const NUMERIC_OPTIONS = [
+      ["pts","PTS"],["reb","REB"],["oreb","ORB"],["dreb","DRB"],["ast","AST"],["stl","STL"],["blk","BLK"],["tov","TOV"],
+      ["fgm","FGM"],["fga","FGA"],["fg2m","2PM"],["fg2a","2PA"],["fg2_pct","2P%"],["fg3m","3PM"],["fg3a","3PA"],["fg3_pct","3P%"],["ftm","FTM"],["fta","FTA"],["ft_pct","FT%"],
+      ["assisted_2pm","Ast 2PM"],["unassisted_2pm","Unast 2PM"],["assisted_3pm","Ast 3PM"],["unassisted_3pm","Unast 3PM"],["assisted_fgm","Ast FGM"],["unassisted_fgm","Unast FGM"],
+      ["plus_minus_actual","Raw PM"],["plus_minus_adjusted","Adj PM"],["on_off_actual","Raw On/Off"],["on_off_adjusted","Adj On/Off"],["age","Age"],["career_year","Career Yr"],["draft_year","Draft Yr"],["draft_overall_pick","Draft Slot"],["height_inches","Height"]
+    ];
+    const SPLIT_FILTER_OPTIONS = [
+      ["", "Off"],
+      ["fgm", "FGM"],
+      ["fg2m", "2PM"],
+      ["fg3m", "3PM"],
+      ["assisted_fgm", "Ast FGM"],
+      ["unassisted_fgm", "Unast FGM"],
+      ["assisted_2pm", "Ast 2PM"],
+      ["unassisted_2pm", "Unast 2PM"],
+      ["assisted_3pm", "Ast 3PM"],
+      ["unassisted_3pm", "Unast 3PM"]
+    ];
+    const fmt = (x, d=1) => (x === null || x === undefined || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
+    const cls = (x) => (Number(x) > 0 ? "pos" : (Number(x) < 0 ? "neg" : ""));
+    const inRange = (value, minVal, maxVal) => {{
+      const hasMin = minVal !== "";
+      const hasMax = maxVal !== "";
+      if (!hasMin && !hasMax) return true;
+      if (value === null || value === undefined || value === "") return false;
+      const n = Number(value);
+      if (Number.isNaN(n)) return false;
+      return (!hasMin || n >= Number(minVal)) && (!hasMax || n <= Number(maxVal));
+    }};
+    const compareVal = (value, cmp, target) => {{
+      if (!cmp || target === "") return true;
+      const n = Number(value);
+      const t = Number(target);
+      if (Number.isNaN(n) || Number.isNaN(t)) return false;
+      if (cmp === ">=") return n >= t;
+      if (cmp === "<=") return n <= t;
+      if (cmp === "=") return n === t;
+      return true;
+    }};
+    const v = (r, key) => r[IDX[key]];
+    const numericVal = (r, key, mode) => COUNT_KEYS.includes(key) ? displayVal(r, key, mode) : Number(v(r, key) || 0);
+    const displayVal = (r, key, mode) => {{
+      const raw = Number(v(r, key) || 0);
+      if (mode === "per36") {{
+        const minutes = Number(v(r, "minutes") || 0);
+        if (!minutes || minutes <= 0) return null;
+        return raw * 36 / minutes;
+      }}
+      if (mode === "per100") {{
+        const poss = Number(v(r, "on_possessions") || 0);
+        if (!poss || poss <= 0) return null;
+        return raw * 100 / poss;
+      }}
+      return raw;
+    }};
+    const computeExpr = (r, slot, mode) => {{
+      const left = document.getElementById(`${{slot}}_left`).value;
+      const op = document.getElementById(`${{slot}}_op`).value;
+      const right = document.getElementById(`${{slot}}_right`).value;
+      const a = numericVal(r, left, mode);
+      const b = numericVal(r, right, mode);
+      if (a === null || a === undefined || Number.isNaN(Number(a))) return null;
+      if (b === null || b === undefined || Number.isNaN(Number(b))) return null;
+      if (op === "/") {{
+        if (Number(b) === 0) return null;
+        return Number(a) / Number(b);
+      }}
+      if (op === "+") return Number(a) + Number(b);
+      if (op === "-") return Number(a) - Number(b);
+      return null;
+    }};
+    const customLabel = (slot) => {{
+      const leftEl = document.getElementById(`${{slot}}_left`);
+      const rightEl = document.getElementById(`${{slot}}_right`);
+      const op = document.getElementById(`${{slot}}_op`).value;
+      const manual = document.getElementById(`${{slot}}_label`).value.trim();
+      if (manual) return manual;
+      const leftText = leftEl.options[leftEl.selectedIndex]?.text || "Stat";
+      const rightText = rightEl.options[rightEl.selectedIndex]?.text || "Stat";
+      return `${{leftText}} ${{op}} ${{rightText}}`;
+    }};
+
+    function seasonStart(season) {{
+      return Number(String(season || "").split("-")[0] || 0);
+    }}
+
+    function seasonMatches(rowSeason, selectedStart, selectedEnd) {{
+      const rowStart = seasonStart(rowSeason);
+      const startOk = selectedStart === "ALL" || rowStart >= Number(selectedStart);
+      const endOk = selectedEnd === "ALL" || rowStart <= Number(selectedEnd);
+      return startOk && endOk;
+    }}
+
+    function populate() {{
+      const opts = ['<option value="ALL">All</option>'].concat(
+        SEASONS.map(s => {{
+          const start = seasonStart(s);
+          return `<option value="${{start}}">${{s}}</option>`;
+        }})
+      ).join("");
+      document.getElementById("season_start").innerHTML = opts;
+      document.getElementById("season_end").innerHTML = opts;
+      document.getElementById("team").innerHTML = '<option value="ALL">All</option>' + TEAMS.map(t => `<option value="${{t}}">${{t}}</option>`).join("");
+      document.getElementById("opp").innerHTML = '<option value="ALL">All</option>' + OPPS.map(t => `<option value="${{t}}">${{t}}</option>`).join("");
+      const formatHeight = (inches) => {{
+        const feet = Math.floor(Number(inches) / 12);
+        const rem = Number(inches) % 12;
+        return `${{feet}}-${{rem}}`;
+      }};
+      const fillRangeSelects = (minId, maxId, values, formatter=null) => {{
+        const labelFor = (v) => formatter ? formatter(v) : v;
+        const opts = ['<option value="">Min</option>'].concat(values.map(v => `<option value="${{v}}">${{labelFor(v)}}</option>`)).join("");
+        const optsMax = ['<option value="">Max</option>'].concat(values.map(v => `<option value="${{v}}">${{labelFor(v)}}</option>`)).join("");
+        document.getElementById(minId).innerHTML = opts;
+        document.getElementById(maxId).innerHTML = optsMax;
+      }};
+      fillRangeSelects("min_height_inches", "max_height_inches", HEIGHT_VALUES, formatHeight);
+      fillRangeSelects("min_age", "max_age", AGE_VALUES);
+      fillRangeSelects("min_career_year", "max_career_year", CAREER_YEAR_VALUES);
+      fillRangeSelects("min_draft_year", "max_draft_year", DRAFT_YEAR_VALUES);
+      fillRangeSelects("min_draft_overall_pick", "max_draft_overall_pick", DRAFT_PICK_VALUES);
+      const exprOpts = NUMERIC_OPTIONS.map(([value, label]) => `<option value="${{value}}">${{label}}</option>`).join("");
+      ["expr1_left","expr1_right","expr2_left","expr2_right"].forEach(id => {{
+        document.getElementById(id).innerHTML = exprOpts;
+      }});
+      const splitOpts = SPLIT_FILTER_OPTIONS.map(([value, label]) => `<option value="${{value}}">${{label}}</option>`).join("");
+      document.getElementById("split1_key").innerHTML = splitOpts;
+      document.getElementById("split2_key").innerHTML = splitOpts;
+      document.getElementById("expr1_left").value = "ast";
+      document.getElementById("expr1_right").value = "tov";
+      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr2_left").value = "stl";
+      document.getElementById("expr2_right").value = "blk";
+      document.getElementById("expr2_op").value = "+";
+      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("split1_key").value = "";
+      document.getElementById("split2_key").value = "";
+      if (SEASONS.includes("2025-26")) {{
+        document.getElementById("season_start").value = "2025";
+        document.getElementById("season_end").value = "2025";
+      }}
+      updateCustomHeaders();
+    }}
+
+    function selectedSeasons() {{
+      const seasonStartVal = document.getElementById("season_start").value;
+      const seasonEndVal = document.getElementById("season_end").value;
+      if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
+      return SEASONS.filter(season => seasonMatches(season, seasonStartVal, seasonEndVal));
+    }}
+
+    async function loadSeasonChunk(season) {{
+      if (!season || LOADED_SEASONS.has(season)) return;
+      const file = DATA_FILES[season];
+      if (!file) return;
+      await new Promise((resolve, reject) => {{
+        const script = document.createElement("script");
+        script.src = CHUNK_BASE + file;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load season data for ${{season}}`));
+        document.head.appendChild(script);
+      }});
+      const chunk = window.__PLAYER_GAME_CHUNKS[season] || [];
+      ROWS = ROWS.concat(chunk);
+      LOADED_SEASONS.add(season);
+    }}
+
+    async function ensureSelectedSeasonsLoaded() {{
+      const needed = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
+      for (const season of needed) {{
+        await loadSeasonChunk(season);
+      }}
+    }}
+
+    function updateCustomHeaders() {{
+      document.getElementById("expr1_header").textContent = customLabel("expr1");
+      document.getElementById("expr2_header").textContent = customLabel("expr2");
+    }}
+
+    function splitFilterPass(r, slot, mode) {{
+      const key = document.getElementById(`${{slot}}_key`).value;
+      const minVal = document.getElementById(`${{slot}}_min`).value;
+      const maxVal = document.getElementById(`${{slot}}_max`).value;
+      if (!key) return true;
+      const value = COUNT_KEYS.includes(key) ? displayVal(r, key, mode) : Number(v(r, key) || 0);
+      return inRange(value, minVal, maxVal);
+    }}
+
+    function filteredRows() {{
+      const seasonStartVal = document.getElementById("season_start").value;
+      const seasonEndVal = document.getElementById("season_end").value;
+      const team = document.getElementById("team").value;
+      const opp = document.getElementById("opp").value;
+      const player = document.getElementById("player").value.trim().toLowerCase();
+      const minHeightInches = document.getElementById("min_height_inches").value;
+      const maxHeightInches = document.getElementById("max_height_inches").value;
+      const minAge = document.getElementById("min_age").value;
+      const maxAge = document.getElementById("max_age").value;
+      const minCareerYear = document.getElementById("min_career_year").value;
+      const maxCareerYear = document.getElementById("max_career_year").value;
+      const minDraftYear = document.getElementById("min_draft_year").value;
+      const maxDraftYear = document.getElementById("max_draft_year").value;
+      const minDraftOverallPick = document.getElementById("min_draft_overall_pick").value;
+      const maxDraftOverallPick = document.getElementById("max_draft_overall_pick").value;
+      const dateFrom = document.getElementById("date_from").value;
+      const dateTo = document.getElementById("date_to").value;
+      const statMode = document.getElementById("stat_mode").value;
+      const minMinutes = document.getElementById("min_minutes").value;
+      const maxMinutes = document.getElementById("max_minutes").value;
+      const minPts = document.getElementById("min_pts").value;
+      const maxPts = document.getElementById("max_pts").value;
+      const minReb = document.getElementById("min_reb").value;
+      const maxReb = document.getElementById("max_reb").value;
+      const minOreb = document.getElementById("min_oreb").value;
+      const maxOreb = document.getElementById("max_oreb").value;
+      const minDreb = document.getElementById("min_dreb").value;
+      const maxDreb = document.getElementById("max_dreb").value;
+      const minAst = document.getElementById("min_ast").value;
+      const maxAst = document.getElementById("max_ast").value;
+      const minStl = document.getElementById("min_stl").value;
+      const maxStl = document.getElementById("max_stl").value;
+      const minBlk = document.getElementById("min_blk").value;
+      const maxBlk = document.getElementById("max_blk").value;
+      const minTov = document.getElementById("min_tov").value;
+      const maxTov = document.getElementById("max_tov").value;
+      const minFgm = document.getElementById("min_fgm").value;
+      const maxFgm = document.getElementById("max_fgm").value;
+      const minFga = document.getElementById("min_fga").value;
+      const maxFga = document.getElementById("max_fga").value;
+      const minFg2a = document.getElementById("min_fg2a").value;
+      const maxFg2a = document.getElementById("max_fg2a").value;
+      const minFg2Pct = document.getElementById("min_fg2_pct").value;
+      const maxFg2Pct = document.getElementById("max_fg2_pct").value;
+      const minFg3m = document.getElementById("min_fg3m").value;
+      const maxFg3m = document.getElementById("max_fg3m").value;
+      const minFg3a = document.getElementById("min_fg3a").value;
+      const maxFg3a = document.getElementById("max_fg3a").value;
+      const minFg3Pct = document.getElementById("min_fg3_pct").value;
+      const maxFg3Pct = document.getElementById("max_fg3_pct").value;
+      const minFtm = document.getElementById("min_ftm").value;
+      const maxFtm = document.getElementById("max_ftm").value;
+      const minFta = document.getElementById("min_fta").value;
+      const maxFta = document.getElementById("max_fta").value;
+      const minFtPct = document.getElementById("min_ft_pct").value;
+      const maxFtPct = document.getElementById("max_ft_pct").value;
+      const minPmRawVal = document.getElementById("min_pm").value;
+      const maxPmRawVal = document.getElementById("max_pm").value;
+      const minPmAdjVal = document.getElementById("min_adj_pm").value;
+      const maxPmAdjVal = document.getElementById("max_adj_pm").value;
+      const minOnOffRawVal = document.getElementById("min_onoff_raw").value;
+      const maxOnOffRawVal = document.getElementById("max_onoff_raw").value;
+      const minOnOffAdjVal = document.getElementById("min_onoff_adj").value;
+      const maxOnOffAdjVal = document.getElementById("max_onoff_adj").value;
+      const minTsVal = document.getElementById("min_ts").value;
+      const maxTsVal = document.getElementById("max_ts").value;
+      const expr1Cmp = document.getElementById("expr1_cmp").value;
+      const expr1Target = document.getElementById("expr1_target").value;
+      const expr2Cmp = document.getElementById("expr2_cmp").value;
+      const expr2Target = document.getElementById("expr2_target").value;
+      if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) {{
+        return [];
+      }}
+      return ROWS.filter(r =>
+        (statMode !== "per100" || Number(v(r, "on_possessions") || 0) > 0) &&
+        seasonMatches(v(r, "season"), seasonStartVal, seasonEndVal) &&
+        (team === "ALL" || v(r, "team_abbr") === team) &&
+        (opp === "ALL" || v(r, "opp_team_abbr") === opp) &&
+        (!player || String(v(r, "player_name") || "").toLowerCase().includes(player)) &&
+        inRange(v(r, "height_inches"), minHeightInches, maxHeightInches) &&
+        inRange(v(r, "age"), minAge, maxAge) &&
+        inRange(v(r, "career_year"), minCareerYear, maxCareerYear) &&
+        inRange(v(r, "draft_year"), minDraftYear, maxDraftYear) &&
+        inRange(v(r, "draft_overall_pick"), minDraftOverallPick, maxDraftOverallPick) &&
+        (dateFrom === "" || String(v(r, "date") || "") >= dateFrom) &&
+        (dateTo === "" || String(v(r, "date") || "") <= dateTo) &&
+        inRange(v(r, "minutes"), minMinutes, maxMinutes) &&
+        inRange(displayVal(r, "pts", statMode), minPts, maxPts) &&
+        inRange(displayVal(r, "reb", statMode), minReb, maxReb) &&
+        inRange(displayVal(r, "oreb", statMode), minOreb, maxOreb) &&
+        inRange(displayVal(r, "dreb", statMode), minDreb, maxDreb) &&
+        inRange(displayVal(r, "ast", statMode), minAst, maxAst) &&
+        inRange(displayVal(r, "stl", statMode), minStl, maxStl) &&
+        inRange(displayVal(r, "blk", statMode), minBlk, maxBlk) &&
+        inRange(displayVal(r, "tov", statMode), minTov, maxTov) &&
+        inRange(displayVal(r, "fgm", statMode), minFgm, maxFgm) &&
+        inRange(displayVal(r, "fga", statMode), minFga, maxFga) &&
+        inRange(displayVal(r, "fg2a", statMode), minFg2a, maxFg2a) &&
+        inRange(v(r, "fg2_pct"), minFg2Pct, maxFg2Pct) &&
+        inRange(displayVal(r, "fg3m", statMode), minFg3m, maxFg3m) &&
+        inRange(displayVal(r, "fg3a", statMode), minFg3a, maxFg3a) &&
+        inRange(v(r, "fg3_pct"), minFg3Pct, maxFg3Pct) &&
+        inRange(displayVal(r, "ftm", statMode), minFtm, maxFtm) &&
+        inRange(displayVal(r, "fta", statMode), minFta, maxFta) &&
+        inRange(v(r, "ft_pct"), minFtPct, maxFtPct) &&
+        splitFilterPass(r, "split1", statMode) &&
+        splitFilterPass(r, "split2", statMode) &&
+        inRange(v(r, "plus_minus_actual"), minPmRawVal, maxPmRawVal) &&
+        inRange(v(r, "plus_minus_adjusted"), minPmAdjVal, maxPmAdjVal) &&
+        inRange(v(r, "on_off_actual"), minOnOffRawVal, maxOnOffRawVal) &&
+        inRange(v(r, "on_off_adjusted"), minOnOffAdjVal, maxOnOffAdjVal) &&
+        inRange(v(r, "ts_game"), minTsVal, maxTsVal) &&
+        compareVal(computeExpr(r, "expr1", statMode), expr1Cmp, expr1Target) &&
+        compareVal(computeExpr(r, "expr2", statMode), expr2Cmp, expr2Target)
+      );
+    }}
+
+    function sortRows(rows) {{
+      const mult = state.dir === "asc" ? 1 : -1;
+      const statMode = document.getElementById("stat_mode").value;
+      return rows.slice().sort((a, b) => {{
+        const key = state.key;
+        if (["date", "player_name", "listed_height", "team_abbr", "opp_team_abbr"].includes(key)) {{
+          return mult * String(v(a, key) || "").localeCompare(String(v(b, key) || ""));
+        }}
+        if (CUSTOM_KEYS.includes(key)) {{
+          return mult * ((Number(computeExpr(a, key, statMode)) || 0) - (Number(computeExpr(b, key, statMode)) || 0));
+        }}
+        if (COUNT_KEYS.includes(key) && statMode !== "totals") {{
+          return mult * ((Number(displayVal(a, key, statMode)) || 0) - (Number(displayVal(b, key, statMode)) || 0));
+        }}
+        return mult * (Number(v(a, key) || 0) - Number(v(b, key) || 0));
+      }});
+    }}
+
+    function activeColumnKeys() {{
+      const keys = [];
+      const maybePush = (active, key) => {{ if (active && key && !keys.includes(key)) keys.push(key); }};
+      maybePush(document.getElementById("team").value !== "ALL", "team_abbr");
+      maybePush(document.getElementById("opp").value !== "ALL", "opp_team_abbr");
+      maybePush(document.getElementById("min_height_inches").value !== "" || document.getElementById("max_height_inches").value !== "", "listed_height");
+      maybePush(document.getElementById("min_age").value !== "" || document.getElementById("max_age").value !== "", "age");
+      maybePush(document.getElementById("min_career_year").value !== "" || document.getElementById("max_career_year").value !== "", "career_year");
+      maybePush(document.getElementById("min_draft_year").value !== "" || document.getElementById("max_draft_year").value !== "", "draft_year");
+      maybePush(document.getElementById("min_draft_overall_pick").value !== "" || document.getElementById("max_draft_overall_pick").value !== "", "draft_overall_pick");
+      maybePush(document.getElementById("min_minutes").value !== "" || document.getElementById("max_minutes").value !== "", "minutes");
+      maybePush(document.getElementById("min_pts").value !== "" || document.getElementById("max_pts").value !== "", "pts");
+      maybePush(document.getElementById("min_reb").value !== "" || document.getElementById("max_reb").value !== "", "reb");
+      maybePush(document.getElementById("min_oreb").value !== "" || document.getElementById("max_oreb").value !== "", "oreb");
+      maybePush(document.getElementById("min_dreb").value !== "" || document.getElementById("max_dreb").value !== "", "dreb");
+      maybePush(document.getElementById("min_ast").value !== "" || document.getElementById("max_ast").value !== "", "ast");
+      maybePush(document.getElementById("min_stl").value !== "" || document.getElementById("max_stl").value !== "", "stl");
+      maybePush(document.getElementById("min_blk").value !== "" || document.getElementById("max_blk").value !== "", "blk");
+      maybePush(document.getElementById("min_tov").value !== "" || document.getElementById("max_tov").value !== "", "tov");
+      maybePush(document.getElementById("min_fgm").value !== "" || document.getElementById("max_fgm").value !== "", "fgm");
+      maybePush(document.getElementById("min_fga").value !== "" || document.getElementById("max_fga").value !== "", "fga");
+      maybePush(document.getElementById("min_fg2a").value !== "" || document.getElementById("max_fg2a").value !== "", "fg2a");
+      maybePush(document.getElementById("min_fg2_pct").value !== "" || document.getElementById("max_fg2_pct").value !== "", "fg2_pct");
+      maybePush(document.getElementById("min_fg3m").value !== "" || document.getElementById("max_fg3m").value !== "", "fg3m");
+      maybePush(document.getElementById("min_fg3a").value !== "" || document.getElementById("max_fg3a").value !== "", "fg3a");
+      maybePush(document.getElementById("min_fg3_pct").value !== "" || document.getElementById("max_fg3_pct").value !== "", "fg3_pct");
+      maybePush(document.getElementById("min_ftm").value !== "" || document.getElementById("max_ftm").value !== "", "ftm");
+      maybePush(document.getElementById("min_fta").value !== "" || document.getElementById("max_fta").value !== "", "fta");
+      maybePush(document.getElementById("min_ft_pct").value !== "" || document.getElementById("max_ft_pct").value !== "", "ft_pct");
+      maybePush(document.getElementById("min_pm").value !== "" || document.getElementById("max_pm").value !== "", "plus_minus_actual");
+      maybePush(document.getElementById("min_adj_pm").value !== "" || document.getElementById("max_adj_pm").value !== "", "plus_minus_adjusted");
+      maybePush(document.getElementById("min_onoff_raw").value !== "" || document.getElementById("max_onoff_raw").value !== "", "on_off_actual");
+      maybePush(document.getElementById("min_onoff_adj").value !== "" || document.getElementById("max_onoff_adj").value !== "", "on_off_adjusted");
+      maybePush(document.getElementById("min_ts").value !== "" || document.getElementById("max_ts").value !== "", "ts_game");
+      maybePush(document.getElementById("split1_key").value !== "", document.getElementById("split1_key").value);
+      maybePush(document.getElementById("split2_key").value !== "", document.getElementById("split2_key").value);
+      maybePush(document.getElementById("expr1_cmp").value !== "" && document.getElementById("expr1_target").value !== "", "expr1");
+      maybePush(document.getElementById("expr2_cmp").value !== "" && document.getElementById("expr2_target").value !== "", "expr2");
+      return keys;
+    }}
+
+    function applyColumnOrder() {{
+      const headerRow = document.querySelector("#search-table thead tr");
+      const headers = Array.from(headerRow.children);
+      const currentKeys = headers.map(th => th.dataset.key);
+      const desired = ["date", "player_name"].concat(activeColumnKeys());
+      const orderedKeys = desired.concat(currentKeys.filter(key => !desired.includes(key)));
+      const indexByKey = Object.fromEntries(currentKeys.map((key, idx) => [key, idx]));
+      headerRow.replaceChildren(...orderedKeys.map(key => headers[indexByKey[key]]));
+      document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
+        const cells = Array.from(tr.children);
+        tr.replaceChildren(...orderedKeys.map(key => cells[indexByKey[key]]));
+      }});
+    }}
+
+    function renderRows(rows) {{
+      const tbody = document.querySelector("#search-table tbody");
+      const statMode = document.getElementById("stat_mode").value;
+      document.getElementById("row_count").textContent = `${{rows.length.toLocaleString()}} games${{rows.length > 1000 ? ' (showing first 1,000)' : ''}}`;
+      document.getElementById("mode_note").textContent =
+        statMode === "per36" ? "counting-stat filters and columns shown per 36 minutes"
+        : (statMode === "per100" ? "counting-stat filters and columns shown per 100 on-court possessions" : "");
+      updateCustomHeaders();
+      tbody.innerHTML = rows.slice(0, 1000).map(r => `
+        <tr>
+          <td>${{v(r,"date") || ""}}</td>
+          <td>${{v(r,"player_name") || ""}}</td>
+          <td>${{v(r,"listed_height") || ""}}</td>
+          <td>${{v(r,"age") || ""}}</td>
+          <td>${{v(r,"career_year") || ""}}</td>
+          <td>${{v(r,"draft_year") || ""}}</td>
+          <td>${{v(r,"draft_overall_pick") || ""}}</td>
+          <td>${{v(r,"team_abbr") || ""}}</td>
+          <td>${{v(r,"opp_team_abbr") || ""}}</td>
+          <td>${{fmt(v(r,"minutes"))}}</td>
+          <td>${{fmt(displayVal(r,"pts",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"reb",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"ast",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"fgm",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"fga",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"fg2a",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(v(r,"fg2_pct"),3)}}</td>
+          <td>${{fmt(displayVal(r,"fg3m",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"fg3a",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(v(r,"fg3_pct"),3)}}</td>
+          <td>${{fmt(displayVal(r,"ftm",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"fta",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(v(r,"ft_pct"),3)}}</td>
+          <td>${{fmt(displayVal(r,"assisted_fgm",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(displayVal(r,"unassisted_fgm",statMode), statMode === "totals" ? 0 : 1)}}</td>
+          <td>${{fmt(v(r,"ts_game"),3)}}</td>
+          <td class="${{cls(v(r,"plus_minus_actual"))}}">${{fmt(v(r,"plus_minus_actual"),0)}}</td>
+          <td class="${{cls(v(r,"plus_minus_adjusted"))}}">${{fmt(v(r,"plus_minus_adjusted"),3)}}</td>
+          <td class="${{cls(v(r,"on_off_actual"))}}">${{fmt(v(r,"on_off_actual"),0)}}</td>
+          <td class="${{cls(v(r,"on_off_adjusted"))}}">${{fmt(v(r,"on_off_adjusted"),3)}}</td>
+          <td>${{fmt(computeExpr(r,"expr1",statMode),2)}}</td>
+          <td>${{fmt(computeExpr(r,"expr2",statMode),2)}}</td>
+        </tr>
+      `).join("");
+      applyColumnOrder();
+    }}
+
+    async function runSearch() {{
+      const neededSeasons = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
+      if (neededSeasons.length > 8) {{
+        document.getElementById("row_count").textContent = `Search too broad for in-browser loading. Narrow the season range first (${{neededSeasons.length}} seasons selected).`;
+        document.getElementById("mode_note").textContent = "";
+        return;
+      }}
+      document.getElementById("row_count").textContent = "Loading season data...";
+      try {{
+        await ensureSelectedSeasonsLoaded();
+        lastResults = sortRows(filteredRows());
+        renderRows(lastResults);
+      }} catch (err) {{
+        document.getElementById("row_count").textContent = `Failed to load season data: ${{err && err.message ? err.message : err}}`;
+        document.getElementById("mode_note").textContent = "";
+      }}
+    }}
+
+    function clearFilters() {{
+      document.querySelectorAll('input').forEach(el => el.value = '');
+      if (SEASONS.includes("2025-26")) {{
+        document.getElementById('season_start').value = "2025";
+        document.getElementById('season_end').value = "2025";
+      }} else {{
+        document.getElementById('season_start').value = 'ALL';
+        document.getElementById('season_end').value = 'ALL';
+      }}
+      document.getElementById('team').value = 'ALL';
+      document.getElementById('opp').value = 'ALL';
+      document.getElementById('stat_mode').value = 'totals';
+      document.getElementById("expr1_left").value = "ast";
+      document.getElementById("expr1_right").value = "tov";
+      document.getElementById("expr1_op").value = "/";
+      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr2_left").value = "stl";
+      document.getElementById("expr2_right").value = "blk";
+      document.getElementById("expr2_op").value = "+";
+      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("split1_key").value = "";
+      document.getElementById("split2_key").value = "";
+      lastResults = [];
+      document.getElementById("row_count").textContent = "Set filters, then press Search";
+      document.getElementById("mode_note").textContent = "";
+      document.querySelector("#search-table tbody").innerHTML = "";
+      updateCustomHeaders();
+    }}
+
+    document.getElementById("run_search").addEventListener("click", () => {{ runSearch(); }});
+    document.getElementById("clear_filters").addEventListener("click", clearFilters);
+    document.querySelectorAll("input").forEach(el => el.addEventListener("keydown", (e) => {{
+      if (e.key === "Enter") runSearch();
+    }}));
+    document.querySelectorAll("#expr1_left,#expr1_right,#expr1_op,#expr1_label,#expr2_left,#expr2_right,#expr2_op,#expr2_label").forEach(el => el.addEventListener("change", updateCustomHeaders));
+    document.querySelectorAll("thead th.sortable").forEach(th => {{
+      th.addEventListener("click", () => {{
+        if (!lastResults.length) return;
+        const key = th.dataset.key;
+        if (state.key === key) {{
+          state.dir = state.dir === "desc" ? "asc" : "desc";
+        }} else {{
+          state.key = key;
+          state.dir = ["date", "player_name", "team_abbr", "opp_team_abbr"].includes(key) ? "asc" : "desc";
+        }}
+        lastResults = sortRows(lastResults);
+        renderRows(lastResults);
+      }});
+    }});
+
+    populate();
+    clearFilters();
+    if (SEASONS.includes("2025-26")) {{
+      setTimeout(() => {{
+        loadSeasonChunk("2025-26").catch(() => {{}});
+      }}, 0);
+    }}
+  </script>
+</body>
+</html>
+"""
+
+    OUTPUT_DATA_PATH.write_text(html, encoding="utf-8")
+    OUTPUT_SITE_PATH.write_text(html, encoding="utf-8")
+    print(f"Report saved to: {OUTPUT_DATA_PATH}")
+    print(f"Also saved to: {OUTPUT_SITE_PATH}")
+    return OUTPUT_SITE_PATH
+
+
+if __name__ == "__main__":
+    generate_player_game_search_report()
