@@ -9,7 +9,7 @@ from pathlib import Path
 
 # CONFIGURATION
 DATA_DIR = Path("data")
-LEDGER_PATH = DATA_DIR / "master_boxscore_2526.csv" # The New Authority
+LEDGER_PATH = DATA_DIR / "master_boxscore_2526.csv"
 BBREF_PATH = DATA_DIR / "bbref_advanced_2526.csv"
 TEAM_GP_PATH = DATA_DIR / "bbref_team_gp_2526.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
@@ -21,7 +21,6 @@ def build_daily_report():
     # 1. Load the Authoritative Ledger
     if not LEDGER_PATH.exists():
         print(f"Ledger missing at {LEDGER_PATH}. Run run_daily.py first.")
-        # Fallback to BBRef counts if ledger is totally missing
         use_fallback = True
     else:
         use_fallback = False
@@ -37,16 +36,16 @@ def build_daily_report():
     if not use_fallback:
         # Eligible = 20+ min games + min(2, 15-20 min games)
         g20 = ledger[ledger['minutes'] >= 20].groupby('player_id').size().rename('games_20')
-        g15 = ledger[(ledger['minutes'] >= 15) & (ledger['minutes'] < 20)].groupby('player_id').size().rename('games_15_20')
+        g15_20 = ledger[(ledger['minutes'] >= 15) & (ledger['minutes'] < 20)].groupby('player_id').size().rename('games_15_20')
+        g_lt_15 = ledger[ledger['minutes'] < 15].groupby('player_id').size().rename('games_lt_15')
         total_g = ledger.groupby('player_id').size().rename('total_g')
         
         report = pd.DataFrame(index=ledger['player_id'].unique())
-        report = report.join(g20).join(g15).join(total_g).fillna(0)
+        report = report.join(g20).join(g15_20).join(g_lt_15).join(total_g).fillna(0)
         report['eligible'] = report['games_20'] + report['games_15_20'].clip(upper=2)
     else:
-        # Use BBRef counts as total fallback
         print("Using BBRef fallback for counts...")
-        report = pd.DataFrame() # We'll handle this in the merge
+        report = pd.DataFrame()
         last_date = "Check BBRef"
 
     # 4. Merge and Finalize
@@ -58,9 +57,10 @@ def build_daily_report():
             final = final.merge(bbref[['player_name', 'Team', 'VORP', 'BPM']], on='player_name', how='left')
     else:
         final = player_map.merge(bbref[['player_name', 'Team', 'VORP', 'BPM', 'G']], on='player_name')
-        final['eligible'] = final['G'] # Assume all are 20+ if no ledger
+        final['eligible'] = final['G']
         final['games_20'] = final['G']
         final['games_15_20'] = 0
+        final['games_lt_15'] = 0
         final['total_g'] = final['G']
 
     results = []
@@ -85,7 +85,8 @@ def build_daily_report():
             'status': status,
             'cls': cls,
             'g20': int(row['games_20']),
-            'g15': int(row['games_15_20'])
+            'g15_20': int(row['games_15_20']),
+            'g_lt_15': int(row['games_lt_15'])
         })
 
     generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), last_date)
@@ -108,6 +109,7 @@ def generate_dashboard(df, last_date):
         .bg-eliminated {{ color: #c0392b; font-weight: bold; }}
         .bg-bubble {{ color: #f39c12; font-weight: bold; }}
         .bg-clinched {{ color: #27ae60; font-weight: bold; }}
+        .low-min-warning {{ color: #e67e22; font-size: 0.85em; font-weight: 600; }}
     </style>
 </head>
 <body>
@@ -123,13 +125,12 @@ def generate_dashboard(df, last_date):
                 <tr>
                     <th>Player</th>
                     <th>VORP</th>
-                    <th>Team</th>
                     <th>Eligible / 65</th>
-                    <th>GP (Total)</th>
+                    <th>Low-Min Games</th>
                     <th>Needs (20m)</th>
                     <th>Team G Rem</th>
                     <th>Status</th>
-                    <th>BPM</th>
+                    <th>Total GP</th>
                 </tr>
             </thead>
             <tbody>
@@ -138,20 +139,23 @@ def generate_dashboard(df, last_date):
         if r['vorp'] < 0.1 and r['eligible'] < 40: continue
         perc = (r['eligible'] / 65) * 100
         
+        # Format Low-Min column: "X (15-20m) / Y (<15m)"
+        low_min_str = f"{r['g15_20']} / {r['g_lt_15']}"
+        low_min_style = "low-min-warning" if (r['g15_20'] > 2 or r['g_lt_15'] > 0) else ""
+
         html += f"""
                 <tr>
-                    <td><div class="player-name">{r['name']}</div></td>
+                    <td><div class="player-name">{r['name']}</div><small>{r['team']}</small></td>
                     <td class="vorp-val">{r['vorp']:.1f}</td>
-                    <td>{r['team']}</td>
                     <td>
                         {int(r['eligible'])}
                         <div class="progress-box"><div class="progress-fill" style="width: {min(100, perc)}%"></div></div>
                     </td>
-                    <td>{int(r['total_g'])}</td>
+                    <td class="{low_min_style}">{low_min_str} <br><small style="font-weight:normal; color:#888;">(15-20 / &lt;15)</small></td>
                     <td style="font-weight: bold; color: {'#c0392b' if r['need'] > r['g_rem'] else '#333'}">{int(r['need'])}</td>
                     <td>{int(r['g_rem'])}</td>
                     <td><span class="{r['cls']}">{r['status']}</span></td>
-                    <td>{r['bpm']:.1f}</td>
+                    <td>{int(r['total_g'])}</td>
                 </tr>
         """
 
@@ -174,7 +178,7 @@ def generate_dashboard(df, last_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated from Master Ledger: {OUTPUT_HTML}")
+    print(f"Dashboard updated with Low-Min Games column: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()
