@@ -9,93 +9,63 @@ from pathlib import Path
 
 # CONFIGURATION
 DATA_DIR = Path("data")
-STINTS_PATH = DATA_DIR / "stints.csv"
+LEDGER_PATH = DATA_DIR / "master_boxscore_2526.csv" # The New Authority
 BBREF_PATH = DATA_DIR / "bbref_advanced_2526.csv"
 TEAM_GP_PATH = DATA_DIR / "bbref_team_gp_2526.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
-CACHE_PATH = DATA_DIR / "cdn_boxscore_cache.json"
 OUTPUT_HTML = "65-game-tracker.html"
 
-def get_game_minutes_from_cdn(game_id):
-    url = f"https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json"
-    try:
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            minutes_map = {}
-            for team_key in ['homeTeam', 'awayTeam']:
-                for p in data['game'][team_key]['players']:
-                    pid = p['personId']
-                    s = p['statistics']
-                    m = re.search(r'PT(\d+)M', s['minutes'])
-                    s_sec = re.search(r'M([\d.]+)S', s['minutes'])
-                    total_min = 0
-                    if m: total_min += int(m.group(1))
-                    if s_sec: total_min += float(s_sec.group(1)) / 60.0
-                    if total_min > 0:
-                        minutes_map[pid] = total_min
-            return minutes_map
-    except:
-        pass
-    return None
-
 def build_daily_report():
-    print("Building High-Accuracy Award Eligibility Report...")
+    print("Building High-Accuracy Award Eligibility Report from Ledger...")
     
-    # 1. Load Authoritative BBRef Data
-    if not BBREF_PATH.exists():
-        print("BBRef data missing. Run fetch_bbref_advanced.py first.")
-        return
-    
-    bbref = pd.read_csv(BBREF_PATH)
-    team_gp_df = pd.read_csv(TEAM_GP_PATH)
-    team_rem_map = {row['team_abbr']: max(0, 82 - int(row['team_gp'])) for _, row in team_gp_df.iterrows()}
-    
-    # 2. Load Local Minutes for "Low-Minute" cross-check
-    # We want to find games where we HAVE proof the player played < 20 mins
-    low_min_games = {} # player_id -> list of games < 20 mins
-    
-    game_minutes = pd.DataFrame()
-    if STINTS_PATH.exists() and os.path.getsize(STINTS_PATH) > 500:
-        try:
-            stints = pd.read_csv(STINTS_PATH)
-            stints_2526 = stints[stints['game_id'].astype(str).str.contains('225')].copy()
-            player_cols = [f'home_p{i}' for i in range(1, 6)] + [f'away_p{i}' for i in range(1, 6)]
-            present_cols = [c for c in player_cols if c in stints_2526.columns]
-            stint_melt = stints_2526.melt(id_vars=['game_id', 'seconds'], value_vars=present_cols, value_name='player_id')
-            game_minutes = stint_melt.groupby(['player_id', 'game_id'])['seconds'].sum().reset_index()
-            game_minutes['minutes'] = game_minutes['seconds'] / 60.0
-        except: pass
+    # 1. Load the Authoritative Ledger
+    if not LEDGER_PATH.exists():
+        print(f"Ledger missing at {LEDGER_PATH}. Run run_daily.py first.")
+        # Fallback to BBRef counts if ledger is totally missing
+        use_fallback = True
+    else:
+        use_fallback = False
+        ledger = pd.read_csv(LEDGER_PATH)
+        last_date = ledger['date'].max()
 
-    # 3. Process Logic
+    # 2. Load BBRef Metadata
+    bbref = pd.read_csv(BBREF_PATH) if BBREF_PATH.exists() else pd.DataFrame()
+    team_gp_df = pd.read_csv(TEAM_GP_PATH) if TEAM_GP_PATH.exists() else pd.DataFrame()
+    team_rem_map = {row['team_abbr']: max(0, 82 - int(row['team_gp'])) for _, row in team_gp_df.iterrows()}
+
+    # 3. Calculate Eligibility from Ledger
+    if not use_fallback:
+        # Eligible = 20+ min games + min(2, 15-20 min games)
+        g20 = ledger[ledger['minutes'] >= 20].groupby('player_id').size().rename('games_20')
+        g15 = ledger[(ledger['minutes'] >= 15) & (ledger['minutes'] < 20)].groupby('player_id').size().rename('games_15_20')
+        total_g = ledger.groupby('player_id').size().rename('total_g')
+        
+        report = pd.DataFrame(index=ledger['player_id'].unique())
+        report = report.join(g20).join(g15).join(total_g).fillna(0)
+        report['eligible'] = report['games_20'] + report['games_15_20'].clip(upper=2)
+    else:
+        # Use BBRef counts as total fallback
+        print("Using BBRef fallback for counts...")
+        report = pd.DataFrame() # We'll handle this in the merge
+        last_date = "Check BBRef"
+
+    # 4. Merge and Finalize
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
-    final = bbref.merge(player_map, on='player_name', how='inner')
     
+    if not use_fallback:
+        final = player_map.merge(report, left_on='player_id', right_index=True)
+        if not bbref.empty:
+            final = final.merge(bbref[['player_name', 'Team', 'VORP', 'BPM']], on='player_name', how='left')
+    else:
+        final = player_map.merge(bbref[['player_name', 'Team', 'VORP', 'BPM', 'G']], on='player_name')
+        final['eligible'] = final['G'] # Assume all are 20+ if no ledger
+        final['games_20'] = final['G']
+        final['games_15_20'] = 0
+        final['total_g'] = final['G']
+
     results = []
     for _, row in final.iterrows():
-        pid = row['player_id']
-        total_g = int(row['G'])
-        
-        # Cross-reference with our minutes data to find "disqualified" games
-        p_minutes = game_minutes[game_minutes['player_id'] == pid] if not game_minutes.empty else pd.DataFrame()
-        
-        g_lt_15 = len(p_minutes[p_minutes['minutes'] < 15])
-        g_15_20 = len(p_minutes[(p_minutes['minutes'] >= 15) & (p_minutes['minutes'] < 20)])
-        
-        # High-Accuracy 65 Game Logic:
-        # We start with BBRef Total Games.
-        # We assume all games are 20+ unless our stints/PBP proves otherwise.
-        # This fixes the "Missing Games" issue.
-        
-        # Eligible = (Total Games - Games confirmed < 20) + min(2, Games confirmed 15-20)
-        # Wait, if we don't have PBP for a game, we don't know if it was 15-20 or < 15.
-        # For stars, we assume 20+. 
-        
-        confirmed_low = g_lt_15 + g_15_20
-        # Basic estimate: Total Games - Confirmed Low Minutes
-        # Then add back the 15-20 buffer
-        eligible = (total_g - confirmed_low) + min(2, g_15_20)
-        
+        eligible = int(row['eligible'])
         g_rem = team_rem_map.get(row['Team'], 0)
         need = max(0, 65 - eligible)
         
@@ -105,18 +75,20 @@ def build_daily_report():
         
         results.append({
             'name': row['player_name'],
-            'vorp': row['VORP'],
-            'bpm': row['BPM'],
+            'vorp': row.get('VORP', 0),
+            'bpm': row.get('BPM', 0),
             'team': row['Team'],
-            'eligible': int(eligible),
-            'total_g': total_g,
+            'eligible': eligible,
+            'total_g': int(row['total_g']),
             'need': int(need),
             'g_rem': int(g_rem),
             'status': status,
-            'cls': cls
+            'cls': cls,
+            'g20': int(row['games_20']),
+            'g15': int(row['games_15_20'])
         })
 
-    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), "2026-03-24")
+    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), last_date)
 
 def generate_dashboard(df, last_date):
     html = f"""
@@ -141,8 +113,8 @@ def generate_dashboard(df, last_date):
 <body>
     <div class="header">
         <h1 style="margin:0;">NBA Award Eligibility Tracker</h1>
-        <p>Authoritative Counts from Basketball Reference</p>
-        <p>Data as of: <strong>{last_date}</strong> | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
+        <p>Source: Internal Boxscore Ledger + BBRef Standings</p>
+        <p>Data through: <strong>{last_date}</strong> | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
     </div>
 
     <div class="table-container">
@@ -202,7 +174,7 @@ def generate_dashboard(df, last_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated with Authoritative BBRef Counts: {OUTPUT_HTML}")
+    print(f"Dashboard updated from Master Ledger: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()

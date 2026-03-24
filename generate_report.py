@@ -5,18 +5,19 @@ from pathlib import Path
 from datetime import datetime
 
 TEMPLATE_PATH = Path("template.html")
+LEDGER_PATH = Path("data/master_boxscore_2526.csv")
 BBREF_STANDINGS_PATH = Path("data/bbref_team_gp_2526.csv")
 
 def generate_report():
-    print("Generating Luck-Adjusted Report with Official Standings...")
+    print("Generating Luck-Adjusted Report with Authority Split...")
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template file not found: {TEMPLATE_PATH}")
     template = TEMPLATE_PATH.read_text(encoding='utf-8')
 
-    # 1. Load Analyzed Data
-    df = pd.read_csv("data/adjusted_games.csv")
-
-    # 2. Load Official Standings
+    # 1. Load Data
+    df_analyzed = pd.read_csv("data/adjusted_games.csv")
+    
+    # 2. Load Official Stats (Standings + Ledger)
     official_standings = {}
     if BBREF_STANDINGS_PATH.exists():
         std_df = pd.read_csv(BBREF_STANDINGS_PATH)
@@ -27,94 +28,95 @@ def generate_report():
                 'total_gp': int(row['team_gp'])
             }
 
-    # 3. Calculate Model Stats
-    team_records = {}
-    for team in set(df['home_team'].unique()) | set(df['away_team'].unique()):
-        team_records[team] = {
-            'model_wins': 0, 'model_losses': 0, 'adj_wins': 0, 'adj_losses': 0,
-            'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0, 'analyzed_count': 0
+    # 3. Process Analyzed Stats (Luck per team)
+    team_stats = {}
+    for team in set(df_analyzed['home_team'].unique()) | set(df_analyzed['away_team'].unique()):
+        team_stats[team] = {
+            'analyzed_wins': 0, 'analyzed_adj_wins': 0, 'analyzed_count': 0,
+            'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0
         }
 
-    for _, row in df.iterrows():
+    for _, row in df_analyzed.iterrows():
         home, away = row['home_team'], row['away_team']
-        team_records[home]['analyzed_count'] += 1
-        team_records[away]['analyzed_count'] += 1
+        team_stats[home]['analyzed_count'] += 1
+        team_stats[away]['analyzed_count'] += 1
         
-        if row['margin_actual'] > 0:
-            team_records[home]['model_wins'] += 1
-            team_records[away]['model_losses'] += 1
-        else:
-            team_records[away]['model_wins'] += 1
-            team_records[home]['model_losses'] += 1
+        # Actual Wins in Analyzed Dataset
+        if row['margin_actual'] > 0: team_stats[home]['analyzed_wins'] += 1
+        else: team_stats[away]['analyzed_wins'] += 1
 
-        if row['margin_adj'] > 0:
-            team_records[home]['adj_wins'] += 1
-            team_records[away]['adj_losses'] += 1
-        else:
-            team_records[away]['adj_wins'] += 1
-            team_records[home]['adj_losses'] += 1
+        # Adjusted Wins in Analyzed Dataset
+        if row['margin_adj'] > 0: team_stats[home]['analyzed_adj_wins'] += 1
+        else: team_stats[away]['analyzed_adj_wins'] += 1
 
-        team_records[home]['opp_3pa'] += row['away_3pa']
-        team_records[home]['opp_3pm'] += row['away_3pm_actual']
-        team_records[home]['opp_3pm_exp'] += row['away_3pm_exp']
-        team_records[away]['opp_3pa'] += row['home_3pa']
-        team_records[away]['opp_3pm'] += row['home_3pm_actual']
-        team_records[away]['opp_3pm_exp'] += row['home_3pm_exp']
+        # Opponent 3P stats
+        team_stats[home]['opp_3pa'] += row['away_3pa']
+        team_stats[home]['opp_3pm'] += row['away_3pm_actual']
+        team_stats[home]['opp_3pm_exp'] += row['away_3pm_exp']
+        team_stats[away]['opp_3pa'] += row['home_3pa']
+        team_stats[away]['opp_3pm'] += row['home_3pm_actual']
+        team_stats[away]['opp_3pm_exp'] += row['home_3pm_exp']
 
-    # 4. Generate Rows
-    sorted_teams = sorted(team_records.keys(), 
+    # 4. Build Table Rows
+    # Sort by Official Wins
+    sorted_teams = sorted(team_stats.keys(), 
                          key=lambda t: official_standings.get(t, {'wins':0})['wins'], 
                          reverse=True)
 
     team_rows = ""
     for rank, team in enumerate(sorted_teams, 1):
-        r = team_records[team]
-        if team in official_standings:
-            actual_record = f"{official_standings[team]['wins']}-{official_standings[team]['losses']}"
-            analyzed_str = f"{r['analyzed_count']}/{official_standings[team]['total_gp']}"
-        else:
-            actual_record = f"{r['model_wins']}-{r['model_losses']}"
-            analyzed_str = f"{r['analyzed_count']} analyzed"
-
-        adj_record = f"{r['adj_wins']}-{r['adj_losses']}"
-        win_diff = r['model_wins'] - r['adj_wins']
-        diff_class = "positive" if win_diff > 0 else ("negative" if win_diff < 0 else "")
-        diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
+        s = team_stats[team]
+        off = official_standings.get(team, {'wins':0, 'losses':0, 'total_gp': s['analyzed_count']})
         
-        opp_3p_pct = round(r['opp_3pm'] / r['opp_3pa'] * 100, 1) if r['opp_3pa'] > 0 else 0
-        opp_3p_exp = round(r['opp_3pm_exp'] / r['opp_3pa'] * 100, 1) if r['opp_3pa'] > 0 else 0
+        actual_record = f"{off['wins']}-{off['losses']}"
+        
+        # Net Games Swung = (Analyzed Wins - Analyzed Adj Wins)
+        # This is the ONLY mathematically sound way to show luck
+        net_swung = s['analyzed_wins'] - s['analyzed_adj_wins']
+        
+        # Adjusted Record = Official Wins - Net Swung
+        # (e.g. if you have 50 wins but were 4 games lucky, your adj record is 46-36)
+        adj_wins = off['wins'] - net_swung
+        adj_losses = off['losses'] + net_swung
+        adj_record = f"{adj_wins}-{adj_losses}"
+        
+        diff_class = "positive" if net_swung > 0 else ("negative" if net_swung < 0 else "")
+        diff_str = f"{net_swung:+d}" if net_swung != 0 else "0"
+        
+        opp_3p_pct = round(s['opp_3pm'] / s['opp_3pa'] * 100, 1) if s['opp_3pa'] > 0 else 0
+        opp_3p_exp = round(s['opp_3pm_exp'] / s['opp_3pa'] * 100, 1) if s['opp_3pa'] > 0 else 0
         opp_diff = round(opp_3p_pct - opp_3p_exp, 1)
-        opp_diff_str = f"{opp_diff:+.1f}%" if opp_diff != 0 else "0.0%"
+
+        coverage_str = f"{s['analyzed_count']}/{off['total_gp']}"
 
         team_rows += f"""
-        <tr data-team="{team}" data-wins="{official_standings.get(team, {'wins':0})['wins']}" data-adjwins="{r['adj_wins']}">
+        <tr data-team="{team}" data-wins="{off['wins']}" data-adjwins="{adj_wins}">
             <td>{rank}</td>
-            <td><strong>{team}</strong> <small style="color:#888; font-size:0.75em;">({analyzed_str})</small></td>
+            <td><strong>{team}</strong> <br><small style="color:#888; font-size:0.7em;">({coverage_str} analyzed)</small></td>
             <td>{actual_record}</td>
             <td>{adj_record}</td>
             <td class="{diff_class} clickable-diff" onclick="showFlippedGames('{team}')">{diff_str}</td>
             <td>{opp_3p_exp}%</td>
             <td>{opp_3p_pct}%</td>
-            <td class="">{opp_diff_str}</td>
+            <td>{opp_diff:+.1f}%</td>
         </tr>"""
 
     # 5. Injection
     html = template.replace("{{TEAM_RANKINGS_ROWS}}", team_rows)
-    last_game_date = df['date'].max()
+    last_game_date = df_analyzed['date'].max()
     html = html.replace("{{SEASON_DATE}}", last_game_date)
-    html = html.replace("{{GAME_COUNT}}", str(len(df)))
+    html = html.replace("{{GAME_COUNT}}", str(len(df_analyzed)))
     html = html.replace("{{GENERATED_TIMESTAMP}}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     
-    # 6. Reconstruct Calendar Data (Critical for functionality)
+    # Reconstruct Calendar and Swing Rows
     games_by_date = {}
-    for _, row in df.iterrows():
+    for _, row in df_analyzed.iterrows():
         d = row['date']
         if d not in games_by_date: games_by_date[d] = []
         games_by_date[d].append(row.to_dict())
     
-    # Top swings rows
-    df['abs_delta'] = df['margin_delta'].abs()
-    top_swings = df.sort_values('abs_delta', ascending=False).head(15)
+    df_analyzed['abs_delta'] = df_analyzed['margin_delta'].abs()
+    top_swings = df_analyzed.sort_values('abs_delta', ascending=False).head(15)
     swing_rows = ""
     for _, row in top_swings.iterrows():
         flip_warn = " &#9888;" if (row['margin_actual'] > 0) != (row['margin_adj'] > 0) else ""
@@ -131,15 +133,13 @@ def generate_report():
     html = html.replace("{{GAMES_JSON}}", json.dumps(games_by_date))
     html = html.replace("{{MOST_RECENT_DATE}}", last_game_date)
     
-    # Months for calendar
-    dates = pd.to_datetime(df['date'])
+    dates = pd.to_datetime(df_analyzed['date'])
     months = sorted(list(set((d.year, d.month-1) for d in dates)))
     month_json = [{"year": m[0], "month": m[1]} for m in months]
     html = html.replace("{{SEASON_MONTHS_JSON}}", json.dumps(month_json))
 
-    output_path = Path("index.html")
-    output_path.write_text(html, encoding='utf-8')
-    print(f"Homepage updated with Authoritative Standings: {output_path}")
+    Path("index.html").write_text(html, encoding='utf-8')
+    print("Homepage updated with Authoritative Tiered Standings.")
 
 if __name__ == "__main__":
     generate_report()
