@@ -16,7 +16,7 @@ TEAM_MAP = {
 }
 
 def fetch_bbref_data():
-    print("Fetching 2025-26 Stats from Basketball Reference...")
+    print("Fetching 2025-26 Stats and Standings from Basketball Reference...")
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
     
@@ -26,18 +26,18 @@ def fetch_bbref_data():
         tables = pd.read_html(adv_url)
         df = tables[0]
         df = df[df['Player'] != 'Player'].copy()
-        cols = ['Player', 'Team', 'VORP', 'BPM', 'WS', 'PER', 'TS%']
+        cols = ['Player', 'Team', 'G', 'MP', 'VORP', 'BPM', 'WS', 'PER', 'TS%']
         df = df[cols].copy()
-        for col in ['VORP', 'BPM', 'WS', 'PER', 'TS%']:
+        for col in ['G', 'MP', 'VORP', 'BPM', 'WS', 'PER', 'TS%']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         df['Player'] = df['Player'].str.replace(r'[*]+$', '', regex=True).str.strip()
         df = df.rename(columns={'Player': 'player_name'})
         df.to_csv(data_dir / "bbref_advanced_2526.csv", index=False)
-        print("Saved Advanced Player Stats.")
+        print(f"Saved Advanced Player Stats ({len(df)} players).")
     except Exception as e:
         print(f"Error fetching player stats: {e}")
 
-    # 2. Fetch Team Standings for Games Played
+    # 2. Fetch Team Standings
     std_url = "https://www.basketball-reference.com/leagues/NBA_2026.html"
     try:
         tables = pd.read_html(std_url)
@@ -45,11 +45,14 @@ def fetch_bbref_data():
         west = tables[1].rename(columns={'Western Conference': 'Team'})
         standings = pd.concat([east, west])
         standings['Team'] = standings['Team'].str.replace(r'\s*\(\d+\)$', '', regex=True).str.strip()
-        standings['team_gp'] = pd.to_numeric(standings['W']) + pd.to_numeric(standings['L'])
+        standings['W'] = pd.to_numeric(standings['W'])
+        standings['L'] = pd.to_numeric(standings['L'])
+        standings['team_gp'] = standings['W'] + standings['L']
         standings['team_abbr'] = standings['Team'].map(TEAM_MAP)
-        output_df = standings[['team_abbr', 'team_gp']].dropna()
+        
+        output_df = standings[['team_abbr', 'W', 'L', 'team_gp']].dropna()
         output_df.to_csv(data_dir / "bbref_team_gp_2526.csv", index=False)
-        print("Saved Team Games Played.")
+        print(f"Saved Team Standings ({len(output_df)} teams).")
     except Exception as e:
         print(f"Error fetching standings: {e}")
 
