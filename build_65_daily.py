@@ -17,37 +17,35 @@ PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
 OUTPUT_HTML = "65-game-tracker.html"
 
 def build_daily_report():
-    print("Building High-Accuracy Award Eligibility Report...")
+    print("Building Award Eligibility Report...")
     
-    # 1. BBRef is the authority for the date and counts
-    if not BBREF_PATH.exists():
-        print("BBRef data missing.")
+    # 1. Load Data
+    if not BBREF_PATH.exists() or not TEAM_GP_PATH.exists():
+        print("Required BBRef data files missing.")
         return
     
     bbref = pd.read_csv(BBREF_PATH)
+    # Handle BBRef TOT (Total) rows for traded players - keep only the 'TOT' row
+    bbref = bbref.sort_values(['player_name', 'Team']).drop_duplicates('player_name', keep='first')
+    
     team_gp_df = pd.read_csv(TEAM_GP_PATH)
     team_rem_map = {row['team_abbr']: max(0, 82 - int(row['team_gp'])) for _, row in team_gp_df.iterrows()}
 
-    # Use yesterday as the official 'Data Through' date
     official_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    # 2. Internal Ledger for Low-Min Detection
+    # 2. Ledger stats
     ledger_stats = {} 
-    internal_analysis_date = "N/A"
-    
     if LEDGER_PATH.exists():
         ledger = pd.read_csv(LEDGER_PATH)
-        internal_analysis_date = ledger['date'].max()
         g15_20 = ledger[(ledger['minutes'] >= 15) & (ledger['minutes'] < 20)].groupby('player_id').size()
         g_lt_15 = ledger[ledger['minutes'] < 15].groupby('player_id').size()
-        
         for pid in ledger['player_id'].unique():
             ledger_stats[int(pid)] = {
                 'g15_20': int(g15_20.get(pid, 0)),
                 'g_lt_15': int(g_lt_15.get(pid, 0))
             }
 
-    # 3. Process Logic
+    # 3. Merge
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
     final = bbref.merge(player_map, on='player_name', how='inner')
     
@@ -56,10 +54,16 @@ def build_daily_report():
         pid = int(row['player_id'])
         total_g = int(row['G'])
         low_stats = ledger_stats.get(pid, {'g15_20': 0, 'g_lt_15': 0})
-        confirmed_15_20, confirmed_lt_15 = low_stats['g15_20'], low_stats['g_lt_15']
         
-        eligible = (total_g - (confirmed_15_20 + confirmed_lt_15)) + min(2, confirmed_15_20)
+        # ELIGIBILITY LOGIC
+        eligible = (total_g - (low_stats['g15_20'] + low_stats['g_lt_15'])) + min(2, low_stats['g15_20'])
+        
+        # Use Team Remaining or default to 0 for traded players (TOT)
         g_rem = team_rem_map.get(row['Team'], 0)
+        # Fallback for traded players: use average remaining or assume NYK/OKC-ish if team is 'TOT'
+        if row['Team'] == 'TOT':
+            g_rem = int(np.mean(list(team_rem_map.values())))
+
         need = max(0, 65 - eligible)
         
         if eligible >= 65: status, cls = "CLINCHED", "bg-clinched"
@@ -70,12 +74,12 @@ def build_daily_report():
             'name': row['player_name'], 'vorp': row['VORP'], 'team': row['Team'],
             'eligible': int(eligible), 'total_g': total_g, 'need': int(need),
             'g_rem': int(g_rem), 'status': status, 'cls': cls,
-            'g15_20': confirmed_15_20, 'g_lt_15': confirmed_lt_15
+            'g15_20': low_stats['g15_20'], 'g_lt_15': low_stats['g_lt_15']
         })
 
-    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), official_date, internal_analysis_date)
+    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), official_date)
 
-def generate_dashboard(df, official_date, internal_date):
+def generate_dashboard(df, official_date):
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -98,9 +102,7 @@ def generate_dashboard(df, official_date, internal_date):
 <body>
     <div class="header">
         <h1 style="margin:0;">NBA Award Eligibility Tracker</h1>
-        <p>Sorted by <strong>BBRef VORP</strong></p>
-        <p>Authoritative Counts through: <strong>{official_date}</strong></p>
-        <p style="font-size: 0.8em; opacity: 0.7;">Detailed minute analysis through: {internal_date} | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
+        <p>Authoritative Counts through: <strong>{official_date}</strong> | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
     </div>
 
     <div class="table-container">
@@ -162,7 +164,7 @@ def generate_dashboard(df, official_date, internal_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated with corrected date logic: {OUTPUT_HTML}")
+    print(f"Dashboard updated: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()
