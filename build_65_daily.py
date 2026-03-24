@@ -5,6 +5,7 @@ import requests
 import json
 import os
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # CONFIGURATION
@@ -18,53 +19,46 @@ OUTPUT_HTML = "65-game-tracker.html"
 def build_daily_report():
     print("Building High-Accuracy Award Eligibility Report...")
     
-    # 1. Load the Authoritative BBRef Metadata (VORP, Total G, BPM)
+    # 1. BBRef is the authority for the date and counts
     if not BBREF_PATH.exists():
-        print(f"BBRef data missing at {BBREF_PATH}. Run fetch_bbref_advanced.py first.")
+        print("BBRef data missing.")
         return
     
-    bbref = pd.read_csv(BBREF_PATH) # columns: player_name, Team, G, MP, VORP, BPM...
-    team_gp_df = pd.read_csv(TEAM_GP_PATH) if TEAM_GP_PATH.exists() else pd.DataFrame()
+    bbref = pd.read_csv(BBREF_PATH)
+    team_gp_df = pd.read_csv(TEAM_GP_PATH)
     team_rem_map = {row['team_abbr']: max(0, 82 - int(row['team_gp'])) for _, row in team_gp_df.iterrows()}
 
-    # 2. Load Local Ledger for Low-Minute Detection
-    ledger_stats = {} # player_id -> {g15_20: X, g_lt_15: Y}
-    last_date = "Check BBRef"
+    # Use yesterday as the official 'Data Through' date
+    official_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # 2. Internal Ledger for Low-Min Detection
+    ledger_stats = {} 
+    internal_analysis_date = "N/A"
     
     if LEDGER_PATH.exists():
         ledger = pd.read_csv(LEDGER_PATH)
-        last_date = ledger['date'].max()
-        # Count low-min games per player
+        internal_analysis_date = ledger['date'].max()
         g15_20 = ledger[(ledger['minutes'] >= 15) & (ledger['minutes'] < 20)].groupby('player_id').size()
         g_lt_15 = ledger[ledger['minutes'] < 15].groupby('player_id').size()
         
-        all_ids = ledger['player_id'].unique()
-        for pid in all_ids:
+        for pid in ledger['player_id'].unique():
             ledger_stats[int(pid)] = {
                 'g15_20': int(g15_20.get(pid, 0)),
                 'g_lt_15': int(g_lt_15.get(pid, 0))
             }
 
-    # 3. Merge and Process Logic
+    # 3. Process Logic
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
-    # We use BBRef as the foundation for the player list and totals
     final = bbref.merge(player_map, on='player_name', how='inner')
     
     results = []
     for _, row in final.iterrows():
         pid = int(row['player_id'])
         total_g = int(row['G'])
-        
-        # Get low-min counts from ledger if we have them
         low_stats = ledger_stats.get(pid, {'g15_20': 0, 'g_lt_15': 0})
-        confirmed_15_20 = low_stats['g15_20']
-        confirmed_lt_15 = low_stats['g_lt_15']
+        confirmed_15_20, confirmed_lt_15 = low_stats['g15_20'], low_stats['g_lt_15']
         
-        # ACCURACY FORMULA:
-        # Eligible = (Total Official Games - Confirmed Disqualified Games) + min(2, Near-Misses)
-        # Note: We subtract BOTH 15-20 and <15 from the total first, then add back up to 2 of the 15-20s.
         eligible = (total_g - (confirmed_15_20 + confirmed_lt_15)) + min(2, confirmed_15_20)
-        
         g_rem = team_rem_map.get(row['Team'], 0)
         need = max(0, 65 - eligible)
         
@@ -73,23 +67,15 @@ def build_daily_report():
         else: status, cls = "BUBBLE", "bg-bubble"
         
         results.append({
-            'name': row['player_name'],
-            'vorp': row['VORP'],
-            'bpm': row['BPM'],
-            'team': row['Team'],
-            'eligible': int(eligible),
-            'total_g': total_g,
-            'need': int(need),
-            'g_rem': int(g_rem),
-            'status': status,
-            'cls': cls,
-            'g15_20': confirmed_15_20,
-            'g_lt_15': confirmed_lt_15
+            'name': row['player_name'], 'vorp': row['VORP'], 'team': row['Team'],
+            'eligible': int(eligible), 'total_g': total_g, 'need': int(need),
+            'g_rem': int(g_rem), 'status': status, 'cls': cls,
+            'g15_20': confirmed_15_20, 'g_lt_15': confirmed_lt_15
         })
 
-    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), last_date)
+    generate_dashboard(pd.DataFrame(results).sort_values('vorp', ascending=False), official_date, internal_analysis_date)
 
-def generate_dashboard(df, last_date):
+def generate_dashboard(df, official_date, internal_date):
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -104,17 +90,17 @@ def generate_dashboard(df, last_date):
         .vorp-val {{ font-weight: 800; color: #d41111; }}
         .progress-box {{ width: 100px; background: #eee; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }}
         .progress-fill {{ height: 100%; background: #27ae60; }}
-        .bg-eliminated {{ color: #c0392b; font-weight: bold; font-size: 0.85em; }}
-        .bg-bubble {{ color: #f39c12; font-weight: bold; font-size: 0.85em; }}
-        .bg-clinched {{ color: #27ae60; font-weight: bold; font-size: 0.85em; }}
-        .low-min-warning {{ color: #e67e22; font-size: 0.85em; font-weight: 600; }}
+        .bg-eliminated {{ color: #c0392b; font-weight: bold; }}
+        .bg-bubble {{ color: #f39c12; font-weight: bold; }}
+        .bg-clinched {{ color: #27ae60; font-weight: bold; }}
     </style>
 </head>
 <body>
     <div class="header">
         <h1 style="margin:0;">NBA Award Eligibility Tracker</h1>
-        <p>Sorted by <strong>BBRef VORP</strong> | Official Team Games Remaining</p>
-        <p>Data through: <strong>{last_date}</strong> | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
+        <p>Sorted by <strong>BBRef VORP</strong></p>
+        <p>Authoritative Counts through: <strong>{official_date}</strong></p>
+        <p style="font-size: 0.8em; opacity: 0.7;">Detailed minute analysis through: {internal_date} | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
     </div>
 
     <div class="table-container">
@@ -129,18 +115,16 @@ def generate_dashboard(df, last_date):
                     <th>Needs (20m)</th>
                     <th>Team G Rem</th>
                     <th>Status</th>
-                    <th>Official GP</th>
+                    <th>Total GP</th>
                 </tr>
             </thead>
             <tbody>
 """
     for _, r in df.iterrows():
-        # Display candidates (VORP > 0) or players near the threshold
         if r['vorp'] < 0.1 and r['eligible'] < 45: continue
-        
         perc = (r['eligible'] / 65) * 100
         low_min_str = f"{r['g15_20']} / {r['g_lt_15']}"
-        low_min_style = "low-min-warning" if (r['g15_20'] > 2 or r['g_lt_15'] > 0) else ""
+        low_min_style = "color: #e67e22; font-weight: 600;" if (r['g15_20'] > 2 or r['g_lt_15'] > 0) else ""
 
         html += f"""
                 <tr>
@@ -151,7 +135,7 @@ def generate_dashboard(df, last_date):
                         {int(r['eligible'])}
                         <div class="progress-box"><div class="progress-fill" style="width: {min(100, perc)}%"></div></div>
                     </td>
-                    <td class="{low_min_style}">{low_min_str} <br><small style="font-weight:normal; color:#888;">(15-20 / &lt;15)</small></td>
+                    <td style="{low_min_style}">{low_min_str} <br><small style="font-weight:normal; color:#888;">(15-20 / &lt;15)</small></td>
                     <td style="font-weight: bold; color: {'#c0392b' if r['need'] > r['g_rem'] else '#333'}">{int(r['need'])}</td>
                     <td>{int(r['g_rem'])}</td>
                     <td><span class="{r['cls']}">{r['status']}</span></td>
@@ -178,7 +162,7 @@ def generate_dashboard(df, last_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated with High-Accuracy Logic: {OUTPUT_HTML}")
+    print(f"Dashboard updated with corrected date logic: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()
