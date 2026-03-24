@@ -23,14 +23,13 @@ CUP_FINAL_PLAYERS = {
 }
 
 def build_daily_report():
-    print("Building High-Accuracy Award Eligibility Report...")
+    print("Building Award Eligibility Report...")
     
-    if not BBREF_PATH.exists():
-        print("BBRef data missing.")
+    if not BBREF_PATH.exists() or not TEAM_GP_PATH.exists():
+        print("Required data files missing.")
         return
     
     bbref = pd.read_csv(BBREF_PATH)
-    # Deduplicate traded players (keep 'TOT' row)
     bbref = bbref.sort_values(['player_name', 'Team']).drop_duplicates('player_name', keep='first')
     
     team_gp_df = pd.read_csv(TEAM_GP_PATH)
@@ -39,7 +38,6 @@ def build_daily_report():
 
     official_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    # 2. Ledger for Low-Min
     ledger_stats = {} 
     if LEDGER_PATH.exists():
         ledger = pd.read_csv(LEDGER_PATH)
@@ -51,7 +49,6 @@ def build_daily_report():
                 'g_lt_15': int(g_lt_15.get(pid, 0))
             }
 
-    # 3. Process
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
     final = bbref.merge(player_map, on='player_name', how='inner')
     
@@ -61,16 +58,13 @@ def build_daily_report():
         total_g = int(row['G'])
         low = ledger_stats.get(pid, {'g15_20': 0, 'g_lt_15': 0})
         
-        # ELIGIBILITY LOGIC
         eligible = (total_g - (low['g15_20'] + low['g_lt_15'])) + min(2, low['g15_20'])
         
-        # NBA CUP FINAL SPECIAL CREDIT
         has_cup_credit = False
         if pid in CUP_FINAL_PLAYERS:
             eligible += 1
             has_cup_credit = True
         
-        # TEAM GAMES REMAINING FIX
         g_rem = team_rem_map.get(row['Team'], 0)
         if g_rem == 0 or row['Team'] in ['TOT', '2TM', '3TM']:
             g_rem = avg_rem
@@ -96,11 +90,12 @@ def generate_dashboard(df, official_date):
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NBA 65-Game Tracker | Authoritative</title>
+    <title>NBA 65-Game Tracker | Award Eligibility</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
         body {{ font-family: -apple-system, system-ui, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }}
         .header {{ background: #003366; color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; }}
+        .intro {{ max-width: 800px; margin: 0 auto 20px auto; line-height: 1.6; color: #eee; font-size: 0.95em; }}
         .table-container {{ background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }}
         .player-name {{ font-weight: 700; color: #003366; }}
         .vorp-val {{ font-weight: 800; color: #d41111; }}
@@ -115,6 +110,9 @@ def generate_dashboard(df, official_date):
 <body>
     <div class="header">
         <h1 style="margin:0;">NBA Award Eligibility Tracker</h1>
+        <div class="intro">
+            To be eligible for major end-of-season honors—including <strong>MVP, All-NBA, Defensive Player of the Year, Most Improved, and All-Defensive teams</strong>—a player must participate in at least 65 games. For a game to count, a player must play at least 20 minutes, though up to two "near-miss" games of 15-20 minutes may also be credited toward the total.
+        </div>
         <p>Sorted by <strong>VORP</strong> | Data through: <strong>{official_date}</strong></p>
         <p><a href="index.html" style="color: #4db8ff;">Back to Homepage</a></p>
     </div>
@@ -182,7 +180,7 @@ def generate_dashboard(df, official_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated with Cup Final logic: {OUTPUT_HTML}")
+    print(f"Dashboard updated: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()
