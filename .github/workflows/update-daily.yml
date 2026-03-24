@@ -40,6 +40,7 @@ jobs:
       - name: Generate report
         run: |
           python generate_report.py
+          python build_65_daily.py
           python run_onoff.py --start ${{ steps.date.outputs.three_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
           python generate_onoff_report.py
           python generate_rapm_report.py --use-possessions

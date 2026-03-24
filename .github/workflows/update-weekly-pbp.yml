@@ -1,0 +1,41 @@
+name: Weekly PBP Data Refresh
+
+on:
+  schedule:
+    # Run at 12:00 UTC every Sunday
+    - cron: '0 12 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  refresh-pbp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Refresh PBP and Stints
+        run: |
+          # This assumes generate_possessions_from_pbp.py or similar is used for rebuilds
+          # We'll use the core processing scripts found in the repo
+          python run_onoff.py --recompute-existing
+          python generate_possessions_from_pbp.py
+          python generate_rapm_report.py --use-possessions
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Weekly PBP Refresh: Full Rebuild"
+          git push
