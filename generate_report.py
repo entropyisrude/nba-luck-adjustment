@@ -81,9 +81,9 @@ def generate_report():
         diff_class = "positive" if win_diff > 0 else ("negative" if win_diff < 0 else "")
         diff_str = f"{win_diff:+d}" if win_diff != 0 else "0"
         
-        opp_3p_pct = (r['opp_3pm'] / r['opp_3pa'] * 100).round(1) if r['opp_3pa'] > 0 else 0
-        opp_3p_exp = (r['opp_3pm_exp'] / r['opp_3pa'] * 100).round(1) if r['opp_3pa'] > 0 else 0
-        opp_diff = (opp_3p_pct - opp_3p_exp).round(1)
+        opp_3p_pct = round(r['opp_3pm'] / r['opp_3pa'] * 100, 1) if r['opp_3pa'] > 0 else 0
+        opp_3p_exp = round(r['opp_3pm_exp'] / r['opp_3pa'] * 100, 1) if r['opp_3pa'] > 0 else 0
+        opp_diff = round(opp_3p_pct - opp_3p_exp, 1)
         opp_diff_str = f"{opp_diff:+.1f}%" if opp_diff != 0 else "0.0%"
 
         team_rows += f"""
