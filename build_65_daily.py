@@ -16,10 +16,11 @@ TEAM_GP_PATH = DATA_DIR / "bbref_team_gp_2526.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
 OUTPUT_HTML = "65-game-tracker.html"
 
-# Players who played 20+ mins in NBA Cup Final (Game 0022501230)
+# Corrected NBA Cup Final Participants (Spurs vs Knicks, Dec 16, 2025)
+# Credits based on 20+ minutes in the Championship Game.
 CUP_FINAL_PLAYERS = {
-    203084, 1627936, 1628368, 1628392, 1628436, 1628983, 1629652, 1630170,
-    1630577, 1631096, 1631114, 1641705, 1641717, 1642264, 1642349, 1642844
+    1628384, 1626157, 1628969, 1628973, 203903, 1642278, 1630577, 203084,
+    1641705, 1630170, 1642264, 1628436, 1642844, 1628404, 1628368
 }
 
 def build_daily_report():
@@ -30,11 +31,12 @@ def build_daily_report():
         return
     
     bbref = pd.read_csv(BBREF_PATH)
+    # Deduplicate traded players (keep 'TOT' row)
     bbref = bbref.sort_values(['player_name', 'Team']).drop_duplicates('player_name', keep='first')
     
     team_gp_df = pd.read_csv(TEAM_GP_PATH)
     team_rem_map = {row['team_abbr']: max(0, 82 - int(row['team_gp'])) for _, row in team_gp_df.iterrows()}
-    avg_rem = int(np.mean(list(team_rem_map.values())))
+    avg_rem = int(np.mean(list(team_rem_map.values()))) if team_rem_map else 15
 
     official_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -58,13 +60,16 @@ def build_daily_report():
         total_g = int(row['G'])
         low = ledger_stats.get(pid, {'g15_20': 0, 'g_lt_15': 0})
         
+        # 65-Game Eligibility Logic
         eligible = (total_g - (low['g15_20'] + low['g_lt_15'])) + min(2, low['g15_20'])
         
+        # Special credit for NBA Cup Final
         has_cup_credit = False
         if pid in CUP_FINAL_PLAYERS:
             eligible += 1
             has_cup_credit = True
         
+        # Games remaining logic
         g_rem = team_rem_map.get(row['Team'], 0)
         if g_rem == 0 or row['Team'] in ['TOT', '2TM', '3TM']:
             g_rem = avg_rem
@@ -90,7 +95,7 @@ def generate_dashboard(df, official_date):
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NBA 65-Game Tracker | Award Eligibility</title>
+    <title>NBA Award Tracker | EntropyIsRude</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
         body {{ font-family: -apple-system, system-ui, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }}
@@ -104,7 +109,7 @@ def generate_dashboard(df, official_date):
         .bg-eliminated {{ color: #c0392b; font-weight: bold; font-size: 0.85em; }}
         .bg-bubble {{ color: #f39c12; font-weight: bold; font-size: 0.85em; }}
         .bg-clinched {{ color: #27ae60; font-weight: bold; font-size: 0.85em; }}
-        .footnote {{ font-size: 0.85em; color: #666; margin-top: 20px; padding: 15px; background: #fff; border-radius: 8px; }}
+        .footnote {{ font-size: 0.85em; color: #666; margin-top: 20px; padding: 15px; background: #fff; border-radius: 8px; border-left: 4px solid #003366; }}
     </style>
 </head>
 <body>
@@ -113,8 +118,8 @@ def generate_dashboard(df, official_date):
         <div class="intro">
             To be eligible for major end-of-season honors—including <strong>MVP, All-NBA, Defensive Player of the Year, Most Improved, and All-Defensive teams</strong>—a player must participate in at least 65 games. For a game to count, a player must play at least 20 minutes, though up to two "near-miss" games of 15-20 minutes may also be credited toward the total.
         </div>
-        <p>Sorted by <strong>VORP</strong> | Data through: <strong>{official_date}</strong></p>
-        <p><a href="index.html" style="color: #4db8ff;">Back to Homepage</a></p>
+        <p>Sorted by <strong>VORP</strong> | Authoritative Counts through: <strong>{official_date}</strong></p>
+        <p><a href="index.html" style="color: #4db8ff; text-decoration: none; font-weight: 600;">&larr; Back to Homepage</a></p>
     </div>
 
     <div class="table-container">
@@ -126,7 +131,7 @@ def generate_dashboard(df, official_date):
                     <th>Eligible / 65</th>
                     <th>Low-Min (15-20 / &lt;15)</th>
                     <th>Needs (20m)</th>
-                    <th>Team G Rem</th>
+                    <th>G Rem</th>
                     <th>Status</th>
                     <th>Team</th>
                 </tr>
