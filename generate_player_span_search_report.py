@@ -753,6 +753,9 @@ def generate_player_span_search_report() -> Path:
     const displayModes = Object.fromEntries(DISPLAY_TOGGLE_KEYS.map(key => [key, "match"]));
     let lastResults = [];
     const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
+    const BASE_HEADER_ROW = document.querySelector("#search-table thead tr");
+    const BASE_HEADER_KEYS = Array.from(BASE_HEADER_ROW.children).map(th => th.dataset.key);
+    const BASE_HEADER_BY_KEY = Object.fromEntries(Array.from(BASE_HEADER_ROW.children).map(th => [th.dataset.key, th.cloneNode(true)]));
 
     const fmt = (x, d=1) => (x === null || x === undefined || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (Number(x) > 0 ? "pos" : (Number(x) < 0 ? "neg" : ""));
@@ -1456,14 +1459,12 @@ def generate_player_span_search_report() -> Path:
 
     function applyColumnOrder() {{
       const headerRow = document.querySelector("#search-table thead tr");
-      const headers = Array.from(headerRow.children);
-      const currentKeys = headers.map(th => th.dataset.key);
       const desired = ["player_name"].concat(activeColumnKeys());
-      const orderedKeys = desired.concat(currentKeys.filter(key => !desired.includes(key)));
-      const indexByKey = Object.fromEntries(currentKeys.map((key, idx) => [key, idx]));
-      headerRow.replaceChildren(...orderedKeys.map(key => headers[indexByKey[key]]));
+      const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key)));
+      headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
       document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
         const cells = Array.from(tr.children);
+        const indexByKey = Object.fromEntries(BASE_HEADER_KEYS.map((key, idx) => [key, idx]));
         tr.replaceChildren(...orderedKeys.map(key => cells[indexByKey[key]]));
       }});
     }}
