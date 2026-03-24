@@ -11,6 +11,7 @@ from pathlib import Path
 DATA_DIR = Path("data")
 STINTS_PATH = DATA_DIR / "stints.csv"
 EMV_PATH = DATA_DIR / "unified_2526_results.csv"
+BBREF_PATH = DATA_DIR / "bbref_advanced_2526.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
 CACHE_PATH = DATA_DIR / "cdn_boxscore_cache.json"
 OUTPUT_HTML = "65-game-tracker.html"
@@ -39,7 +40,7 @@ def get_game_minutes_from_cdn(game_id):
     return None
 
 def build_daily_report():
-    print("Building Award Eligibility Report...")
+    print("Building Award Eligibility Report (Sorted by VORP)...")
     
     # 1. Start with an empty game_minutes dataframe
     game_minutes = pd.DataFrame(columns=['player_id', 'game_id', 'minutes'])
@@ -67,7 +68,6 @@ def build_daily_report():
     if CACHE_PATH.exists():
         with open(CACHE_PATH, 'r') as f:
             cache_ids = json.load(f)
-            # Filter for 25-26 season
             all_cached_ids = [int(gid) for gid in cache_ids if str(gid).endswith('225') or str(gid).startswith('00225')]
         
         new_game_ids = [gid for gid in all_cached_ids if gid not in processed_gids]
@@ -91,56 +91,52 @@ def build_daily_report():
     g15 = game_minutes[(game_minutes['minutes'] >= 15) & (game_minutes['minutes'] < 20)].groupby('player_id').size().rename('games_15_20')
     gp = game_minutes[game_minutes['minutes'] > 0].groupby('player_id').size().rename('total_gp')
 
-    # Calculate eligibility
     report = pd.DataFrame(index=game_minutes['player_id'].unique())
     report = report.join(g20).join(g15).join(gp).fillna(0)
     report['eligible_games'] = report['games_20'] + report['games_15_20'].clip(upper=2)
-    
-    # Estimate Team Games (assume max games played by any player on team-ish)
     report['need_to_play'] = (65 - report['eligible_games']).clip(lower=0)
     
-    # 5. Load Player Names
-    names_df = pd.DataFrame(columns=['player_name', 'player_id', 'total_emv'])
+    # 5. Load Names and BBRef Data
+    final = pd.DataFrame()
     if PLAYER_MAP_PATH.exists():
-        names_df = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
-        if EMV_PATH.exists():
-            emv = pd.read_csv(EMV_PATH)[['player_name', 'total_emv']]
-            names_df = names_df.merge(emv, on='player_name', how='left')
-    else:
-        # Fallback to unique IDs if no map
-        names_df['player_id'] = report.index
-        names_df['player_name'] = names_df['player_id'].astype(str)
+        player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
+        final = player_map.merge(report, left_on='player_id', right_index=True)
+        
+        if BBREF_PATH.exists():
+            bbref = pd.read_csv(BBREF_PATH)
+            # Fuzzy match or direct name match (BBRef names are usually reliable)
+            final = final.merge(bbref[['player_name', 'VORP', 'BPM']], on='player_name', how='left')
     
-    names_df['total_emv'] = names_df['total_emv'].fillna(0)
-    final = names_df.merge(report, left_on='player_id', right_index=True)
-    
-    generate_dashboard(final.sort_values('total_emv', ascending=False), last_date)
+    if final.empty:
+        print("No merged data. Skipping.")
+        return
+
+    final['VORP'] = final['VORP'].fillna(-1.0) # Lower priority for players without BBRef data
+    generate_dashboard(final.sort_values('VORP', ascending=False), last_date)
 
 def generate_dashboard(df, last_date):
     html = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NBA 65-Game Tracker | EntropyIsRude</title>
+    <title>NBA 65-Game Tracker | BBRef VORP Sorted</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
         body {{ font-family: -apple-system, system-ui, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }}
-        .header {{ background: #1a1a2e; color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; }}
-        .stat-card {{ background: white; flex: 1; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #ddd; }}
-        .stat-val {{ font-size: 2.5em; font-weight: 800; margin: 5px 0; }}
+        .header {{ background: #003366; color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; }}
         .table-container {{ background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }}
-        .status-badge {{ padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }}
-        .bg-clinched {{ background: #eafaf1; color: #27ae60; }}
-        .bg-bubble {{ background: #fef9e7; color: #f39c12; }}
+        .player-name {{ font-weight: 700; color: #003366; }}
+        .vorp-val {{ font-weight: 800; color: #d41111; }}
         .progress-box {{ width: 100px; background: #eee; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }}
         .progress-fill {{ height: 100%; background: #27ae60; }}
+        .bg-eliminated {{ color: #c0392b; font-weight: bold; }}
     </style>
 </head>
 <body>
     <div class="header">
-        <h1 style="margin:0;">NBA Awards: 65-Game Tracker</h1>
-        <p>Data through: <strong>{last_date}</strong></p>
-        <p><a href="index.html" style="color: #4db8ff;">&larr; Back to Luck-Adjusted Standings</a></p>
+        <h1 style="margin:0;">Award Eligibility: The 65-Game Tracker</h1>
+        <p>Sorted by <strong>BBRef VORP</strong> (2025-26 Season)</p>
+        <p>Data through: <strong>{last_date}</strong> | <a href="index.html" style="color: #4db8ff;">Back Home</a></p>
     </div>
 
     <div class="table-container">
@@ -148,30 +144,39 @@ def generate_dashboard(df, last_date):
             <thead>
                 <tr>
                     <th>Player</th>
-                    <th>Eligible / 65</th>
+                    <th>VORP</th>
+                    <th>Status (Eligible / 65)</th>
                     <th>Needs (20m)</th>
-                    <th>20m Games</th>
-                    <th>15-20m Games</th>
-                    <th>Total EMV</th>
+                    <th>20m G</th>
+                    <th>15-20m G</th>
+                    <th>BPM</th>
                 </tr>
             </thead>
             <tbody>
 """
     for _, r in df.iterrows():
-        if r['total_emv'] < 0.5 and r['eligible_games'] < 30: continue
+        # Filter for relevant players (VORP > 0 or many games played)
+        if r['VORP'] < 0.1 and r['eligible_games'] < 40: continue
         
         perc = (r['eligible_games'] / 65) * 100
+        status_text = f"{int(r['eligible_games'])} / 65"
+        
+        # Determine status visually
+        is_eliminated = (r['eligible_games'] + 10) < 65 # Rough late season estimate
+        status_class = "bg-eliminated" if is_eliminated else ""
+
         html += f"""
                 <tr>
-                    <td><strong>{r['player_name']}</strong></td>
+                    <td><div class="player-name">{r['player_name']}</div></td>
+                    <td class="vorp-val">{r['VORP']:.1f}</td>
                     <td>
-                        {int(r['eligible_games'])}
+                        <span class="{status_class}">{status_text}</span>
                         <div class="progress-box"><div class="progress-fill" style="width: {min(100, perc)}%"></div></div>
                     </td>
                     <td style="font-weight: bold;">{int(r['need_to_play'])}</td>
                     <td>{int(r['games_20'])}</td>
                     <td>{int(r['games_15_20'])}</td>
-                    <td>{r['total_emv']:.2f}</td>
+                    <td>{r['BPM']:.1f}</td>
                 </tr>
         """
 
@@ -185,7 +190,7 @@ def generate_dashboard(df, last_date):
         $(document).ready(function() {
             $('#tracker').DataTable({
                 pageLength: 50,
-                order: [[5, 'desc']]
+                order: [[1, 'desc']]
             });
         });
     </script>
@@ -194,7 +199,7 @@ def generate_dashboard(df, last_date):
 """
     with open(OUTPUT_HTML, "w", encoding='utf-8') as f:
         f.write(html)
-    print(f"Dashboard updated: {OUTPUT_HTML}")
+    print(f"Dashboard updated with VORP: {OUTPUT_HTML}")
 
 if __name__ == "__main__":
     build_daily_report()
