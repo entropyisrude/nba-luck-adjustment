@@ -988,6 +988,23 @@ def generate_player_span_search_report() -> Path:
       }});
     }}
 
+    function initHeaderSorters() {{
+      document.querySelectorAll("#search-table thead th.sortable").forEach(th => {{
+        th.onclick = () => {{
+          if (!lastResults.length) return;
+          const key = th.dataset.key;
+          if (state.key === key) {{
+            state.dir = state.dir === "desc" ? "asc" : "desc";
+          }} else {{
+            state.key = key;
+            state.dir = key === "player_name" ? "asc" : "desc";
+          }}
+          lastResults = sortRows(lastResults);
+          renderRows(lastResults);
+        }};
+      }});
+    }}
+
     function baseFilteredRows() {{
       const seasonStartVal = document.getElementById("season_start").value;
       const seasonEndVal = document.getElementById("season_end").value;
@@ -1463,10 +1480,11 @@ def generate_player_span_search_report() -> Path:
       const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key)));
       headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
       document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
-        const cells = Array.from(tr.children);
-        const indexByKey = Object.fromEntries(BASE_HEADER_KEYS.map((key, idx) => [key, idx]));
-        tr.replaceChildren(...orderedKeys.map(key => cells[indexByKey[key]]));
+        const cellsByKey = Object.fromEntries(Array.from(tr.children).map(td => [td.dataset.key, td]));
+        tr.replaceChildren(...orderedKeys.map(key => cellsByKey[key]));
       }});
+      initHeaderModeToggles();
+      initHeaderSorters();
     }}
 
     function renderRows(rows) {{
@@ -1528,6 +1546,11 @@ def generate_player_span_search_report() -> Path:
           <td>${{fmt(computeExpr(r,"expr2"),2)}}</td>
         </tr>
       `).join("");
+      document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
+        Array.from(tr.children).forEach((td, idx) => {{
+          td.dataset.key = BASE_HEADER_KEYS[idx];
+        }});
+      }});
       applyColumnOrder();
     }}
 
@@ -1582,20 +1605,7 @@ def generate_player_span_search_report() -> Path:
       if (e.key === "Enter") runSearch();
     }}));
     document.querySelectorAll("#expr1_left,#expr1_right,#expr1_op,#expr1_label,#expr2_left,#expr2_right,#expr2_op,#expr2_label").forEach(el => el.addEventListener("change", updateCustomHeaders));
-    document.querySelectorAll("thead th.sortable").forEach(th => {{
-      th.addEventListener("click", () => {{
-        if (!lastResults.length) return;
-        const key = th.dataset.key;
-        if (state.key === key) {{
-          state.dir = state.dir === "desc" ? "asc" : "desc";
-        }} else {{
-          state.key = key;
-          state.dir = key === "player_name" ? "asc" : "desc";
-        }}
-        lastResults = sortRows(lastResults);
-        renderRows(lastResults);
-      }});
-    }});
+    initHeaderSorters();
 
     populate();
     clearFilters();
