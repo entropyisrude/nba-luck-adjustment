@@ -47,7 +47,7 @@ def build_daily_report():
     last_date = "2025-10-21"
 
     # 2. Try to load from Stints if available
-    if STINTS_PATH.exists() and os.getsize(STINTS_PATH) > 500:
+    if STINTS_PATH.exists() and os.path.getsize(STINTS_PATH) > 500:
         print(f"Loading base data from {STINTS_PATH}...")
         try:
             stints = pd.read_csv(STINTS_PATH)
@@ -97,9 +97,6 @@ def build_daily_report():
     report['eligible_games'] = report['games_20'] + report['games_15_20'].clip(upper=2)
     
     # Estimate Team Games (assume max games played by any player on team-ish)
-    # Since we don't have team_gp reliably in GH Action if stints are missing, we'll estimate
-    # or better: we'll assume 82 total games and calculate remainder based on current date
-    # But for now, let's just use 65 - eligible.
     report['need_to_play'] = (65 - report['eligible_games']).clip(lower=0)
     
     # 5. Load Player Names
@@ -120,11 +117,6 @@ def build_daily_report():
     generate_dashboard(final.sort_values('total_emv', ascending=False), last_date)
 
 def generate_dashboard(df, last_date):
-    clinched = len(df[df['eligible_games'] >= 65])
-    # Filter candidates for summary
-    candidates = df[df['total_emv'] > 1.5]
-    eliminated = len(candidates[(candidates['eligible_games'] + 15) < 65]) # Rough estimate for summary
-    
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -134,7 +126,6 @@ def generate_dashboard(df, last_date):
     <style>
         body {{ font-family: -apple-system, system-ui, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }}
         .header {{ background: #1a1a2e; color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; }}
-        .summary {{ display: flex; gap: 15px; margin-bottom: 25px; }}
         .stat-card {{ background: white; flex: 1; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #ddd; }}
         .stat-val {{ font-size: 2.5em; font-weight: 800; margin: 5px 0; }}
         .table-container {{ background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }}
