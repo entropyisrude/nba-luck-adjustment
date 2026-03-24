@@ -836,7 +836,9 @@ def generate_player_game_search_report() -> Path:
 
     async function ensureSelectedSeasonsLoaded() {{
       const needed = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
-      for (const season of needed) {{
+      for (let idx = 0; idx < needed.length; idx += 1) {{
+        const season = needed[idx];
+        document.getElementById("row_count").textContent = `Loading season data (${{idx + 1}}/${{needed.length}}): ${{season}}...`;
         await loadSeasonChunk(season);
       }}
     }}
@@ -1094,12 +1096,6 @@ def generate_player_game_search_report() -> Path:
     }}
 
     async function runSearch() {{
-      const neededSeasons = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
-      if (neededSeasons.length > 8) {{
-        document.getElementById("row_count").textContent = `Search too broad for in-browser loading. Narrow the season range first (${{neededSeasons.length}} seasons selected).`;
-        document.getElementById("mode_note").textContent = "";
-        return;
-      }}
       document.getElementById("row_count").textContent = "Loading season data...";
       try {{
         await ensureSelectedSeasonsLoaded();

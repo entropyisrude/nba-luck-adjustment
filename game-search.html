@@ -152,7 +152,7 @@
     </section>
 
     <section class="card">
-      <p class="muted">Search player games by boxscore stats plus raw and adjusted plus-minus. Generated 2026-03-23 19:08 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search.</p>
+      <p class="muted">Search player games by boxscore stats plus raw and adjusted plus-minus. Generated 2026-03-24 08:04 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search.</p>
       <div class="filter-group">
         <h3>Scope</h3>
         <div class="controls">
@@ -695,7 +695,9 @@
 
     async function ensureSelectedSeasonsLoaded() {
       const needed = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
-      for (const season of needed) {
+      for (let idx = 0; idx < needed.length; idx += 1) {
+        const season = needed[idx];
+        document.getElementById("row_count").textContent = `Loading season data (${idx + 1}/${needed.length}): ${season}...`;
         await loadSeasonChunk(season);
       }
     }
@@ -953,12 +955,6 @@
     }
 
     async function runSearch() {
-      const neededSeasons = selectedSeasons().filter(season => !LOADED_SEASONS.has(season));
-      if (neededSeasons.length > 8) {
-        document.getElementById("row_count").textContent = `Search too broad for in-browser loading. Narrow the season range first (${neededSeasons.length} seasons selected).`;
-        document.getElementById("mode_note").textContent = "";
-        return;
-      }
       document.getElementById("row_count").textContent = "Loading season data...";
       try {
         await ensureSelectedSeasonsLoaded();
