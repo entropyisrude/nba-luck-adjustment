@@ -70,20 +70,9 @@ def _load_player_name_map() -> dict[int, str]:
     return out
 
 
-def _is_lfs_pointer(path: Path) -> bool:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            first = f.readline().strip()
-        return first == "version https://git-lfs.github.com/spec/v1"
-    except Exception:
-        return False
-
-
 def _prepare_box() -> pd.DataFrame:
     if not BOX_PATH.exists():
         raise FileNotFoundError(f"Missing {BOX_PATH}")
-    if _is_lfs_pointer(BOX_PATH):
-        raise FileNotFoundError(f"{BOX_PATH} is a Git LFS pointer, not a materialized CSV")
     df = pd.read_csv(BOX_PATH, dtype={"game_id": str, "player_id": int})
     df["game_id"] = df["game_id"].astype(str).str.lstrip("0")
     df["date"] = df["date"].astype(str)
@@ -140,8 +129,6 @@ def generate_daily_boxscores_report() -> Path:
     latest_date = box["date"].max()
     season_start = _current_season_start(latest_date)
     box = box[box["date"] >= season_start]
-    # Drop rows that round to 0.0 minutes in the rendered table.
-    box = box[pd.to_numeric(box["minutes_on"], errors="coerce").fillna(0.0) >= 0.05].copy()
 
     all_dates = sorted(box["date"].unique().tolist())
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 from datetime import datetime
@@ -22,6 +23,7 @@ PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-sear
 PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
 SOURCE_LABEL = os.environ.get("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
 ALLOW_PER100 = os.environ.get("PLAYER_SPAN_SEARCH_ALLOW_PER100", "1") != "0"
+PLAYER_RIM_ASSISTS_BY_SEASON = DATA_DIR / "player_rim_assists_by_season.csv"
 
 
 def _season_start(season: str) -> int:
@@ -30,6 +32,35 @@ def _season_start(season: str) -> int:
 
 def _season_slug(season: str) -> str:
     return season.replace("-", "_")
+
+
+def _load_rim_assist_lookup() -> dict[tuple[str, str], dict[str, float | None]]:
+    if not PLAYER_RIM_ASSISTS_BY_SEASON.exists():
+        return {}
+    fields = [
+        "season_games",
+        "layup_assists_created_per_game",
+        "dunk_assists_created_per_game",
+        "other_rim_assists_created_per_game",
+        "rim_assists_strict_per_game",
+        "rim_assists_all_per_game",
+    ]
+    out: dict[tuple[str, str], dict[str, float | None]] = {}
+    with PLAYER_RIM_ASSISTS_BY_SEASON.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if (row.get("season_type") or "").strip() != "Regular Season":
+                continue
+            season = (row.get("season") or "").strip()
+            player_id = (row.get("player_id") or "").strip()
+            if not season or not player_id:
+                continue
+            vals: dict[str, float | None] = {}
+            for field in fields:
+                raw = (row.get(field) or "").strip()
+                vals[field] = float(raw) if raw != "" else None
+            out[(season, player_id)] = vals
+    return out
 
 
 def generate_player_span_search_report() -> Path:
@@ -93,6 +124,12 @@ def generate_player_span_search_report() -> Path:
             {other_rim_assists_created},
             {rim_assists_strict},
             {rim_assists_all},
+            {rim_assists_season_games},
+            {layup_assists_created_per_game},
+            {dunk_assists_created_per_game},
+            {other_rim_assists_created_per_game},
+            {rim_assists_strict_per_game},
+            {rim_assists_all_per_game},
             rim_anchor_signature,
             rim_deterrence_signature,
             rim_dfga,
@@ -138,6 +175,12 @@ def generate_player_span_search_report() -> Path:
             other_rim_assists_created=select_col("other_rim_assists_created"),
             rim_assists_strict=select_col("rim_assists_strict"),
             rim_assists_all=select_col("rim_assists_all"),
+            rim_assists_season_games=select_col("rim_assists_season_games"),
+            layup_assists_created_per_game=select_col("layup_assists_created_per_game"),
+            dunk_assists_created_per_game=select_col("dunk_assists_created_per_game"),
+            other_rim_assists_created_per_game=select_col("other_rim_assists_created_per_game"),
+            rim_assists_strict_per_game=select_col("rim_assists_strict_per_game"),
+            rim_assists_all_per_game=select_col("rim_assists_all_per_game"),
         )
     ).fetchall()
     cols = [d[0] for d in con.description]
@@ -145,6 +188,27 @@ def generate_player_span_search_report() -> Path:
 
     col_index = {name: idx for idx, name in enumerate(cols)}
     compact_rows = [list(row) for row in rows]
+    rim_assist_lookup = _load_rim_assist_lookup()
+    rim_csv_to_col = {
+        "season_games": "rim_assists_season_games",
+        "layup_assists_created_per_game": "layup_assists_created_per_game",
+        "dunk_assists_created_per_game": "dunk_assists_created_per_game",
+        "other_rim_assists_created_per_game": "other_rim_assists_created_per_game",
+        "rim_assists_strict_per_game": "rim_assists_strict_per_game",
+        "rim_assists_all_per_game": "rim_assists_all_per_game",
+    }
+    for row in compact_rows:
+        season = str(row[col_index["season"]] or "")
+        player_id = str(row[col_index["player_id"]] or "")
+        enrich = rim_assist_lookup.get((season, player_id))
+        if not enrich:
+            continue
+        for csv_key, col_name in rim_csv_to_col.items():
+            idx = col_index.get(col_name)
+            if idx is None:
+                continue
+            if row[idx] in (None, ""):
+                row[idx] = enrich.get(csv_key)
     seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
     teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
     opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
@@ -700,8 +764,8 @@ def generate_player_span_search_report() -> Path:
               <th class="sortable" data-key="charges_drawn" title="NBA hustle stat: charges drawn. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Charges</span></div></th>
               <th class="sortable" data-key="loose_balls_recovered" title="NBA hustle stat: loose balls recovered. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Loose</span></div></th>
               <th class="sortable" data-key="box_outs" title="NBA hustle stat: box outs. Converted across the selected span by Stat mode."><div class="th-wrap"><span>Box Outs</span></div></th>
-              <th class="sortable" data-key="expr1"><div class="th-wrap"><span id="expr1_header">AST/TOV</span></div></th>
-              <th class="sortable" data-key="expr2"><div class="th-wrap"><span id="expr2_header">STL+BLK</span></div></th>
+              <th class="sortable" data-key="expr1"><div class="th-wrap"><span id="expr1_header">Custom 1</span></div></th>
+              <th class="sortable" data-key="expr2"><div class="th-wrap"><span id="expr2_header">Custom 2</span></div></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -838,11 +902,13 @@ def generate_player_span_search_report() -> Path:
       document.getElementById("split2_key").innerHTML = splitOpts;
       document.getElementById("expr1_left").value = "ast";
       document.getElementById("expr1_right").value = "tov";
-      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr1_label").value = "";
+      document.getElementById("expr1_label").placeholder = "Optional label";
       document.getElementById("expr2_left").value = "stl";
       document.getElementById("expr2_right").value = "blk";
       document.getElementById("expr2_op").value = "+";
-      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("expr2_label").value = "";
+      document.getElementById("expr2_label").placeholder = "Optional label";
       document.getElementById("split1_key").value = "";
       document.getElementById("split2_key").value = "";
       if (SEASONS.includes("2025-26")) {{
@@ -1075,11 +1141,12 @@ def generate_player_span_search_report() -> Path:
             rim_dfg_pct_diff_sum: 0,
             rim_metric_count: 0,
             rim_assist_metric_seasons: new Set(),
-            layup_assists_created_by_season: {{}},
-            dunk_assists_created_by_season: {{}},
-            other_rim_assists_created_by_season: {{}},
-            rim_assists_strict_by_season: {{}},
-            rim_assists_all_by_season: {{}},
+            rim_assists_season_games_by_season: {{}},
+            layup_assists_created_per_game_by_season: {{}},
+            dunk_assists_created_per_game_by_season: {{}},
+            other_rim_assists_created_per_game_by_season: {{}},
+            rim_assists_strict_per_game_by_season: {{}},
+            rim_assists_all_per_game_by_season: {{}},
             contested_shots_sum: 0,
             contested_shots_2pt_sum: 0,
             contested_shots_3pt_sum: 0,
@@ -1194,24 +1261,26 @@ def generate_player_span_search_report() -> Path:
           g.hustle_metric_count += 1;
         }}
         if (metricSeasonKey && !g.rim_assist_metric_seasons.has(metricSeasonKey)) {{
-          const layupAst = v(r, "layup_assists_created");
-          const dunkAst = v(r, "dunk_assists_created");
-          const otherRimAst = v(r, "other_rim_assists_created");
-          const rimAstStrict = v(r, "rim_assists_strict");
-          const rimAstAll = v(r, "rim_assists_all");
+          const rimAssistSeasonGames = v(r, "rim_assists_season_games");
+          const layupAstPerGame = v(r, "layup_assists_created_per_game");
+          const dunkAstPerGame = v(r, "dunk_assists_created_per_game");
+          const otherRimAstPerGame = v(r, "other_rim_assists_created_per_game");
+          const rimAstStrictPerGame = v(r, "rim_assists_strict_per_game");
+          const rimAstAllPerGame = v(r, "rim_assists_all_per_game");
           const hasRimAssistMetric =
-            (layupAst !== null && layupAst !== "") ||
-            (dunkAst !== null && dunkAst !== "") ||
-            (otherRimAst !== null && otherRimAst !== "") ||
-            (rimAstStrict !== null && rimAstStrict !== "") ||
-            (rimAstAll !== null && rimAstAll !== "");
+            (layupAstPerGame !== null && layupAstPerGame !== "") ||
+            (dunkAstPerGame !== null && dunkAstPerGame !== "") ||
+            (otherRimAstPerGame !== null && otherRimAstPerGame !== "") ||
+            (rimAstStrictPerGame !== null && rimAstStrictPerGame !== "") ||
+            (rimAstAllPerGame !== null && rimAstAllPerGame !== "");
           if (hasRimAssistMetric) {{
             g.rim_assist_metric_seasons.add(metricSeasonKey);
-            if (layupAst !== null && layupAst !== "") g.layup_assists_created_by_season[metricSeasonKey] = Number(layupAst);
-            if (dunkAst !== null && dunkAst !== "") g.dunk_assists_created_by_season[metricSeasonKey] = Number(dunkAst);
-            if (otherRimAst !== null && otherRimAst !== "") g.other_rim_assists_created_by_season[metricSeasonKey] = Number(otherRimAst);
-            if (rimAstStrict !== null && rimAstStrict !== "") g.rim_assists_strict_by_season[metricSeasonKey] = Number(rimAstStrict);
-            if (rimAstAll !== null && rimAstAll !== "") g.rim_assists_all_by_season[metricSeasonKey] = Number(rimAstAll);
+            if (rimAssistSeasonGames !== null && rimAssistSeasonGames !== "") g.rim_assists_season_games_by_season[metricSeasonKey] = Number(rimAssistSeasonGames);
+            if (layupAstPerGame !== null && layupAstPerGame !== "") g.layup_assists_created_per_game_by_season[metricSeasonKey] = Number(layupAstPerGame);
+            if (dunkAstPerGame !== null && dunkAstPerGame !== "") g.dunk_assists_created_per_game_by_season[metricSeasonKey] = Number(dunkAstPerGame);
+            if (otherRimAstPerGame !== null && otherRimAstPerGame !== "") g.other_rim_assists_created_per_game_by_season[metricSeasonKey] = Number(otherRimAstPerGame);
+            if (rimAstStrictPerGame !== null && rimAstStrictPerGame !== "") g.rim_assists_strict_per_game_by_season[metricSeasonKey] = Number(rimAstStrictPerGame);
+            if (rimAstAllPerGame !== null && rimAstAllPerGame !== "") g.rim_assists_all_per_game_by_season[metricSeasonKey] = Number(rimAstAllPerGame);
           }}
         }}
       }}
@@ -1242,6 +1311,20 @@ def generate_player_span_search_report() -> Path:
           }}
           return hasAny ? total : null;
         }};
+        const proratedRimAssistTotal = (metricPerGameBySeason) => {{
+          let total = 0;
+          let hasAny = false;
+          for (const seasonKey of g.rim_assist_metric_seasons) {{
+            const perGame = metricPerGameBySeason[seasonKey];
+            const seasonGames = Number(g.rim_assists_season_games_by_season[seasonKey] || 0);
+            const selectedGames = Number(g.rim_selected_games_by_season[seasonKey] || 0);
+            if (perGame !== undefined && perGame !== null && seasonGames > 0 && selectedGames > 0) {{
+              total += Number(perGame) * selectedGames;
+              hasAny = true;
+            }}
+          }}
+          return hasAny ? total : null;
+        }};
         const out = {{
           ...g,
           ts_game: ts,
@@ -1253,11 +1336,11 @@ def generate_player_span_search_report() -> Path:
           rim_dfga: rimDfgaSelectedTotal,
           rim_dfg_pct: g.rim_metric_count > 0 ? g.rim_dfg_pct_sum / g.rim_metric_count : null,
           rim_dfg_pct_diff: g.rim_metric_count > 0 ? g.rim_dfg_pct_diff_sum / g.rim_metric_count : null,
-          layup_assists_created: proratedSeasonStatTotal(g.layup_assists_created_by_season),
-          dunk_assists_created: proratedSeasonStatTotal(g.dunk_assists_created_by_season),
-          other_rim_assists_created: proratedSeasonStatTotal(g.other_rim_assists_created_by_season),
-          rim_assists_strict: proratedSeasonStatTotal(g.rim_assists_strict_by_season),
-          rim_assists_all: proratedSeasonStatTotal(g.rim_assists_all_by_season),
+          layup_assists_created: proratedRimAssistTotal(g.layup_assists_created_per_game_by_season),
+          dunk_assists_created: proratedRimAssistTotal(g.dunk_assists_created_per_game_by_season),
+          other_rim_assists_created: proratedRimAssistTotal(g.other_rim_assists_created_per_game_by_season),
+          rim_assists_strict: proratedRimAssistTotal(g.rim_assists_strict_per_game_by_season),
+          rim_assists_all: proratedRimAssistTotal(g.rim_assists_all_per_game_by_season),
           contested_shots: proratedSeasonStatTotal(g.contested_shots_by_season),
           contested_shots_2pt: proratedSeasonStatTotal(g.contested_shots_2pt_by_season),
           contested_shots_3pt: proratedSeasonStatTotal(g.contested_shots_3pt_by_season),
@@ -1479,6 +1562,7 @@ def generate_player_span_search_report() -> Path:
       const desired = ["player_name"].concat(activeColumnKeys());
       const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key)));
       headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
+      updateCustomHeaders();
       document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
         const cellsByKey = Object.fromEntries(Array.from(tr.children).map(td => [td.dataset.key, td]));
         tr.replaceChildren(...orderedKeys.map(key => cellsByKey[key]));
@@ -1499,58 +1583,53 @@ def generate_player_span_search_report() -> Path:
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
-          <td>${{r.player_name || ""}}</td>
-          <td>${{r.listed_height || ""}}</td>
-          <td>${{r.age || ""}}</td>
-          <td>${{r.career_year || ""}}</td>
-          <td>${{r.draft_year || ""}}</td>
-          <td>${{r.draft_overall_pick || ""}}</td>
-          <td>${{fmt(r.games,0)}}</td>
-          <td>${{fmt(r.minutes,1)}}</td>
-          <td>${{fmt(shown(r, "pts"), displayModes["pts"] === "totals" || (displayModes["pts"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "reb"), displayModes["reb"] === "totals" || (displayModes["reb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "ast"), displayModes["ast"] === "totals" || (displayModes["ast"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "stl"), displayModes["stl"] === "totals" || (displayModes["stl"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "blk"), displayModes["blk"] === "totals" || (displayModes["blk"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "tov"), displayModes["tov"] === "totals" || (displayModes["tov"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "fg2a"), displayModes["fg2a"] === "totals" || (displayModes["fg2a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(r.fg2_pct,3)}}</td>
-          <td>${{fmt(shown(r, "fg3a"), displayModes["fg3a"] === "totals" || (displayModes["fg3a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(r.fg3_pct,3)}}</td>
-          <td>${{fmt(r.ft_pct,3)}}</td>
-          <td>${{fmt(shown(r, "fta"), displayModes["fta"] === "totals" || (displayModes["fta"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "assisted_fgm"), displayModes["assisted_fgm"] === "totals" || (displayModes["assisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "unassisted_fgm"), displayModes["unassisted_fgm"] === "totals" || (displayModes["unassisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(r.ts_game,3)}}</td>
-          <td class="${{cls(shown(r, "plus_minus_actual"))}}">${{fmt(shown(r, "plus_minus_actual"), displayModes["plus_minus_actual"] === "totals" || (displayModes["plus_minus_actual"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td class="${{cls(shown(r, "plus_minus_adjusted"))}}">${{fmt(shown(r, "plus_minus_adjusted"), displayModes["plus_minus_adjusted"] === "totals" || (displayModes["plus_minus_adjusted"] === "match" && mode === "totals") ? 3 : 2)}}</td>
-          <td class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual,2)}}</td>
-          <td class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted,3)}}</td>
-          <td>${{fmt(r.rim_anchor_signature,3)}}</td>
-          <td>${{fmt(r.rim_deterrence_signature,3)}}</td>
-          <td>${{fmt(shown(r, "rim_dfga"), displayModes["rim_dfga"] === "totals" || (displayModes["rim_dfga"] === "match" && mode === "totals") ? 1 : 2)}}</td>
-          <td>${{fmt(r.rim_dfg_pct,3)}}</td>
-          <td>${{fmt(r.rim_dfg_pct_diff,3)}}</td>
-          <td>${{fmt(shown(r, "layup_assists_created"), displayModes["layup_assists_created"] === "totals" || (displayModes["layup_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "dunk_assists_created"), displayModes["dunk_assists_created"] === "totals" || (displayModes["dunk_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "other_rim_assists_created"), displayModes["other_rim_assists_created"] === "totals" || (displayModes["other_rim_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "rim_assists_strict"), displayModes["rim_assists_strict"] === "totals" || (displayModes["rim_assists_strict"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "rim_assists_all"), displayModes["rim_assists_all"] === "totals" || (displayModes["rim_assists_all"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "deflections"), displayModes["deflections"] === "totals" || (displayModes["deflections"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "screen_assists"), displayModes["screen_assists"] === "totals" || (displayModes["screen_assists"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "contested_shots"), displayModes["contested_shots"] === "totals" || (displayModes["contested_shots"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "charges_drawn"), displayModes["charges_drawn"] === "totals" || (displayModes["charges_drawn"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "loose_balls_recovered"), displayModes["loose_balls_recovered"] === "totals" || (displayModes["loose_balls_recovered"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(shown(r, "box_outs"), displayModes["box_outs"] === "totals" || (displayModes["box_outs"] === "match" && mode === "totals") ? 0 : 2)}}</td>
-          <td>${{fmt(computeExpr(r,"expr1"),2)}}</td>
-          <td>${{fmt(computeExpr(r,"expr2"),2)}}</td>
+          <td data-key="player_name">${{r.player_name || ""}}</td>
+          <td data-key="listed_height">${{r.listed_height || ""}}</td>
+          <td data-key="age">${{r.age || ""}}</td>
+          <td data-key="career_year">${{r.career_year || ""}}</td>
+          <td data-key="draft_year">${{r.draft_year || ""}}</td>
+          <td data-key="draft_overall_pick">${{r.draft_overall_pick || ""}}</td>
+          <td data-key="games">${{fmt(r.games,0)}}</td>
+          <td data-key="minutes">${{fmt(r.minutes,1)}}</td>
+          <td data-key="pts">${{fmt(shown(r, "pts"), displayModes["pts"] === "totals" || (displayModes["pts"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="reb">${{fmt(shown(r, "reb"), displayModes["reb"] === "totals" || (displayModes["reb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="ast">${{fmt(shown(r, "ast"), displayModes["ast"] === "totals" || (displayModes["ast"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="stl">${{fmt(shown(r, "stl"), displayModes["stl"] === "totals" || (displayModes["stl"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="blk">${{fmt(shown(r, "blk"), displayModes["blk"] === "totals" || (displayModes["blk"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="tov">${{fmt(shown(r, "tov"), displayModes["tov"] === "totals" || (displayModes["tov"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fg2a">${{fmt(shown(r, "fg2a"), displayModes["fg2a"] === "totals" || (displayModes["fg2a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fg2_pct">${{fmt(r.fg2_pct,3)}}</td>
+          <td data-key="fg3a">${{fmt(shown(r, "fg3a"), displayModes["fg3a"] === "totals" || (displayModes["fg3a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fg3_pct">${{fmt(r.fg3_pct,3)}}</td>
+          <td data-key="ft_pct">${{fmt(r.ft_pct,3)}}</td>
+          <td data-key="fta">${{fmt(shown(r, "fta"), displayModes["fta"] === "totals" || (displayModes["fta"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="assisted_fgm">${{fmt(shown(r, "assisted_fgm"), displayModes["assisted_fgm"] === "totals" || (displayModes["assisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="unassisted_fgm">${{fmt(shown(r, "unassisted_fgm"), displayModes["unassisted_fgm"] === "totals" || (displayModes["unassisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="ts_game">${{fmt(r.ts_game,3)}}</td>
+          <td data-key="plus_minus_actual" class="${{cls(shown(r, "plus_minus_actual"))}}">${{fmt(shown(r, "plus_minus_actual"), displayModes["plus_minus_actual"] === "totals" || (displayModes["plus_minus_actual"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="plus_minus_adjusted" class="${{cls(shown(r, "plus_minus_adjusted"))}}">${{fmt(shown(r, "plus_minus_adjusted"), displayModes["plus_minus_adjusted"] === "totals" || (displayModes["plus_minus_adjusted"] === "match" && mode === "totals") ? 3 : 2)}}</td>
+          <td data-key="on_off_actual" class="${{cls(r.on_off_actual)}}">${{fmt(r.on_off_actual,2)}}</td>
+          <td data-key="on_off_adjusted" class="${{cls(r.on_off_adjusted)}}">${{fmt(r.on_off_adjusted,3)}}</td>
+          <td data-key="rim_anchor_signature">${{fmt(r.rim_anchor_signature,3)}}</td>
+          <td data-key="rim_deterrence_signature">${{fmt(r.rim_deterrence_signature,3)}}</td>
+          <td data-key="rim_dfga">${{fmt(shown(r, "rim_dfga"), displayModes["rim_dfga"] === "totals" || (displayModes["rim_dfga"] === "match" && mode === "totals") ? 1 : 2)}}</td>
+          <td data-key="rim_dfg_pct">${{fmt(r.rim_dfg_pct,3)}}</td>
+          <td data-key="rim_dfg_pct_diff">${{fmt(r.rim_dfg_pct_diff,3)}}</td>
+          <td data-key="layup_assists_created">${{fmt(shown(r, "layup_assists_created"), displayModes["layup_assists_created"] === "totals" || (displayModes["layup_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="dunk_assists_created">${{fmt(shown(r, "dunk_assists_created"), displayModes["dunk_assists_created"] === "totals" || (displayModes["dunk_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="other_rim_assists_created">${{fmt(shown(r, "other_rim_assists_created"), displayModes["other_rim_assists_created"] === "totals" || (displayModes["other_rim_assists_created"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="rim_assists_strict">${{fmt(shown(r, "rim_assists_strict"), displayModes["rim_assists_strict"] === "totals" || (displayModes["rim_assists_strict"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="rim_assists_all">${{fmt(shown(r, "rim_assists_all"), displayModes["rim_assists_all"] === "totals" || (displayModes["rim_assists_all"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="deflections">${{fmt(shown(r, "deflections"), displayModes["deflections"] === "totals" || (displayModes["deflections"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="screen_assists">${{fmt(shown(r, "screen_assists"), displayModes["screen_assists"] === "totals" || (displayModes["screen_assists"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="contested_shots">${{fmt(shown(r, "contested_shots"), displayModes["contested_shots"] === "totals" || (displayModes["contested_shots"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="charges_drawn">${{fmt(shown(r, "charges_drawn"), displayModes["charges_drawn"] === "totals" || (displayModes["charges_drawn"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="loose_balls_recovered">${{fmt(shown(r, "loose_balls_recovered"), displayModes["loose_balls_recovered"] === "totals" || (displayModes["loose_balls_recovered"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="box_outs">${{fmt(shown(r, "box_outs"), displayModes["box_outs"] === "totals" || (displayModes["box_outs"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="expr1">${{fmt(computeExpr(r,"expr1"),2)}}</td>
+          <td data-key="expr2">${{fmt(computeExpr(r,"expr2"),2)}}</td>
         </tr>
       `).join("");
-      document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
-        Array.from(tr.children).forEach((td, idx) => {{
-          td.dataset.key = BASE_HEADER_KEYS[idx];
-        }});
-      }});
       applyColumnOrder();
     }}
 
@@ -1583,12 +1662,12 @@ def generate_player_span_search_report() -> Path:
       document.getElementById("expr1_left").value = "ast";
       document.getElementById("expr1_right").value = "tov";
       document.getElementById("expr1_op").value = "/";
-      document.getElementById("expr1_label").value = "AST/TOV";
+      document.getElementById("expr1_label").value = "";
       document.getElementById("expr1_cmp").value = "";
       document.getElementById("expr2_left").value = "stl";
       document.getElementById("expr2_right").value = "blk";
       document.getElementById("expr2_op").value = "+";
-      document.getElementById("expr2_label").value = "STL+BLK";
+      document.getElementById("expr2_label").value = "";
       document.getElementById("expr2_cmp").value = "";
       document.getElementById("split1_key").value = "";
       document.getElementById("split2_key").value = "";
@@ -1604,7 +1683,10 @@ def generate_player_span_search_report() -> Path:
     document.querySelectorAll("input").forEach(el => el.addEventListener("keydown", (e) => {{
       if (e.key === "Enter") runSearch();
     }}));
-    document.querySelectorAll("#expr1_left,#expr1_right,#expr1_op,#expr1_label,#expr2_left,#expr2_right,#expr2_op,#expr2_label").forEach(el => el.addEventListener("change", updateCustomHeaders));
+    document.querySelectorAll("#expr1_left,#expr1_right,#expr1_op,#expr1_label,#expr2_left,#expr2_right,#expr2_op,#expr2_label").forEach(el => {{
+      el.addEventListener("change", updateCustomHeaders);
+      el.addEventListener("input", updateCustomHeaders);
+    }});
     initHeaderSorters();
 
     populate();

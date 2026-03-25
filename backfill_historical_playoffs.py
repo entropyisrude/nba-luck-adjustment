@@ -31,6 +31,7 @@ EVENT_FOUL = 6
 EVENT_SUBSTITUTION = 8
 EVENT_TIMEOUT = 9
 EVENT_JUMP_BALL = 10
+EVENT_EJECTION = 11
 EVENT_PERIOD_START = 12
 EVENT_PERIOD_END = 13
 
@@ -105,7 +106,58 @@ def sort_pbp_chronologically(pbp: pd.DataFrame) -> pd.DataFrame:
     return ordered.drop(columns=["_clock_seconds", "_boundary_rank"])
 
 
-def get_starters_from_period(pbp: pd.DataFrame, period: int, game_id: str) -> dict[int, list[int]]:
+def normalize_reverse_cumulative_scores(game_pbp: pd.DataFrame) -> pd.DataFrame:
+    """
+    Some older playoff source files encode SCORE as points remaining to the
+    final score instead of cumulative in-game score. Detect that pattern
+    per-game and normalize back to standard cumulative scoring.
+    """
+    if game_pbp.empty or "SCORE" not in game_pbp.columns:
+        return game_pbp
+
+    ordered = sort_pbp_chronologically(game_pbp)
+    scored = ordered[ordered["SCORE"].notna()].copy()
+    if scored.empty:
+        return ordered
+
+    parsed: list[tuple[int, int]] = []
+    valid_index: list[int] = []
+    for idx, score in scored["SCORE"].items():
+        text = str(score or "").strip()
+        if " - " not in text:
+            continue
+        try:
+            away_score, home_score = map(int, text.split(" - "))
+        except Exception:
+            continue
+        parsed.append((away_score, home_score))
+        valid_index.append(idx)
+
+    if len(parsed) < 2:
+        return ordered
+
+    first_total = parsed[0][0] + parsed[0][1]
+    last_total = parsed[-1][0] + parsed[-1][1]
+    if first_total <= last_total:
+        return ordered
+
+    final_away = max(a for a, _ in parsed)
+    final_home = max(h for _, h in parsed)
+
+    normalized = ordered.copy()
+    for idx, (away_score, home_score) in zip(valid_index, parsed):
+        actual_away = final_away - away_score
+        actual_home = final_home - home_score
+        normalized.at[idx, "SCORE"] = f"{actual_away} - {actual_home}"
+    return normalized
+
+
+def get_starters_from_period(
+    pbp: pd.DataFrame,
+    period: int,
+    game_id: str,
+    prior_lineups: dict[int, set[int]] | None = None,
+) -> dict[int, list[int]]:
     """
     Infer starters for a period by looking at early events.
     Returns {team_id: [player_ids]}
@@ -134,30 +186,62 @@ def get_starters_from_period(pbp: pd.DataFrame, period: int, game_id: str) -> di
     # Build the set of players seen for each team in the period, and the first
     # substitution direction for players who appear in a sub row. This lets us
     # keep quiet starters like Jason Kidd while excluding clear bench players
-    # whose first recorded appearance is checking in.
+    # whose first recorded appearance is checking in. We compute first
+    # substitutions in a separate pass so players on the first substitution row
+    # cannot leak into early-player starter evidence.
     seen_players: dict[int, list[int]] = {}
     first_subtype_by_player: dict[tuple[int, int], str] = {}
     early_players: dict[int, list[int]] = {}
     first_sub_eventnum: dict[int, int] = {}
+    first_non_sub_eventnum_by_player: dict[tuple[int, int], int] = {}
+    prior_period_late_sub_in: set[tuple[int, int]] = set()
+    prior_period_late_sub_out: set[tuple[int, int]] = set()
+    prior_period_sub_in_seconds: dict[tuple[int, int], float] = {}
+    prior_period_last_non_sub_seconds: dict[tuple[int, int], float] = {}
+
+    if period > 1:
+        prev_period_df = pbp[(pbp["GAME_ID"] == game_id) & (pbp["PERIOD"] == period - 1)].copy()
+        if not prev_period_df.empty:
+            prev_period_df = sort_pbp_chronologically(prev_period_df)
+            for _, row in prev_period_df.iterrows():
+                clock_text = str(row.get("PCTIMESTRING", "") or "")
+                try:
+                    mm, ss = clock_text.split(":")
+                    clock_seconds = int(mm) * 60 + float(ss)
+                except Exception:
+                    continue
+                if int(row.get("EVENTMSGTYPE", 0) or 0) == EVENT_SUBSTITUTION:
+                    team_id = as_int(row.get("PLAYER1_TEAM_ID", 0))
+                    player_out = as_int(row.get("PLAYER1_ID", 0))
+                    player_in = as_int(row.get("PLAYER2_ID", 0))
+                    if team_id <= 0:
+                        continue
+                    if player_in > 0:
+                        prior_period_sub_in_seconds[(team_id, player_in)] = clock_seconds
+                        # Very-late end-of-period substitutions are often
+                        # tactical offense/defense swaps and should not
+                        # dominate the next period's carry-over lineup.
+                        if clock_seconds <= 6:
+                            prior_period_late_sub_in.add((team_id, player_in))
+                    if player_out > 0 and clock_seconds <= 6:
+                        prior_period_late_sub_out.add((team_id, player_out))
+                    continue
+
+                for player_col, team_col in [
+                    ("PLAYER1_ID", "PLAYER1_TEAM_ID"),
+                    ("PLAYER2_ID", "PLAYER2_TEAM_ID"),
+                    ("PLAYER3_ID", "PLAYER3_TEAM_ID"),
+                ]:
+                    pid = as_int(row.get(player_col, 0))
+                    tid = as_int(row.get(team_col, 0))
+                    if pid > 0 and tid > 0:
+                        prior_period_last_non_sub_seconds[(tid, pid)] = clock_seconds
 
     for _, row in period_df.iterrows():
-        eventnum = int(row.get("EVENTNUM", 0) or 0)
-        for player_col, team_col in [
-            ("PLAYER1_ID", "PLAYER1_TEAM_ID"),
-            ("PLAYER2_ID", "PLAYER2_TEAM_ID"),
-            ("PLAYER3_ID", "PLAYER3_TEAM_ID"),
-        ]:
-            pid = as_int(row.get(player_col, 0))
-            tid = as_int(row.get(team_col, 0))
-            if pid > 0 and tid > 0:
-                add_player(seen_players, tid, pid)
-                cutoff = first_sub_eventnum.get(tid)
-                if cutoff is None or eventnum <= cutoff:
-                    add_player(early_players, tid, pid)
-
         if int(row.get("EVENTMSGTYPE", 0) or 0) != EVENT_SUBSTITUTION:
             continue
 
+        eventnum = int(row.get("EVENTNUM", 0) or 0)
         player_out = as_int(row.get("PLAYER1_ID", 0))
         player_in = as_int(row.get("PLAYER2_ID", 0))
         team_id = as_int(row.get("PLAYER1_TEAM_ID", 0))
@@ -169,26 +253,145 @@ def get_starters_from_period(pbp: pd.DataFrame, period: int, game_id: str) -> di
         if player_in > 0 and (team_id, player_in) not in first_subtype_by_player:
             first_subtype_by_player[(team_id, player_in)] = "in"
 
+    for _, row in period_df.iterrows():
+        eventnum = int(row.get("EVENTNUM", 0) or 0)
+        event_type = int(row.get("EVENTMSGTYPE", 0) or 0)
+        clock_text = str(row.get("PCTIMESTRING", "") or "")
+        home_desc = str(row.get("HOMEDESCRIPTION", "") or "")
+        away_desc = str(row.get("VISITORDESCRIPTION", "") or "")
+        technical_or_ejection = (
+            event_type == EVENT_EJECTION
+            or (
+                event_type == EVENT_FOUL
+                and (
+                    "T.FOUL" in home_desc.upper()
+                    or "T.FOUL" in away_desc.upper()
+                    or "TECHNICAL" in home_desc.upper()
+                    or "TECHNICAL" in away_desc.upper()
+                )
+            )
+        )
+        period_start_technical = (
+            event_type == EVENT_FOUL
+            and clock_text == "12:00"
+            and ("T.FOUL" in home_desc.upper() or "T.FOUL" in away_desc.upper() or "TECHNICAL" in home_desc.upper() or "TECHNICAL" in away_desc.upper())
+        )
+        for player_col, team_col in [
+            ("PLAYER1_ID", "PLAYER1_TEAM_ID"),
+            ("PLAYER2_ID", "PLAYER2_TEAM_ID"),
+            ("PLAYER3_ID", "PLAYER3_TEAM_ID"),
+        ]:
+            pid = as_int(row.get(player_col, 0))
+            tid = as_int(row.get(team_col, 0))
+            if pid <= 0 or tid <= 0:
+                continue
+            if period_start_technical or technical_or_ejection:
+                continue
+            add_player(seen_players, tid, pid)
+            cutoff = first_sub_eventnum.get(tid)
+            if event_type != EVENT_SUBSTITUTION:
+                first_non_sub_eventnum_by_player.setdefault((tid, pid), eventnum)
+            if event_type != EVENT_SUBSTITUTION and (cutoff is None or eventnum < cutoff):
+                add_player(early_players, tid, pid)
+
     starters: dict[int, list[int]] = {}
-    for team_id, players in seen_players.items():
-        # Clear starters: anyone not first seen as a substitution-in.
-        primary = [
-            pid for pid in players
-            if first_subtype_by_player.get((team_id, pid)) != "in"
-        ]
-        for pid in primary:
-            add_player(starters, team_id, pid)
+    team_ids = set(seen_players.keys())
+    if prior_lineups:
+        team_ids.update(prior_lineups.keys())
 
-        # Prefer players active before the first sub as tie-breakers if we still
-        # need to fill out a lineup.
-        for pid in early_players.get(team_id, []):
-            add_player(starters, team_id, pid)
+    for team_id in sorted(team_ids):
+        players = list(seen_players.get(team_id, []))
+        ranked: list[tuple[int, int, int]] = []
+        early_set = set(early_players.get(team_id, []))
+        prior_set = prior_lineups.get(team_id, set()) if prior_lineups else set()
 
-        # Last fallback: keep original period order so we still return a lineup.
-        for pid in players:
-            add_player(starters, team_id, pid)
+        # Quiet carry-over starters may not record any event before the first
+        # substitution of the period. Include them as starter candidates even
+        # if they are absent from the current-period action stream.
+        for pid in sorted(prior_set):
+            if pid not in players:
+                players.append(pid)
 
-        starters[team_id] = starters.get(team_id, [])[:5]
+        for order, pid in enumerate(players):
+            subtype = first_subtype_by_player.get((team_id, pid))
+            first_non_sub_eventnum = first_non_sub_eventnum_by_player.get((team_id, pid))
+            score = 0
+
+            # Strongest current-period evidence: if a player's first sub record
+            # is "out", they must have started the period.
+            if subtype == "out":
+                score += 1000
+
+            # Players who record non-sub actions before the first team sub are
+            # much more likely to have started the period than carry-over
+            # players who are only seen later.
+            if pid in early_set:
+                score += 500
+
+            # Carry over from the previous valid lineup only as a secondary
+            # signal. This fills quiet starters without overriding clear
+            # current-period evidence.
+            if pid in prior_set and subtype != "in":
+                score += 100
+
+            # If a player records an actual non-sub action relatively early in
+            # the period without ever being tagged as a sub-in, that is strong
+            # starter evidence and should beat a silent carry-over bench piece.
+            if subtype is None and first_non_sub_eventnum is not None:
+                cutoff = first_sub_eventnum.get(team_id)
+                if cutoff is None or first_non_sub_eventnum <= cutoff + 20:
+                    score += 225
+
+            # Restore starters who were subbed out in the final few seconds of
+            # the previous period; these are often temporary tactical swaps.
+            if (team_id, pid) in prior_period_late_sub_out and subtype != "in":
+                score += 175
+
+            # Downweight players whose only carry-over case comes from being
+            # subbed in during the final few seconds of the prior period.
+            if (team_id, pid) in prior_period_late_sub_in and pid not in early_set:
+                score -= 175
+
+            # A player who only closed the prior period because of a non-late
+            # substitution and then records no early current-period evidence is
+            # less likely to have started the new period than a longer-running
+            # carry-over starter.
+            prior_sub_in_seconds = prior_period_sub_in_seconds.get((team_id, pid))
+            if (
+                prior_sub_in_seconds is not None
+                and pid in prior_set
+                and pid not in early_set
+                and subtype is None
+            ):
+                score -= 120
+
+            # If a quiet carry-over player recorded an actual action in the
+            # closing seconds of the prior period, that is better evidence for
+            # starting the next period than a silent bench closer.
+            prior_last_action_seconds = prior_period_last_non_sub_seconds.get((team_id, pid))
+            if (
+                prior_last_action_seconds is not None
+                and prior_last_action_seconds <= 30.0
+                and pid in prior_set
+                and pid not in early_set
+                and subtype is None
+            ):
+                score += 140
+
+            # Prefer players not first seen as sub-ins over generic later-only
+            # players, but do not let this outweigh stronger evidence.
+            if subtype != "in":
+                score += 50
+
+            # Bench players whose first recorded period evidence is checking in
+            # should only be starters as a last resort.
+            if subtype == "in":
+                score -= 1000
+
+            ranked.append((score, -order, pid))
+
+        ranked.sort(reverse=True)
+        starters[team_id] = [pid for _, _, pid in ranked[:5]]
 
     return starters
 
@@ -198,7 +401,7 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
     Track lineups throughout a game based on substitutions.
     Returns the pbp with added lineup columns.
     """
-    game_pbp = sort_pbp_chronologically(game_pbp)
+    game_pbp = sort_pbp_chronologically(game_pbp).reset_index(drop=True)
 
     # Get team IDs
     team_ids = set()
@@ -211,19 +414,52 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
 
     # Initialize lineups
     lineups = {tid: set() for tid in team_ids}
+    pending_substitutions: dict[tuple[int, str], dict[int, list[tuple[int, int]]]] = {}
 
     # Track by period (lineups reset at period start)
     results = []
     current_period = 0
 
+    def _apply_sub_batch(batch_by_team: dict[int, list[tuple[int, int]]]) -> None:
+        for team_id, moves in batch_by_team.items():
+            if team_id not in lineups:
+                continue
+            for player_out, player_in in moves:
+                if player_out > 0:
+                    lineups[team_id].discard(player_out)
+                if player_in > 0:
+                    lineups[team_id].add(player_in)
+
+    def _flush_pending(period: int, clock: str) -> None:
+        batch = pending_substitutions.pop((period, clock), None)
+        if batch:
+            _apply_sub_batch(batch)
+
+    def _clock_to_seconds(clock: str) -> float | None:
+        text = str(clock or "")
+        if ":" not in text:
+            return None
+        try:
+            minutes, seconds = text.split(":", 1)
+            return int(minutes) * 60 + float(seconds)
+        except Exception:
+            return None
+
     for idx, row in game_pbp.iterrows():
         period = int(row["PERIOD"])
         event_type = int(row["EVENTMSGTYPE"])
+        clock = str(row.get("PCTIMESTRING", "") or "")
+        current_ts = (period, clock)
+
+        for pending_ts in list(pending_substitutions.keys()):
+            if pending_ts != current_ts:
+                _flush_pending(*pending_ts)
 
         # Period change - reset lineups
         if period != current_period:
+            prior_lineups = {tid: set(players) for tid, players in lineups.items()}
             current_period = period
-            starters = get_starters_from_period(game_pbp, period, row["GAME_ID"])
+            starters = get_starters_from_period(game_pbp, period, row["GAME_ID"], prior_lineups)
             for tid in team_ids:
                 lineups[tid] = set(starters.get(tid, []))
 
@@ -232,12 +468,32 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
             player_out = int(row["PLAYER1_ID"]) if pd.notna(row.get("PLAYER1_ID")) else 0
             player_in = int(row["PLAYER2_ID"]) if pd.notna(row.get("PLAYER2_ID")) else 0
             team_id = int(row["PLAYER1_TEAM_ID"]) if pd.notna(row.get("PLAYER1_TEAM_ID")) else 0
+            clock_seconds = _clock_to_seconds(clock)
+            endgame_tactical_window = (
+                clock_seconds is not None
+                and (
+                    (period == 4 and clock_seconds <= 120.0)
+                    or period > 4
+                )
+            )
 
-            if team_id in lineups:
-                if player_out > 0:
-                    lineups[team_id].discard(player_out)
-                if player_in > 0:
-                    lineups[team_id].add(player_in)
+            has_same_clock_ft = False
+            if endgame_tactical_window:
+                for j in range(idx + 1, len(game_pbp)):
+                    other = game_pbp.iloc[j]
+                    other_period = int(other["PERIOD"])
+                    other_clock = str(other.get("PCTIMESTRING", "") or "")
+                    if (other_period, other_clock) != current_ts:
+                        break
+                    if int(other.get("EVENTMSGTYPE", 0) or 0) == EVENT_FREE_THROW:
+                        has_same_clock_ft = True
+                        break
+
+            if endgame_tactical_window and has_same_clock_ft:
+                pending_batch = pending_substitutions.setdefault(current_ts, {})
+                pending_batch.setdefault(team_id, []).append((player_out, player_in))
+            elif team_id in lineups:
+                _apply_sub_batch({team_id: [(player_out, player_in)]})
 
         # Add lineup info to row
         row_dict = row.to_dict()
@@ -249,6 +505,9 @@ def track_lineups_for_game(game_pbp: pd.DataFrame) -> pd.DataFrame:
             row_dict[f"TEAM{i+1}_ID"] = tid
 
         results.append(row_dict)
+
+    for pending_ts in list(pending_substitutions.keys()):
+        _flush_pending(*pending_ts)
 
     return pd.DataFrame(results)
 
@@ -335,6 +594,8 @@ def process_game_to_stints(
 
     if game_pbp.empty:
         return pd.DataFrame()
+
+    game_pbp = normalize_reverse_cumulative_scores(game_pbp)
 
     # Forward-fill the SCORE column so non-scoring events have valid scores
     # SCORE is only populated on made baskets, so we need to carry forward

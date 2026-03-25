@@ -26,29 +26,21 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Get rolling update window
+      - name: Get yesterday's date (games we're updating)
         id: date
         run: |
-          echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Run rolling catch-up update
+      - name: Run daily update
         run: |
-          for attempt in 1 2 3; do
-            python run_daily.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} && break
-            if [ "$attempt" -eq 3 ]; then
-              exit 1
-            fi
-            sleep 30
-          done
+          python run_daily.py --start ${{ steps.date.outputs.yesterday }} --end ${{ steps.date.outputs.yesterday }}
 
       - name: Generate report
         run: |
           python generate_report.py
-          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
+          python run_onoff_daily.py --date ${{ steps.date.outputs.yesterday }}
           python generate_onoff_report.py
-          python generate_rapm_report.py --use-possessions
           python generate_onoff_daily_boxscore_report.py
 
       - name: Copy report to index.html
@@ -60,5 +52,5 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add -A
-          git diff --staged --quiet || git commit -m "Auto-update: Games through ${{ steps.date.outputs.yesterday }}"
+          git diff --staged --quiet || git commit -m "Auto-update: Games from ${{ steps.date.outputs.yesterday }}"
           git push

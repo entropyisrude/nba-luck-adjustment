@@ -1,10 +1,11 @@
 """Generate a detailed example page showing how adjustments are calculated."""
 
 import pandas as pd
+import yaml
 from pathlib import Path
 from datetime import datetime
 from src.ingest import get_playbyplay_3pt_shots
-from src.adjust import get_player_prior, get_shot_multiplier, LEAGUE_AVG_3P
+from src.adjust import get_player_prior, get_context_multiplier, LEAGUE_AVG_3P
 
 # Pick an interesting game (PHI @ MIN, Feb 22, 2026 - big 28 point swing)
 EXAMPLE_GAME_ID = "0022500824"
@@ -12,6 +13,12 @@ EXAMPLE_DATE = "02/22/2026"
 
 
 def generate_example_page():
+    cfg = yaml.safe_load(Path("config.yaml").read_text(encoding="utf-8"))
+    orb_rate = float(cfg["orb_rate"])
+    ppp = float(cfg["ppp"])
+    orb_haircut = orb_rate * ppp
+    adj_factor = 3.0 - orb_haircut
+
     # Load player state - this contains weighted career attempts (A_r) and makes (M_r)
     player_state = pd.read_csv("data/player_state.csv")
     player_state_indexed = player_state.set_index("player_id")
@@ -45,16 +52,17 @@ def generate_example_page():
 
         career_pct = (M_r / A_r * 100) if A_r > 0 else 0
 
-        # Get prior parameters based on weighted attempts
-        mu, kappa = get_player_prior(A_r)
+        # Get prior parameters based on weighted attempts and current shot-mix adjustment
+        mu, kappa = get_player_prior(A_r, player_id=pid)
 
         # Calculate Bayesian expected 3P%
         player_exp_pct = (M_r + kappa * mu) / (A_r + kappa)
 
-        # Get shot context multiplier
+        # Get shot context multiplier using the current season-aware fallback for unknown shot types
         area = shot.get('AREA', 'above_break')
-        shot_type = shot.get('SHOT_TYPE', 'catch_shoot')
-        multiplier = get_shot_multiplier(area, shot_type)
+        shot_type = shot.get('SHOT_TYPE', 'unknown')
+        season = shot.get('SEASON')
+        multiplier = get_context_multiplier(area, shot_type, season)
 
         # Final expected make probability
         final_exp = min(0.55, max(0.15, player_exp_pct * multiplier))
@@ -226,7 +234,8 @@ def generate_example_page():
 Player Expected 3P% = (Weighted Makes + &kappa; × Prior) / (Weighted Attempts + &kappa;)
 
 Where:
-  - Prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
+  - Base prior (&mu;) scales from 32% (low volume) to 36% (1000+ weighted 3PA)
+  - The displayed prior may also be adjusted by the player's assisted/unassisted shot mix
   - Prior strength (&kappa;) scales from 200 (low volume) to 300 (high volume)
   - Weighted stats use exponential decay so recent performance matters more
         </div>
@@ -291,7 +300,7 @@ Where:
 
 """
 
-    html += examples_html + """
+    html += examples_html + f"""
     </div>
 
     <div class="step">
@@ -317,8 +326,9 @@ Multipliers (relative to league avg {LEAGUE_AVG_3P*100:.1f}%):
         <p>Sum up expected make probabilities for each team, compare to actual makes:</p>
         <div class="formula">
 Luck = Actual Makes - Expected Makes
-Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
-                 ≈ 2.7 points per make above/below expectation
+Point Adjustment = Luck × (3 - ORB Rate × PPP)
+                 = Luck × (3 - {orb_rate:.4f} × {ppp:.4f})
+                 = {adj_factor:.4f} × Luck
         </div>
     </div>
 
@@ -390,7 +400,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
     }).reset_index()
     home_player_stats.columns = ['player_name', 'shots', 'made', 'expected']
     home_player_stats['luck'] = home_player_stats['made'] - home_player_stats['expected']
-    home_player_stats['point_impact'] = home_player_stats['luck'] * 2.7
+    home_player_stats['point_impact'] = home_player_stats['luck'] * adj_factor
     home_player_stats = home_player_stats.sort_values('luck', ascending=False)
 
     for _, p in home_player_stats.iterrows():
@@ -411,7 +421,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <td><strong>{home_made_total}</strong></td>
             <td><strong>{home_exp_total:.2f}</strong></td>
             <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck:+.2f}</strong></td>
-            <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * 2.7:+.1f}</strong></td>
+            <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * adj_factor:+.1f}</strong></td>
         </tr>
     </table>
 
@@ -483,7 +493,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
     }).reset_index()
     away_player_stats.columns = ['player_name', 'shots', 'made', 'expected']
     away_player_stats['luck'] = away_player_stats['made'] - away_player_stats['expected']
-    away_player_stats['point_impact'] = away_player_stats['luck'] * 2.7
+    away_player_stats['point_impact'] = away_player_stats['luck'] * adj_factor
     away_player_stats = away_player_stats.sort_values('luck', ascending=False)
 
     for _, p in away_player_stats.iterrows():
@@ -504,7 +514,7 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
             <td><strong>{away_made_total}</strong></td>
             <td><strong>{away_exp_total:.2f}</strong></td>
             <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck:+.2f}</strong></td>
-            <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * 2.7:+.1f}</strong></td>
+            <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * adj_factor:+.1f}</strong></td>
         </tr>
     </table>
 
@@ -525,13 +535,13 @@ Point Adjustment = 3 × Luck - (ORB Rate × PPP × Luck)
         </ul>
 
         <h3>ORB Adjustment Calculation</h3>
-        <p>Each lucky make isn't worth a full 3 points because missed 3s generate offensive rebounds (~27% ORB rate)
-        that lead to additional scoring (~1.1 points per possession). We subtract this "lost opportunity" value:</p>
+        <p>Each three-point make above expectation is not worth a full 3 points in the luck model, because expected misses
+        still retain some value through offensive rebounds. The current model applies the configured ORB/PPP haircut:</p>
         <div class="formula">
 Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
-                 = (3 × Luck) − (ORB Rate × PPP × |Luck|)
-                 = (3 × Luck) − (0.27 × 1.1 × |Luck|)
-                 ≈ 2.7 × Luck
+                 = Luck × (3 - ORB Rate × PPP)
+                 = Luck × (3 - {orb_rate:.4f} × {ppp:.4f})
+                 = {adj_factor:.4f} × Luck
         </div>
 
         <table style="max-width: 600px;">
@@ -546,21 +556,21 @@ Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
                 <td>{home_team}</td>
                 <td class="{'positive' if home_luck > 0 else 'negative'}">{home_luck:+.2f}</td>
                 <td>{home_luck * 3:+.1f}</td>
-                <td>{-home_luck * 0.297:+.1f}</td>
-                <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * 2.7:+.1f}</strong></td>
+                <td>{-home_luck * orb_haircut:+.1f}</td>
+                <td class="{'positive' if home_luck > 0 else 'negative'}"><strong>{home_luck * adj_factor:+.1f}</strong></td>
             </tr>
             <tr>
                 <td>{away_team}</td>
                 <td class="{'positive' if away_luck > 0 else 'negative'}">{away_luck:+.2f}</td>
                 <td>{away_luck * 3:+.1f}</td>
-                <td>{-away_luck * 0.297:+.1f}</td>
-                <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * 2.7:+.1f}</strong></td>
+                <td>{-away_luck * orb_haircut:+.1f}</td>
+                <td class="{'positive' if away_luck > 0 else 'negative'}"><strong>{away_luck * adj_factor:+.1f}</strong></td>
             </tr>
         </table>
 
         <h3>Net Result</h3>
         <p>The luck differential of <strong>{home_luck - away_luck:+.1f} makes</strong> in favor of {home_team if home_luck > away_luck else away_team}
-        translates to <strong>{abs((home_luck - away_luck) * 2.7):.1f} points</strong> of margin swing after ORB adjustment.</p>
+        translates to <strong>{abs((home_luck - away_luck) * adj_factor):.1f} points</strong> of margin swing after ORB adjustment.</p>
         <p><strong>Actual margin:</strong> {home_team} {'+' if (game_row['home_pts_actual'] - game_row['away_pts_actual']) >= 0 else ''}{int(game_row['home_pts_actual'] - game_row['away_pts_actual'])}</p>
         <p><strong>Adjusted margin:</strong> {home_team} {'+' if (game_row['home_pts_adj'] - game_row['away_pts_adj']) >= 0 else ''}{(game_row['home_pts_adj'] - game_row['away_pts_adj']):.1f}</p>
     </div>

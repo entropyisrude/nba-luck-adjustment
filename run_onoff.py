@@ -9,26 +9,12 @@ from src.ingest import get_game_ids_for_date, get_player_3pt_df_from_pbp
 from src.onoff_boxscore import write_player_daily_boxscore
 from src.onoff import compute_adjusted_onoff_for_game
 from src.onoff_history import write_player_onoff_history
+from src.shot_priors import SeasonalShotPriorLookup
 from src.state import load_player_state, save_player_state, ensure_players_exist
 from src.adjust import update_player_state_attempt_decay
 
 DATA_DIR = Path("data")
 CONFIG_PATH = Path("config.yaml")
-
-
-def _is_lfs_pointer(path: Path) -> bool:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            first = f.readline().strip()
-        return first == "version https://git-lfs.github.com/spec/v1"
-    except Exception:
-        return False
-
-
-def _read_csv_or_empty(path: Path, **kwargs) -> pd.DataFrame:
-    if not path.exists() or _is_lfs_pointer(path):
-        return pd.DataFrame()
-    return pd.read_csv(path, **kwargs)
 
 
 def daterange(start_date, end_date):
@@ -84,6 +70,12 @@ def main():
         default=None,
         help="Override season detection (e.g., '2019-20' for COVID bubble playoffs)",
     )
+    parser.add_argument(
+        "--shot-priors-dir",
+        type=str,
+        default=None,
+        help="Optional directory of season-scoped shot priors (vwd_priors_<year>.csv).",
+    )
     args = parser.parse_args()
 
     start = datetime.strptime(args.start, "%Y-%m-%d").date()
@@ -102,7 +94,7 @@ def main():
 
     player_state = load_player_state(state_path)
     if out_path.exists():
-        existing = _read_csv_or_empty(out_path)
+        existing = pd.read_csv(out_path)
         if "game_id" in existing.columns:
             existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
             if "player_id" in existing.columns:
@@ -135,7 +127,7 @@ def main():
 
     if starter_override_path and starter_override_path.exists():
         try:
-            existing_starts = _read_csv_or_empty(starter_override_path, dtype={"game_id": str}, low_memory=False)
+            existing_starts = pd.read_csv(starter_override_path, dtype={"game_id": str}, low_memory=False)
             if "game_id" in existing_starts.columns:
                 def _starter_list(row, prefix: str) -> list[int]:
                     values: list[int] = []
@@ -154,6 +146,30 @@ def main():
                 existing_starts["game_id"] = existing_starts["game_id"].astype(str).str.lstrip("0")
                 if "stint_index" in existing_starts.columns:
                     existing_starts = existing_starts.sort_values(["game_id", "stint_index"])
+                trusted_period_games: set[str] = set()
+                for game_id, game_df in existing_starts.groupby("game_id"):
+                    try:
+                        max_period = int(pd.to_numeric(game_df["end_period"], errors="coerce").max())
+                    except Exception:
+                        max_period = 4
+                    expected_seconds = 2880 + max(0, max_period - 4) * 300
+                    total_seconds = float(pd.to_numeric(game_df["seconds"], errors="coerce").fillna(0).sum())
+                    neg_pts = (
+                        pd.to_numeric(game_df.get("home_pts"), errors="coerce").fillna(0).lt(0).any()
+                        or pd.to_numeric(game_df.get("away_pts"), errors="coerce").fillna(0).lt(0).any()
+                    )
+                    complete_lineups = True
+                    for prefix in ("home", "away"):
+                        cols = [f"{prefix}_p{i}" for i in range(1, 6)]
+                        if not set(cols).issubset(game_df.columns):
+                            complete_lineups = False
+                            break
+                        counts = game_df[cols].apply(pd.to_numeric, errors="coerce").fillna(0).gt(0).sum(axis=1)
+                        if (counts < 5).any():
+                            complete_lineups = False
+                            break
+                    if not neg_pts and complete_lineups and abs(total_seconds - expected_seconds) <= 5.0:
+                        trusted_period_games.add(str(game_id))
                 first_rows = existing_starts.groupby("game_id", as_index=False).first()
                 for row in first_rows.itertuples():
                     try:
@@ -169,6 +185,8 @@ def main():
                             away_id: away_starters,
                         }
                 for row in existing_starts.itertuples():
+                    if str(getattr(row, "game_id")) not in trusted_period_games:
+                        continue
                     try:
                         home_id = int(getattr(row, "home_id"))
                         away_id = int(getattr(row, "away_id"))
@@ -200,6 +218,7 @@ def main():
                         )
         except Exception as e:
             print(f"Warning: could not load starter overrides from {starter_override_path}: {e}")
+    shot_prior_lookup = SeasonalShotPriorLookup(args.shot_priors_dir)
 
     for d in daterange(start, end):
         game_date_mmddyyyy = d.strftime("%m/%d/%Y")
@@ -223,6 +242,7 @@ def main():
                     player_state=player_state,
                     orb_rate=float(cfg["orb_rate"]),
                     ppp=float(cfg["ppp"]),
+                    expected_3p_probs=shot_prior_lookup.get_game_priors(game_id_norm, game_date_mmddyyyy),
                     starters_override=starter_overrides.get(game_id_norm),
                     period_start_overrides=period_start_overrides.get(game_id_norm),
                     elapsed_lineup_overrides=elapsed_lineup_overrides.get(game_id_norm),
@@ -273,12 +293,11 @@ def main():
     if stint_rows:
         stint_combined = pd.concat(stint_rows, ignore_index=True)
         if stint_path.exists():
-            existing_stints = _read_csv_or_empty(stint_path, dtype={"game_id": str}, low_memory=False)
-            if "game_id" in existing_stints.columns:
-                existing_stints["game_id"] = existing_stints["game_id"].astype(str).str.lstrip("0")
-                if updated_game_ids:
-                    existing_stints = existing_stints[~existing_stints["game_id"].isin(updated_game_ids)]
-                stint_combined = pd.concat([existing_stints, stint_combined], ignore_index=True)
+            existing_stints = pd.read_csv(stint_path, dtype={"game_id": str}, low_memory=False)
+            existing_stints["game_id"] = existing_stints["game_id"].astype(str).str.lstrip("0")
+            if updated_game_ids:
+                existing_stints = existing_stints[~existing_stints["game_id"].isin(updated_game_ids)]
+            stint_combined = pd.concat([existing_stints, stint_combined], ignore_index=True)
         if "stint_index" in stint_combined.columns:
             stint_combined = stint_combined.drop_duplicates(subset=["game_id", "stint_index"], keep="last")
         stint_combined = stint_combined.sort_values(["date", "game_id", "stint_index"])
@@ -288,12 +307,11 @@ def main():
     if poss_rows:
         poss_combined = pd.concat(poss_rows, ignore_index=True)
         if poss_path.exists():
-            existing_poss = _read_csv_or_empty(poss_path, dtype={"game_id": str}, low_memory=False)
-            if "game_id" in existing_poss.columns:
-                existing_poss["game_id"] = existing_poss["game_id"].astype(str).str.lstrip("0")
-                if updated_game_ids:
-                    existing_poss = existing_poss[~existing_poss["game_id"].isin(updated_game_ids)]
-                poss_combined = pd.concat([existing_poss, poss_combined], ignore_index=True)
+            existing_poss = pd.read_csv(poss_path, dtype={"game_id": str}, low_memory=False)
+            existing_poss["game_id"] = existing_poss["game_id"].astype(str).str.lstrip("0")
+            if updated_game_ids:
+                existing_poss = existing_poss[~existing_poss["game_id"].isin(updated_game_ids)]
+            poss_combined = pd.concat([existing_poss, poss_combined], ignore_index=True)
         if "poss_index" in poss_combined.columns:
             poss_combined = poss_combined.drop_duplicates(subset=["game_id", "poss_index"], keep="last")
         poss_combined = poss_combined.sort_values(["date", "game_id", "poss_index"])

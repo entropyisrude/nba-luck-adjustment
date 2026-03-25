@@ -6,9 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-from scipy import sparse
 
 DATA_DIR = Path("data")
 STINTS_PATH = DATA_DIR / "stints_playoffs.csv"
@@ -38,73 +36,6 @@ PERIODS = {
 ALPHAS = [10, 500]
 DEFAULT_ALPHA = 500
 
-
-def build_design_matrix_stint_od(stints: pd.DataFrame) -> tuple:
-    """
-    Build a unified offensive/defensive design matrix from stints.
-
-    Two rows per stint:
-    - home offense vs away defense
-    - away offense vs home defense
-    """
-    from run_rapm import get_player_list_and_index
-
-    player_list, player_to_idx = get_player_list_and_index(stints)
-    n_players = len(player_list)
-    n_stints = len(stints)
-    n_rows = n_stints * 2
-
-    row_indices = []
-    col_indices = []
-    data = []
-
-    for stint_idx, row in enumerate(stints.itertuples()):
-        home_row = 2 * stint_idx
-        away_row = home_row + 1
-
-        for col in ["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"]:
-            pid = getattr(row, col)
-            if pd.notna(pid):
-                pid = int(pid)
-                idx = player_to_idx.get(pid)
-                if idx is not None:
-                    row_indices.append(home_row)
-                    col_indices.append(idx)
-                    data.append(1.0)
-                    row_indices.append(away_row)
-                    col_indices.append(n_players + idx)
-                    data.append(-1.0)
-
-        for col in ["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"]:
-            pid = getattr(row, col)
-            if pd.notna(pid):
-                pid = int(pid)
-                idx = player_to_idx.get(pid)
-                if idx is not None:
-                    row_indices.append(home_row)
-                    col_indices.append(n_players + idx)
-                    data.append(-1.0)
-                    row_indices.append(away_row)
-                    col_indices.append(idx)
-                    data.append(1.0)
-
-    X = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n_rows, 2 * n_players))
-
-    possessions = np.maximum(stints["seconds"].to_numpy(dtype=float) / 24.0, 0.1)
-    home_pts = stints["home_pts_adj"].to_numpy(dtype=float)
-    away_pts = stints["away_pts_adj"].to_numpy(dtype=float)
-
-    y = np.zeros(n_rows)
-    y[0::2] = (home_pts / possessions) * 100.0
-    y[1::2] = (away_pts / possessions) * 100.0
-
-    weights = np.zeros(n_rows)
-    weights[0::2] = np.sqrt(possessions)
-    weights[1::2] = np.sqrt(possessions)
-
-    return X, y, weights, player_list, n_players
-
-
 def compute_rapm_for_period(
     stints: pd.DataFrame,
     period_key: str,
@@ -112,12 +43,7 @@ def compute_rapm_for_period(
     alpha: float,
 ) -> list[dict]:
     """Compute RAPM for a specific period by filtering stints and running regression."""
-    from run_rapm import (
-        build_design_matrix,
-        run_rapm,
-        run_rapm_od,
-        get_player_info,
-    )
+    from run_rapm import compute_unified_stint_rapm_rows
 
     period = PERIODS[period_key]
     df = stints.copy()
@@ -132,69 +58,19 @@ def compute_rapm_for_period(
     if df.empty:
         return []
 
-    # Build design matrix and run RAPM
-    X_od, y_od, w_od, player_list, n_players = build_design_matrix_stint_od(df)
-    coef_o, coef_d, intercept = run_rapm_od(
-        X_od, y_od, w_od, n_players, alpha_off=alpha, alpha_def=alpha
-    )
-    orapm = dict(zip(player_list, coef_o))
-    drapm = dict(zip(player_list, coef_d))
-
-    # Get player info
-    player_info = get_player_info(player_list, df, "_playoffs")
-
-    # Calculate minutes per player per team
-    player_minutes = {}
-    player_team_minutes = {}
-    for col_set, team_col in [(["home_p1", "home_p2", "home_p3", "home_p4", "home_p5"], "home_id"),
-                               (["away_p1", "away_p2", "away_p3", "away_p4", "away_p5"], "away_id")]:
-        for col in col_set:
-            for _, row in df.iterrows():
-                pid = row[col]
-                if pd.notna(pid):
-                    pid = int(pid)
-                    mins = row["seconds"] / 60.0
-                    player_minutes[pid] = player_minutes.get(pid, 0) + mins
-                    team_id = int(row[team_col])
-                    if pid not in player_team_minutes:
-                        player_team_minutes[pid] = {}
-                    player_team_minutes[pid][team_id] = player_team_minutes[pid].get(team_id, 0) + mins
-
-    # Build results
-    results = []
     min_minutes = 50 if period_key != "all" else 100
-    name_map = {}
-    if PLAYER_INFO_MAP.exists():
-        try:
-            raw = json.loads(PLAYER_INFO_MAP.read_text(encoding="utf-8"))
-            name_map = {int(k): v.get("name") for k, v in raw.items() if isinstance(v, dict)}
-        except Exception:
-            name_map = {}
-
-    for i, pid in enumerate(player_list):
-        info = player_info.get(pid, {})
-        minutes = player_minutes.get(pid, 0)
-        if minutes < min_minutes:
-            continue
-        # Use team where player has most minutes
-        team_mins = player_team_minutes.get(pid, {})
-        if team_mins:
-            primary_team_id = max(team_mins.keys(), key=lambda t: team_mins[t])
-        else:
-            primary_team_id = info.get("team_id", 0)
-        mapped = name_map.get(int(pid))
-        name = mapped or info.get("name", f"Player {pid}")
-        orapm_val = round(float(orapm.get(pid, 0.0)), 2)
-        drapm_val = round(float(drapm.get(pid, 0.0)), 2)
-        results.append({
-            "player_id": int(pid),
-            "player_name": name,
-            "team_abbr": TEAM_ID_TO_ABBR.get(primary_team_id, "???"),
-            "minutes": int(round(minutes)),
-            "rapm": round(orapm_val + drapm_val, 2),
-            "orapm": orapm_val,
-            "drapm": drapm_val,
-        })
+    results = compute_unified_stint_rapm_rows(
+        df, alpha=alpha, min_minutes=min_minutes, suffix="_playoffs"
+    )
+    for row in results:
+        row["minutes"] = int(round(row["minutes"]))
+        row["rapm"] = round(float(row["rapm"]), 2)
+        row["orapm"] = round(float(row["orapm"]), 2)
+        row["drapm"] = round(float(row["drapm"]), 2)
+        row["rapm_raw"] = round(float(row["rapm_raw"]), 2)
+        row["orapm_raw"] = round(float(row["orapm_raw"]), 2)
+        row["drapm_raw"] = round(float(row["drapm_raw"]), 2)
+        row.pop("team_id", None)
 
     return sorted(results, key=lambda x: x["rapm"], reverse=True)
 
@@ -369,9 +245,10 @@ def generate_rapm_report_playoffs():
         <label>Search
           <input id="search" type="text" placeholder="Player name..." />
         </label>
+        <button type="button" id="toggle-raw" class="toggle-btn">Show Raw</button>
       </div>
       <p class="muted" style="margin: 0 0 8px; font-size: 11px;">
-        RAPM, ORAPM, and DRAPM are per 100 possessions
+        RAPM, ORAPM, and DRAPM are per 100 possessions. Adjusted columns use 3PT-luck-adjusted scoring.
       </p>
       <div class="table-wrap">
         <table id="rapm-table">
@@ -381,9 +258,12 @@ def generate_rapm_report_playoffs():
               <th data-key="player_name">Player</th>
               <th data-key="team_abbr">Team</th>
               <th data-key="minutes">Min</th>
-              <th data-key="rapm">RAPM</th>
-              <th data-key="orapm">ORAPM</th>
-              <th data-key="drapm">DRAPM</th>
+              <th class="group-start" data-key="rapm">RAPM Adj</th>
+              <th data-key="orapm">ORAPM Adj</th>
+              <th data-key="drapm">DRAPM Adj</th>
+              <th class="col-raw group-start col-hidden" data-key="rapm_raw">RAPM Raw</th>
+              <th class="col-raw col-hidden" data-key="orapm_raw">ORAPM Raw</th>
+              <th class="col-raw col-hidden" data-key="drapm_raw">DRAPM Raw</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -402,6 +282,14 @@ def generate_rapm_report_playoffs():
 
     const fmt = (x, d=1) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
+
+    function toggleRaw() {{
+      const btn = document.getElementById("toggle-raw");
+      const cols = document.querySelectorAll(".col-raw");
+      const showing = btn.classList.toggle("active");
+      cols.forEach(col => col.classList.toggle("col-hidden", !showing));
+      btn.textContent = showing ? "Hide Raw" : "Show Raw";
+    }}
 
     function getRows() {{
       const period = document.getElementById("period-filter").value;
@@ -429,15 +317,19 @@ def generate_rapm_report_playoffs():
         }});
 
       const tbody = document.querySelector("#rapm-table tbody");
+      const rawHidden = !document.getElementById("toggle-raw").classList.contains("active");
       tbody.innerHTML = filtered.map((r, i) => `
         <tr>
           <td class="rank">${{i + 1}}</td>
           <td>${{r.player_name}}</td>
           <td>${{r.team_abbr}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
-          <td class="${{cls(r.rapm)}}">${{fmt(r.rapm, 2)}}</td>
+          <td class="group-start ${{cls(r.rapm)}}">${{fmt(r.rapm, 2)}}</td>
           <td class="${{cls(r.orapm)}}">${{fmt(r.orapm, 2)}}</td>
           <td class="${{cls(r.drapm)}}">${{fmt(r.drapm, 2)}}</td>
+          <td class="col-raw group-start${{rawHidden ? ' col-hidden' : ''}} ${{cls(r.rapm_raw)}}">${{fmt(r.rapm_raw, 2)}}</td>
+          <td class="col-raw${{rawHidden ? ' col-hidden' : ''}} ${{cls(r.orapm_raw)}}">${{fmt(r.orapm_raw, 2)}}</td>
+          <td class="col-raw${{rawHidden ? ' col-hidden' : ''}} ${{cls(r.drapm_raw)}}">${{fmt(r.drapm_raw, 2)}}</td>
         </tr>
       `).join("");
 
@@ -458,6 +350,10 @@ def generate_rapm_report_playoffs():
     function init() {{
       ["period-filter", "alpha-filter", "team-filter", "min-minutes", "search"].forEach(id => {{
         document.getElementById(id).addEventListener("input", render);
+      }});
+      document.getElementById("toggle-raw").addEventListener("click", () => {{
+        toggleRaw();
+        render();
       }});
 
       document.querySelectorAll("#rapm-table thead th").forEach(th => {{

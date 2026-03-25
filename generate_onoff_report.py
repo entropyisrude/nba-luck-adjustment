@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from datetime import datetime
 from pathlib import Path
 
-import requests
-
-DATA_DIR = Path("data")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 ONOFF_PRE2006_PATH = DATA_DIR / "adjusted_onoff_pre2006.csv"
+POSS_PATH = DATA_DIR / "possessions.csv"
+POSS_HIST_PATH = DATA_DIR / "possessions_historical.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
-OUTPUT_SITE_PATH = Path("onoff.html")
+OUTPUT_SITE_PATH = BASE_DIR / "onoff.html"
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 
-PBP_BASE = "https://api.pbpstats.com"
-PBP_TIMEOUT = 10
+# NBA Cup / In-Season Tournament finals do not count toward regular-season
+# totals even though the surrounding knockout games do.
+EXCLUDED_REGULAR_SEASON_GAME_IDS = {
+    "62300001",
+    "62400001",
+}
 
 TEAM_ID_TO_ABBR = {
     "1610612737": "ATL",
@@ -82,13 +88,30 @@ def _load_player_name_map() -> dict[int, str]:
 
 def _season_from_date(date_str: str) -> str:
     d = datetime.strptime(date_str, "%Y-%m-%d")
-    start = d.year if d.month >= 7 else d.year - 1
+    # NBA regular seasons start in October. Using July here mis-buckets the
+    # 2020 bubble restart into 2020-21 instead of 2019-20.
+    start = d.year if d.month >= 9 else d.year - 1
     return f"{start}-{(start + 1) % 100:02d}"
 
 
-def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
-    if not ONOFF_PATH.exists():
-        raise FileNotFoundError(f"Missing {ONOFF_PATH}")
+def _parse_csv_paths(raw: str | None, defaults: list[Path]) -> list[Path]:
+    if not raw:
+        return defaults
+    out: list[Path] = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        path = Path(part)
+        if not path.is_absolute() and path.parent == Path("."):
+            path = DATA_DIR / part
+        out.append(path)
+    return out
+
+
+def _load_team_player_totals(onoff_paths: list[Path]) -> tuple[list[dict], str, int, list[str]]:
+    if not any(path.exists() for path in onoff_paths):
+        raise FileNotFoundError(f"Missing all on/off inputs: {onoff_paths}")
 
     rows: list[dict] = []
     name_map = _load_player_name_map()
@@ -103,6 +126,9 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         with path.open(newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for r in reader:
+                gid = str(r.get("game_id") or "").lstrip("0")
+                if gid in EXCLUDED_REGULAR_SEASON_GAME_IDS:
+                    continue
                 pid = r.get("player_id")
                 try:
                     pid_int = int(pid) if pid is not None else None
@@ -114,15 +140,14 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 d = str(r["date"])
                 if d > latest_date:
                     latest_date = d
-                gid = str(r["game_id"])
                 tid = str(r["team_id"])
                 game_ids.add(gid)
                 key = (d, gid, tid)
                 # summed player minutes / 5 gives team minutes for that game.
                 team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
 
-    ingest(ONOFF_PRE2006_PATH)
-    ingest(ONOFF_PATH)
+    for path in onoff_paths:
+        ingest(path)
 
     agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
@@ -195,107 +220,58 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     return out, latest_date, len(game_ids), team_ids
 
 
-def _fetch_json(url: str, params: dict) -> dict | None:
-    try:
-        r = requests.get(url, params=params, timeout=PBP_TIMEOUT)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except Exception:
-        return None
-
-
-def _build_pbp_maps(season_to_team_ids: dict[str, list[str]]) -> dict[tuple[str, str, str], dict]:
-    """
-    Returns map keyed by (season, team_id, player_id) with possession-based raw PM/100 and OnOff/100.
-    """
+def _build_possession_maps(possession_paths: list[Path]) -> dict[tuple[str, str, str], dict]:
     out: dict[tuple[str, str, str], dict] = {}
+    team_totals: dict[tuple[str, str], dict[str, float]] = {}
 
-    for season, team_ids in season_to_team_ids.items():
-        all_players_payload = _fetch_json(
-            f"{PBP_BASE}/get-totals/nba",
-            {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
+    def _entry(season: str, team_id: str, player_id: str) -> dict[str, float]:
+        return out.setdefault(
+            (season, team_id, player_id),
+            {
+                "on_off_poss": 0.0,
+                "on_def_poss": 0.0,
+            },
         )
-        all_teams_payload = _fetch_json(
-            f"{PBP_BASE}/get-totals/nba",
-            {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
-        )
-        if not all_players_payload or not all_teams_payload:
+
+    for path in possession_paths:
+        if not path.exists():
             continue
-
-        players_by_team: dict[str, list[dict]] = {tid: [] for tid in team_ids}
-        for pr in all_players_payload.get("multi_row_table_data", []):
-            tid = str(pr.get("TeamId"))
-            if tid in players_by_team:
-                players_by_team[tid].append(pr)
-
-        team_totals: dict[str, dict] = {}
-        for tr in all_teams_payload.get("multi_row_table_data", []):
-            tid = str(tr.get("TeamId"))
-            if tid in team_ids:
-                team_totals[tid] = tr
-
-        for team_id in team_ids:
-            team_payload = team_totals.get(team_id)
-            players = players_by_team.get(team_id, [])
-            if not team_payload or not players:
-                continue
-
-            team_pm = _f(team_payload.get("PlusMinus"))
-            team_off_poss = _f(team_payload.get("OffPoss"))
-            team_def_poss = _f(team_payload.get("DefPoss"))
-            team_opp_pts = _f(team_payload.get("OpponentPoints"))
-            team_ortg = _f(team_payload.get("OnOffRtg"))
-
-            if team_off_poss <= 0 or team_def_poss <= 0:
-                continue
-
-            team_drtg = (team_opp_pts / team_def_poss) * 100.0
-            team_net = team_ortg - team_drtg
-
-            for pr in players:
-                player_id = str(pr.get("EntityId"))
-                player_pm = _f(pr.get("PlusMinus"))
-                on_off_poss = _f(pr.get("OffPoss"))
-                on_def_poss = _f(pr.get("DefPoss"))
-                on_opp_pts = _f(pr.get("OpponentPoints"))
-                on_ortg = _f(pr.get("OnOffRtg"))
-
-                if on_off_poss <= 0 or on_def_poss <= 0:
+        with path.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                gid = str(r.get("game_id") or "").lstrip("0")
+                if gid in EXCLUDED_REGULAR_SEASON_GAME_IDS:
                     continue
+                season = _season_from_date(str(r["date"]))
+                offense_team = str(r["offense_team"])
+                defense_team = str(r["defense_team"])
+                points = _f(r["points"])
 
-                on_drtg = (on_opp_pts / on_def_poss) * 100.0
-                on_net = on_ortg - on_drtg
+                off_totals = team_totals.setdefault((season, offense_team), {"off_poss": 0.0, "def_poss": 0.0})
+                off_totals["off_poss"] += 1.0
+                def_totals = team_totals.setdefault((season, defense_team), {"off_poss": 0.0, "def_poss": 0.0})
+                def_totals["def_poss"] += 1.0
 
-                off_pm = team_pm - player_pm
-                off_off_poss = team_off_poss - on_off_poss
-                off_def_poss = team_def_poss - on_def_poss
-                off_opp_pts = team_opp_pts - on_opp_pts
+                for idx in range(1, 6):
+                    pid = str(r.get(f"off_p{idx}") or "").strip()
+                    if pid:
+                        _entry(season, offense_team, pid)["on_off_poss"] += 1.0
+                    pid = str(r.get(f"def_p{idx}") or "").strip()
+                    if pid:
+                        _entry(season, defense_team, pid)["on_def_poss"] += 1.0
 
-                if off_off_poss > 0 and off_def_poss > 0:
-                    off_team_pts = off_opp_pts + off_pm
-                    off_ortg = (off_team_pts / off_off_poss) * 100.0
-                    off_drtg = (off_opp_pts / off_def_poss) * 100.0
-                    off_net = off_ortg - off_drtg
-                    onoff = on_net - off_net
-                    off_poss = (off_off_poss + off_def_poss) / 2.0
-                else:
-                    off_net = team_net
-                    onoff = on_net - off_net
-                    off_poss = 0.0
-
-                out[(season, team_id, player_id)] = {
-                    "pm_actual_100": on_net,
-                    "onoff_actual_100": onoff,
-                    "on_poss": (on_off_poss + on_def_poss) / 2.0,
-                    "off_poss": off_poss,
-                    "source": "pbpstats",
-                }
+    for (season, team_id, player_id), rec in out.items():
+        team = team_totals.get((season, team_id), {})
+        on_off_poss = _f(rec["on_off_poss"])
+        on_def_poss = _f(rec["on_def_poss"])
+        team_off_poss = _f(team.get("off_poss"))
+        team_def_poss = _f(team.get("def_poss"))
+        rec["on_poss"] = (on_off_poss + on_def_poss) / 2.0
+        rec["off_poss"] = max(0.0, ((team_off_poss - on_off_poss) + (team_def_poss - on_def_poss)) / 2.0)
 
     return out
 
 
-def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], dict]) -> list[dict]:
+def _finalize_records(raw_rows: list[dict], possession_map: dict[tuple[str, str, str], dict]) -> list[dict]:
     records: list[dict] = []
     for r in raw_rows:
         season = str(r["season"])
@@ -304,23 +280,24 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         on_min = _f(r["minutes_total"])
         off_min = _f(r["minutes_off_total"])
 
-        pbp = pbp_map.get((season, team_id, player_id))
-        if pbp:
-            pm_actual_100 = _f(pbp["pm_actual_100"])
-            onoff_actual_100 = _f(pbp["onoff_actual_100"])
-            on_poss = _f(pbp["on_poss"])
-            off_poss = _f(pbp["off_poss"])
-            source = "pbpstats"
+        poss = possession_map.get((season, team_id, player_id))
+        on_poss = _f((poss or {}).get("on_poss"))
+        off_poss = _f((poss or {}).get("off_poss"))
+        source = "rebuilt_possessions" if on_poss > 0 else "minutes"
+
+        if on_poss > 0:
+            pm_actual_100 = _f(r["on_diff_total"]) * 100.0 / on_poss
         else:
             pm_actual_100 = (_f(r["on_diff_total"]) * 48.0 / on_min) if on_min > 0 else 0.0
-            if off_min > 0:
-                off_actual_100 = _f(r["off_diff_total"]) * 48.0 / off_min
-                onoff_actual_100 = pm_actual_100 - off_actual_100
-            else:
-                onoff_actual_100 = 0.0
-            on_poss = 0.0
-            off_poss = 0.0
-            source = "minutes"
+
+        if off_poss > 0:
+            off_actual_100 = _f(r["off_diff_total"]) * 100.0 / off_poss
+            onoff_actual_100 = pm_actual_100 - off_actual_100
+        elif off_min > 0:
+            off_actual_100 = _f(r["off_diff_total"]) * 48.0 / off_min
+            onoff_actual_100 = pm_actual_100 - off_actual_100
+        else:
+            onoff_actual_100 = 0.0
 
         if on_poss > 0:
             pm_adj_100 = _f(r["on_diff_adj_total"]) * 100.0 / on_poss
@@ -340,27 +317,22 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         pm_delta_100 = pm_adj_100 - pm_actual_100
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
-        # Break adjusted on-off into offensive and defensive components.
-        # IMPORTANT: Do NOT use pbpstats possession counts for adjusted stats.
-        # For traded players, pbpstats may return season-long possessions mapped
-        # to their current team, while our adjusted point totals are team-specific.
-        # Instead, always estimate possessions from minutes using a consistent rate.
+        # Break adjusted on-off into offensive and defensive components using
+        # our own rebuilt possession counts whenever available.
         on_for_adj = _f(r["on_pts_for_adj_total"])
         on_against_adj = _f(r["on_pts_against_adj_total"])
         off_for_adj = _f(r["off_pts_for_adj_total"])
         off_against_adj = _f(r["off_pts_against_adj_total"])
 
-        # Use consistent possessions-per-minute rate (100 poss per 48 min)
-        poss_per_min = 100.0 / 48.0  # ~2.08 poss/min
         if on_min > 0:
-            on_poss_est = on_min * poss_per_min
+            on_poss_est = on_poss if on_poss > 0 else on_min * (100.0 / 48.0)
             on_ortg_adj = on_for_adj * 100.0 / on_poss_est
             on_drtg_adj = on_against_adj * 100.0 / on_poss_est
         else:
             on_ortg_adj = on_drtg_adj = 0.0
 
         if off_min > 0:
-            off_poss_est = off_min * poss_per_min
+            off_poss_est = off_poss if off_poss > 0 else off_min * (100.0 / 48.0)
             off_ortg_adj = off_for_adj * 100.0 / off_poss_est
             off_drtg_adj = off_against_adj * 100.0 / off_poss_est
         else:
@@ -393,23 +365,32 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
                 "off_ortg_adj": off_ortg_adj,
                 "off_drtg_adj": off_drtg_adj,
                 "raw_source": source,
+                "on_poss": on_poss,
+                "off_poss": off_poss,
             }
         )
     return records
 
 
-def generate_onoff_report() -> Path:
-    raw_rows, latest_date, game_count, team_ids = _load_team_player_totals()
+def generate_onoff_report(
+    onoff_paths: list[Path] | None = None,
+    possession_paths: list[Path] | None = None,
+    output_data_path: Path | None = None,
+    output_site_path: Path | None = None,
+    skip_pbpstats: bool = False,
+) -> Path:
+    if skip_pbpstats:
+        # Kept only for CLI compatibility. The report now uses rebuilt
+        # possession data only and never fetches pbpstats.
+        pass
+    onoff_paths = onoff_paths or [ONOFF_PRE2006_PATH, ONOFF_PATH]
+    possession_paths = possession_paths or [POSS_HIST_PATH, POSS_PATH]
+    output_data_path = output_data_path or OUTPUT_DATA_PATH
+    output_site_path = output_site_path or OUTPUT_SITE_PATH
+
+    raw_rows, latest_date, game_count, team_ids = _load_team_player_totals(onoff_paths)
     latest_season = _season_from_date(latest_date)
-    season_to_team_ids: dict[str, list[str]] = {}
-    for r in raw_rows:
-        s = str(r["season"])
-        season_to_team_ids.setdefault(s, [])
-        tid = str(r["team_id"])
-        if tid not in season_to_team_ids[s]:
-            season_to_team_ids[s].append(tid)
-    pbp_map = _build_pbp_maps(season_to_team_ids)
-    records = _finalize_records(raw_rows, pbp_map)
+    records = _finalize_records(raw_rows, _build_possession_maps(possession_paths))
 
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     season_values = sorted({r["season"] for r in records}, reverse=True)
@@ -697,7 +678,7 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class=\"muted\">Generated {generated_ts} | Source: `data/adjusted_onoff.csv` + `data/adjusted_onoff_pre2006.csv` + pbpstats possession totals.</p>
+    <p class=\"muted\">Generated {generated_ts} | Source: rebuilt on/off CSVs + rebuilt possession CSVs.</p>
   </div>
   <script>
     const ROWS = {json.dumps(records)};
@@ -1019,12 +1000,38 @@ def generate_onoff_report() -> Path:
 </body>
 </html>"""
 
-    OUTPUT_DATA_PATH.write_text(html, encoding="utf-8")
-    OUTPUT_SITE_PATH.write_text(html, encoding="utf-8")
-    print(f"Report saved to: {OUTPUT_DATA_PATH.absolute()}")
-    print(f"Also saved to: {OUTPUT_SITE_PATH.absolute()}")
-    return OUTPUT_DATA_PATH
+    output_data_path.write_text(html, encoding="utf-8")
+    output_site_path.write_text(html, encoding="utf-8")
+    print(f"Report saved to: {output_data_path.absolute()}")
+    print(f"Also saved to: {output_site_path.absolute()}")
+    return output_data_path
 
 
 if __name__ == "__main__":
-    generate_onoff_report()
+    parser = argparse.ArgumentParser(description="Generate regular-season on/off HTML report.")
+    parser.add_argument("--onoff-path", default=None, help="Override primary on/off CSV path.")
+    parser.add_argument("--onoff-pre2006-path", default=None, help="Override pre-2006 on/off CSV path.")
+    parser.add_argument("--onoff-paths", default=None, help="Comma-separated on/off CSV inputs. Relative paths resolve under data/.")
+    parser.add_argument("--possession-paths", default=None, help="Comma-separated possession CSV inputs. Relative paths resolve under data/.")
+    parser.add_argument("--output-data-path", default=None, help="Override output HTML path under data/.")
+    parser.add_argument("--output-site-path", default=None, help="Override local site HTML output path.")
+    parser.add_argument("--skip-pbpstats", action="store_true", help="Deprecated compatibility flag; report now uses rebuilt possessions only.")
+    args = parser.parse_args()
+
+    if args.onoff_paths:
+        onoff_paths = _parse_csv_paths(args.onoff_paths, [])
+    else:
+        defaults = [Path(args.onoff_pre2006_path)] if args.onoff_pre2006_path else [ONOFF_PRE2006_PATH]
+        defaults.append(Path(args.onoff_path) if args.onoff_path else ONOFF_PATH)
+        onoff_paths = defaults
+    possession_paths = _parse_csv_paths(args.possession_paths, [POSS_HIST_PATH, POSS_PATH])
+    output_data_path = Path(args.output_data_path) if args.output_data_path else OUTPUT_DATA_PATH
+    output_site_path = Path(args.output_site_path) if args.output_site_path else OUTPUT_SITE_PATH
+
+    generate_onoff_report(
+        onoff_paths=onoff_paths,
+        possession_paths=possession_paths,
+        output_data_path=output_data_path,
+        output_site_path=output_site_path,
+        skip_pbpstats=args.skip_pbpstats,
+    )

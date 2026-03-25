@@ -2,3 +2,17 @@ __pycache__/
 *.pyc
 .venv/
 shooter_local.html
+.git.broken-worktree-pointer
+logs/
+tmp_hist_test/
+*_preview.html
+*_preview*.html
+data/*_preview.html
+data/audits/
+data/CURRENT_FILES.json
+data/CURRENT_FILES.md
+data/*BAD_DATA.csv
+data/*_rerun*.csv
+data/*_batches*.csv
+data/*_dualcheck*.csv
+data/*_plainsolo*.csv
