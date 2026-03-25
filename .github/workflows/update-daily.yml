@@ -29,20 +29,24 @@ jobs:
       - name: Get rolling update window
         id: date
         run: |
-          echo "three_days_ago=$(date -u -d '3 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Run daily update
+      - name: Run rolling catch-up update
         run: |
-          python run_daily.py --start ${{ steps.date.outputs.three_days_ago }} --end ${{ steps.date.outputs.today }}
+          for attempt in 1 2 3; do
+            python run_daily.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} && break
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 30
+          done
 
       - name: Generate report
         run: |
           python generate_report.py
-          python fetch_bbref_advanced.py
-          python build_65_daily.py
-          python run_onoff.py --start ${{ steps.date.outputs.three_days_ago }} --end ${{ steps.date.outputs.today }} --recompute-existing
+          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
           python generate_onoff_report.py
           python generate_rapm_report.py --use-possessions
           python generate_onoff_daily_boxscore_report.py

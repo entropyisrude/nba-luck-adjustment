@@ -16,6 +16,21 @@ DATA_DIR = Path("data")
 CONFIG_PATH = Path("config.yaml")
 
 
+def _is_lfs_pointer(path: Path) -> bool:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            first = f.readline().strip()
+        return first == "version https://git-lfs.github.com/spec/v1"
+    except Exception:
+        return False
+
+
+def _read_csv_or_empty(path: Path, **kwargs) -> pd.DataFrame:
+    if not path.exists() or _is_lfs_pointer(path):
+        return pd.DataFrame()
+    return pd.read_csv(path, **kwargs)
+
+
 def daterange(start_date, end_date):
     d = start_date
     while d <= end_date:
@@ -87,7 +102,7 @@ def main():
 
     player_state = load_player_state(state_path)
     if out_path.exists():
-        existing = pd.read_csv(out_path)
+        existing = _read_csv_or_empty(out_path)
         if "game_id" in existing.columns:
             existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
             if "player_id" in existing.columns:
@@ -120,7 +135,7 @@ def main():
 
     if starter_override_path and starter_override_path.exists():
         try:
-            existing_starts = pd.read_csv(starter_override_path, dtype={"game_id": str}, low_memory=False)
+            existing_starts = _read_csv_or_empty(starter_override_path, dtype={"game_id": str}, low_memory=False)
             if "game_id" in existing_starts.columns:
                 def _starter_list(row, prefix: str) -> list[int]:
                     values: list[int] = []
@@ -258,11 +273,12 @@ def main():
     if stint_rows:
         stint_combined = pd.concat(stint_rows, ignore_index=True)
         if stint_path.exists():
-            existing_stints = pd.read_csv(stint_path, dtype={"game_id": str}, low_memory=False)
-            existing_stints["game_id"] = existing_stints["game_id"].astype(str).str.lstrip("0")
-            if updated_game_ids:
-                existing_stints = existing_stints[~existing_stints["game_id"].isin(updated_game_ids)]
-            stint_combined = pd.concat([existing_stints, stint_combined], ignore_index=True)
+            existing_stints = _read_csv_or_empty(stint_path, dtype={"game_id": str}, low_memory=False)
+            if "game_id" in existing_stints.columns:
+                existing_stints["game_id"] = existing_stints["game_id"].astype(str).str.lstrip("0")
+                if updated_game_ids:
+                    existing_stints = existing_stints[~existing_stints["game_id"].isin(updated_game_ids)]
+                stint_combined = pd.concat([existing_stints, stint_combined], ignore_index=True)
         if "stint_index" in stint_combined.columns:
             stint_combined = stint_combined.drop_duplicates(subset=["game_id", "stint_index"], keep="last")
         stint_combined = stint_combined.sort_values(["date", "game_id", "stint_index"])
@@ -272,11 +288,12 @@ def main():
     if poss_rows:
         poss_combined = pd.concat(poss_rows, ignore_index=True)
         if poss_path.exists():
-            existing_poss = pd.read_csv(poss_path, dtype={"game_id": str}, low_memory=False)
-            existing_poss["game_id"] = existing_poss["game_id"].astype(str).str.lstrip("0")
-            if updated_game_ids:
-                existing_poss = existing_poss[~existing_poss["game_id"].isin(updated_game_ids)]
-            poss_combined = pd.concat([existing_poss, poss_combined], ignore_index=True)
+            existing_poss = _read_csv_or_empty(poss_path, dtype={"game_id": str}, low_memory=False)
+            if "game_id" in existing_poss.columns:
+                existing_poss["game_id"] = existing_poss["game_id"].astype(str).str.lstrip("0")
+                if updated_game_ids:
+                    existing_poss = existing_poss[~existing_poss["game_id"].isin(updated_game_ids)]
+                poss_combined = pd.concat([existing_poss, poss_combined], ignore_index=True)
         if "poss_index" in poss_combined.columns:
             poss_combined = poss_combined.drop_duplicates(subset=["game_id", "poss_index"], keep="last")
         poss_combined = poss_combined.sort_values(["date", "game_id", "poss_index"])

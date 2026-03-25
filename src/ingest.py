@@ -635,8 +635,13 @@ def get_boxscore_player_df(game_id: str, game_date_mmddyyyy: str) -> pd.DataFram
         players = _load_stats_boxscore(game_id)["players"]
         if players.empty:
             return pd.DataFrame(columns=["GAME_ID", "TEAM_ID", "PLAYER_ID", "PLAYER_NAME", "FG3M", "FG3A"])
-        mins = players["MIN"].map(_parse_minutes_any)
-        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
+        minute_col = next((c for c in ["MIN", "MIN_SEC", "MINUTES"] if c in players.columns), None)
+        if minute_col is not None:
+            mins = players[minute_col].map(_parse_minutes_any)
+        else:
+            mins = pd.Series(0.0, index=players.index, dtype=float)
+        comment_col = players["COMMENT"] if "COMMENT" in players.columns else pd.Series("", index=players.index, dtype=object)
+        played = (mins > 0.0) & comment_col.fillna("").eq("")
         p = players.loc[played].copy()
         return pd.DataFrame(
             {
@@ -710,20 +715,26 @@ def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
                     "MINUTES",
                 ]
             )
-        mins = players["MIN"].map(_parse_minutes_any)
-        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
-        starter = players["START_POSITION"].fillna("").astype(str).str.strip().ne("")
+        minute_col = next((c for c in ["MIN", "MIN_SEC", "MINUTES"] if c in players.columns), None)
+        if minute_col is not None:
+            mins = players[minute_col].map(_parse_minutes_any)
+        else:
+            mins = pd.Series(0.0, index=players.index, dtype=float)
+        comment_col = players["COMMENT"] if "COMMENT" in players.columns else pd.Series("", index=players.index, dtype=object)
+        start_pos_col = players["START_POSITION"] if "START_POSITION" in players.columns else pd.Series("", index=players.index, dtype=object)
+        played = (mins > 0.0) & comment_col.fillna("").eq("")
+        starter = start_pos_col.fillna("").astype(str).str.strip().ne("")
         return pd.DataFrame(
             {
                 "GAME_ID": players["GAME_ID"].astype(str),
                 "TEAM_ID": players["TEAM_ID"].astype(int),
                 "PLAYER_ID": players["PLAYER_ID"].astype(int),
                 "PLAYER_NAME": players["PLAYER_NAME"].astype(str),
-                "NAME_I": players["NICKNAME"].astype(str),
+                "NAME_I": (players["NICKNAME"] if "NICKNAME" in players.columns else pd.Series("", index=players.index, dtype=object)).astype(str),
                 "STARTER": starter.map(lambda x: "1" if x else "0"),
                 "ONCOURT": "0",
                 "PLAYED": played.map(lambda x: "1" if x else "0"),
-                "PLUS_MINUS": pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0),
+                "PLUS_MINUS": pd.to_numeric(players["PLUS_MINUS"] if "PLUS_MINUS" in players.columns else pd.Series(0.0, index=players.index, dtype=float), errors="coerce").fillna(0.0),
                 "MINUTES": mins,
             }
         )

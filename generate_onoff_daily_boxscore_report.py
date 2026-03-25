@@ -70,9 +70,20 @@ def _load_player_name_map() -> dict[int, str]:
     return out
 
 
+def _is_lfs_pointer(path: Path) -> bool:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            first = f.readline().strip()
+        return first == "version https://git-lfs.github.com/spec/v1"
+    except Exception:
+        return False
+
+
 def _prepare_box() -> pd.DataFrame:
     if not BOX_PATH.exists():
         raise FileNotFoundError(f"Missing {BOX_PATH}")
+    if _is_lfs_pointer(BOX_PATH):
+        raise FileNotFoundError(f"{BOX_PATH} is a Git LFS pointer, not a materialized CSV")
     df = pd.read_csv(BOX_PATH, dtype={"game_id": str, "player_id": int})
     df["game_id"] = df["game_id"].astype(str).str.lstrip("0")
     df["date"] = df["date"].astype(str)
