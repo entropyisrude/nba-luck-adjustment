@@ -13,6 +13,7 @@ from src.ingest import (
     get_game_home_away_team_ids,
     get_playbyplay_3pt_shots,
 )
+from src.ledger import update_master_ledger
 from src.state import load_player_state, save_player_state, ensure_players_exist
 from src.adjust import (
     compute_team_expected_3pm,
@@ -78,6 +79,9 @@ def main():
                 if team_df.empty or player_df.empty:
                     print("SKIP (empty df)", game_id)
                     continue
+
+                # NEW: Authority Split - Every game goes to Ledger immediately
+                update_master_ledger(game_id, player_df, team_df, d.isoformat())
 
                 player_state = ensure_players_exist(player_state, player_df)
 
