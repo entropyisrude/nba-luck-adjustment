@@ -1,6 +1,9 @@
 pandas
+numpy
+scipy
 requests
 pyyaml
 nba_api
 lxml
-numpy
+beautifulsoup4
+html5lib
