@@ -1,9 +1,10 @@
-pandas
-numpy
-scipy
+nba_api>=1.4.1
+pandas>=2.0.0
+pyyaml>=6.0.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
 requests
-pyyaml
-nba_api
 lxml
 beautifulsoup4
 html5lib
+numpy
