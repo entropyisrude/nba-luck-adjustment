@@ -56,6 +56,9 @@ def generate_player_game_search_report() -> Path:
             player_name,
             team_abbr,
             opp_team_abbr,
+            {team_pts_actual},
+            {opp_pts_actual},
+            {score_margin},
             home_away,
             win_loss,
             starter,
@@ -113,6 +116,9 @@ def generate_player_game_search_report() -> Path:
             career_year=select_col("career_year"),
             draft_year=select_col("draft_year"),
             draft_overall_pick=select_col("draft_overall_pick"),
+            team_pts_actual=select_col("team_pts_actual"),
+            opp_pts_actual=select_col("opp_pts_actual"),
+            score_margin=("team_pts_actual - opp_pts_actual AS score_margin") if {"team_pts_actual", "opp_pts_actual"}.issubset(available_cols) else "NULL AS score_margin",
         )
     ).fetchall()
     cols = [d[0] for d in con.description]
@@ -196,6 +202,10 @@ def generate_player_game_search_report() -> Path:
       gap: 10px;
       margin-bottom: 10px;
     }}
+    .controls.compact {{
+      grid-template-columns: repeat(auto-fit, minmax(140px, 180px));
+      justify-content: start;
+    }}
     .filter-group {{
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -216,6 +226,9 @@ def generate_player_game_search_report() -> Path:
       grid-template-columns: 1fr 1fr;
       gap: 6px;
     }}
+    .controls.compact .range {{
+      grid-template-columns: minmax(0, 1.2fr) minmax(70px, 0.8fr);
+    }}
     select, input {{
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -224,6 +237,10 @@ def generate_player_game_search_report() -> Path:
       min-width: 100px;
       background: #fff;
       color: var(--ink);
+    }}
+    .controls.compact select,
+    .controls.compact input {{
+      min-width: 0;
     }}
     .table-wrap {{
       border: 1px solid var(--line);
@@ -296,7 +313,7 @@ def generate_player_game_search_report() -> Path:
       <p class="muted">Search player games by boxscore stats plus raw and adjusted plus-minus. Generated {ts} from <code>{SOURCE_LABEL}</code>. Season data loads on demand when you search.</p>
       <div class="filter-group">
         <h3>Scope</h3>
-        <div class="controls">
+        <div class="controls compact">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
         </label>
@@ -326,7 +343,7 @@ def generate_player_game_search_report() -> Path:
       </div>
       <div class="filter-group">
         <h3>Bio</h3>
-        <div class="controls">
+        <div class="controls compact">
         <label>Player
           <input id="player" type="text" placeholder="Name contains..." />
         </label>
@@ -542,6 +559,28 @@ def generate_player_game_search_report() -> Path:
         </div>
       </div>
       <div class="filter-group">
+        <h3>Team Groups</h3>
+        <div class="controls compact">
+        <label>Multi-player condition
+          <select id="multi_team_mode">
+            <option value="off">Off</option>
+            <option value="same_team">Same team</option>
+            <option value="both_teams_combined">Both teams combined</option>
+            <option value="each_team">Each team separately</option>
+          </select>
+        </label>
+        <label>Min qualifying players
+          <input id="multi_team_min" type="number" min="2" step="1" value="" placeholder="Min" />
+        </label>
+        <label>Results
+          <select id="group_result_mode">
+            <option value="team_game_rows">Team-game rows</option>
+            <option value="player_rows">Player rows</option>
+          </select>
+        </label>
+        </div>
+      </div>
+      <div class="filter-group">
         <h3>Custom</h3>
         <div class="controls">
         <label>Custom metric 1
@@ -613,6 +652,10 @@ def generate_player_game_search_report() -> Path:
               <th class="sortable" data-key="draft_overall_pick">Draft</th>
               <th class="sortable" data-key="team_abbr">Team</th>
               <th class="sortable" data-key="opp_team_abbr">Opp</th>
+              <th class="sortable" data-key="team_pts_actual">Tm Score</th>
+              <th class="sortable" data-key="opp_pts_actual">Opp Score</th>
+              <th class="sortable" data-key="score_margin">Margin</th>
+              <th class="sortable" data-key="win_loss">Result</th>
               <th class="sortable" data-key="minutes">Min</th>
               <th class="sortable" data-key="pts">PTS</th>
               <th class="sortable" data-key="reb">REB</th>
@@ -666,6 +709,17 @@ def generate_player_game_search_report() -> Path:
     const BASE_HEADER_ROW = document.querySelector("#search-table thead tr");
     const BASE_HEADER_KEYS = Array.from(BASE_HEADER_ROW.children).map(th => th.dataset.key);
     const BASE_HEADER_BY_KEY = Object.fromEntries(Array.from(BASE_HEADER_ROW.children).map(th => [th.dataset.key, th.cloneNode(true)]));
+    const TEAM_GAME_HEADER_DEFS = [
+      ["date", "Date"],
+      ["team_abbr", "Team"],
+      ["opp_team_abbr", "Opp"],
+      ["team_pts_actual", "Tm Score"],
+      ["opp_pts_actual", "Opp Score"],
+      ["score_margin", "Margin"],
+      ["win_loss", "Result"],
+      ["qualifying_count", "Qualifiers"],
+      ["qualifier_names", "Players"]
+    ];
 
     const COUNT_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"];
     const CUSTOM_KEYS = ["expr1","expr2"];
@@ -675,6 +729,7 @@ def generate_player_game_search_report() -> Path:
       ["assisted_2pm","Ast 2PM"],["unassisted_2pm","Unast 2PM"],["assisted_3pm","Ast 3PM"],["unassisted_3pm","Unast 3PM"],["assisted_fgm","Ast FGM"],["unassisted_fgm","Unast FGM"],
       ["plus_minus_actual","Raw PM"],["plus_minus_adjusted","Adj PM"],["on_off_actual","Raw On/Off"],["on_off_adjusted","Adj On/Off"],["age","Age"],["career_year","Career Yr"],["draft_year","Draft Yr"],["draft_overall_pick","Draft Slot"],["height_inches","Height"]
     ];
+    const NUMERIC_LABELS = Object.fromEntries(NUMERIC_OPTIONS);
     const SPLIT_FILTER_OPTIONS = [
       ["", "Off"],
       ["fgm", "FGM"],
@@ -860,6 +915,74 @@ def generate_player_game_search_report() -> Path:
       return inRange(value, minVal, maxVal);
     }}
 
+    function metricDigits(key, mode) {{
+      if (CUSTOM_KEYS.includes(key)) return 2;
+      if (COUNT_KEYS.includes(key)) return mode === "totals" ? 0 : 1;
+      if (["fg2_pct","fg3_pct","ft_pct","ts_game"].includes(key)) return 3;
+      if (["plus_minus_adjusted","on_off_actual","on_off_adjusted","score_margin"].includes(key)) return 2;
+      return 0;
+    }}
+
+    function metricValueForRow(r, key, mode) {{
+      if (CUSTOM_KEYS.includes(key)) return computeExpr(r, key, mode);
+      if (COUNT_KEYS.includes(key)) return displayVal(r, key, mode);
+      return v(r, key);
+    }}
+
+    function activeMetricDescriptors() {{
+      const statMode = document.getElementById("stat_mode").value;
+      const metrics = [];
+      const pushMetric = (active, key, label) => {{
+        if (!active || !key) return;
+        if (metrics.some(m => m.key === key)) return;
+        metrics.push({{ key, label, statMode }});
+      }};
+
+      [
+        ["pts","min_pts","max_pts"],["reb","min_reb","max_reb"],["oreb","min_oreb","max_oreb"],["dreb","min_dreb","max_dreb"],
+        ["ast","min_ast","max_ast"],["stl","min_stl","max_stl"],["blk","min_blk","max_blk"],["tov","min_tov","max_tov"],
+        ["fgm","min_fgm","max_fgm"],["fga","min_fga","max_fga"],["fg2a","min_fg2a","max_fg2a"],["fg2_pct","min_fg2_pct","max_fg2_pct"],
+        ["fg3m","min_fg3m","max_fg3m"],["fg3a","min_fg3a","max_fg3a"],["fg3_pct","min_fg3_pct","max_fg3_pct"],
+        ["ftm","min_ftm","max_ftm"],["fta","min_fta","max_fta"],["ft_pct","min_ft_pct","max_ft_pct"],
+        ["plus_minus_actual","min_pm","max_pm"],["plus_minus_adjusted","min_adj_pm","max_adj_pm"],
+        ["on_off_actual","min_onoff_raw","max_onoff_raw"],["on_off_adjusted","min_onoff_adj","max_onoff_adj"],
+        ["ts_game","min_ts","max_ts"]
+      ].forEach(([key, minId, maxId]) => {{
+        pushMetric(
+          document.getElementById(minId).value !== "" || document.getElementById(maxId).value !== "",
+          key,
+          NUMERIC_LABELS[key] || key
+        );
+      }});
+
+      ["split1", "split2"].forEach(slot => {{
+        const key = document.getElementById(`${{slot}}_key`).value;
+        pushMetric(key !== "", key, SPLIT_FILTER_OPTIONS.find(([value]) => value === key)?.[1] || key);
+      }});
+
+      ["expr1", "expr2"].forEach(slot => {{
+        pushMetric(
+          document.getElementById(`${{slot}}_cmp`).value !== "" && document.getElementById(`${{slot}}_target`).value !== "",
+          slot,
+          customLabel(slot)
+        );
+      }});
+
+      return metrics;
+    }}
+
+    function qualifierDisplayForRow(r) {{
+      const metrics = activeMetricDescriptors();
+      if (!metrics.length) return String(v(r, "player_name") || "");
+      const parts = metrics.map(m => {{
+        const val = metricValueForRow(r, m.key, m.statMode);
+        const rendered = fmt(val, metricDigits(m.key, m.statMode));
+        return metrics.length === 1 ? rendered : `${{rendered}} ${{m.label}}`;
+      }}).filter(Boolean);
+      if (!parts.length) return String(v(r, "player_name") || "");
+      return `${{String(v(r, "player_name") || "")}} (${{parts.join(", ")}})`;
+    }}
+
     function filteredRows() {{
       const seasonStartVal = document.getElementById("season_start").value;
       const seasonEndVal = document.getElementById("season_end").value;
@@ -978,12 +1101,106 @@ def generate_player_game_search_report() -> Path:
       );
     }}
 
+    function applyMultiPlayerCondition(rows) {{
+      const mode = document.getElementById("multi_team_mode").value;
+      const minPlayers = Number(document.getElementById("multi_team_min").value || 0);
+      if (mode === "off" || !Number.isFinite(minPlayers) || minPlayers < 2) return rows;
+
+      const gameCounts = new Map();
+      rows.forEach(r => {{
+        const gameId = String(v(r, "game_id") || "");
+        const team = String(v(r, "team_abbr") || "");
+        if (!gameId) return;
+        if (!gameCounts.has(gameId)) gameCounts.set(gameId, {{ total: 0, teams: new Map() }});
+        const entry = gameCounts.get(gameId);
+        entry.total += 1;
+        entry.teams.set(team, (entry.teams.get(team) || 0) + 1);
+      }});
+
+      if (mode === "both_teams_combined") {{
+        const keepGames = new Set(
+          Array.from(gameCounts.entries())
+            .filter(([, entry]) => entry.total >= minPlayers)
+            .map(([gameId]) => gameId)
+        );
+        return rows.filter(r => keepGames.has(String(v(r, "game_id") || "")));
+      }}
+
+      if (mode === "same_team") {{
+        const keepGameTeams = new Set();
+        gameCounts.forEach((entry, gameId) => {{
+          entry.teams.forEach((count, team) => {{
+            if (count >= minPlayers) keepGameTeams.add(`${{gameId}}|${{team}}`);
+          }});
+        }});
+        return rows.filter(r => keepGameTeams.has(`${{String(v(r, "game_id") || "")}}|${{String(v(r, "team_abbr") || "")}}`));
+      }}
+
+      if (mode === "each_team") {{
+        const keepGameTeams = new Set();
+        gameCounts.forEach((entry, gameId) => {{
+          const qualifyingTeams = Array.from(entry.teams.entries()).filter(([, count]) => count >= minPlayers);
+          if (qualifyingTeams.length >= 2) {{
+            qualifyingTeams.forEach(([team]) => keepGameTeams.add(`${{gameId}}|${{team}}`));
+          }}
+        }});
+        return rows.filter(r => keepGameTeams.has(`${{String(v(r, "game_id") || "")}}|${{String(v(r, "team_abbr") || "")}}`));
+      }}
+
+      return rows;
+    }}
+
+    function resultMode() {{
+      return document.getElementById("group_result_mode").value;
+    }}
+
+    function groupRowsToTeamGames(rows) {{
+      const groups = new Map();
+      rows.forEach(r => {{
+        const gameId = String(v(r, "game_id") || "");
+        const team = String(v(r, "team_abbr") || "");
+        if (!gameId || !team) return;
+        const key = `${{gameId}}|${{team}}`;
+        if (!groups.has(key)) {{
+          groups.set(key, {{
+            date: v(r, "date") || "",
+            game_id: gameId,
+            team_abbr: team,
+            opp_team_abbr: v(r, "opp_team_abbr") || "",
+            team_pts_actual: Number(v(r, "team_pts_actual") || 0),
+            opp_pts_actual: Number(v(r, "opp_pts_actual") || 0),
+            score_margin: Number(v(r, "score_margin") || 0),
+            win_loss: v(r, "win_loss") || "",
+            qualifying_count: 0,
+            qualifier_names: []
+          }});
+        }}
+        const entry = groups.get(key);
+        entry.qualifying_count += 1;
+        entry.qualifier_names.push(qualifierDisplayForRow(r));
+      }});
+      return Array.from(groups.values()).map(entry => ({{
+        ...entry,
+        qualifier_names: entry.qualifier_names.join(", ")
+      }}));
+    }}
+
     function sortRows(rows) {{
+      if (resultMode() === "team_game_rows") {{
+        const mult = state.dir === "asc" ? 1 : -1;
+        return rows.slice().sort((a, b) => {{
+          const key = state.key;
+          if (["date", "team_abbr", "opp_team_abbr", "win_loss", "qualifier_names"].includes(key)) {{
+            return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
+          }}
+          return mult * (Number(a[key] || 0) - Number(b[key] || 0));
+        }});
+      }}
       const mult = state.dir === "asc" ? 1 : -1;
       const statMode = document.getElementById("stat_mode").value;
       return rows.slice().sort((a, b) => {{
         const key = state.key;
-        if (["date", "player_name", "listed_height", "team_abbr", "opp_team_abbr"].includes(key)) {{
+        if (["date", "player_name", "listed_height", "team_abbr", "opp_team_abbr", "win_loss"].includes(key)) {{
           return mult * String(v(a, key) || "").localeCompare(String(v(b, key) || ""));
         }}
         if (CUSTOM_KEYS.includes(key)) {{
@@ -1001,6 +1218,12 @@ def generate_player_game_search_report() -> Path:
       const maybePush = (active, key) => {{ if (active && key && !keys.includes(key)) keys.push(key); }};
       maybePush(document.getElementById("team").value !== "ALL", "team_abbr");
       maybePush(document.getElementById("opp").value !== "ALL", "opp_team_abbr");
+      maybePush(document.getElementById("multi_team_mode").value !== "off", "team_abbr");
+      maybePush(document.getElementById("multi_team_mode").value === "each_team" || document.getElementById("multi_team_mode").value === "both_teams_combined", "opp_team_abbr");
+      maybePush(document.getElementById("multi_team_mode").value !== "off", "team_pts_actual");
+      maybePush(document.getElementById("multi_team_mode").value !== "off", "opp_pts_actual");
+      maybePush(document.getElementById("multi_team_mode").value !== "off", "score_margin");
+      maybePush(document.getElementById("multi_team_mode").value !== "off", "win_loss");
       maybePush(document.getElementById("min_height_inches").value !== "" || document.getElementById("max_height_inches").value !== "", "listed_height");
       maybePush(document.getElementById("min_age").value !== "" || document.getElementById("max_age").value !== "", "age");
       maybePush(document.getElementById("min_career_year").value !== "" || document.getElementById("max_career_year").value !== "", "career_year");
@@ -1058,7 +1281,7 @@ def generate_player_game_search_report() -> Path:
             state.dir = state.dir === "desc" ? "asc" : "desc";
           }} else {{
             state.key = key;
-            state.dir = ["date", "player_name", "team_abbr", "opp_team_abbr"].includes(key) ? "asc" : "desc";
+            state.dir = ["date", "player_name", "team_abbr", "opp_team_abbr", "win_loss", "qualifier_names"].includes(key) ? "asc" : "desc";
           }}
           lastResults = sortRows(lastResults);
           renderRows(lastResults);
@@ -1068,7 +1291,40 @@ def generate_player_game_search_report() -> Path:
 
     function renderRows(rows) {{
       const tbody = document.querySelector("#search-table tbody");
+      const headerRow = document.querySelector("#search-table thead tr");
       const statMode = document.getElementById("stat_mode").value;
+      if (resultMode() === "team_game_rows") {{
+        document.getElementById("row_count").textContent = `${{rows.length.toLocaleString()}} team-games${{rows.length > 1000 ? ' (showing first 1,000)' : ''}}`;
+        document.getElementById("mode_note").textContent = "one row per team-game with qualifying-player count and names";
+        headerRow.replaceChildren(...TEAM_GAME_HEADER_DEFS.map(([key, label]) => {{
+          const th = document.createElement("th");
+          th.className = "sortable";
+          th.dataset.key = key;
+          th.textContent = label;
+          return th;
+        }}));
+        tbody.innerHTML = rows.slice(0, 1000).map(r => `
+          <tr>
+            <td>${{r.date || ""}}</td>
+            <td>${{r.team_abbr || ""}}</td>
+            <td>${{r.opp_team_abbr || ""}}</td>
+            <td>${{fmt(r.team_pts_actual,0)}}</td>
+            <td>${{fmt(r.opp_pts_actual,0)}}</td>
+            <td class="${{cls(r.score_margin)}}">${{fmt(r.score_margin,0)}}</td>
+            <td>${{r.win_loss || ""}}</td>
+            <td>${{fmt(r.qualifying_count,0)}}</td>
+            <td style="text-align:left; white-space:normal; min-width:260px;">${{r.qualifier_names || ""}}</td>
+          </tr>
+        `).join("");
+        document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
+          Array.from(tr.children).forEach((td, idx) => {{
+            td.dataset.key = TEAM_GAME_HEADER_DEFS[idx][0];
+          }});
+        }});
+        initHeaderSorters();
+        return;
+      }}
+
       document.getElementById("row_count").textContent = `${{rows.length.toLocaleString()}} games${{rows.length > 1000 ? ' (showing first 1,000)' : ''}}`;
       document.getElementById("mode_note").textContent =
         statMode === "per36" ? "counting-stat filters and columns shown per 36 minutes"
@@ -1085,6 +1341,10 @@ def generate_player_game_search_report() -> Path:
           <td>${{v(r,"draft_overall_pick") || ""}}</td>
           <td>${{v(r,"team_abbr") || ""}}</td>
           <td>${{v(r,"opp_team_abbr") || ""}}</td>
+          <td>${{fmt(v(r,"team_pts_actual"),0)}}</td>
+          <td>${{fmt(v(r,"opp_pts_actual"),0)}}</td>
+          <td class="${{cls(v(r,"score_margin"))}}">${{fmt(v(r,"score_margin"),0)}}</td>
+          <td>${{v(r,"win_loss") || ""}}</td>
           <td>${{fmt(v(r,"minutes"))}}</td>
           <td>${{fmt(displayVal(r,"pts",statMode), statMode === "totals" ? 0 : 1)}}</td>
           <td>${{fmt(displayVal(r,"reb",statMode), statMode === "totals" ? 0 : 1)}}</td>
@@ -1122,7 +1382,8 @@ def generate_player_game_search_report() -> Path:
       document.getElementById("row_count").textContent = "Loading season data...";
       try {{
         await ensureSelectedSeasonsLoaded();
-        lastResults = sortRows(filteredRows());
+        const filtered = applyMultiPlayerCondition(filteredRows());
+        lastResults = sortRows(resultMode() === "team_game_rows" ? groupRowsToTeamGames(filtered) : filtered);
         renderRows(lastResults);
       }} catch (err) {{
         document.getElementById("row_count").textContent = `Failed to load season data: ${{err && err.message ? err.message : err}}`;
@@ -1142,6 +1403,9 @@ def generate_player_game_search_report() -> Path:
       document.getElementById('team').value = 'ALL';
       document.getElementById('opp').value = 'ALL';
       document.getElementById('stat_mode').value = 'totals';
+      document.getElementById('multi_team_mode').value = 'off';
+      document.getElementById('multi_team_min').value = '';
+      document.getElementById('group_result_mode').value = 'team_game_rows';
       document.getElementById("expr1_left").value = "ast";
       document.getElementById("expr1_right").value = "tov";
       document.getElementById("expr1_op").value = "/";
