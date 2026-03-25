@@ -442,27 +442,28 @@
     </div>
     <p class="timestamp" style="text-align: center; margin-top: 10px;">2025-26 Season through 2026-03-24 | 1077 games analyzed</p>
 
-    <div class="summary">
-        <p><strong>How much did the notorious variance of 3pt shooting affect the outcome of the game?</strong> This page attempts to take some (but far from all) luck out of the boxscore equation by reimagining every NBA result as if the 3 point gods played no favorites. That is, if every shot went in according to its long term expected outcome. Expected outcomes are inherently imperfect and this analysis does not use every conceivable piece of tracking data. But it also does not merely resort to league or team averages. Instead, it looks at every shot and (1) The player who shot it (2) The general shot difficulty (catch and shoot, pull-up, step-back, corner). It omits plenty of information, including how closely guarded the shot was according to tracking data. Please see the <a href="example.html" style="color: #e94560; font-weight: 500;">dirty details here</a>. Below you can see how many games were swung by the 3PT variance gods. The player pages use these same expectations to luck-adjust player on-off data on both a game-by-game basis and for longer term totals.</p>
-    </div>
-
     <div class="nav-links">
         <div class="nav-row project-links">
             <span class="nav-label">Regular Season</span>
             <a href="onoff-daily.html">+/- Games</a>
             <a href="onoff.html">+/- Stats</a>
             <a href="rapm.html">RAPM</a>
+            <a href="game-search.html">Game Search</a>
+            <a href="player-span-search.html">Player Span Search</a>
+            <a href="65-game-tracker.html" style="color: #e94560;">65-Game Rule</a>
         </div>
         <div class="nav-row project-links">
             <span class="nav-label">Playoffs</span>
             <a href="onoff-playoffs.html">+/- Playoffs</a>
             <a href="rapm-playoffs.html">Playoff RAPM</a>
+            <a href="game-search-playoffs.html">Game Search: Playoffs</a>
+            <a href="player-span-search-playoffs.html">Player Span Search: Playoffs</a>
         </div>
         <div class="nav-row this-page-links">
             <span class="nav-label">This Page</span>
             <a href="#team-rankings">Team Rankings</a>
             <a href="#biggest-swings">Highest Variance</a>
-            <a href="#methodology">Method</a>
+            <a href="example.html">Example</a>
         </div>
     </div>
 
@@ -913,52 +914,7 @@
     </table>
     <p><small>&#9888; = Adjusted margin flips the winner</small></p>
 
-    <div class="methodology" id="methodology">
-        <h3>Methodology</h3>
-        <p>This analysis calculates what NBA scores "should have been" by adjusting for 3-point shooting luck on a <strong>shot-by-shot basis</strong>.
-        <a href="example.html" target="_blank" style="color: #e94560; font-weight: 500;">See a detailed example breakdown &rarr;</a></p>
-
-        <h4>Shot Context Model</h4>
-        <p>Each 3-point attempt is analyzed using play-by-play data to determine its difficulty:</p>
-        <ul>
-            <li><strong>Court location</strong>: Corner 3s vs above-the-break 3s</li>
-            <li><strong>Shot type</strong>: Catch-and-shoot, pullup, stepback, running, fadeaway, turnaround</li>
-        </ul>
-        <p>Expected make probability is calculated using a <strong>multiplicative adjustment</strong>:</p>
-        <p style="margin-left: 20px;"><code>expected = player_3P% × shot_difficulty_multiplier</code></p>
-        <p>Example multipliers (relative to league avg): Corner C&S = 1.12×, Above-break C&S = 1.04×, Pullup = 0.93×, Stepback = 0.90×</p>
-
-        <h4>Player Expected 3P%</h4>
-        <p>Each player's baseline expected make rate uses Bayesian estimation with a <strong>sliding prior</strong> based on career experience:</p>
-        <ul>
-            <li><strong>Prior 3P%</strong>: Scales from 32% (rookies) to 36% (veterans with 1000+ career 3PA)</li>
-            <li><strong>Prior strength (kappa)</strong>: Scales from 200 (rookies) to 300 (veterans)</li>
-            <li><strong>Shot difficulty adjustment</strong>: The prior is adjusted based on the player's historical shot mix (assisted vs unassisted 3PA). Players who take mostly unassisted/pull-up 3s have their prior raised to reflect harder shot selection, while players who take mostly assisted/catch-and-shoot 3s have their prior lowered.</li>
-            <li><strong>Formula</strong>: player_3P% = (career_makes + kappa × adjusted_prior) / (career_attempts + kappa)</li>
-        </ul>
-        <p>Rookies regress toward a conservative 32% baseline, while veterans' expectations reflect their actual career shooting adjusted for shot difficulty.</p>
-
-        <h4>In-Season Adjustment</h4>
-        <ul>
-            <li><strong>Recency weighting</strong>: In-season attempts decay with a half-life of 2000 3PA</li>
-            <li>This allows for gradual adjustment if a player's shooting changes mid-season</li>
-        </ul>
-
-        <h4>Point Adjustment</h4>
-        <ul>
-            <li><strong>Base adjustment</strong>: 3 points per made/missed three above/below expectation</li>
-            <li><strong>ORB correction (both directions)</strong>: Missed 3s generate offensive rebounds at ~26% rate, worth ~1.12 PPP (~0.29 pts per miss). This correction applies symmetrically: when a team shot worse than expected, we reduce the adjustment because extra misses created extra ORB opportunities; when a team shot better than expected, we increase the adjustment because extra makes eliminated potential ORB opportunities.</li>
-        </ul>
-
-        <h4>Data</h4>
-        <ul>
-            <li><strong>Source</strong>: cdn.nba.com play-by-play and boxscores</li>
-            <li><strong>Career stats</strong>: nba_api for historical player data</li>
-            <li><strong>Updates</strong>: Automatically refreshed daily</li>
-        </ul>
-
-        <p class="timestamp">Generated 2026-03-25 13:33 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
-    </div>
+    <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated 2026-03-25 14:17 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
 
     <script>
     // Game data embedded as JSON
