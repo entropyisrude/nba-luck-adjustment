@@ -129,6 +129,17 @@ def generate_player_game_search_report() -> Path:
     seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
     teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
     opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
+    player_seasons_by_name: dict[str, list[str]] = {}
+    for r in compact_rows:
+        name = str(r[col_index["player_name"]] or "").strip().lower()
+        season = r[col_index["season"]]
+        if not name or not season:
+            continue
+        player_seasons_by_name.setdefault(name, []).append(season)
+    player_seasons_by_name = {
+        name: sorted(set(season_list), key=_season_start)
+        for name, season_list in player_seasons_by_name.items()
+    }
     season_starts = sorted(_season_start(s) for s in seasons)
     CHUNK_DIR.mkdir(parents=True, exist_ok=True)
     season_files: dict[str, str] = {}
@@ -213,6 +224,12 @@ def generate_player_game_search_report() -> Path:
       margin-bottom: 12px;
       background: #fbfdff;
     }}
+    .filter-row-two {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }}
     .filter-group h3 {{
       margin: 0 0 10px 0;
       font-size: 13px;
@@ -241,6 +258,11 @@ def generate_player_game_search_report() -> Path:
     .controls.compact select,
     .controls.compact input {{
       min-width: 0;
+    }}
+    @media (max-width: 980px) {{
+      .filter-row-two {{
+        grid-template-columns: 1fr;
+      }}
     }}
     .table-wrap {{
       border: 1px solid var(--line);
@@ -272,6 +294,25 @@ def generate_player_game_search_report() -> Path:
     .neg {{ color: var(--bad); font-weight: 600; }}
     .muted {{ color: var(--muted); }}
     .summary {{ display:flex; gap:18px; flex-wrap:wrap; margin-bottom: 8px; font-size:13px; color: var(--muted); }}
+    .summary-bar {{
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }}
+    .view-toggle {{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      color: var(--muted);
+    }}
+    .view-toggle select {{
+      min-width: 150px;
+      padding: 6px 10px;
+    }}
     .actions {{
       display: flex;
       gap: 10px;
@@ -499,31 +540,6 @@ def generate_player_game_search_report() -> Path:
         </div>
       </div>
       <div class="filter-group">
-        <h3>Shot Creation</h3>
-        <div class="controls">
-        <label>Shot split filter 1
-          <div class="range">
-            <select id="split1_key"></select>
-            <input id="split1_min" type="number" step="0.01" value="" placeholder="Min" />
-          </div>
-          <div class="range" style="margin-top:6px;">
-            <input id="split1_max" type="number" step="0.01" value="" placeholder="Max" />
-            <span></span>
-          </div>
-        </label>
-        <label>Shot split filter 2
-          <div class="range">
-            <select id="split2_key"></select>
-            <input id="split2_min" type="number" step="0.01" value="" placeholder="Min" />
-          </div>
-          <div class="range" style="margin-top:6px;">
-            <input id="split2_max" type="number" step="0.01" value="" placeholder="Max" />
-            <span></span>
-          </div>
-        </label>
-        </div>
-      </div>
-      <div class="filter-group">
         <h3>Impact</h3>
         <div class="controls">
         <label>Raw PM
@@ -572,17 +588,37 @@ def generate_player_game_search_report() -> Path:
         <label>Min qualifying players
           <input id="multi_team_min" type="number" min="2" step="1" value="" placeholder="Min" />
         </label>
-        <label>Results
-          <select id="group_result_mode">
-            <option value="team_game_rows">Team-game rows</option>
-            <option value="player_rows">Player rows</option>
-          </select>
+        </div>
+      </div>
+      <div class="filter-row-two">
+      <div class="filter-group">
+        <h3>Shot Creation</h3>
+        <div class="controls compact">
+        <label>Shot split filter 1
+          <div class="range">
+            <select id="split1_key"></select>
+            <input id="split1_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split1_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
+        </label>
+        <label>Shot split filter 2
+          <div class="range">
+            <select id="split2_key"></select>
+            <input id="split2_min" type="number" step="0.01" value="" placeholder="Min" />
+          </div>
+          <div class="range" style="margin-top:6px;">
+            <input id="split2_max" type="number" step="0.01" value="" placeholder="Max" />
+            <span></span>
+          </div>
         </label>
         </div>
       </div>
       <div class="filter-group">
         <h3>Custom</h3>
-        <div class="controls">
+        <div class="controls compact">
         <label>Custom metric 1
           <div class="range">
             <select id="expr1_left"></select>
@@ -631,13 +667,22 @@ def generate_player_game_search_report() -> Path:
         </label>
         </div>
       </div>
+      </div>
       <div class="actions">
         <button id="run_search" type="button">Search</button>
         <button id="clear_filters" class="secondary" type="button">Clear</button>
       </div>
-      <div class="summary">
-        <span id="row_count"></span>
-        <span id="mode_note"></span>
+      <div class="summary-bar">
+        <div class="summary">
+          <span id="row_count"></span>
+          <span id="mode_note"></span>
+        </div>
+        <label class="view-toggle">Results view
+          <select id="group_result_mode">
+            <option value="team_game_rows">Team-game rows</option>
+            <option value="player_rows">Player rows</option>
+          </select>
+        </label>
       </div>
       <div class="table-wrap">
         <table id="search-table">
@@ -698,6 +743,7 @@ def generate_player_game_search_report() -> Path:
     const SEASON_STARTS = {json.dumps(season_starts, ensure_ascii=False)};
     const TEAMS = {json.dumps(teams, ensure_ascii=False)};
     const OPPS = {json.dumps(opps, ensure_ascii=False)};
+    const PLAYER_SEASONS_BY_NAME = {json.dumps(player_seasons_by_name, ensure_ascii=False)};
     const HEIGHT_VALUES = {json.dumps(list(range(65, 92)), ensure_ascii=False)};
     const AGE_VALUES = {json.dumps(list(range(18, 46)), ensure_ascii=False)};
     const CAREER_YEAR_VALUES = {json.dumps(list(range(1, 24)), ensure_ascii=False)};
@@ -705,6 +751,7 @@ def generate_player_game_search_report() -> Path:
     const DRAFT_PICK_VALUES = {json.dumps(list(range(1, 166)), ensure_ascii=False)};
     const state = {{ key: "date", dir: "desc" }};
     let lastResults = [];
+    let resultModeManuallySet = false;
     const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
     const BASE_HEADER_ROW = document.querySelector("#search-table thead tr");
     const BASE_HEADER_KEYS = Array.from(BASE_HEADER_ROW.children).map(th => th.dataset.key);
@@ -872,7 +919,17 @@ def generate_player_game_search_report() -> Path:
       const seasonStartVal = document.getElementById("season_start").value;
       const seasonEndVal = document.getElementById("season_end").value;
       if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
-      return SEASONS.filter(season => seasonMatches(season, seasonStartVal, seasonEndVal));
+      let seasons = SEASONS.filter(season => seasonMatches(season, seasonStartVal, seasonEndVal));
+      const playerQuery = document.getElementById("player").value.trim().toLowerCase();
+      if (!playerQuery) return seasons;
+      const matchedSeasons = new Set();
+      Object.entries(PLAYER_SEASONS_BY_NAME).forEach(([name, nameSeasons]) => {{
+        if (name.includes(playerQuery)) {{
+          nameSeasons.forEach(season => matchedSeasons.add(season));
+        }}
+      }});
+      if (!matchedSeasons.size) return seasons;
+      return seasons.filter(season => matchedSeasons.has(season));
     }}
 
     async function loadSeasonChunk(season) {{
@@ -902,8 +959,10 @@ def generate_player_game_search_report() -> Path:
     }}
 
     function updateCustomHeaders() {{
-      document.getElementById("expr1_header").textContent = customLabel("expr1");
-      document.getElementById("expr2_header").textContent = customLabel("expr2");
+      const expr1Header = document.getElementById("expr1_header");
+      const expr2Header = document.getElementById("expr2_header");
+      if (expr1Header) expr1Header.textContent = customLabel("expr1");
+      if (expr2Header) expr2Header.textContent = customLabel("expr2");
     }}
 
     function splitFilterPass(r, slot, mode) {{
@@ -1154,6 +1213,17 @@ def generate_player_game_search_report() -> Path:
       return document.getElementById("group_result_mode").value;
     }}
 
+    function teamGroupFilterActive() {{
+      const mode = document.getElementById("multi_team_mode").value;
+      const minPlayers = Number(document.getElementById("multi_team_min").value || 0);
+      return mode !== "off" && Number.isFinite(minPlayers) && minPlayers >= 2;
+    }}
+
+    function syncDefaultResultMode() {{
+      if (resultModeManuallySet) return;
+      document.getElementById("group_result_mode").value = teamGroupFilterActive() ? "team_game_rows" : "player_rows";
+    }}
+
     function groupRowsToTeamGames(rows) {{
       const groups = new Map();
       rows.forEach(r => {{
@@ -1329,6 +1399,8 @@ def generate_player_game_search_report() -> Path:
       document.getElementById("mode_note").textContent =
         statMode === "per36" ? "counting-stat filters and columns shown per 36 minutes"
         : (statMode === "per100" ? "counting-stat filters and columns shown per 100 on-court possessions" : "");
+      headerRow.replaceChildren(...BASE_HEADER_KEYS.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
+      initHeaderSorters();
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
@@ -1381,6 +1453,7 @@ def generate_player_game_search_report() -> Path:
     async function runSearch() {{
       document.getElementById("row_count").textContent = "Loading season data...";
       try {{
+        syncDefaultResultMode();
         await ensureSelectedSeasonsLoaded();
         const filtered = applyMultiPlayerCondition(filteredRows());
         lastResults = sortRows(resultMode() === "team_game_rows" ? groupRowsToTeamGames(filtered) : filtered);
@@ -1405,7 +1478,8 @@ def generate_player_game_search_report() -> Path:
       document.getElementById('stat_mode').value = 'totals';
       document.getElementById('multi_team_mode').value = 'off';
       document.getElementById('multi_team_min').value = '';
-      document.getElementById('group_result_mode').value = 'team_game_rows';
+      resultModeManuallySet = false;
+      document.getElementById('group_result_mode').value = 'player_rows';
       document.getElementById("expr1_left").value = "ast";
       document.getElementById("expr1_right").value = "tov";
       document.getElementById("expr1_op").value = "/";
@@ -1425,6 +1499,16 @@ def generate_player_game_search_report() -> Path:
 
     document.getElementById("run_search").addEventListener("click", () => {{ runSearch(); }});
     document.getElementById("clear_filters").addEventListener("click", clearFilters);
+    document.getElementById("group_result_mode").addEventListener("change", () => {{
+      resultModeManuallySet = true;
+      if (lastResults.length || ROWS.length) runSearch();
+    }});
+    document.getElementById("multi_team_mode").addEventListener("change", () => {{
+      syncDefaultResultMode();
+    }});
+    document.getElementById("multi_team_min").addEventListener("input", () => {{
+      syncDefaultResultMode();
+    }});
     document.querySelectorAll("input").forEach(el => el.addEventListener("keydown", (e) => {{
       if (e.key === "Enter") runSearch();
     }}));
