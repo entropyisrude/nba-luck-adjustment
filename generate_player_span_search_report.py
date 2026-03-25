@@ -814,6 +814,10 @@ def generate_player_span_search_report() -> Path:
       ["unassisted_3pm", "Unast 3PM"]
     ];
     const state = {{ key: "pts", dir: "desc" }};
+    const customFormulaState = {{
+      expr1: {{ left: "ast", op: "/", right: "tov", label: "" }},
+      expr2: {{ left: "stl", op: "+", right: "blk", label: "" }},
+    }};
     const displayModes = Object.fromEntries(DISPLAY_TOGGLE_KEYS.map(key => [key, "match"]));
     let lastResults = [];
     const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
@@ -1009,15 +1013,29 @@ def generate_player_span_search_report() -> Path:
       }}
     }}
 
+    function syncCustomFormulaState() {{
+      ["expr1", "expr2"].forEach(slot => {{
+        const leftEl = document.getElementById(`${{slot}}_left`);
+        const rightEl = document.getElementById(`${{slot}}_right`);
+        customFormulaState[slot] = {{
+          left: leftEl ? leftEl.value : customFormulaState[slot].left,
+          op: document.getElementById(`${{slot}}_op`)?.value || customFormulaState[slot].op,
+          right: rightEl ? rightEl.value : customFormulaState[slot].right,
+          label: document.getElementById(`${{slot}}_label`)?.value.trim() || ""
+        }};
+      }});
+    }}
+
     function updateCustomHeaders() {{
+      syncCustomFormulaState();
       const customLabel = (slot) => {{
         const leftEl = document.getElementById(`${{slot}}_left`);
         const rightEl = document.getElementById(`${{slot}}_right`);
-        const op = document.getElementById(`${{slot}}_op`).value;
-        const manual = document.getElementById(`${{slot}}_label`).value.trim();
+        const op = customFormulaState[slot].op;
+        const manual = customFormulaState[slot].label;
         if (manual) return manual;
-        const leftText = leftEl.options[leftEl.selectedIndex]?.text || "Stat";
-        const rightText = rightEl.options[rightEl.selectedIndex]?.text || "Stat";
+        const leftText = leftEl?.options[leftEl.selectedIndex]?.text || "Stat";
+        const rightText = rightEl?.options[rightEl.selectedIndex]?.text || "Stat";
         return `${{leftText}} ${{op}} ${{rightText}}`;
       }};
       document.getElementById("expr1_header").textContent = customLabel("expr1");
@@ -1359,9 +1377,10 @@ def generate_player_span_search_report() -> Path:
     }}
 
     function computeExpr(obj, slot, mode="match") {{
-      const left = document.getElementById(`${{slot}}_left`).value;
-      const op = document.getElementById(`${{slot}}_op`).value;
-      const right = document.getElementById(`${{slot}}_right`).value;
+      const conf = customFormulaState[slot];
+      const left = conf.left;
+      const op = conf.op;
+      const right = conf.right;
       const a = numericVal(obj, left, mode);
       const b = numericVal(obj, right, mode);
       if (Number.isNaN(a) || Number.isNaN(b)) return null;
@@ -1636,6 +1655,7 @@ def generate_player_span_search_report() -> Path:
     async function runSearch() {{
       document.getElementById("row_count").textContent = "Loading season data...";
       try {{
+        syncCustomFormulaState();
         await ensureSelectedSeasonsLoaded();
         lastResults = sortRows(filteredAggRows());
         renderRows(lastResults);
