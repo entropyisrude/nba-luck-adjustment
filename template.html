@@ -64,6 +64,20 @@
             padding: 10px 8px;
             border-bottom: 1px solid #eee;
         }
+        .compact-table {
+            box-shadow: none;
+            margin-bottom: 12px;
+        }
+        .compact-table th {
+            padding: 9px 8px;
+            font-size: 0.86em;
+            letter-spacing: 0.01em;
+        }
+        .compact-table td {
+            padding: 7px 8px;
+            font-size: 0.92em;
+            line-height: 1.2;
+        }
         tr:hover {
             background: #f8f9fa;
         }
@@ -216,6 +230,77 @@
         }
         tr.winner-flipped:hover {
             background: #ffd0d0 !important;
+        }
+        .panel-card {
+            background: white;
+            padding: 14px 16px 12px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            margin: 26px 0 30px;
+        }
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .panel-head h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #16213e;
+        }
+        .panel-note {
+            margin: 0 0 10px;
+            color: #5f6b7a;
+            font-size: 0.88em;
+            line-height: 1.35;
+        }
+        .panel-toggle {
+            display: inline-flex;
+            gap: 4px;
+            padding: 3px;
+            border-radius: 999px;
+            background: #eef2f7;
+            border: 1px solid #dde3eb;
+        }
+        .panel-toggle button {
+            border: 0;
+            background: transparent;
+            color: #334155;
+            font-weight: 700;
+            font-size: 0.84em;
+            padding: 7px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .panel-toggle button.active {
+            background: #1a1a2e;
+            color: white;
+        }
+        .panel-section {
+            display: none;
+        }
+        .panel-section.active {
+            display: block;
+        }
+        .panel-footnote {
+            margin: 4px 0 0;
+            color: #666;
+            font-size: 0.82em;
+        }
+        @media (max-width: 700px) {
+            .panel-head {
+                align-items: flex-start;
+            }
+            .panel-toggle {
+                width: 100%;
+            }
+            .panel-toggle button {
+                flex: 1 1 0;
+                text-align: center;
+            }
         }
 
         /* Game Box Scoreboard Styles */
@@ -479,35 +564,47 @@
         <div class="calendar-grid" id="calendar"></div>
     </div>
 
-    <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
-    <p style="text-align: center;">Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
-    <table id="team-table">
-        <tr>
-            <th>#</th>
-            <th class="sortable" data-sort="team" data-type="string">Team</th>
-            <th class="sortable desc" data-sort="wins" data-type="number">Record</th>
-            <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
-            <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
-            <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
-            <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
-            <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
-        </tr>
-{{TEAM_RANKINGS_ROWS}}
-    </table>
+    <section class="panel-card" id="team-rankings">
+        <div class="panel-head">
+            <h2>Team Rankings</h2>
+            <div class="panel-toggle" role="tablist" aria-label="Homepage summary panels">
+                <button type="button" class="active" id="summary-tab-rankings" onclick="showSummaryPanel('rankings')">Team Rankings</button>
+                <button type="button" id="summary-tab-variance" onclick="showSummaryPanel('variance')">Highest Variance Games</button>
+            </div>
+        </div>
 
-    <h2 id="biggest-swings">Highest 3PT Variance Games</h2>
-    <p>Games where 3PT variance most dramatically affected the outcome</p>
-    <table>
-        <tr>
-            <th>Date</th>
-            <th>Matchup</th>
-            <th>Actual</th>
-            <th>Adjusted</th>
-            <th>3PT Luck</th>
-        </tr>
+        <div class="panel-section active" id="summary-panel-rankings">
+            <p class="panel-note">Opponent 3P% versus expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
+            <table id="team-table" class="compact-table">
+                <tr>
+                    <th>#</th>
+                    <th class="sortable" data-sort="team" data-type="string">Team</th>
+                    <th class="sortable desc" data-sort="wins" data-type="number">Record</th>
+                    <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
+                    <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
+                    <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
+                    <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
+                    <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
+                </tr>
+{{TEAM_RANKINGS_ROWS}}
+            </table>
+        </div>
+
+        <div class="panel-section" id="summary-panel-variance">
+            <p class="panel-note">Games where 3PT variance most dramatically affected the outcome.</p>
+            <table class="compact-table" id="biggest-swings">
+                <tr>
+                    <th>Date</th>
+                    <th>Matchup</th>
+                    <th>Actual</th>
+                    <th>Adjusted</th>
+                    <th>3PT Luck</th>
+                </tr>
 {{BIGGEST_SWINGS_ROWS}}
-    </table>
-    <p><small>&#9888; = Adjusted margin flips the winner</small></p>
+            </table>
+            <p class="panel-footnote">&#9888; = Adjusted margin flips the winner</p>
+        </div>
+    </section>
 
     <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated {{GENERATED_TIMESTAMP}} | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
 
@@ -807,6 +904,19 @@
     }
 
     setupSortableTable();
+
+    function showSummaryPanel(panel) {
+        const rankings = document.getElementById('summary-panel-rankings');
+        const variance = document.getElementById('summary-panel-variance');
+        const rankingsTab = document.getElementById('summary-tab-rankings');
+        const varianceTab = document.getElementById('summary-tab-variance');
+        const showRankings = panel !== 'variance';
+
+        rankings.classList.toggle('active', showRankings);
+        variance.classList.toggle('active', !showRankings);
+        rankingsTab.classList.toggle('active', showRankings);
+        varianceTab.classList.toggle('active', !showRankings);
+    }
 
     // Modal functions for showing flipped games
     function showFlippedGames(team) {
