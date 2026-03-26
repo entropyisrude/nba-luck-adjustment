@@ -1398,20 +1398,28 @@ def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
                     "MINUTES",
                 ]
             )
-        mins = players["MIN"].map(_parse_minutes_any)
-        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
-        starter = players["START_POSITION"].fillna("").astype(str).str.strip().ne("")
+        minute_col = next((c for c in ["MIN", "MIN_SEC", "MINUTES"] if c in players.columns), None)
+        if minute_col is not None:
+            mins = players[minute_col].map(_parse_minutes_any)
+        else:
+            mins = pd.Series(0.0, index=players.index)
+        comment = players["COMMENT"].fillna("") if "COMMENT" in players.columns else pd.Series("", index=players.index)
+        start_position = players["START_POSITION"].fillna("") if "START_POSITION" in players.columns else pd.Series("", index=players.index)
+        played = (mins > 0.0) & comment.eq("")
+        starter = start_position.astype(str).str.strip().ne("")
+        nickname = players["NICKNAME"] if "NICKNAME" in players.columns else pd.Series("", index=players.index)
+        plus_minus = pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0) if "PLUS_MINUS" in players.columns else pd.Series(0.0, index=players.index)
         return pd.DataFrame(
             {
                 "GAME_ID": players["GAME_ID"].astype(str),
                 "TEAM_ID": players["TEAM_ID"].astype(int),
                 "PLAYER_ID": players["PLAYER_ID"].map(canonicalize_player_id).astype(int),
                 "PLAYER_NAME": players["PLAYER_NAME"].astype(str),
-                "NAME_I": players["NICKNAME"].astype(str),
+                "NAME_I": nickname.astype(str),
                 "STARTER": starter.map(lambda x: "1" if x else "0"),
                 "ONCOURT": "0",
                 "PLAYED": played.map(lambda x: "1" if x else "0"),
-                "PLUS_MINUS": pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0),
+                "PLUS_MINUS": plus_minus,
                 "MINUTES": mins,
             }
         )

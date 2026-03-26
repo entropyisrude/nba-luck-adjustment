@@ -64,7 +64,11 @@ def main():
 
     for d in daterange(start, end):
         game_date_mmddyyyy = d.strftime("%m/%d/%Y")
-        game_ids = get_game_ids_for_date(game_date_mmddyyyy)
+        try:
+            game_ids = get_game_ids_for_date(game_date_mmddyyyy)
+        except Exception as e:
+            print("ERROR loading schedule for date", d.isoformat(), "->", repr(e))
+            continue
 
         print("DATE", d.isoformat(), "NBA_DATA_DATE", game_date_mmddyyyy, "GAMES", len(game_ids))
 
