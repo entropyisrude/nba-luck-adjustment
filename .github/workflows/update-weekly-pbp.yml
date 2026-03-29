@@ -35,7 +35,7 @@ jobs:
         run: |
           # This assumes generate_possessions_from_pbp.py or similar is used for rebuilds
           # We'll use the core processing scripts found in the repo
-          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.today }} --recompute-existing
+          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
           python generate_possessions_from_pbp.py
           python generate_rapm_report.py --use-possessions
 
