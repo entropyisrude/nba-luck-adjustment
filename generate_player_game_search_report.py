@@ -8,7 +8,7 @@ from pathlib import Path
 import duckdb
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parent)))
 DATA_DIR = ROOT / "data"
 DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics.duckdb")))
 OUTPUT_DATA_PATH = Path(os.environ.get("PLAYER_GAME_SEARCH_OUTPUT_DATA_PATH", str(DATA_DIR / "player_game_search.html")))

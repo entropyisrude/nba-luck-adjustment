@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("NBA_ANALYTICS_DB_PATH", "/mnt/c/users/dave/Downloads/nba-onoff-publish/data/nba_analytics_playoffs.duckdb")
-os.environ.setdefault("PLAYER_SPAN_SEARCH_OUTPUT_DATA_PATH", "/mnt/c/users/dave/Downloads/nba-onoff-publish/data/player_span_search_playoffs.html")
-os.environ.setdefault("PLAYER_SPAN_SEARCH_OUTPUT_SITE_PATH", "/mnt/c/users/dave/Downloads/nba-onoff-publish/player-span-search-playoffs.html")
-os.environ.setdefault("PLAYER_SPAN_SEARCH_CHUNK_DIR", "/mnt/c/users/dave/Downloads/nba-onoff-publish/data/player_span_playoff_chunks")
+ROOT = os.environ.get("NBA_ONOFF_ROOT", os.path.dirname(os.path.abspath(__file__)))
+os.environ.setdefault("NBA_ANALYTICS_DB_PATH", os.path.join(ROOT, "data", "nba_analytics_playoffs.duckdb"))
+os.environ.setdefault("PLAYER_SPAN_SEARCH_OUTPUT_DATA_PATH", os.path.join(ROOT, "data", "player_span_search_playoffs.html"))
+os.environ.setdefault("PLAYER_SPAN_SEARCH_OUTPUT_SITE_PATH", os.path.join(ROOT, "player-span-search-playoffs.html"))
+os.environ.setdefault("PLAYER_SPAN_SEARCH_CHUNK_DIR", os.path.join(ROOT, "data", "player_span_playoff_chunks"))
 os.environ.setdefault("PLAYER_SPAN_SEARCH_PAGE_TITLE", "Player Span Search: Playoffs")
 os.environ.setdefault("PLAYER_GAME_SEARCH_HREF", "game-search-playoffs.html")
 os.environ.setdefault("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics_playoffs.duckdb")
