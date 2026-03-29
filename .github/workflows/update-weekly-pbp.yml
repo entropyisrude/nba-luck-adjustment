@@ -27,15 +27,24 @@ jobs:
       - name: Get weekly update window
         id: date
         run: |
+          if [ "$(date -u +'%m')" -ge 10 ]; then
+            echo "season_start=$(date -u +'%Y')-10-01" >> $GITHUB_OUTPUT
+          else
+            echo "season_start=$(($(date -u +'%Y') - 1))-10-01" >> $GITHUB_OUTPUT
+          fi
           echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
+      - name: Pull LFS data
+        run: |
+          git lfs pull
+
       - name: Refresh PBP and Stints
         run: |
-          # This assumes generate_possessions_from_pbp.py or similar is used for rebuilds
-          # We'll use the core processing scripts found in the repo
-          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
+          # Rebuild the current-season files from season start so search pages see the full season,
+          # not just the recent rolling window.
+          python run_onoff.py --start ${{ steps.date.outputs.season_start }} --end ${{ steps.date.outputs.yesterday }} --history-season-start ${{ steps.date.outputs.season_start }} --history-season-end ${{ steps.date.outputs.yesterday }}
           python generate_possessions_from_pbp.py
           python scripts/build_player_boxscore_stats_csv.py
           python scripts/build_analytics_duckdb.py
