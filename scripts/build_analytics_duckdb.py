@@ -619,30 +619,39 @@ def main() -> None:
         player_base AS (
             WITH current_games AS (
                 SELECT DISTINCT CAST(game_id AS VARCHAR) AS game_id
-                FROM raw_player_daily_boxscore
+                FROM raw_player_box_stats
             )
             SELECT
-                CAST(b.date AS DATE) AS date,
+                CAST(bs.date AS DATE) AS date,
                 CASE
-                    WHEN EXTRACT(month FROM CAST(b.date AS DATE)) >= 10
-                        THEN CAST(EXTRACT(year FROM CAST(b.date AS DATE)) AS VARCHAR) || '-' ||
-                             right(CAST(EXTRACT(year FROM CAST(b.date AS DATE)) + 1 AS VARCHAR), 2)
-                    ELSE CAST(EXTRACT(year FROM CAST(b.date AS DATE)) - 1 AS VARCHAR) || '-' ||
-                         right(CAST(EXTRACT(year FROM CAST(b.date AS DATE)) AS VARCHAR), 2)
+                    WHEN EXTRACT(month FROM CAST(bs.date AS DATE)) >= 10
+                        THEN CAST(EXTRACT(year FROM CAST(bs.date AS DATE)) AS VARCHAR) || '-' ||
+                             right(CAST(EXTRACT(year FROM CAST(bs.date AS DATE)) + 1 AS VARCHAR), 2)
+                    ELSE CAST(EXTRACT(year FROM CAST(bs.date AS DATE)) - 1 AS VARCHAR) || '-' ||
+                         right(CAST(EXTRACT(year FROM CAST(bs.date AS DATE)) AS VARCHAR), 2)
                 END AS season,
-                CAST(b.game_id AS VARCHAR) AS game_id,
-                CAST(b.player_id AS BIGINT) AS player_id,
-                CAST(b.player_name AS VARCHAR) AS player_name,
-                CAST(b.team_id AS BIGINT) AS team_id,
-                CAST(b.minutes_on AS DOUBLE) AS minutes,
-                CAST(b.plus_minus_actual AS DOUBLE) AS plus_minus_actual,
-                CAST(b.plus_minus_adjusted AS DOUBLE) AS plus_minus_adjusted,
-                CAST(b.plus_minus_delta AS DOUBLE) AS plus_minus_delta,
-                CAST(b.on_off_actual AS DOUBLE) AS on_off_actual,
-                CAST(b.on_off_adjusted AS DOUBLE) AS on_off_adjusted,
-                CAST(b.on_off_delta AS DOUBLE) AS on_off_delta,
+                CAST(bs.game_id AS VARCHAR) AS game_id,
+                CAST(bs.player_id AS BIGINT) AS player_id,
+                CAST(bs.player_name AS VARCHAR) AS player_name,
+                CAST(bs.team_id AS BIGINT) AS team_id,
+                CASE
+                    WHEN CAST(bs.minutes AS VARCHAR) IS NULL OR CAST(bs.minutes AS VARCHAR) = '' THEN NULL
+                    WHEN strpos(CAST(bs.minutes AS VARCHAR), ':') > 0 THEN
+                        CAST(split_part(CAST(bs.minutes AS VARCHAR), ':', 1) AS DOUBLE)
+                        + CAST(split_part(CAST(bs.minutes AS VARCHAR), ':', 2) AS DOUBLE) / 60.0
+                    ELSE CAST(bs.minutes AS DOUBLE)
+                END AS minutes,
+                CAST(cur.plus_minus_actual AS DOUBLE) AS plus_minus_actual,
+                CAST(cur.plus_minus_adjusted AS DOUBLE) AS plus_minus_adjusted,
+                CAST(cur.plus_minus_delta AS DOUBLE) AS plus_minus_delta,
+                CAST(cur.on_off_actual AS DOUBLE) AS on_off_actual,
+                CAST(cur.on_off_adjusted AS DOUBLE) AS on_off_adjusted,
+                CAST(cur.on_off_delta AS DOUBLE) AS on_off_delta,
                 1 AS source_priority
-            FROM raw_player_daily_boxscore b
+            FROM raw_player_box_stats bs
+            LEFT JOIN raw_player_daily_boxscore cur
+              ON CAST(bs.game_id AS VARCHAR) = CAST(cur.game_id AS VARCHAR)
+             AND CAST(bs.player_id AS BIGINT) = CAST(cur.player_id AS BIGINT)
             UNION ALL
             SELECT
                 CAST(b.date AS DATE) AS date,

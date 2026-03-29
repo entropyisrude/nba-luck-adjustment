@@ -42,9 +42,7 @@ jobs:
 
       - name: Refresh PBP and Stints
         run: |
-          # Rebuild the current-season files from season start so search pages see the full season,
-          # not just the recent rolling window.
-          python run_onoff.py --start ${{ steps.date.outputs.season_start }} --end ${{ steps.date.outputs.yesterday }} --history-season-start ${{ steps.date.outputs.season_start }} --history-season-end ${{ steps.date.outputs.yesterday }}
+          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
           python generate_possessions_from_pbp.py
           python scripts/build_player_boxscore_stats_csv.py
           python scripts/build_analytics_duckdb.py
