@@ -1170,12 +1170,13 @@ def get_game_ids_for_date(
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.
     """
-    # Try CDN schedule first for regular season (faster and more reliable)
+    # Try CDN schedule first for regular season (faster and more reliable).
+    # If the league schedule is loaded and the date simply has no games,
+    # return [] directly instead of falling through to the much slower stats API.
     if season_type == "Regular Season" and not season_override:
         schedule = _load_schedule()
         ids = schedule.get(game_date_mmddyyyy, [])
-        if ids:
-            return ids
+        return ids
     # Fall back to stats API (required for playoffs and season overrides)
     ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
     return ids if ids else []
