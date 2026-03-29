@@ -24,11 +24,18 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Get weekly update window
+        id: date
+        run: |
+          echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Refresh PBP and Stints
         run: |
           # This assumes generate_possessions_from_pbp.py or similar is used for rebuilds
           # We'll use the core processing scripts found in the repo
-          python run_onoff.py --recompute-existing
+          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.today }} --recompute-existing
           python generate_possessions_from_pbp.py
           python generate_rapm_report.py --use-possessions
 
@@ -37,5 +44,5 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add -A
-          git diff --staged --quiet || git commit -m "Weekly PBP Refresh: Full Rebuild"
+          git diff --staged --quiet || git commit -m "Weekly PBP Refresh: Games through ${{ steps.date.outputs.yesterday }}"
           git push
