@@ -160,7 +160,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-03-24 10:10 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-03-29 16:09 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -550,11 +550,11 @@
     const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
     let ROWS = [];
     window.__PLAYER_SPAN_CHUNKS = window.__PLAYER_SPAN_CHUNKS || {};
-    const DATA_FILES = {"1996-97": "1996_97.js", "1997-98": "1997_98.js", "1998-99": "1998_99.js", "1999-00": "1999_00.js", "2000-01": "2000_01.js", "2001-02": "2001_02.js", "2002-03": "2002_03.js", "2003-04": "2003_04.js", "2004-05": "2004_05.js", "2005-06": "2005_06.js", "2006-07": "2006_07.js", "2007-08": "2007_08.js", "2008-09": "2008_09.js", "2009-10": "2009_10.js", "2010-11": "2010_11.js", "2011-12": "2011_12.js", "2012-13": "2012_13.js", "2013-14": "2013_14.js", "2014-15": "2014_15.js", "2015-16": "2015_16.js", "2016-17": "2016_17.js", "2017-18": "2017_18.js", "2018-19": "2018_19.js", "2019-20": "2019_20.js", "2020-21": "2020_21.js", "2021-22": "2021_22.js", "2022-23": "2022_23.js", "2023-24": "2023_24.js", "2024-25": "2024_25.js", "2025-26": "2025_26.js"};
+    const DATA_FILES = {};
     const LOADED_SEASONS = new Set();
-    const SEASONS = ["1996-97", "1997-98", "1998-99", "1999-00", "2000-01", "2001-02", "2002-03", "2003-04", "2004-05", "2005-06", "2006-07", "2007-08", "2008-09", "2009-10", "2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"];
-    const TEAMS = ["ATL", "BKN", "BOS", "CHA", "CHH", "CHI", "CLE", "DAL", "DEN", "DET", "GSW", "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NJN", "NOH", "NOK", "NOP", "NYK", "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SAS", "SEA", "TOR", "UTA", "VAN", "WAS"];
-    const OPPS = ["ATL", "BKN", "BOS", "CHA", "CHH", "CHI", "CLE", "DAL", "DEN", "DET", "GSW", "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NJN", "NOH", "NOK", "NOP", "NYK", "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SAS", "SEA", "TOR", "UTA", "VAN", "WAS"];
+    const SEASONS = [];
+    const TEAMS = [];
+    const OPPS = [];
     const HEIGHT_VALUES = [65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91];
     const AGE_VALUES = [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45];
     const CAREER_YEAR_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
