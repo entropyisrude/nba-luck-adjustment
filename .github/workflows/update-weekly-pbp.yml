@@ -37,6 +37,7 @@ jobs:
           # We'll use the core processing scripts found in the repo
           python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
           python generate_possessions_from_pbp.py
+          python scripts/build_player_boxscore_stats_csv.py
           python scripts/build_analytics_duckdb.py
           python generate_player_game_search_report.py
           python generate_player_span_search_report.py

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import csv
+import os
 from pathlib import Path
 
 import requests
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", Path(__file__).resolve().parents[1]))
 DATA_DIR = ROOT / "data"
 GAMES_CSV = DATA_DIR / "adjusted_games.csv"
 OUT_CSV = DATA_DIR / "player_boxscore_stats.csv"
