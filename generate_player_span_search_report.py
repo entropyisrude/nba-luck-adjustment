@@ -226,6 +226,7 @@ def generate_player_span_search_report() -> Path:
         )
         (CHUNK_DIR / filename).write_text(chunk_js, encoding="utf-8")
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+    per100_option_html = '<option value="per100">Per 100 poss</option>' if ALLOW_PER100 else ""
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -441,7 +442,7 @@ def generate_player_span_search_report() -> Path:
             <option value="totals">Totals</option>
             <option value="pergame">Per Game</option>
             <option value="per36">Per 36</option>
-            {"<option value=\"per100\">Per 100 poss</option>" if ALLOW_PER100 else ""}
+            {per100_option_html}
           </select>
         </label>
         <label>Date range
