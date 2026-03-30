@@ -636,6 +636,15 @@ def main() -> None:
                 CAST(bs.team_id AS BIGINT) AS team_id,
                 CASE
                     WHEN CAST(bs.minutes AS VARCHAR) IS NULL OR CAST(bs.minutes AS VARCHAR) = '' THEN NULL
+                    WHEN starts_with(CAST(bs.minutes AS VARCHAR), 'PT') THEN
+                        COALESCE(
+                            CAST(NULLIF(regexp_extract(CAST(bs.minutes AS VARCHAR), 'PT([0-9]+)M', 1), '') AS DOUBLE),
+                            0.0
+                        )
+                        + COALESCE(
+                            CAST(NULLIF(regexp_extract(CAST(bs.minutes AS VARCHAR), 'M([0-9]+(?:\\.[0-9]+)?)S', 1), '') AS DOUBLE),
+                            0.0
+                        ) / 60.0
                     WHEN strpos(CAST(bs.minutes AS VARCHAR), ':') > 0 THEN
                         CAST(split_part(CAST(bs.minutes AS VARCHAR), ':', 1) AS DOUBLE)
                         + CAST(split_part(CAST(bs.minutes AS VARCHAR), ':', 2) AS DOUBLE) / 60.0
