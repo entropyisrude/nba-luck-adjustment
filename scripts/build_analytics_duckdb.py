@@ -30,11 +30,11 @@ KAGGLE_PLAYER_BOX_STATS = DATA_DIR / "player_boxscore_stats_kaggle_traditional.c
 KAGGLE_GAME_META = DATA_DIR / "game_metadata_kaggle_traditional.csv"
 PLAYER_GAME_CREATION_MAKES = DATA_DIR / "player_game_creation_makes.csv"
 PLAYER_RIM_ASSISTS_BY_SEASON = DATA_DIR / "player_rim_assists_by_season.csv"
-PLAYER_RIM_SIGNATURES = Path("/mnt/c/users/dave/player_rim_signatures.csv")
+PLAYER_RIM_SIGNATURES = DATA_DIR / "player_rim_signatures.csv"
 PLAYER_RIM_DEFENSE_BY_SEASON = DATA_DIR / "player_rim_defense_by_season.csv"
 PLAYER_HUSTLE_BY_SEASON = DATA_DIR / "player_hustle_by_season.csv"
-COMMON_PLAYER_INFO = Path("/mnt/c/users/dave/Downloads/nba-boxscore-data/kaggle-basketball/csv/common_player_info.csv")
-DRAFT_HISTORY = Path("/mnt/c/users/dave/Downloads/nba-boxscore-data/kaggle-basketball/csv/draft_history.csv")
+COMMON_PLAYER_INFO = DATA_DIR / "common_player_info.csv"
+DRAFT_HISTORY = DATA_DIR / "draft_history.csv"
 PLAYER_METADATA_OFFICIAL_RECENT = DATA_DIR / "player_metadata_official_recent.csv"
 
 
