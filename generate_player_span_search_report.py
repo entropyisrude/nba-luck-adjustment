@@ -34,6 +34,24 @@ def _season_slug(season: str) -> str:
     return season.replace("-", "_")
 
 
+def _season_from_slug(slug: str) -> str | None:
+    parts = slug.split("_")
+    if len(parts) != 2 or len(parts[0]) != 4 or len(parts[1]) != 2:
+        return None
+    return f"{parts[0]}-{parts[1]}"
+
+
+def _existing_chunk_season_files() -> dict[str, str]:
+    if not CHUNK_DIR.exists():
+        return {}
+    out: dict[str, str] = {}
+    for path in CHUNK_DIR.glob("*.js"):
+        season = _season_from_slug(path.stem)
+        if season:
+            out[season] = path.name
+    return out
+
+
 def _load_rim_assist_lookup() -> dict[tuple[str, str], dict[str, float | None]]:
     if not PLAYER_RIM_ASSISTS_BY_SEASON.exists():
         return {}
@@ -213,7 +231,7 @@ def generate_player_span_search_report() -> Path:
     teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
     opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
     CHUNK_DIR.mkdir(parents=True, exist_ok=True)
-    season_files: dict[str, str] = {}
+    season_files: dict[str, str] = _existing_chunk_season_files()
     for season in seasons:
         season_rows = [r for r in compact_rows if r[col_index["season"]] == season]
         slug = _season_slug(season)
@@ -225,6 +243,7 @@ def generate_player_span_search_report() -> Path:
             f"{json.dumps(season_rows, ensure_ascii=False, separators=(',', ':'))};\n"
         )
         (CHUNK_DIR / filename).write_text(chunk_js, encoding="utf-8")
+    seasons = sorted(season_files.keys(), key=_season_start)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     per100_option_html = '<option value="per100">Per 100 poss</option>' if ALLOW_PER100 else ""
 
