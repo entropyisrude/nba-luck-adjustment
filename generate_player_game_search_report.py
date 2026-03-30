@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -52,6 +53,20 @@ def _existing_chunk_season_files() -> dict[str, str]:
         if season:
             out[season] = path.name
     return out
+
+
+def _load_existing_chunk_rows(path: Path) -> list[list]:
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    match = re.search(r'=\s*(\[.*\])\s*;\s*$', text, re.S)
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(1))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
 
 
 def generate_player_game_search_report() -> Path:
@@ -165,6 +180,74 @@ def generate_player_game_search_report() -> Path:
         slug = _season_slug(season)
         filename = f"{slug}.js"
         season_files[season] = filename
+        existing_rows = _load_existing_chunk_rows(CHUNK_DIR / filename)
+        key_idx_game = col_index["game_id"]
+        key_idx_player = col_index["player_id"]
+        invariant_cols = [
+            "listed_height",
+            "height_inches",
+            "age",
+            "career_year",
+            "draft_year",
+            "draft_overall_pick",
+            "layup_assists_created",
+            "dunk_assists_created",
+            "other_rim_assists_created",
+            "rim_assists_strict",
+            "rim_assists_all",
+            "rim_assists_season_games",
+            "layup_assists_created_per_game",
+            "dunk_assists_created_per_game",
+            "other_rim_assists_created_per_game",
+            "rim_assists_strict_per_game",
+            "rim_assists_all_per_game",
+            "rim_anchor_signature",
+            "rim_deterrence_signature",
+            "rim_dfga",
+            "rim_tracking_games",
+            "rim_dfg_pct",
+            "rim_dfg_pct_diff",
+            "contested_shots",
+            "contested_shots_2pt",
+            "contested_shots_3pt",
+            "deflections",
+            "charges_drawn",
+            "screen_assists",
+            "screen_ast_pts",
+            "loose_balls_recovered",
+            "box_outs",
+        ]
+        invariant_idx = [col_index[c] for c in invariant_cols if c in col_index]
+        existing_by_key: dict[tuple[str, str], list] = {}
+        existing_by_player: dict[str, list] = {}
+        for row in existing_rows:
+            if len(row) != len(cols):
+                continue
+            game_id = str(row[key_idx_game])
+            player_id = str(row[key_idx_player])
+            existing_by_key[(game_id, player_id)] = row
+            if player_id and player_id not in existing_by_player:
+                existing_by_player[player_id] = row
+        merged_rows: dict[tuple[str, str], list] = {}
+        for row in season_rows:
+            out_row = list(row)
+            key = (str(out_row[key_idx_game]), str(out_row[key_idx_player]))
+            same_game_old = existing_by_key.get(key)
+            player_old = existing_by_player.get(key[1])
+            for idx in invariant_idx:
+                if out_row[idx] in (None, ""):
+                    if same_game_old is not None and same_game_old[idx] not in (None, ""):
+                        out_row[idx] = same_game_old[idx]
+                    elif player_old is not None and player_old[idx] not in (None, ""):
+                        out_row[idx] = player_old[idx]
+            merged_rows[key] = out_row
+        for key, old_row in existing_by_key.items():
+            if key not in merged_rows:
+                merged_rows[key] = old_row
+        season_rows = sorted(
+            merged_rows.values(),
+            key=lambda r: (str(r[col_index["date"]]), str(r[key_idx_game]), str(r[key_idx_player])),
+        )
         chunk_js = (
             "window.__PLAYER_GAME_CHUNKS = window.__PLAYER_GAME_CHUNKS || {};\n"
             f"window.__PLAYER_GAME_CHUNKS[{json.dumps(season)}] = "
