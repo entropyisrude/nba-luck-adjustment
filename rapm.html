@@ -597,6 +597,8 @@
         teams.map(t => `<option value="${t}">${t}</option>`).join("");
       if (teams.includes(currentVal)) {
         teamSel.value = currentVal;
+      } else {
+        teamSel.value = "ALL";
       }
     }
 

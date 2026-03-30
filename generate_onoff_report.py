@@ -12,6 +12,7 @@ import requests
 DATA_DIR = Path("data")
 ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 ONOFF_PRE2006_PATH = DATA_DIR / "adjusted_onoff_pre2006.csv"
+ONOFF_HIST_PATH = DATA_DIR / "adjusted_onoff_historical_pbp.csv"
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
@@ -122,6 +123,7 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
 
     ingest(ONOFF_PRE2006_PATH)
+    ingest(ONOFF_HIST_PATH)
     ingest(ONOFF_PATH)
 
     agg: dict[tuple[str, str, str], dict] = {}
@@ -408,7 +410,9 @@ def generate_onoff_report() -> Path:
         tid = str(r["team_id"])
         if tid not in season_to_team_ids[s]:
             season_to_team_ids[s].append(tid)
-    pbp_map = _build_pbp_maps(season_to_team_ids)
+    # Historical seasons can be rendered from the CSV aggregates alone.
+    # Keep live PBP totals only for the latest season to avoid dozens of slow API calls.
+    pbp_map = _build_pbp_maps({latest_season: season_to_team_ids.get(latest_season, [])})
     records = _finalize_records(raw_rows, pbp_map)
 
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
