@@ -12,6 +12,7 @@ DATA_DIR = Path("data")
 LEDGER_PATH = DATA_DIR / "master_boxscore_2526.csv"
 BBREF_PATH = DATA_DIR / "bbref_advanced_2526.csv"
 TEAM_GP_PATH = DATA_DIR / "bbref_team_gp_2526.csv"
+BBREF_HIST_PATH = DATA_DIR / "bbref_advanced_2024_25.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
 CACHE_PATH = Path("cdn_boxscore_cache.json")
 if not CACHE_PATH.exists():
@@ -126,6 +127,13 @@ def build_daily_report():
     # Deduplicate traded players
     bbref = bbref.sort_values(['player_name', 'Team']).drop_duplicates('player_name', keep='first')
 
+    # Load Historical VORP
+    if BBREF_HIST_PATH.exists():
+        bbref_hist = pd.read_csv(BBREF_HIST_PATH)
+        bbref = bbref.merge(bbref_hist, on='player_name', how='left')
+    else:
+        bbref['vorp_prev'] = 0.0
+
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
     final = bbref.merge(player_map, on='player_name', how='inner')
 
@@ -166,7 +174,8 @@ def build_daily_report():
         else: status, cls = "BUBBLE", "bg-bubble"
 
         results.append({
-            'name': row['player_name'], 'vorp': row['VORP'], 'team': row['Team'],
+            'name': row['player_name'], 'vorp': row['VORP'], 'vorp_prev': row.get('vorp_prev', 0.0),
+            'team': row['Team'],
             'eligible': int(eligible), 'total_g': stats['total'], 'need': int(need),
             'g_rem': int(g_rem), 'status': status, 'cls': cls,
             'g15_20': stats['g15_20'], 'g_lt_15': stats['g_lt_15'],
@@ -189,6 +198,7 @@ def generate_dashboard(df, official_date):
         .table-container {{ background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }}
         .player-name {{ font-weight: 700; color: #003366; }}
         .vorp-val {{ font-weight: 800; color: #d41111; }}
+        .vorp-prev {{ color: #7f8c8d; font-size: 0.9em; }}
         .progress-box {{ width: 100px; background: #eee; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }}
         .progress-fill {{ height: 100%; background: #27ae60; }}
         .bg-eliminated {{ color: #c0392b; font-weight: bold; font-size: 0.85em; }}
@@ -213,6 +223,7 @@ def generate_dashboard(df, official_date):
                 <tr>
                     <th>Player</th>
                     <th>VORP</th>
+                    <th>'24-25 VORP</th>
                     <th>Eligible / 65</th>
                     <th>Low-Min (15-20 / &lt;15)</th>
                     <th>Needs (20m)</th>
@@ -224,14 +235,18 @@ def generate_dashboard(df, official_date):
             <tbody>
 """
     for _, r in df.iterrows():
-        if r['vorp'] < 0.1 and r['eligible'] < 45: continue
+        # Keep players with current VORP > 0.1 OR high historical VORP (candidates)
+        if r['vorp'] < 0.1 and r['vorp_prev'] < 2.0 and r['eligible'] < 45: continue
+        
         perc = (r['eligible'] / 65) * 100
         cup_star = "<sup>*</sup>" if r['cup_credit'] else ""
+        v_prev = f"{r['vorp_prev']:.1f}" if pd.notna(r['vorp_prev']) else "N/A"
 
         html += f"""
                 <tr>
                     <td><div class="player-name">{r['name']}{cup_star}</div></td>
                     <td class="vorp-val">{r['vorp']:.1f}</td>
+                    <td class="vorp-prev">{v_prev}</td>
                     <td>
                         {int(r['eligible'])}
                         <div class="progress-box"><div class="progress-fill" style="width: {min(100, perc)}%"></div></div>
