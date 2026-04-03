@@ -222,7 +222,7 @@ def generate_dashboard(df, official_date):
             <thead>
                 <tr>
                     <th>Player</th>
-                    <th>VORP</th>
+                    <th>'25-26 VORP</th>
                     <th>'24-25 VORP</th>
                     <th>Eligible / 65</th>
                     <th>Low-Min (15-20 / &lt;15)</th>
@@ -241,12 +241,13 @@ def generate_dashboard(df, official_date):
         perc = (r['eligible'] / 65) * 100
         cup_star = "<sup>*</sup>" if r['cup_credit'] else ""
         v_prev = f"{r['vorp_prev']:.1f}" if pd.notna(r['vorp_prev']) else "N/A"
+        v_prev_sort = r['vorp_prev'] if pd.notna(r['vorp_prev']) else -10
 
         html += f"""
                 <tr>
                     <td><div class="player-name">{r['name']}{cup_star}</div></td>
-                    <td class="vorp-val">{r['vorp']:.1f}</td>
-                    <td class="vorp-prev">{v_prev}</td>
+                    <td class="vorp-val" data-order="{r['vorp']}">{r['vorp']:.1f}</td>
+                    <td class="vorp-prev" data-order="{v_prev_sort}">{v_prev}</td>
                     <td>
                         {int(r['eligible'])}
                         <div class="progress-box"><div class="progress-fill" style="width: {min(100, perc)}%"></div></div>
