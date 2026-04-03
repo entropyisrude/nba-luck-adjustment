@@ -46,7 +46,9 @@ def get_live_stats_from_cdn():
     with open(CACHE_PATH, 'r') as f:
         gids = sorted(list(set([gid for gid in json.load(f) if gid.startswith("00225")])))
     
-    today_str = "2026-04-03"
+    # Auto-detect current date (ET)
+    now_et = datetime.utcnow() - timedelta(hours=5)
+    today_str = now_et.strftime("%Y-%m-%d")
     player_stats = {} 
     team_gp = {} 
     
