@@ -14,13 +14,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-        with:
-          lfs: true
+        # Note: lfs disabled - daily updates don't need historical LFS files
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: 'pip'  # Cache pip dependencies
 
       - name: Install dependencies
         run: |
