@@ -160,7 +160,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 08:04 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 08:30 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -768,6 +768,36 @@
       return document.getElementById("span_filter_basis")?.value || "latest";
     }
 
+    function basisValue(obj, spanKey, latestKey) {
+      return spanFilterBasis() === "latest" ? obj[latestKey] : obj[spanKey];
+    }
+
+    function basisDisplayValue(obj, key) {
+      if (key === "games") return basisValue(obj, "games", "latest_games");
+      if (key === "minutes") return basisValue(obj, "minutes", "latest_minutes");
+      if (key === "plus_minus_actual") {
+        const base = Number(basisValue(obj, "plus_minus_actual", "latest_plus_minus_actual") || 0);
+        const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];
+        const games = Number(basisValue(obj, "games", "latest_games") || 0);
+        const minutes = Number(basisValue(obj, "minutes", "latest_minutes") || 0);
+        if (useMode === "pergame") return games > 0 ? base / games : null;
+        if (useMode === "per36") return minutes > 0 ? base * 36 / minutes : null;
+        return base;
+      }
+      if (key === "plus_minus_adjusted") {
+        const base = Number(basisValue(obj, "plus_minus_adjusted", "latest_plus_minus_adjusted") || 0);
+        const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];
+        const games = Number(basisValue(obj, "games", "latest_games") || 0);
+        const minutes = Number(basisValue(obj, "minutes", "latest_minutes") || 0);
+        if (useMode === "pergame") return games > 0 ? base / games : null;
+        if (useMode === "per36") return minutes > 0 ? base * 36 / minutes : null;
+        return base;
+      }
+      if (key === "on_off_actual") return basisValue(obj, "on_off_actual", "latest_on_off_actual");
+      if (key === "on_off_adjusted") return basisValue(obj, "on_off_adjusted", "latest_on_off_adjusted");
+      return obj[key];
+    }
+
     async function loadSeasonChunk(season) {
       if (!season || LOADED_SEASONS.has(season)) return;
       const file = DATA_FILES[season];
@@ -1210,7 +1240,6 @@
 
     function filteredAggRows() {
       const filterMode = document.getElementById("stat_mode").value;
-      const basis = spanFilterBasis();
       const minHeightInches = document.getElementById("min_height_inches").value;
       const maxHeightInches = document.getElementById("max_height_inches").value;
       const minAge = document.getElementById("min_age").value;
@@ -1289,7 +1318,6 @@
       const expr1Target = document.getElementById("expr1_target").value;
       const expr2Cmp = document.getElementById("expr2_cmp").value;
       const expr2Target = document.getElementById("expr2_target").value;
-      const basisValue = (r, spanKey, latestKey) => basis === "latest" ? r[latestKey] : r[spanKey];
       return aggregateRows().filter(r =>
         inRange(r.height_inches, minHeightInches, maxHeightInches) &&
         inRange(r.age, minAge, maxAge) &&
@@ -1341,7 +1369,8 @@
         const key = state.key;
         if (["player_name", "listed_height"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
         if (CUSTOM_KEYS.includes(key)) return mult * ((Number(computeExpr(a, key)) || 0) - (Number(computeExpr(b, key)) || 0));
-        if (DISPLAY_TOGGLE_KEYS.includes(key)) return mult * ((Number(modeValue(a, key, displayModes[key])) || 0) - (Number(modeValue(b, key, displayModes[key])) || 0));
+        if (DISPLAY_TOGGLE_KEYS.includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
+        if (["games", "minutes", "on_off_actual", "on_off_adjusted"].includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
         return mult * ((Number(a[key]) || 0) - (Number(b[key]) || 0));
       });
     }
@@ -1427,8 +1456,8 @@
           <td data-key="career_year">${r.career_year || ""}</td>
           <td data-key="draft_year">${r.draft_year || ""}</td>
           <td data-key="draft_overall_pick">${r.draft_overall_pick || ""}</td>
-          <td data-key="games">${fmt(r.games,0)}</td>
-          <td data-key="minutes">${fmt(r.minutes,1)}</td>
+          <td data-key="games">${fmt(basisDisplayValue(r, "games"),0)}</td>
+          <td data-key="minutes">${fmt(basisDisplayValue(r, "minutes"),1)}</td>
           <td data-key="pts">${fmt(shown(r, "pts"), displayModes["pts"] === "totals" || (displayModes["pts"] === "match" && mode === "totals") ? 0 : 2)}</td>
           <td data-key="reb">${fmt(shown(r, "reb"), displayModes["reb"] === "totals" || (displayModes["reb"] === "match" && mode === "totals") ? 0 : 2)}</td>
           <td data-key="ast">${fmt(shown(r, "ast"), displayModes["ast"] === "totals" || (displayModes["ast"] === "match" && mode === "totals") ? 0 : 2)}</td>
@@ -1444,10 +1473,10 @@
           <td data-key="assisted_fgm">${fmt(shown(r, "assisted_fgm"), displayModes["assisted_fgm"] === "totals" || (displayModes["assisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}</td>
           <td data-key="unassisted_fgm">${fmt(shown(r, "unassisted_fgm"), displayModes["unassisted_fgm"] === "totals" || (displayModes["unassisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}</td>
           <td data-key="ts_game">${fmt(r.ts_game,3)}</td>
-          <td data-key="plus_minus_actual" class="${cls(shown(r, "plus_minus_actual"))}">${fmt(shown(r, "plus_minus_actual"), displayModes["plus_minus_actual"] === "totals" || (displayModes["plus_minus_actual"] === "match" && mode === "totals") ? 0 : 2)}</td>
-          <td data-key="plus_minus_adjusted" class="${cls(shown(r, "plus_minus_adjusted"))}">${fmt(shown(r, "plus_minus_adjusted"), displayModes["plus_minus_adjusted"] === "totals" || (displayModes["plus_minus_adjusted"] === "match" && mode === "totals") ? 3 : 2)}</td>
-          <td data-key="on_off_actual" class="${cls(r.on_off_actual)}">${fmt(r.on_off_actual,2)}</td>
-          <td data-key="on_off_adjusted" class="${cls(r.on_off_adjusted)}">${fmt(r.on_off_adjusted,3)}</td>
+          <td data-key="plus_minus_actual" class="${cls(basisDisplayValue(r, "plus_minus_actual"))}">${fmt(basisDisplayValue(r, "plus_minus_actual"), displayModes["plus_minus_actual"] === "totals" || (displayModes["plus_minus_actual"] === "match" && mode === "totals") ? 0 : 2)}</td>
+          <td data-key="plus_minus_adjusted" class="${cls(basisDisplayValue(r, "plus_minus_adjusted"))}">${fmt(basisDisplayValue(r, "plus_minus_adjusted"), displayModes["plus_minus_adjusted"] === "totals" || (displayModes["plus_minus_adjusted"] === "match" && mode === "totals") ? 3 : 2)}</td>
+          <td data-key="on_off_actual" class="${cls(basisDisplayValue(r, "on_off_actual"))}">${fmt(basisDisplayValue(r, "on_off_actual"),2)}</td>
+          <td data-key="on_off_adjusted" class="${cls(basisDisplayValue(r, "on_off_adjusted"))}">${fmt(basisDisplayValue(r, "on_off_adjusted"),3)}</td>
           <td data-key="rim_anchor_signature">${fmt(r.rim_anchor_signature,3)}</td>
           <td data-key="rim_deterrence_signature">${fmt(r.rim_deterrence_signature,3)}</td>
           <td data-key="rim_dfga">${fmt(shown(r, "rim_dfga"), displayModes["rim_dfga"] === "totals" || (displayModes["rim_dfga"] === "match" && mode === "totals") ? 1 : 2)}</td>
