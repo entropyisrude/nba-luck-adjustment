@@ -1247,12 +1247,11 @@ def generate_player_span_search_report() -> Path:
       }});
     }}
 
-    function baseFilteredRows() {{
+    function scopedRows() {{
       const seasonStartVal = document.getElementById("season_start").value;
       const seasonEndVal = document.getElementById("season_end").value;
       const team = document.getElementById("team").value;
       const opp = document.getElementById("opp").value;
-      const player = document.getElementById("player").value.trim().toLowerCase();
       const dateFrom = document.getElementById("date_from").value;
       const dateTo = document.getElementById("date_to").value;
       if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
@@ -1260,13 +1259,24 @@ def generate_player_span_search_report() -> Path:
         seasonMatches(v(r, "season"), seasonStartVal, seasonEndVal) &&
         (team === "ALL" || v(r, "team_abbr") === team) &&
         (opp === "ALL" || v(r, "opp_team_abbr") === opp) &&
-        (!player || String(v(r, "player_name") || "").toLowerCase().includes(player)) &&
         (dateFrom === "" || String(v(r, "date") || "") >= dateFrom) &&
         (dateTo === "" || String(v(r, "date") || "") <= dateTo)
       );
     }}
 
+    function baseFilteredRows() {{
+      const player = document.getElementById("player").value.trim().toLowerCase();
+      return scopedRows().filter(r =>
+        (!player || String(v(r, "player_name") || "").toLowerCase().includes(player))
+      );
+    }}
+
     function aggregateRows() {{
+      const teamGameMinutes = new Map();
+      for (const r of scopedRows()) {{
+        const key = `${{v(r, "game_id")}}|${{v(r, "team_abbr")}}`;
+        teamGameMinutes.set(key, (teamGameMinutes.get(key) || 0) + Number(v(r, "minutes") || 0));
+      }}
       const grouped = new Map();
       for (const r of baseFilteredRows()) {{
         const playerId = v(r, "player_id");
@@ -1286,10 +1296,11 @@ def generate_player_span_search_report() -> Path:
             on_possessions: 0,
             games_by_season: {{}},
             minutes_by_season: {{}},
+            off_minutes_by_season: {{}},
             plus_minus_actual_by_season: {{}},
             plus_minus_adjusted_by_season: {{}},
-            on_off_actual_weighted_by_season: {{}},
-            on_off_adjusted_weighted_by_season: {{}},
+            off_diff_actual_by_season: {{}},
+            off_diff_adjusted_by_season: {{}},
             pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
             assisted_2pm: 0, unassisted_2pm: 0, assisted_3pm: 0, unassisted_3pm: 0, assisted_fgm: 0, unassisted_fgm: 0,
             rim_anchor_signature: null,
@@ -1350,8 +1361,9 @@ def generate_player_span_search_report() -> Path:
             box_outs_by_season: {{}},
             plus_minus_actual: 0,
             plus_minus_adjusted: 0,
-            on_off_actual_weighted: 0,
-            on_off_adjusted_weighted: 0
+            off_minutes_total: 0,
+            off_diff_actual_total: 0,
+            off_diff_adjusted_total: 0
           }});
         }}
         const g = grouped.get(key);
@@ -1368,28 +1380,39 @@ def generate_player_span_search_report() -> Path:
         if ((g.draft_year === null || g.draft_year === undefined || g.draft_year === "") && v(r, "draft_year") !== null && v(r, "draft_year") !== undefined && v(r, "draft_year") !== "") g.draft_year = v(r, "draft_year");
         if ((g.draft_overall_pick === null || g.draft_overall_pick === undefined || g.draft_overall_pick === "") && v(r, "draft_overall_pick") !== null && v(r, "draft_overall_pick") !== undefined && v(r, "draft_overall_pick") !== "") g.draft_overall_pick = v(r, "draft_overall_pick");
         const minutes = Number(v(r, "minutes") || 0);
+        const teamGameKey = `${{v(r, "game_id")}}|${{v(r, "team_abbr")}}`;
+        const teamMinutes = Number(teamGameMinutes.get(teamGameKey) || 0);
+        const offMinutes = Math.max(teamMinutes - minutes, 0);
         const poss = Number(v(r, "on_possessions") || 0);
+        const plusMinusActual = Number(v(r, "plus_minus_actual") || 0);
+        const plusMinusAdjusted = Number(v(r, "plus_minus_adjusted") || 0);
+        const onOffActual = Number(v(r, "on_off_actual") || 0);
+        const onOffAdjusted = Number(v(r, "on_off_adjusted") || 0);
+        const offDiffActual = plusMinusActual - onOffActual;
+        const offDiffAdjusted = plusMinusAdjusted - onOffAdjusted;
         g.games += 1;
         g.minutes += minutes;
+        g.off_minutes_total += offMinutes;
         g.on_possessions += poss;
         const metricSeasonKey = String(v(r, "season") || "");
         if (metricSeasonKey) {{
           g.games_by_season[metricSeasonKey] = (g.games_by_season[metricSeasonKey] || 0) + 1;
           g.minutes_by_season[metricSeasonKey] = (g.minutes_by_season[metricSeasonKey] || 0) + minutes;
+          g.off_minutes_by_season[metricSeasonKey] = (g.off_minutes_by_season[metricSeasonKey] || 0) + offMinutes;
           g.rim_selected_games_by_season[metricSeasonKey] = (g.rim_selected_games_by_season[metricSeasonKey] || 0) + 1;
         }}
         ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
           g[stat] += Number(v(r, stat) || 0);
         }});
-        g.plus_minus_actual += Number(v(r, "plus_minus_actual") || 0);
-        g.plus_minus_adjusted += Number(v(r, "plus_minus_adjusted") || 0);
-        g.on_off_actual_weighted += Number(v(r, "on_off_actual") || 0) * minutes;
-        g.on_off_adjusted_weighted += Number(v(r, "on_off_adjusted") || 0) * minutes;
+        g.plus_minus_actual += plusMinusActual;
+        g.plus_minus_adjusted += plusMinusAdjusted;
+        g.off_diff_actual_total += offDiffActual;
+        g.off_diff_adjusted_total += offDiffAdjusted;
         if (metricSeasonKey) {{
-          g.plus_minus_actual_by_season[metricSeasonKey] = (g.plus_minus_actual_by_season[metricSeasonKey] || 0) + Number(v(r, "plus_minus_actual") || 0);
-          g.plus_minus_adjusted_by_season[metricSeasonKey] = (g.plus_minus_adjusted_by_season[metricSeasonKey] || 0) + Number(v(r, "plus_minus_adjusted") || 0);
-          g.on_off_actual_weighted_by_season[metricSeasonKey] = (g.on_off_actual_weighted_by_season[metricSeasonKey] || 0) + Number(v(r, "on_off_actual") || 0) * minutes;
-          g.on_off_adjusted_weighted_by_season[metricSeasonKey] = (g.on_off_adjusted_weighted_by_season[metricSeasonKey] || 0) + Number(v(r, "on_off_adjusted") || 0) * minutes;
+          g.plus_minus_actual_by_season[metricSeasonKey] = (g.plus_minus_actual_by_season[metricSeasonKey] || 0) + plusMinusActual;
+          g.plus_minus_adjusted_by_season[metricSeasonKey] = (g.plus_minus_adjusted_by_season[metricSeasonKey] || 0) + plusMinusAdjusted;
+          g.off_diff_actual_by_season[metricSeasonKey] = (g.off_diff_actual_by_season[metricSeasonKey] || 0) + offDiffActual;
+          g.off_diff_adjusted_by_season[metricSeasonKey] = (g.off_diff_adjusted_by_season[metricSeasonKey] || 0) + offDiffAdjusted;
         }}
         if (metricSeasonKey && !g.rim_metric_seasons.has(metricSeasonKey)) {{
           g.rim_metric_seasons.add(metricSeasonKey);
@@ -1477,20 +1500,37 @@ def generate_player_span_search_report() -> Path:
 
       const results = Array.from(grouped.values()).map(g => {{
         const ts = (g.fga + 0.44 * g.fta) > 0 ? g.pts / (2 * (g.fga + 0.44 * g.fta)) : null;
-        const onOffActual = g.minutes > 0 ? g.on_off_actual_weighted / g.minutes : null;
-        const onOffAdjusted = g.minutes > 0 ? g.on_off_adjusted_weighted / g.minutes : null;
+        const pmActualPer48 = g.minutes > 0 ? (g.plus_minus_actual * 48.0 / g.minutes) : null;
+        const pmAdjustedPer48 = g.minutes > 0 ? (g.plus_minus_adjusted * 48.0 / g.minutes) : null;
+        const offActualPer48 = g.off_minutes_total > 0 ? (g.off_diff_actual_total * 48.0 / g.off_minutes_total) : null;
+        const offAdjustedPer48 = g.off_minutes_total > 0 ? (g.off_diff_adjusted_total * 48.0 / g.off_minutes_total) : null;
+        const onOffActual = (pmActualPer48 !== null && offActualPer48 !== null) ? (pmActualPer48 - offActualPer48) : null;
+        const onOffAdjusted = (pmAdjustedPer48 !== null && offAdjustedPer48 !== null) ? (pmAdjustedPer48 - offAdjustedPer48) : null;
         const latestSeason = Object.keys(g.games_by_season || {{}})
           .sort((a, b) => seasonStart(a) - seasonStart(b))
           .at(-1) || null;
         const latestGames = latestSeason ? Number(g.games_by_season[latestSeason] || 0) : null;
         const latestMinutes = latestSeason ? Number(g.minutes_by_season[latestSeason] || 0) : null;
+        const latestOffMinutes = latestSeason ? Number(g.off_minutes_by_season[latestSeason] || 0) : null;
         const latestPlusMinusActual = latestSeason ? Number(g.plus_minus_actual_by_season[latestSeason] || 0) : null;
         const latestPlusMinusAdjusted = latestSeason ? Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) : null;
-        const latestOnOffActual = latestSeason && latestMinutes > 0
-          ? Number(g.on_off_actual_weighted_by_season[latestSeason] || 0) / latestMinutes
+        const latestPmActualPer48 = latestSeason && latestMinutes > 0
+          ? Number(g.plus_minus_actual_by_season[latestSeason] || 0) * 48.0 / latestMinutes
           : null;
-        const latestOnOffAdjusted = latestSeason && latestMinutes > 0
-          ? Number(g.on_off_adjusted_weighted_by_season[latestSeason] || 0) / latestMinutes
+        const latestPmAdjustedPer48 = latestSeason && latestMinutes > 0
+          ? Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) * 48.0 / latestMinutes
+          : null;
+        const latestOffActualPer48 = latestSeason && latestOffMinutes > 0
+          ? Number(g.off_diff_actual_by_season[latestSeason] || 0) * 48.0 / latestOffMinutes
+          : null;
+        const latestOffAdjustedPer48 = latestSeason && latestOffMinutes > 0
+          ? Number(g.off_diff_adjusted_by_season[latestSeason] || 0) * 48.0 / latestOffMinutes
+          : null;
+        const latestOnOffActual = (latestPmActualPer48 !== null && latestOffActualPer48 !== null)
+          ? (latestPmActualPer48 - latestOffActualPer48)
+          : null;
+        const latestOnOffAdjusted = (latestPmAdjustedPer48 !== null && latestOffAdjustedPer48 !== null)
+          ? (latestPmAdjustedPer48 - latestOffAdjustedPer48)
           : null;
         let rimDfgaSelectedTotal = g.rim_metric_count > 0 ? 0 : null;
         if (g.rim_metric_count > 0) {{
