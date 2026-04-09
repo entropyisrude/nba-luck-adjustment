@@ -547,10 +547,10 @@ def generate_player_span_search_report() -> Path:
             {per100_option_html}
           </select>
         </label>
-        <label>Impact/Games basis
+        <label>Impact/Games filter basis
           <select id="span_filter_basis">
-            <option value="latest">Latest season in span</option>
             <option value="span">Whole selected span</option>
+            <option value="latest">Latest season in span</option>
           </select>
         </label>
         <label>Date range
@@ -1793,7 +1793,7 @@ def generate_player_span_search_report() -> Path:
         mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"))
-        + `; games/minutes/plus-minus/on-off filters use the ${{basis === "latest" ? "latest season in the selected span" : "whole selected span"}}`;
+        + `; games/minutes/plus-minus/on-off filters use the ${{basis === "latest" ? "latest season in the selected span" : "whole selected span"}} basis`;
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
@@ -1872,7 +1872,7 @@ def generate_player_span_search_report() -> Path:
       document.getElementById('team').value = 'ALL';
       document.getElementById('opp').value = 'ALL';
       document.getElementById('stat_mode').value = 'totals';
-      document.getElementById('span_filter_basis').value = 'latest';
+      document.getElementById('span_filter_basis').value = 'span';
       DISPLAY_TOGGLE_KEYS.forEach(key => displayModes[key] = "match");
       document.querySelectorAll(".mode-chip").forEach(btn => btn.textContent = "Match");
       document.getElementById("expr1_left").value = "ast";
