@@ -1120,8 +1120,8 @@ def generate_player_span_search_report() -> Path:
     }}
 
     function basisDisplayValue(obj, key) {{
-      if (key === "games") return basisValue(obj, "games", "latest_games");
-      if (key === "minutes") return basisValue(obj, "minutes", "latest_minutes");
+      if (key === "games") return obj.games;
+      if (key === "minutes") return obj.minutes;
       if (key === "plus_minus_actual") {{
         const base = Number(basisValue(obj, "plus_minus_actual", "latest_plus_minus_actual") || 0);
         const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];

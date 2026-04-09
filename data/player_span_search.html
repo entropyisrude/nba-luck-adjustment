@@ -160,7 +160,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 08:47 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 09:28 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -788,8 +788,8 @@
     }
 
     function basisDisplayValue(obj, key) {
-      if (key === "games") return basisValue(obj, "games", "latest_games");
-      if (key === "minutes") return basisValue(obj, "minutes", "latest_minutes");
+      if (key === "games") return obj.games;
+      if (key === "minutes") return obj.minutes;
       if (key === "plus_minus_actual") {
         const base = Number(basisValue(obj, "plus_minus_actual", "latest_plus_minus_actual") || 0);
         const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];
