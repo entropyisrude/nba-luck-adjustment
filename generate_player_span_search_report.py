@@ -1123,25 +1123,25 @@ def generate_player_span_search_report() -> Path:
       if (key === "games") return obj.games;
       if (key === "minutes") return obj.minutes;
       if (key === "plus_minus_actual") {{
-        const base = Number(basisValue(obj, "plus_minus_actual", "latest_plus_minus_actual") || 0);
+        const base = Number(obj.plus_minus_actual || 0);
         const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];
-        const games = Number(basisValue(obj, "games", "latest_games") || 0);
-        const minutes = Number(basisValue(obj, "minutes", "latest_minutes") || 0);
+        const games = Number(obj.games || 0);
+        const minutes = Number(obj.minutes || 0);
         if (useMode === "pergame") return games > 0 ? base / games : null;
         if (useMode === "per36") return minutes > 0 ? base * 36 / minutes : null;
         return base;
       }}
       if (key === "plus_minus_adjusted") {{
-        const base = Number(basisValue(obj, "plus_minus_adjusted", "latest_plus_minus_adjusted") || 0);
+        const base = Number(obj.plus_minus_adjusted || 0);
         const useMode = displayModes[key] === "match" ? document.getElementById("stat_mode").value : displayModes[key];
-        const games = Number(basisValue(obj, "games", "latest_games") || 0);
-        const minutes = Number(basisValue(obj, "minutes", "latest_minutes") || 0);
+        const games = Number(obj.games || 0);
+        const minutes = Number(obj.minutes || 0);
         if (useMode === "pergame") return games > 0 ? base / games : null;
         if (useMode === "per36") return minutes > 0 ? base * 36 / minutes : null;
         return base;
       }}
-      if (key === "on_off_actual") return basisValue(obj, "on_off_actual", "latest_on_off_actual");
-      if (key === "on_off_adjusted") return basisValue(obj, "on_off_adjusted", "latest_on_off_adjusted");
+      if (key === "on_off_actual") return obj.on_off_actual;
+      if (key === "on_off_adjusted") return obj.on_off_adjusted;
       return obj[key];
     }}
 
