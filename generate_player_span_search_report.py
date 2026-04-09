@@ -885,6 +885,9 @@ def generate_player_span_search_report() -> Path:
 
   <script>
     const COLS = {json.dumps(cols, ensure_ascii=False)};
+    const LEGACY_COLS_BY_LENGTH = {{
+      68: ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"]
+    }};
     const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
     let ROWS = [];
     window.__PLAYER_SPAN_CHUNKS = window.__PLAYER_SPAN_CHUNKS || {{}};
@@ -955,6 +958,18 @@ def generate_player_span_search_report() -> Path:
       if (cmp === "=") return n === t;
       return true;
     }};
+    function normalizeChunkRow(row) {{
+      if (!Array.isArray(row)) return row;
+      if (row.length === COLS.length) return row;
+      const legacyCols = LEGACY_COLS_BY_LENGTH[row.length];
+      if (!legacyCols) return row;
+      const legacyIdx = Object.fromEntries(legacyCols.map((c, i) => [c, i]));
+      return COLS.map(col => {{
+        const idx = legacyIdx[col];
+        return idx === undefined ? null : row[idx];
+      }});
+    }}
+
     const v = (r, key) => r[IDX[key]];
     const seasonStart = (season) => Number(String(season || "").split("-")[0] || 0);
     const seasonMatches = (rowSeason, selectedStart, selectedEnd) => {{
@@ -1142,7 +1157,7 @@ def generate_player_span_search_report() -> Path:
         script.onerror = () => reject(new Error(`Failed to load season data for ${{season}}`));
         document.head.appendChild(script);
       }});
-      const chunk = window.__PLAYER_SPAN_CHUNKS[season] || [];
+      const chunk = (window.__PLAYER_SPAN_CHUNKS[season] || []).map(normalizeChunkRow);
       ROWS = ROWS.concat(chunk);
       LOADED_SEASONS.add(season);
     }}

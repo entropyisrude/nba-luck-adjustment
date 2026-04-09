@@ -160,7 +160,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 08:30 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-04-09 08:47 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -553,6 +553,9 @@
 
   <script>
     const COLS = ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_assists_season_games", "layup_assists_created_per_game", "dunk_assists_created_per_game", "other_rim_assists_created_per_game", "rim_assists_strict_per_game", "rim_assists_all_per_game", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"];
+    const LEGACY_COLS_BY_LENGTH = {
+      68: ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"]
+    };
     const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
     let ROWS = [];
     window.__PLAYER_SPAN_CHUNKS = window.__PLAYER_SPAN_CHUNKS || {};
@@ -623,6 +626,18 @@
       if (cmp === "=") return n === t;
       return true;
     };
+    function normalizeChunkRow(row) {
+      if (!Array.isArray(row)) return row;
+      if (row.length === COLS.length) return row;
+      const legacyCols = LEGACY_COLS_BY_LENGTH[row.length];
+      if (!legacyCols) return row;
+      const legacyIdx = Object.fromEntries(legacyCols.map((c, i) => [c, i]));
+      return COLS.map(col => {
+        const idx = legacyIdx[col];
+        return idx === undefined ? null : row[idx];
+      });
+    }
+
     const v = (r, key) => r[IDX[key]];
     const seasonStart = (season) => Number(String(season || "").split("-")[0] || 0);
     const seasonMatches = (rowSeason, selectedStart, selectedEnd) => {
@@ -810,7 +825,7 @@
         script.onerror = () => reject(new Error(`Failed to load season data for ${season}`));
         document.head.appendChild(script);
       });
-      const chunk = window.__PLAYER_SPAN_CHUNKS[season] || [];
+      const chunk = (window.__PLAYER_SPAN_CHUNKS[season] || []).map(normalizeChunkRow);
       ROWS = ROWS.concat(chunk);
       LOADED_SEASONS.add(season);
     }
