@@ -1115,6 +1115,23 @@ def generate_player_span_search_report() -> Path:
       return document.getElementById("span_filter_basis")?.value || "latest";
     }}
 
+    function spanOnOffEnabled() {{
+      return selectedSeasons().length <= 1;
+    }}
+
+    function updateOnOffAvailabilityUi() {{
+      const enabled = spanOnOffEnabled();
+      const rawMin = document.getElementById("min_onoff_raw");
+      const rawMax = document.getElementById("max_onoff_raw");
+      const adjMin = document.getElementById("min_onoff_adj");
+      const adjMax = document.getElementById("max_onoff_adj");
+      [rawMin, rawMax, adjMin, adjMax].forEach(el => {{
+        if (!el) return;
+        el.disabled = !enabled;
+        if (!enabled) el.value = "";
+      }});
+    }}
+
     function basisValue(obj, spanKey, latestKey) {{
       return spanFilterBasis() === "latest" ? obj[latestKey] : obj[spanKey];
     }}
@@ -1504,8 +1521,9 @@ def generate_player_span_search_report() -> Path:
         const pmAdjustedPer48 = g.minutes > 0 ? (g.plus_minus_adjusted * 48.0 / g.minutes) : null;
         const offActualPer48 = g.off_minutes_total > 0 ? (g.off_diff_actual_total * 48.0 / g.off_minutes_total) : null;
         const offAdjustedPer48 = g.off_minutes_total > 0 ? (g.off_diff_adjusted_total * 48.0 / g.off_minutes_total) : null;
-        const onOffActual = (pmActualPer48 !== null && offActualPer48 !== null) ? (pmActualPer48 - offActualPer48) : null;
-        const onOffAdjusted = (pmAdjustedPer48 !== null && offAdjustedPer48 !== null) ? (pmAdjustedPer48 - offAdjustedPer48) : null;
+        const onOffAllowed = spanOnOffEnabled();
+        const onOffActual = onOffAllowed && (pmActualPer48 !== null && offActualPer48 !== null) ? (pmActualPer48 - offActualPer48) : null;
+        const onOffAdjusted = onOffAllowed && (pmAdjustedPer48 !== null && offAdjustedPer48 !== null) ? (pmAdjustedPer48 - offAdjustedPer48) : null;
         const latestSeason = Object.keys(g.games_by_season || {{}})
           .sort((a, b) => seasonStart(a) - seasonStart(b))
           .at(-1) || null;
@@ -1526,10 +1544,10 @@ def generate_player_span_search_report() -> Path:
         const latestOffAdjustedPer48 = latestSeason && latestOffMinutes > 0
           ? Number(g.off_diff_adjusted_by_season[latestSeason] || 0) * 48.0 / latestOffMinutes
           : null;
-        const latestOnOffActual = (latestPmActualPer48 !== null && latestOffActualPer48 !== null)
+        const latestOnOffActual = onOffAllowed && (latestPmActualPer48 !== null && latestOffActualPer48 !== null)
           ? (latestPmActualPer48 - latestOffActualPer48)
           : null;
-        const latestOnOffAdjusted = (latestPmAdjustedPer48 !== null && latestOffAdjustedPer48 !== null)
+        const latestOnOffAdjusted = onOffAllowed && (latestPmAdjustedPer48 !== null && latestOffAdjustedPer48 !== null)
           ? (latestPmAdjustedPer48 - latestOffAdjustedPer48)
           : null;
         let rimDfgaSelectedTotal = g.rim_metric_count > 0 ? 0 : null;
@@ -1705,6 +1723,7 @@ def generate_player_span_search_report() -> Path:
       const expr1Target = document.getElementById("expr1_target").value;
       const expr2Cmp = document.getElementById("expr2_cmp").value;
       const expr2Target = document.getElementById("expr2_target").value;
+      const onOffEnabled = spanOnOffEnabled();
       return aggregateRows().filter(r =>
         inRange(r.height_inches, minHeightInches, maxHeightInches) &&
         inRange(r.age, minAge, maxAge) &&
@@ -1727,8 +1746,8 @@ def generate_player_span_search_report() -> Path:
         splitFilterPass(r, "split2") &&
         inRange(basisValue(r, "plus_minus_actual", "latest_plus_minus_actual"), minPm, maxPm) &&
         inRange(basisValue(r, "plus_minus_adjusted", "latest_plus_minus_adjusted"), minAdjPm, maxAdjPm) &&
-        inRange(basisValue(r, "on_off_actual", "latest_on_off_actual"), minOnOffRaw, maxOnOffRaw) &&
-        inRange(basisValue(r, "on_off_adjusted", "latest_on_off_adjusted"), minOnOffAdj, maxOnOffAdj) &&
+        (onOffEnabled ? inRange(basisValue(r, "on_off_actual", "latest_on_off_actual"), minOnOffRaw, maxOnOffRaw) : true) &&
+        (onOffEnabled ? inRange(basisValue(r, "on_off_adjusted", "latest_on_off_adjusted"), minOnOffAdj, maxOnOffAdj) : true) &&
         inRange(r.rim_anchor_signature, minRimAnchor, maxRimAnchor) &&
         inRange(r.rim_deterrence_signature, minRimDet, maxRimDet) &&
         inRange(modeValue(r, "rim_dfga", filterMode), minRimDfga, maxRimDfga) &&
@@ -1812,7 +1831,8 @@ def generate_player_span_search_report() -> Path:
     function applyColumnOrder() {{
       const headerRow = document.querySelector("#search-table thead tr");
       const desired = ["player_name"].concat(activeColumnKeys());
-      const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key)));
+      const hiddenKeys = spanOnOffEnabled() ? [] : ["on_off_actual", "on_off_adjusted"];
+      const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key) && !hiddenKeys.includes(key)));
       headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
       updateCustomHeaders();
       document.querySelectorAll("#search-table tbody tr").forEach(tr => {{
@@ -1833,7 +1853,8 @@ def generate_player_span_search_report() -> Path:
         mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"))
-        + `; games/minutes/plus-minus/on-off filters use the ${{basis === "latest" ? "latest season in the selected span" : "whole selected span"}} basis`;
+        + `; games/minutes/plus-minus${{spanOnOffEnabled() ? "/on-off" : ""}} filters use the ${{basis === "latest" ? "latest season in the selected span" : "whole selected span"}} basis`
+        + (spanOnOffEnabled() ? "" : "; on/off is hidden for multi-season spans pending a historical rebuild");
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
@@ -1936,6 +1957,9 @@ def generate_player_span_search_report() -> Path:
 
     document.getElementById("run_search").addEventListener("click", () => {{ runSearch(); }});
     document.getElementById("clear_filters").addEventListener("click", clearFilters);
+    document.querySelectorAll("#season_start,#season_end,#date_from,#date_to").forEach(el => {{
+      el.addEventListener("change", updateOnOffAvailabilityUi);
+    }});
     document.querySelectorAll("input").forEach(el => el.addEventListener("keydown", (e) => {{
       if (e.key === "Enter") runSearch();
     }}));
@@ -1947,6 +1971,7 @@ def generate_player_span_search_report() -> Path:
 
     populate();
     clearFilters();
+    updateOnOffAvailabilityUi();
     if (SEASONS.includes("2025-26")) {{
       setTimeout(() => {{
         loadSeasonChunk("2025-26").catch(() => {{}});
