@@ -492,7 +492,7 @@ def generate_player_span_search_report() -> Path:
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated {ts} from <code>{SOURCE_LABEL}</code>. Season data loads on demand when you search.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated {ts} from <code>{SOURCE_LABEL}</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -545,6 +545,12 @@ def generate_player_span_search_report() -> Path:
             <option value="pergame">Per Game</option>
             <option value="per36">Per 36</option>
             {per100_option_html}
+          </select>
+        </label>
+        <label>Impact/Games basis
+          <select id="span_filter_basis">
+            <option value="latest">Latest season in span</option>
+            <option value="span">Whole selected span</option>
           </select>
         </label>
         <label>Date range
@@ -1036,7 +1042,7 @@ def generate_player_span_search_report() -> Path:
         return el ? el.closest("label") : null;
       }};
       const groups = [
-        ["Scope", ["season_start","season_end","team","opp","player","stat_mode","date_from","date_to"]],
+        ["Scope", ["season_start","season_end","team","opp","player","stat_mode","span_filter_basis","date_from","date_to"]],
         ["Bio", ["min_height_inches","max_height_inches","min_age","max_age","min_career_year","max_career_year","min_draft_year","max_draft_year","min_draft_overall_pick","max_draft_overall_pick"]],
         ["Volume / Scoring", ["min_games","max_games","min_minutes","max_minutes","min_pts","max_pts","min_reb","max_reb","min_oreb","max_oreb","min_dreb","max_dreb","min_ast","max_ast","min_fg2a","max_fg2a","min_fg2_pct","max_fg2_pct","min_fg3a","max_fg3a","min_fg3_pct","max_fg3_pct","min_ft_pct","max_ft_pct","split1_key","split2_key"]],
         ["Impact", ["min_pm","max_pm","min_adj_pm","max_adj_pm","min_onoff_raw","max_onoff_raw","min_onoff_adj","max_onoff_adj"]],
@@ -1088,6 +1094,10 @@ def generate_player_span_search_report() -> Path:
       const seasonEndVal = document.getElementById("season_end").value;
       if (seasonStartVal !== "ALL" && seasonEndVal !== "ALL" && Number(seasonStartVal) > Number(seasonEndVal)) return [];
       return SEASONS.filter(season => seasonMatches(season, seasonStartVal, seasonEndVal));
+    }}
+
+    function spanFilterBasis() {{
+      return document.getElementById("span_filter_basis")?.value || "latest";
     }}
 
     async function loadSeasonChunk(season) {{
@@ -1229,6 +1239,12 @@ def generate_player_span_search_report() -> Path:
             games: 0,
             minutes: 0,
             on_possessions: 0,
+            games_by_season: {{}},
+            minutes_by_season: {{}},
+            plus_minus_actual_by_season: {{}},
+            plus_minus_adjusted_by_season: {{}},
+            on_off_actual_weighted_by_season: {{}},
+            on_off_adjusted_weighted_by_season: {{}},
             pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
             assisted_2pm: 0, unassisted_2pm: 0, assisted_3pm: 0, unassisted_3pm: 0, assisted_fgm: 0, unassisted_fgm: 0,
             rim_anchor_signature: null,
@@ -1313,6 +1329,8 @@ def generate_player_span_search_report() -> Path:
         g.on_possessions += poss;
         const metricSeasonKey = String(v(r, "season") || "");
         if (metricSeasonKey) {{
+          g.games_by_season[metricSeasonKey] = (g.games_by_season[metricSeasonKey] || 0) + 1;
+          g.minutes_by_season[metricSeasonKey] = (g.minutes_by_season[metricSeasonKey] || 0) + minutes;
           g.rim_selected_games_by_season[metricSeasonKey] = (g.rim_selected_games_by_season[metricSeasonKey] || 0) + 1;
         }}
         ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
@@ -1322,6 +1340,12 @@ def generate_player_span_search_report() -> Path:
         g.plus_minus_adjusted += Number(v(r, "plus_minus_adjusted") || 0);
         g.on_off_actual_weighted += Number(v(r, "on_off_actual") || 0) * minutes;
         g.on_off_adjusted_weighted += Number(v(r, "on_off_adjusted") || 0) * minutes;
+        if (metricSeasonKey) {{
+          g.plus_minus_actual_by_season[metricSeasonKey] = (g.plus_minus_actual_by_season[metricSeasonKey] || 0) + Number(v(r, "plus_minus_actual") || 0);
+          g.plus_minus_adjusted_by_season[metricSeasonKey] = (g.plus_minus_adjusted_by_season[metricSeasonKey] || 0) + Number(v(r, "plus_minus_adjusted") || 0);
+          g.on_off_actual_weighted_by_season[metricSeasonKey] = (g.on_off_actual_weighted_by_season[metricSeasonKey] || 0) + Number(v(r, "on_off_actual") || 0) * minutes;
+          g.on_off_adjusted_weighted_by_season[metricSeasonKey] = (g.on_off_adjusted_weighted_by_season[metricSeasonKey] || 0) + Number(v(r, "on_off_adjusted") || 0) * minutes;
+        }}
         if (metricSeasonKey && !g.rim_metric_seasons.has(metricSeasonKey)) {{
           g.rim_metric_seasons.add(metricSeasonKey);
           const rimAnchor = v(r, "rim_anchor_signature");
@@ -1410,6 +1434,19 @@ def generate_player_span_search_report() -> Path:
         const ts = (g.fga + 0.44 * g.fta) > 0 ? g.pts / (2 * (g.fga + 0.44 * g.fta)) : null;
         const onOffActual = g.minutes > 0 ? g.on_off_actual_weighted / g.minutes : null;
         const onOffAdjusted = g.minutes > 0 ? g.on_off_adjusted_weighted / g.minutes : null;
+        const latestSeason = Object.keys(g.games_by_season || {{}})
+          .sort((a, b) => seasonStart(a) - seasonStart(b))
+          .at(-1) || null;
+        const latestGames = latestSeason ? Number(g.games_by_season[latestSeason] || 0) : null;
+        const latestMinutes = latestSeason ? Number(g.minutes_by_season[latestSeason] || 0) : null;
+        const latestPlusMinusActual = latestSeason ? Number(g.plus_minus_actual_by_season[latestSeason] || 0) : null;
+        const latestPlusMinusAdjusted = latestSeason ? Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) : null;
+        const latestOnOffActual = latestSeason && latestMinutes > 0
+          ? Number(g.on_off_actual_weighted_by_season[latestSeason] || 0) / latestMinutes
+          : null;
+        const latestOnOffAdjusted = latestSeason && latestMinutes > 0
+          ? Number(g.on_off_adjusted_weighted_by_season[latestSeason] || 0) / latestMinutes
+          : null;
         let rimDfgaSelectedTotal = g.rim_metric_count > 0 ? 0 : null;
         if (g.rim_metric_count > 0) {{
           for (const seasonKey of g.rim_metric_seasons) {{
@@ -1449,6 +1486,13 @@ def generate_player_span_search_report() -> Path:
         const out = {{
           ...g,
           ts_game: ts,
+          latest_season: latestSeason,
+          latest_games: latestGames,
+          latest_minutes: latestMinutes,
+          latest_plus_minus_actual: latestPlusMinusActual,
+          latest_plus_minus_adjusted: latestPlusMinusAdjusted,
+          latest_on_off_actual: latestOnOffActual,
+          latest_on_off_adjusted: latestOnOffAdjusted,
           fg2_pct: g.fg2a > 0 ? g.fg2m / g.fg2a : null,
           fg3_pct: g.fg3a > 0 ? g.fg3m / g.fg3a : null,
           ft_pct: g.fta > 0 ? g.ftm / g.fta : null,
@@ -1498,6 +1542,7 @@ def generate_player_span_search_report() -> Path:
 
     function filteredAggRows() {{
       const filterMode = document.getElementById("stat_mode").value;
+      const basis = spanFilterBasis();
       const minHeightInches = document.getElementById("min_height_inches").value;
       const maxHeightInches = document.getElementById("max_height_inches").value;
       const minAge = document.getElementById("min_age").value;
@@ -1576,14 +1621,15 @@ def generate_player_span_search_report() -> Path:
       const expr1Target = document.getElementById("expr1_target").value;
       const expr2Cmp = document.getElementById("expr2_cmp").value;
       const expr2Target = document.getElementById("expr2_target").value;
+      const basisValue = (r, spanKey, latestKey) => basis === "latest" ? r[latestKey] : r[spanKey];
       return aggregateRows().filter(r =>
         inRange(r.height_inches, minHeightInches, maxHeightInches) &&
         inRange(r.age, minAge, maxAge) &&
         inRange(r.career_year, minCareerYear, maxCareerYear) &&
         inRange(r.draft_year, minDraftYear, maxDraftYear) &&
         inRange(r.draft_overall_pick, minDraftOverallPick, maxDraftOverallPick) &&
-        inRange(r.games, minGames, maxGames) &&
-        inRange(r.minutes, minMinutes, maxMinutes) &&
+        inRange(basisValue(r, "games", "latest_games"), minGames, maxGames) &&
+        inRange(basisValue(r, "minutes", "latest_minutes"), minMinutes, maxMinutes) &&
         inRange(modeValue(r, "pts", filterMode), minPts, maxPts) &&
         inRange(modeValue(r, "reb", filterMode), minReb, maxReb) &&
         inRange(r.oreb, minOreb, maxOreb) &&
@@ -1596,10 +1642,10 @@ def generate_player_span_search_report() -> Path:
         inRange(r.ft_pct, minFtPct, maxFtPct) &&
         splitFilterPass(r, "split1") &&
         splitFilterPass(r, "split2") &&
-        inRange(modeValue(r, "plus_minus_actual", filterMode), minPm, maxPm) &&
-        inRange(modeValue(r, "plus_minus_adjusted", filterMode), minAdjPm, maxAdjPm) &&
-        inRange(r.on_off_actual, minOnOffRaw, maxOnOffRaw) &&
-        inRange(r.on_off_adjusted, minOnOffAdj, maxOnOffAdj) &&
+        inRange(basisValue(r, "plus_minus_actual", "latest_plus_minus_actual"), minPm, maxPm) &&
+        inRange(basisValue(r, "plus_minus_adjusted", "latest_plus_minus_adjusted"), minAdjPm, maxAdjPm) &&
+        inRange(basisValue(r, "on_off_actual", "latest_on_off_actual"), minOnOffRaw, maxOnOffRaw) &&
+        inRange(basisValue(r, "on_off_adjusted", "latest_on_off_adjusted"), minOnOffAdj, maxOnOffAdj) &&
         inRange(r.rim_anchor_signature, minRimAnchor, maxRimAnchor) &&
         inRange(r.rim_deterrence_signature, minRimDet, maxRimDet) &&
         inRange(modeValue(r, "rim_dfga", filterMode), minRimDfga, maxRimDfga) &&
@@ -1696,12 +1742,14 @@ def generate_player_span_search_report() -> Path:
     function renderRows(rows) {{
       const tbody = document.querySelector("#search-table tbody");
       const mode = document.getElementById("stat_mode").value;
+      const basis = spanFilterBasis();
       const shown = (row, key) => modeValue(row, key, displayModes[key] || "match");
       document.getElementById("row_count").textContent = `${{rows.length.toLocaleString()}} players${{rows.length > 1000 ? ' (showing first 1,000)' : ''}}`;
       document.getElementById("mode_note").textContent =
         mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
-        : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"));
+        : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"))
+        + `; games/minutes/plus-minus/on-off filters use the ${{basis === "latest" ? "latest season in the selected span" : "whole selected span"}}`;
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
@@ -1780,6 +1828,7 @@ def generate_player_span_search_report() -> Path:
       document.getElementById('team').value = 'ALL';
       document.getElementById('opp').value = 'ALL';
       document.getElementById('stat_mode').value = 'totals';
+      document.getElementById('span_filter_basis').value = 'latest';
       DISPLAY_TOGGLE_KEYS.forEach(key => displayModes[key] = "match");
       document.querySelectorAll(".mode-chip").forEach(btn => btn.textContent = "Match");
       document.getElementById("expr1_left").value = "ast";
