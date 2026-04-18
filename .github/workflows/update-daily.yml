@@ -6,6 +6,15 @@ on:
     # GitHub schedules are UTC and can be delayed at the top of the hour, so avoid :00.
     - cron: '7 10 * 10-12,1-6 *'
   workflow_dispatch:  # Allow manual trigger
+    inputs:
+      start_date:
+        description: 'Start date (YYYY-MM-DD). Defaults to yesterday.'
+        required: false
+        default: ''
+      end_date:
+        description: 'End date (YYYY-MM-DD). Defaults to start_date.'
+        required: false
+        default: ''
 
 jobs:
   update-report:
@@ -26,15 +35,26 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Get yesterday's date (games we're updating)
+      - name: Resolve date range
         id: date
         run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            START="${{ github.event.inputs.start_date }}"
+          else
+            START=$(date -u -d '1 day ago' +'%Y-%m-%d')
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            END="${{ github.event.inputs.end_date }}"
+          else
+            END="$START"
+          fi
+          echo "start=$START" >> $GITHUB_OUTPUT
+          echo "end=$END" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Run daily update
         run: |
-          python run_daily.py --start ${{ steps.date.outputs.yesterday }} --end ${{ steps.date.outputs.yesterday }}
+          python run_daily.py --start ${{ steps.date.outputs.start }} --end ${{ steps.date.outputs.end }}
 
       - name: Generate report
         run: |
@@ -52,5 +72,5 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add -A
-          git diff --staged --quiet || git commit -m "Auto-update: Games from ${{ steps.date.outputs.yesterday }}"
+          git diff --staged --quiet || git commit -m "Auto-update: Games from ${{ steps.date.outputs.start }} to ${{ steps.date.outputs.end }}"
           git push
