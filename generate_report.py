@@ -21,15 +21,22 @@ def generate_report():
     # Read data
     df = pd.read_csv("data/adjusted_games.csv")
 
+    # Team stats use regular season only; play-in and playoff games appear in the
+    # calendar/game log but don't affect win records or luck totals.
+    if 'game_type' in df.columns:
+        rs_df = df[df['game_type'] == 'regular'].copy()
+    else:
+        rs_df = df.copy()
+
     # Calculate team-level stats
-    home_luck = df.groupby('home_team').agg({
+    home_luck = rs_df.groupby('home_team').agg({
         'margin_delta': 'sum',
         'home_pts_adj': 'sum',
         'home_pts_actual': 'sum',
         'game_id': 'count'
     }).rename(columns={'game_id': 'home_games', 'margin_delta': 'home_luck'})
 
-    away_luck = df.groupby('away_team').agg({
+    away_luck = rs_df.groupby('away_team').agg({
         'margin_delta': lambda x: -x.sum(),
         'away_pts_adj': 'sum',
         'away_pts_actual': 'sum',
@@ -43,13 +50,13 @@ def generate_report():
 
     # Calculate actual and adjusted records for each team, plus opponent 3P% stats
     team_records = {}
-    for team in set(df['home_team'].unique()) | set(df['away_team'].unique()):
+    for team in set(rs_df['home_team'].unique()) | set(rs_df['away_team'].unique()):
         team_records[team] = {
             'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0,
             'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0
         }
 
-    for _, row in df.iterrows():
+    for _, row in rs_df.iterrows():
         home = row['home_team']
         away = row['away_team']
         actual_margin = row['margin_actual']
@@ -151,6 +158,7 @@ def generate_report():
         game_obj = {
             'home_team': row['home_team'],
             'away_team': row['away_team'],
+            'game_type': row.get('game_type', 'regular') if 'game_type' in row.index else 'regular',
             'home_pts_actual': int(row['home_pts_actual']),
             'away_pts_actual': int(row['away_pts_actual']),
             'home_pts_adj': round(row['home_pts_adj'], 1),
@@ -197,7 +205,7 @@ def generate_report():
     # Replace placeholders in template
     html = template
     html = html.replace('{{SEASON_DATE}}', df['date'].max())
-    html = html.replace('{{GAME_COUNT}}', str(len(df)))
+    html = html.replace('{{GAME_COUNT}}', str(len(rs_df)))
     html = html.replace('{{GAMES_JSON}}', games_json)
     html = html.replace('{{MOST_RECENT_DATE}}', most_recent_date)
     html = html.replace('{{SEASON_MONTHS_JSON}}', season_months_json)

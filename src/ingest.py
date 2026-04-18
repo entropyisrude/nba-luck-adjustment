@@ -929,10 +929,15 @@ def _load_season_schedule_from_stats_api(season: str, season_type: str = "Regula
 
     Args:
         season: Season string like "2024-25"
-        season_type: "Regular Season" or "Playoffs"
+        season_type: "Regular Season", "Playoffs", or "PlayIn"
     """
-    # Game ID prefix: 002 = Regular Season, 004 = Playoffs
-    game_id_prefix = "004" if season_type == "Playoffs" else "002"
+    # Game ID prefix: 001 = Preseason, 002 = Regular Season, 004 = Playoffs, 005 = PlayIn
+    if season_type == "Playoffs":
+        game_id_prefix = "004"
+    elif season_type == "PlayIn":
+        game_id_prefix = "005"
+    else:
+        game_id_prefix = "002"
 
     last_err: Exception | None = None
     for attempt in range(1, STATS_MAX_RETRIES + 1):
@@ -1165,7 +1170,7 @@ def get_game_ids_for_date(
 
     Args:
         game_date_mmddyyyy: Date in MM/DD/YYYY format
-        season_type: "Regular Season" or "Playoffs"
+        season_type: "Regular Season", "Playoffs", or "PlayIn"
         season_override: Optional season string (e.g., "2019-20") to override automatic detection.
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.

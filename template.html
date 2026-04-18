@@ -320,6 +320,24 @@
             box-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
             border: 2px solid #e94560;
         }
+        .game-type-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+        }
+        .game-type-badge.playin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .game-type-badge.playoff {
+            background: #dbeafe;
+            color: #1e40af;
+        }
         .scores-section {
             display: flex;
         }
@@ -798,8 +816,15 @@
                 swingPlayerHtml += '</div>';
             }
 
+            const gameTypeBadge = game.game_type === 'playin'
+                ? '<span class="game-type-badge playin">Play-In</span>'
+                : game.game_type === 'playoff'
+                ? '<span class="game-type-badge playoff">Playoffs</span>'
+                : '';
+
             html += `
                 <div class="game-box${isFlipped ? ' flipped' : ''}">
+                    ${gameTypeBadge ? `<div style="padding: 6px 10px 0;">${gameTypeBadge}</div>` : ''}
                     <div class="scores-section">
                         <div class="score-column actual">
                             <div class="column-header">Actual</div>

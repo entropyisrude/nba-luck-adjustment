@@ -2,10 +2,17 @@ name: Update NBA 3PT Luck Report
 
 on:
   schedule:
-    # Run at 10:07 UTC year-round (5:07 AM EST / 6:07 AM EDT), only during NBA season months (Oct-Jun).
-    # GitHub schedules are UTC and can be delayed at the top of the hour, so avoid :00.
     - cron: '7 10 * 10-12,1-6 *'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Override start date (YYYY-MM-DD). Defaults to 14 days ago.'
+        required: false
+        default: ''
+      end_date:
+        description: 'Override end date (YYYY-MM-DD). Defaults to yesterday.'
+        required: false
+        default: ''
 
 jobs:
   update-report:
@@ -14,13 +21,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-        
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -36,6 +43,16 @@ jobs:
           echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            echo "start=${{ github.event.inputs.start_date }}" >> $GITHUB_OUTPUT
+          else
+            echo "start=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            echo "end=${{ github.event.inputs.end_date }}" >> $GITHUB_OUTPUT
+          else
+            echo "end=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
 
       - name: Pull LFS data
         run: |
@@ -44,7 +61,7 @@ jobs:
       - name: Run rolling catch-up update
         run: |
           for attempt in 1 2 3; do
-            python run_daily.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} && break
+            python run_daily.py --start ${{ steps.date.outputs.start }} --end ${{ steps.date.outputs.end }} && break
             if [ "$attempt" -eq 3 ]; then
               exit 1
             fi
