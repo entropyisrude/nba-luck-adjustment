@@ -207,6 +207,8 @@ STATS_MAX_RETRIES = 5
 
 # Cache for schedule (loaded once)
 _schedule_cache: dict[str, list[str]] | None = None
+# CDN schedule including playoffs (004) and play-in (005): date -> prefix -> [gameIds]
+_schedule_all_cache: dict[str, dict[str, list[str]]] | None = None
 _local_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
 _local_team_alias_cache: dict[int, dict[int, dict[str, set[int]]]] = {}
 _historical_playoff_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
@@ -273,6 +275,33 @@ def _load_schedule() -> dict[str, list[str]]:
 
     _schedule_cache = date_to_games
     return _schedule_cache
+
+
+def _load_schedule_all() -> dict[str, dict[str, list[str]]]:
+    """Load CDN schedule for all game types: returns date -> prefix -> [gameIds]."""
+    global _schedule_all_cache
+    if _schedule_all_cache is not None:
+        return _schedule_all_cache
+
+    js = _get_json(SCHEDULE_URL)
+    schedule = js.get("leagueSchedule", {}) or {}
+    game_dates = schedule.get("gameDates", []) or []
+
+    out: dict[str, dict[str, list[str]]] = {}
+    for gd in game_dates:
+        date_str = gd.get("gameDate", "")
+        if not date_str:
+            continue
+        date_part = date_str.split(" ")[0]
+        for g in (gd.get("games", []) or []):
+            game_id = g.get("gameId", "")
+            if not game_id or g.get("gameStatus") != 3:
+                continue
+            prefix = game_id[:3]
+            out.setdefault(date_part, {}).setdefault(prefix, []).append(str(game_id))
+
+    _schedule_all_cache = out
+    return _schedule_all_cache
 
 
 def _mmddyyyy_to_yyyymmdd(mmddyyyy: str) -> str:
@@ -1170,19 +1199,31 @@ def get_game_ids_for_date(
 
     Args:
         game_date_mmddyyyy: Date in MM/DD/YYYY format
-        season_type: "Regular Season", "Playoffs", or "PlayIn"
+        season_type: "Regular Season" or "Playoffs"
         season_override: Optional season string (e.g., "2019-20") to override automatic detection.
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.
     """
-    # Try CDN schedule first for regular season (faster and more reliable).
-    # If the league schedule is loaded and the date simply has no games,
-    # return [] directly instead of falling through to the much slower stats API.
-    if season_type == "Regular Season" and not season_override:
-        schedule = _load_schedule()
-        ids = schedule.get(game_date_mmddyyyy, [])
-        return ids
-    # Fall back to stats API (required for playoffs and season overrides)
+    # Use CDN schedule for current season — works from GitHub Actions unlike stats.nba.com
+    if not season_override:
+        if season_type == "PlayIn":
+            prefix = "005"
+        elif season_type == "Playoffs":
+            prefix = "004"
+        else:
+            prefix = "002"
+        schedule_all = _load_schedule_all()
+        ids = schedule_all.get(game_date_mmddyyyy, {}).get(prefix, [])
+        if ids:
+            return ids
+        # For regular season also try the original CDN cache as a fallback
+        if season_type == "Regular Season":
+            ids = _load_schedule().get(game_date_mmddyyyy, [])
+            if ids:
+                return ids
+        # CDN returned nothing (game not yet final or date out of season) — don't hit stats API
+        return []
+    # Historical season override: must use stats API
     ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
     return ids if ids else []
 
@@ -1404,28 +1445,20 @@ def get_boxscore_players(game_id: str, game_date_mmddyyyy: str) -> pd.DataFrame:
                     "MINUTES",
                 ]
             )
-        minute_col = next((c for c in ["MIN", "MIN_SEC", "MINUTES"] if c in players.columns), None)
-        if minute_col is not None:
-            mins = players[minute_col].map(_parse_minutes_any)
-        else:
-            mins = pd.Series(0.0, index=players.index)
-        comment = players["COMMENT"].fillna("") if "COMMENT" in players.columns else pd.Series("", index=players.index)
-        start_position = players["START_POSITION"].fillna("") if "START_POSITION" in players.columns else pd.Series("", index=players.index)
-        played = (mins > 0.0) & comment.eq("")
-        starter = start_position.astype(str).str.strip().ne("")
-        nickname = players["NICKNAME"] if "NICKNAME" in players.columns else pd.Series("", index=players.index)
-        plus_minus = pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0) if "PLUS_MINUS" in players.columns else pd.Series(0.0, index=players.index)
+        mins = players["MIN"].map(_parse_minutes_any)
+        played = (mins > 0.0) & players["COMMENT"].fillna("").eq("")
+        starter = players["START_POSITION"].fillna("").astype(str).str.strip().ne("")
         return pd.DataFrame(
             {
                 "GAME_ID": players["GAME_ID"].astype(str),
                 "TEAM_ID": players["TEAM_ID"].astype(int),
                 "PLAYER_ID": players["PLAYER_ID"].map(canonicalize_player_id).astype(int),
                 "PLAYER_NAME": players["PLAYER_NAME"].astype(str),
-                "NAME_I": nickname.astype(str),
+                "NAME_I": players["NICKNAME"].astype(str),
                 "STARTER": starter.map(lambda x: "1" if x else "0"),
                 "ONCOURT": "0",
                 "PLAYED": played.map(lambda x: "1" if x else "0"),
-                "PLUS_MINUS": plus_minus,
+                "PLUS_MINUS": pd.to_numeric(players["PLUS_MINUS"], errors="coerce").fillna(0.0),
                 "MINUTES": mins,
             }
         )
@@ -1555,6 +1588,12 @@ def get_playbyplay_actions(game_id: str, game_date_mmddyyyy: str) -> list[dict[s
                 canonicalize_action_player_ids(a)
                 for a in _expand_local_substitutions(actions, _historical_playoff_team_alias_cache.get(playoff_file_year))
             ]
+
+    # In strict local/cache-only mode, do not silently fall through to remote
+    # sources. This makes missing regular-season raw PBP archives obvious
+    # instead of masking the gap behind CDN/stats.nba.com retries.
+    if _stats_cache_only():
+        return []
 
     # Try CDN first
     try:
