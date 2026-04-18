@@ -188,7 +188,11 @@ def main():
         game_date_mmddyyyy = d.strftime("%m/%d/%Y")
 
         for nba_season_type, game_type_label, update_state in SEASON_TYPES:
-            game_ids = get_game_ids_for_date(game_date_mmddyyyy, season_type=nba_season_type)
+            try:
+                game_ids = get_game_ids_for_date(game_date_mmddyyyy, season_type=nba_season_type)
+            except Exception as e:
+                print(f"WARN: schedule lookup failed [{game_type_label}] {d.isoformat()} -> {repr(e)}")
+                continue
 
             if not game_ids:
                 continue
