@@ -80,6 +80,38 @@ python generate_rapm_report.py
 
 This updates `data/rapm_all.json`, `data/player_info_map.json`, and `rapm.html`.
 
+## Historical search-site publishing without LFS churn
+
+For the search pages, the safer workflow is:
+- keep the canonical full `nba_analytics` DuckDB local and out of Git
+- regenerate the site assets from that local DB
+- commit only the generated HTML and chunk files the website actually serves
+
+Do not repeatedly commit/push a large historical DuckDB if the site only needs the derived search assets.
+
+Use:
+
+```bash
+python scripts/publish_search_site_from_local_db.py --db-path /path/to/nba_analytics_full.duckdb
+```
+
+This rebuilds:
+- `game-search.html`
+- `player-span-search.html`
+- `data/player_game_chunks/*`
+- `data/player_span_chunks/*`
+
+It does not publish the DuckDB itself. The generated pages will show a neutral source label by default:
+- `local canonical regular-season DB`
+
+If you want a custom label:
+
+```bash
+python scripts/publish_search_site_from_local_db.py \
+  --db-path /path/to/nba_analytics_full.duckdb \
+  --source-label "local historical regular-season DB"
+```
+
 Multi-season backfill helper (monthly chunks + final rebuild):
 
 ```bash

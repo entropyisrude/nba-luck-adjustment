@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
 import duckdb
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parent)))
 DATA_DIR = ROOT / "data"
 DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics.duckdb")))
 OUTPUT_DATA_PATH = Path(os.environ.get("PLAYER_GAME_SEARCH_OUTPUT_DATA_PATH", str(DATA_DIR / "player_game_search.html")))
@@ -34,6 +35,38 @@ def _season_label(start: int, end: int) -> str:
 
 def _season_slug(season: str) -> str:
     return season.replace("-", "_")
+
+
+def _season_from_slug(slug: str) -> str | None:
+    parts = slug.split("_")
+    if len(parts) != 2 or len(parts[0]) != 4 or len(parts[1]) != 2:
+        return None
+    return f"{parts[0]}-{parts[1]}"
+
+
+def _existing_chunk_season_files() -> dict[str, str]:
+    if not CHUNK_DIR.exists():
+        return {}
+    out: dict[str, str] = {}
+    for path in CHUNK_DIR.glob("*.js"):
+        season = _season_from_slug(path.stem)
+        if season:
+            out[season] = path.name
+    return out
+
+
+def _load_existing_chunk_rows(path: Path) -> list[list]:
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    match = re.search(r'=\s*(\[.*\])\s*;\s*$', text, re.S)
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(1))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
 
 
 def generate_player_game_search_report() -> Path:
@@ -140,21 +173,91 @@ def generate_player_game_search_report() -> Path:
         name: sorted(set(season_list), key=_season_start)
         for name, season_list in player_seasons_by_name.items()
     }
-    season_starts = sorted(_season_start(s) for s in seasons)
     CHUNK_DIR.mkdir(parents=True, exist_ok=True)
-    season_files: dict[str, str] = {}
+    season_files: dict[str, str] = _existing_chunk_season_files()
     for season in seasons:
         season_rows = [r for r in compact_rows if r[col_index["season"]] == season]
         slug = _season_slug(season)
         filename = f"{slug}.js"
         season_files[season] = filename
+        existing_rows = _load_existing_chunk_rows(CHUNK_DIR / filename)
+        key_idx_game = col_index["game_id"]
+        key_idx_player = col_index["player_id"]
+        invariant_cols = [
+            "listed_height",
+            "height_inches",
+            "age",
+            "career_year",
+            "draft_year",
+            "draft_overall_pick",
+            "layup_assists_created",
+            "dunk_assists_created",
+            "other_rim_assists_created",
+            "rim_assists_strict",
+            "rim_assists_all",
+            "rim_assists_season_games",
+            "layup_assists_created_per_game",
+            "dunk_assists_created_per_game",
+            "other_rim_assists_created_per_game",
+            "rim_assists_strict_per_game",
+            "rim_assists_all_per_game",
+            "rim_anchor_signature",
+            "rim_deterrence_signature",
+            "rim_dfga",
+            "rim_tracking_games",
+            "rim_dfg_pct",
+            "rim_dfg_pct_diff",
+            "contested_shots",
+            "contested_shots_2pt",
+            "contested_shots_3pt",
+            "deflections",
+            "charges_drawn",
+            "screen_assists",
+            "screen_ast_pts",
+            "loose_balls_recovered",
+            "box_outs",
+        ]
+        invariant_idx = [col_index[c] for c in invariant_cols if c in col_index]
+        existing_by_key: dict[tuple[str, str], list] = {}
+        existing_by_player: dict[str, list] = {}
+        for row in existing_rows:
+            if len(row) != len(cols):
+                continue
+            game_id = str(row[key_idx_game])
+            player_id = str(row[key_idx_player])
+            existing_by_key[(game_id, player_id)] = row
+            if player_id and player_id not in existing_by_player:
+                existing_by_player[player_id] = row
+        merged_rows: dict[tuple[str, str], list] = {}
+        for row in season_rows:
+            out_row = list(row)
+            key = (str(out_row[key_idx_game]), str(out_row[key_idx_player]))
+            same_game_old = existing_by_key.get(key)
+            player_old = existing_by_player.get(key[1])
+            for idx in invariant_idx:
+                if out_row[idx] in (None, ""):
+                    if same_game_old is not None and same_game_old[idx] not in (None, ""):
+                        out_row[idx] = same_game_old[idx]
+                    elif player_old is not None and player_old[idx] not in (None, ""):
+                        out_row[idx] = player_old[idx]
+            merged_rows[key] = out_row
+        for key, old_row in existing_by_key.items():
+            if key not in merged_rows:
+                merged_rows[key] = old_row
+        season_rows = sorted(
+            merged_rows.values(),
+            key=lambda r: (str(r[col_index["date"]]), str(r[key_idx_game]), str(r[key_idx_player])),
+        )
         chunk_js = (
             "window.__PLAYER_GAME_CHUNKS = window.__PLAYER_GAME_CHUNKS || {};\n"
             f"window.__PLAYER_GAME_CHUNKS[{json.dumps(season)}] = "
             f"{json.dumps(season_rows, ensure_ascii=False, separators=(',', ':'))};\n"
         )
         (CHUNK_DIR / filename).write_text(chunk_js, encoding="utf-8")
+    seasons = sorted(season_files.keys(), key=_season_start)
+    season_starts = sorted(_season_start(s) for s in seasons)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+    per100_option_html = '<option value="per100">Per 100 poss</option>' if ALLOW_PER100 else ""
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -371,7 +474,7 @@ def generate_player_game_search_report() -> Path:
           <select id="stat_mode">
             <option value="totals">Totals</option>
             <option value="per36">Per 36</option>
-            {"<option value=\"per100\">Per 100 poss</option>" if ALLOW_PER100 else ""}
+            {per100_option_html}
           </select>
         </label>
         <label>Date range

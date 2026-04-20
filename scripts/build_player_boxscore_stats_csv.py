@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import csv
+import os
 from pathlib import Path
 
 import requests
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", Path(__file__).resolve().parents[1]))
 DATA_DIR = ROOT / "data"
 GAMES_CSV = DATA_DIR / "adjusted_games.csv"
 OUT_CSV = DATA_DIR / "player_boxscore_stats.csv"
@@ -79,23 +80,6 @@ def main() -> None:
             game_rows.append((str(row["game_id"]).lstrip("0"), row["date"]))
 
     unique_games = sorted(set(game_rows))
-    records: list[dict] = []
-
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    for game_id, game_date in unique_games:
-        gid10 = game_id.zfill(10)
-        url = BOXSCORE_URL.format(game_id=gid10)
-        resp = session.get(url, timeout=30)
-        resp.raise_for_status()
-        js = resp.json()
-        game = js.get("game") or {}
-        for side in ("homeTeam", "awayTeam"):
-            for rec in _team_rows(game_id, game, side):
-                rec["date"] = game_date
-                records.append(rec)
-
     fieldnames = [
         "date",
         "game_id",
@@ -122,13 +106,47 @@ def main() -> None:
         "fta",
     ]
 
+    existing_records: list[dict] = []
+    existing_game_ids: set[str] = set()
+    if OUT_CSV.exists():
+        with open(OUT_CSV, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                row["game_id"] = str(row.get("game_id") or "").lstrip("0")
+                existing_records.append(row)
+                if row["game_id"]:
+                    existing_game_ids.add(row["game_id"])
+
+    records: list[dict] = list(existing_records)
+    missing_games = [(game_id, game_date) for game_id, game_date in unique_games if game_id not in existing_game_ids]
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    for idx, (game_id, game_date) in enumerate(missing_games, start=1):
+        if idx == 1 or idx % 25 == 0 or idx == len(missing_games):
+            print(f"Fetching boxscores {idx}/{len(missing_games)}...")
+        gid10 = game_id.zfill(10)
+        url = BOXSCORE_URL.format(game_id=gid10)
+        resp = session.get(url, timeout=30)
+        resp.raise_for_status()
+        js = resp.json()
+        game = js.get("game") or {}
+        for side in ("homeTeam", "awayTeam"):
+            for rec in _team_rows(game_id, game, side):
+                rec["date"] = game_date
+                records.append(rec)
+
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(records)
+        writer.writerows(sorted(records, key=lambda r: (r["date"], r["game_id"], r["team_id"], r["player_name"])))
 
-    print(f"Wrote {OUT_CSV} rows={len(records)} games={len(unique_games)}")
+    print(
+        f"Wrote {OUT_CSV} rows={len(records)} games={len(unique_games)} "
+        f"(fetched {len(missing_games)} new games, reused {len(existing_game_ids)} existing)"
+    )
 
 
 if __name__ == "__main__":

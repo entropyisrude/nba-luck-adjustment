@@ -207,6 +207,8 @@ STATS_MAX_RETRIES = 5
 
 # Cache for schedule (loaded once)
 _schedule_cache: dict[str, list[str]] | None = None
+# CDN schedule including playoffs (004) and play-in (005): date -> prefix -> [gameIds]
+_schedule_all_cache: dict[str, dict[str, list[str]]] | None = None
 _local_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}
 _local_team_alias_cache: dict[int, dict[int, dict[str, set[int]]]] = {}
 _historical_playoff_pbp_cache: dict[int, dict[str, list[dict[str, Any]]]] = {}

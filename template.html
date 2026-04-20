@@ -499,6 +499,13 @@
 
     <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
     <p style="text-align: center;">Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
+
+    <div class="rankings-tabs">
+        <button class="rankings-tab active" onclick="switchRankingsTab('regular', this)">Regular Season</button>
+        <button class="rankings-tab" onclick="switchRankingsTab('playoff', this)">Playoffs</button>
+    </div>
+
+    <div id="rankings-regular">
     <table id="team-table">
         <tr>
             <th>#</th>
@@ -512,6 +519,23 @@
         </tr>
 {{TEAM_RANKINGS_ROWS}}
     </table>
+    </div>
+
+    <div id="rankings-playoff" style="display:none;">
+    <table id="team-table-playoff">
+        <tr>
+            <th>#</th>
+            <th class="sortable" data-sort="team" data-type="string">Team</th>
+            <th class="sortable desc" data-sort="wins" data-type="number">Record</th>
+            <th class="sortable" data-sort="adjwins" data-type="number">Adj Record</th>
+            <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
+            <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
+            <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
+            <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
+        </tr>
+{{PLAYOFF_RANKINGS_ROWS}}
+    </table>
+    </div>
 
     <h2 id="biggest-swings">Highest 3PT Variance Games</h2>
     <p>Games where 3PT variance most dramatically affected the outcome</p>
@@ -834,6 +858,13 @@
     setupSortableTable();
 
     // Modal functions for showing flipped games
+    function switchRankingsTab(tab, btn) {
+        document.getElementById('rankings-regular').style.display = tab === 'regular' ? '' : 'none';
+        document.getElementById('rankings-playoff').style.display = tab === 'playoff' ? '' : 'none';
+        document.querySelectorAll('.rankings-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
     function showFlippedGames(team) {
         const overlay = document.getElementById('modal-overlay');
         const title = document.getElementById('modal-title');

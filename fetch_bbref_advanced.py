@@ -21,7 +21,7 @@ def fetch_bbref_data():
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
     
-    # 1. Fetch Advanced Player Stats
+    # 1. Fetch 2025-26 Advanced Player Stats
     adv_url = "https://www.basketball-reference.com/leagues/NBA_2026_advanced.html"
     try:
         tables = pd.read_html(adv_url)
@@ -37,14 +37,27 @@ def fetch_bbref_data():
         df['Player'] = df['Player'].str.replace(r'[*]+$', '', regex=True).str.strip()
         df = df.rename(columns={'Player': 'player_name'})
         
-        # Filter out multi-team rows (TOT) to avoid double counting, 
-        # BUT we need to handle that BBRef's advanced table often has a 'TOT' row first.
-        # Let's keep all for now and handle 'TOT' in the builder.
-        
         df.to_csv(data_dir / "bbref_advanced_2526.csv", index=False)
-        print("Saved Advanced Player Stats.")
+        print("Saved 2025-26 Advanced Player Stats.")
     except Exception as e:
-        print(f"Error fetching player stats: {e}")
+        print(f"Error fetching 2025-26 player stats: {e}")
+
+    # 1b. Fetch 2024-25 Advanced Player Stats (Historical VORP)
+    hist_url = "https://www.basketball-reference.com/leagues/NBA_2025_advanced.html"
+    try:
+        tables = pd.read_html(hist_url)
+        df = tables[0]
+        df = df[df['Player'] != 'Player'].copy()
+        df = df[['Player', 'VORP']].copy()
+        df['VORP'] = pd.to_numeric(df['VORP'], errors='coerce')
+        df['Player'] = df['Player'].str.replace(r'[*]+$', '', regex=True).str.strip()
+        # Deduplicate historical: keep highest VORP (usually the TOT row if traded)
+        df = df.sort_values(['Player', 'VORP'], ascending=[True, False]).drop_duplicates('Player')
+        df = df.rename(columns={'Player': 'player_name', 'VORP': 'vorp_prev'})
+        df.to_csv(data_dir / "bbref_advanced_2024_25.csv", index=False)
+        print("Saved 2024-25 Historical VORP Stats.")
+    except Exception as e:
+        print(f"Error fetching historical stats: {e}")
 
     # 2. Fetch Official Team Standings
     std_url = "https://www.basketball-reference.com/leagues/NBA_2026.html"
