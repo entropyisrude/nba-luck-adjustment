@@ -1055,6 +1055,7 @@ def main() -> None:
             draft_number,
             draft_overall_pick,
             on_possessions,
+            SUM(on_possessions) OVER (PARTITION BY game_id, team_id) / 5.0 AS team_possessions,
             on_pts_for,
             on_pts_against,
             off_pts_for,

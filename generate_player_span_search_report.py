@@ -179,6 +179,7 @@ def generate_player_span_search_report() -> Path:
             {loose_balls_recovered},
             {box_outs},
             on_possessions,
+            (team_possessions - on_possessions) AS off_possessions,
             plus_minus_actual,
             plus_minus_adjusted,
             on_off_actual,
@@ -886,7 +887,8 @@ def generate_player_span_search_report() -> Path:
   <script>
     const COLS = {json.dumps(cols, ensure_ascii=False)};
     const LEGACY_COLS_BY_LENGTH = {{
-      68: ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"]
+      68: ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"],
+      69: ["date", "season", "game_id", "player_id", "player_name", "team_abbr", "opp_team_abbr", "home_away", "win_loss", "starter", "minutes", "pts", "reb", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf", "fgm", "fga", "fg2m", "fg2a", "fg2_pct", "fg3m", "fg3a", "fg3_pct", "ftm", "fta", "ft_pct", "assisted_2pm", "unassisted_2pm", "assisted_3pm", "unassisted_3pm", "assisted_fgm", "unassisted_fgm", "listed_height", "height_inches", "age", "career_year", "draft_year", "draft_overall_pick", "layup_assists_created", "dunk_assists_created", "other_rim_assists_created", "rim_assists_strict", "rim_assists_all", "rim_anchor_signature", "rim_deterrence_signature", "rim_dfga", "rim_tracking_games", "rim_dfg_pct", "rim_dfg_pct_diff", "contested_shots", "contested_shots_2pt", "contested_shots_3pt", "deflections", "charges_drawn", "screen_assists", "screen_ast_pts", "loose_balls_recovered", "box_outs", "on_possessions", "off_possessions", "plus_minus_actual", "plus_minus_adjusted", "on_off_actual", "on_off_adjusted"]
     }};
     const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
     let ROWS = [];
@@ -1311,9 +1313,12 @@ def generate_player_span_search_report() -> Path:
             games: 0,
             minutes: 0,
             on_possessions: 0,
+            off_possessions: 0,
             games_by_season: {{}},
             minutes_by_season: {{}},
             off_minutes_by_season: {{}},
+            on_possessions_by_season: {{}},
+            off_possessions_by_season: {{}},
             plus_minus_actual_by_season: {{}},
             plus_minus_adjusted_by_season: {{}},
             off_diff_actual_by_season: {{}},
@@ -1401,6 +1406,7 @@ def generate_player_span_search_report() -> Path:
         const teamMinutes = Number(teamGameMinutes.get(teamGameKey) || 0);
         const offMinutes = Math.max(teamMinutes - minutes, 0);
         const poss = Number(v(r, "on_possessions") || 0);
+        const offPoss = Number(v(r, "off_possessions") || 0);
         const plusMinusActual = Number(v(r, "plus_minus_actual") || 0);
         const plusMinusAdjusted = Number(v(r, "plus_minus_adjusted") || 0);
         const onOffActual = Number(v(r, "on_off_actual") || 0);
@@ -1411,11 +1417,14 @@ def generate_player_span_search_report() -> Path:
         g.minutes += minutes;
         g.off_minutes_total += offMinutes;
         g.on_possessions += poss;
+        g.off_possessions += offPoss;
         const metricSeasonKey = String(v(r, "season") || "");
         if (metricSeasonKey) {{
           g.games_by_season[metricSeasonKey] = (g.games_by_season[metricSeasonKey] || 0) + 1;
           g.minutes_by_season[metricSeasonKey] = (g.minutes_by_season[metricSeasonKey] || 0) + minutes;
           g.off_minutes_by_season[metricSeasonKey] = (g.off_minutes_by_season[metricSeasonKey] || 0) + offMinutes;
+          g.on_possessions_by_season[metricSeasonKey] = (g.on_possessions_by_season[metricSeasonKey] || 0) + poss;
+          g.off_possessions_by_season[metricSeasonKey] = (g.off_possessions_by_season[metricSeasonKey] || 0) + offPoss;
           g.rim_selected_games_by_season[metricSeasonKey] = (g.rim_selected_games_by_season[metricSeasonKey] || 0) + 1;
         }}
         ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
@@ -1517,13 +1526,13 @@ def generate_player_span_search_report() -> Path:
 
       const results = Array.from(grouped.values()).map(g => {{
         const ts = (g.fga + 0.44 * g.fta) > 0 ? g.pts / (2 * (g.fga + 0.44 * g.fta)) : null;
-        const pmActualPer48 = g.minutes > 0 ? (g.plus_minus_actual * 48.0 / g.minutes) : null;
-        const pmAdjustedPer48 = g.minutes > 0 ? (g.plus_minus_adjusted * 48.0 / g.minutes) : null;
-        const offActualPer48 = g.off_minutes_total > 0 ? (g.off_diff_actual_total * 48.0 / g.off_minutes_total) : null;
-        const offAdjustedPer48 = g.off_minutes_total > 0 ? (g.off_diff_adjusted_total * 48.0 / g.off_minutes_total) : null;
         const onOffAllowed = spanOnOffEnabled();
-        const onOffActual = onOffAllowed && (pmActualPer48 !== null && offActualPer48 !== null) ? (pmActualPer48 - offActualPer48) : null;
-        const onOffAdjusted = onOffAllowed && (pmAdjustedPer48 !== null && offAdjustedPer48 !== null) ? (pmAdjustedPer48 - offAdjustedPer48) : null;
+        const onOffActual = onOffAllowed && g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_actual / g.on_possessions) - (100 * g.off_diff_actual_total / g.off_possessions)
+          : null;
+        const onOffAdjusted = onOffAllowed && g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_adjusted / g.on_possessions) - (100 * g.off_diff_adjusted_total / g.off_possessions)
+          : null;
         const latestSeason = Object.keys(g.games_by_season || {{}})
           .sort((a, b) => seasonStart(a) - seasonStart(b))
           .at(-1) || null;
@@ -1532,23 +1541,15 @@ def generate_player_span_search_report() -> Path:
         const latestOffMinutes = latestSeason ? Number(g.off_minutes_by_season[latestSeason] || 0) : null;
         const latestPlusMinusActual = latestSeason ? Number(g.plus_minus_actual_by_season[latestSeason] || 0) : null;
         const latestPlusMinusAdjusted = latestSeason ? Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) : null;
-        const latestPmActualPer48 = latestSeason && latestMinutes > 0
-          ? Number(g.plus_minus_actual_by_season[latestSeason] || 0) * 48.0 / latestMinutes
+        const latestOnPoss = latestSeason ? Number(g.on_possessions_by_season[latestSeason] || 0) : 0;
+        const latestOffPoss = latestSeason ? Number(g.off_possessions_by_season[latestSeason] || 0) : 0;
+        const latestOnOffActual = onOffAllowed && latestOnPoss > 0 && latestOffPoss > 0
+          ? (100 * Number(g.plus_minus_actual_by_season[latestSeason] || 0) / latestOnPoss)
+            - (100 * Number(g.off_diff_actual_by_season[latestSeason] || 0) / latestOffPoss)
           : null;
-        const latestPmAdjustedPer48 = latestSeason && latestMinutes > 0
-          ? Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) * 48.0 / latestMinutes
-          : null;
-        const latestOffActualPer48 = latestSeason && latestOffMinutes > 0
-          ? Number(g.off_diff_actual_by_season[latestSeason] || 0) * 48.0 / latestOffMinutes
-          : null;
-        const latestOffAdjustedPer48 = latestSeason && latestOffMinutes > 0
-          ? Number(g.off_diff_adjusted_by_season[latestSeason] || 0) * 48.0 / latestOffMinutes
-          : null;
-        const latestOnOffActual = onOffAllowed && (latestPmActualPer48 !== null && latestOffActualPer48 !== null)
-          ? (latestPmActualPer48 - latestOffActualPer48)
-          : null;
-        const latestOnOffAdjusted = onOffAllowed && (latestPmAdjustedPer48 !== null && latestOffAdjustedPer48 !== null)
-          ? (latestPmAdjustedPer48 - latestOffAdjustedPer48)
+        const latestOnOffAdjusted = onOffAllowed && latestOnPoss > 0 && latestOffPoss > 0
+          ? (100 * Number(g.plus_minus_adjusted_by_season[latestSeason] || 0) / latestOnPoss)
+            - (100 * Number(g.off_diff_adjusted_by_season[latestSeason] || 0) / latestOffPoss)
           : null;
         let rimDfgaSelectedTotal = g.rim_metric_count > 0 ? 0 : null;
         if (g.rim_metric_count > 0) {{
