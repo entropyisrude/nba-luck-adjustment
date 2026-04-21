@@ -202,8 +202,8 @@ DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 5
 BASE_SLEEP = 0.8
 JITTER = 0.6
-STATS_TIMEOUT = 12
-STATS_MAX_RETRIES = 5
+STATS_TIMEOUT = 20
+STATS_MAX_RETRIES = 3
 
 # Cache for schedule (loaded once)
 _schedule_cache: dict[str, list[str]] | None = None
@@ -275,6 +275,33 @@ def _load_schedule() -> dict[str, list[str]]:
 
     _schedule_cache = date_to_games
     return _schedule_cache
+
+
+def _load_schedule_all() -> dict[str, dict[str, list[str]]]:
+    """Load CDN schedule for all game types: returns date -> prefix -> [gameIds]."""
+    global _schedule_all_cache
+    if _schedule_all_cache is not None:
+        return _schedule_all_cache
+
+    js = _get_json(SCHEDULE_URL)
+    schedule = js.get("leagueSchedule", {}) or {}
+    game_dates = schedule.get("gameDates", []) or []
+
+    out: dict[str, dict[str, list[str]]] = {}
+    for gd in game_dates:
+        date_str = gd.get("gameDate", "")
+        if not date_str:
+            continue
+        date_part = date_str.split(" ")[0]
+        for g in (gd.get("games", []) or []):
+            game_id = g.get("gameId", "")
+            if not game_id or g.get("gameStatus") != 3:
+                continue
+            prefix = game_id[:3]
+            out.setdefault(date_part, {}).setdefault(prefix, []).append(str(game_id))
+
+    _schedule_all_cache = out
+    return _schedule_all_cache
 
 
 def _mmddyyyy_to_yyyymmdd(mmddyyyy: str) -> str:
@@ -1177,13 +1204,26 @@ def get_game_ids_for_date(
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.
     """
-    # Try CDN schedule first for regular season (faster and more reliable)
-    if season_type == "Regular Season" and not season_override:
-        schedule = _load_schedule()
-        ids = schedule.get(game_date_mmddyyyy, [])
+    # Use CDN schedule for current season — works from GitHub Actions unlike stats.nba.com
+    if not season_override:
+        if season_type == "PlayIn":
+            prefix = "005"
+        elif season_type == "Playoffs":
+            prefix = "004"
+        else:
+            prefix = "002"
+        schedule_all = _load_schedule_all()
+        ids = schedule_all.get(game_date_mmddyyyy, {}).get(prefix, [])
         if ids:
             return ids
-    # Fall back to stats API (required for playoffs and season overrides)
+        # For regular season also try the original CDN cache as a fallback
+        if season_type == "Regular Season":
+            ids = _load_schedule().get(game_date_mmddyyyy, [])
+            if ids:
+                return ids
+        # CDN returned nothing (game not yet final or date out of season) — don't hit stats API
+        return []
+    # Historical season override: must use stats API
     ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
     return ids if ids else []
 
