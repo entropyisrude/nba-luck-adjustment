@@ -186,6 +186,7 @@ def generate_player_span_search_report() -> Path:
             on_off_adjusted
         FROM player_game_facts
         WHERE pts IS NOT NULL
+          AND game_id LIKE '2%'
         ORDER BY date DESC, pts DESC, plus_minus_adjusted DESC
         """
         .format(
