@@ -49,6 +49,7 @@ jobs:
           echo "start=$START" >> $GITHUB_OUTPUT
           echo "end=$END" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Run daily update
         run: |
