@@ -401,6 +401,10 @@ def update_player_info_map() -> Dict[str, dict]:
     for path in [DATA_DIR / "adjusted_onoff.csv", DATA_DIR / "player_onoff_history.csv"]:
         if not path.exists():
             continue
+        with path.open(encoding="utf-8") as _f:
+            if _f.readline().startswith("version https://git-lfs.github.com"):
+                print(f"  Skipping {path}: LFS pointer")
+                continue
         df = pd.read_csv(path, dtype={"player_id": int})
         for _, row in df.iterrows():
             pid = int(row["player_id"])

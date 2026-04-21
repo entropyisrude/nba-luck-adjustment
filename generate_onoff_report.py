@@ -102,6 +102,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         if not path.exists():
             return
         with path.open(newline="", encoding="utf-8") as f:
+            first = f.readline()
+            if first.startswith("version https://git-lfs.github.com"):
+                return  # LFS pointer — not pulled, skip
+            f.seek(0)
             reader = csv.DictReader(f)
             for r in reader:
                 pid = r.get("player_id")

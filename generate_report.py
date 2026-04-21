@@ -12,31 +12,19 @@ from datetime import datetime
 TEMPLATE_PATH = Path("template.html")
 
 
-def generate_report():
-    # Read template
-    if not TEMPLATE_PATH.exists():
-        raise FileNotFoundError(f"Template file not found: {TEMPLATE_PATH}")
-    template = TEMPLATE_PATH.read_text(encoding='utf-8')
+def _build_team_rows(source_df: pd.DataFrame) -> str:
+    """Build HTML rows for the team rankings table from a given slice of games."""
+    if source_df.empty:
+        return '<tr><td colspan="8" style="text-align:center;color:#888;">No games yet</td></tr>'
 
-    # Read data
-    df = pd.read_csv("data/adjusted_games.csv")
-
-    # Team stats use regular season only; play-in and playoff games appear in the
-    # calendar/game log but don't affect win records or luck totals.
-    if 'game_type' in df.columns:
-        rs_df = df[df['game_type'] == 'regular'].copy()
-    else:
-        rs_df = df.copy()
-
-    # Calculate team-level stats
-    home_luck = rs_df.groupby('home_team').agg({
+    home_luck = source_df.groupby('home_team').agg({
         'margin_delta': 'sum',
         'home_pts_adj': 'sum',
         'home_pts_actual': 'sum',
         'game_id': 'count'
     }).rename(columns={'game_id': 'home_games', 'margin_delta': 'home_luck'})
 
-    away_luck = rs_df.groupby('away_team').agg({
+    away_luck = source_df.groupby('away_team').agg({
         'margin_delta': lambda x: -x.sum(),
         'away_pts_adj': 'sum',
         'away_pts_actual': 'sum',
@@ -48,34 +36,28 @@ def generate_report():
     teams['total_games'] = teams['home_games'] + teams['away_games']
     teams['luck_per_game'] = teams['total_luck'] / teams['total_games']
 
-    # Calculate actual and adjusted records for each team, plus opponent 3P% stats
     team_records = {}
-    for team in set(rs_df['home_team'].unique()) | set(rs_df['away_team'].unique()):
+    for team in set(source_df['home_team'].unique()) | set(source_df['away_team'].unique()):
         team_records[team] = {
             'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0,
             'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0
         }
 
-    for _, row in rs_df.iterrows():
+    for _, row in source_df.iterrows():
         home = row['home_team']
         away = row['away_team']
-        actual_margin = row['margin_actual']
-        adj_margin = row['margin_adj']
-
-        if actual_margin > 0:
+        if row['margin_actual'] > 0:
             team_records[home]['wins'] += 1
             team_records[away]['losses'] += 1
         else:
             team_records[away]['wins'] += 1
             team_records[home]['losses'] += 1
-
-        if adj_margin > 0:
+        if row['margin_adj'] > 0:
             team_records[home]['adj_wins'] += 1
             team_records[away]['adj_losses'] += 1
         else:
             team_records[away]['adj_wins'] += 1
             team_records[home]['adj_losses'] += 1
-
         team_records[home]['opp_3pa'] += row['away_3pa']
         team_records[home]['opp_3pm'] += row['away_3pm_actual']
         team_records[home]['opp_3pm_exp'] += row['away_3pm_exp']
@@ -85,20 +67,13 @@ def generate_report():
 
     teams = teams.reset_index()
     teams.columns = ['team'] + list(teams.columns[1:])
-
-    teams['wins'] = teams['team'].map(lambda t: team_records.get(t, {}).get('wins', 0))
-    teams['losses'] = teams['team'].map(lambda t: team_records.get(t, {}).get('losses', 0))
-    teams['adj_wins'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_wins', 0))
-    teams['adj_losses'] = teams['team'].map(lambda t: team_records.get(t, {}).get('adj_losses', 0))
-    teams['opp_3pa'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pa', 0))
-    teams['opp_3pm'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pm', 0))
-    teams['opp_3pm_exp'] = teams['team'].map(lambda t: team_records.get(t, {}).get('opp_3pm_exp', 0))
+    for col in ('wins', 'losses', 'adj_wins', 'adj_losses', 'opp_3pa', 'opp_3pm', 'opp_3pm_exp'):
+        teams[col] = teams['team'].map(lambda t, c=col: team_records.get(t, {}).get(c, 0))
     teams['opp_3p_pct'] = (teams['opp_3pm'] / teams['opp_3pa'] * 100).round(1)
     teams['opp_3p_exp_pct'] = (teams['opp_3pm_exp'] / teams['opp_3pa'] * 100).round(1)
     teams = teams.sort_values('wins', ascending=False)
 
-    # Generate team rankings rows HTML
-    team_rows = ""
+    rows = ""
     for rank, (_, row) in enumerate(teams.iterrows(), 1):
         record = f"{int(row['wins'])}-{int(row['losses'])}"
         adj_record = f"{int(row['adj_wins'])}-{int(row['adj_losses'])}"
@@ -108,7 +83,7 @@ def generate_report():
         opp_diff = row['opp_3p_pct'] - row['opp_3p_exp_pct']
         opp_diff_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
         opp_diff_str = f"{opp_diff:+.1f}%"
-        team_rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}">
+        rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
@@ -119,11 +94,32 @@ def generate_report():
             <td class="{opp_diff_class}">{opp_diff_str}</td>
         </tr>
 """
+    return rows
 
-    # Biggest swing games
+
+def generate_report():
+    if not TEMPLATE_PATH.exists():
+        raise FileNotFoundError(f"Template file not found: {TEMPLATE_PATH}")
+    template = TEMPLATE_PATH.read_text(encoding='utf-8')
+
+    df = pd.read_csv("data/adjusted_games.csv")
+
+    # Rows without game_type were written before the column existed — treat as regular season.
+    if 'game_type' in df.columns:
+        df['game_type'] = df['game_type'].fillna('regular')
+    else:
+        df['game_type'] = 'regular'
+
+    rs_df = df[df['game_type'] == 'regular'].copy()
+    playoff_df = df[df['game_type'] == 'playoff'].copy()
+    # play-in (game_type == 'playin') is excluded from both ranking tables
+
+    team_rows = _build_team_rows(rs_df)
+    playoff_team_rows = _build_team_rows(playoff_df)
+
+    # Biggest swing games (all game types)
     df['abs_margin_delta'] = df['margin_delta'].abs()
     biggest_swings = df.nlargest(15, 'abs_margin_delta')
-
     swing_rows = ""
     for _, row in biggest_swings.iterrows():
         winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
@@ -131,10 +127,8 @@ def generate_report():
         flip = "&#9888;" if winner != adj_winner else ""
         away_adj = f"{row['away_pts_adj']:.1f}"
         home_adj = f"{row['home_pts_adj']:.1f}"
-        if row['margin_adj'] > 0:
-            adj_score = f"{away_adj}-<strong>{home_adj}</strong>"
-        else:
-            adj_score = f"<strong>{away_adj}</strong>-{home_adj}"
+        adj_score = (f"{away_adj}-<strong>{home_adj}</strong>" if row['margin_adj'] > 0
+                     else f"<strong>{away_adj}</strong>-{home_adj}")
         lucky_team = row['home_team'] if row['margin_delta'] < 0 else row['away_team']
         luck_amount = abs(row['margin_delta'])
         swing_rows += f"""        <tr>
@@ -146,10 +140,9 @@ def generate_report():
         </tr>
 """
 
-    # Prepare games data as JSON for calendar
+    # Calendar game objects
     has_swing_player = 'swing_player' in df.columns
     has_top_swing_players = 'top_swing_players' in df.columns
-
     games_by_date = {}
     for _, row in df.sort_values('date').iterrows():
         date = row['date']
@@ -158,7 +151,7 @@ def generate_report():
         game_obj = {
             'home_team': row['home_team'],
             'away_team': row['away_team'],
-            'game_type': row.get('game_type', 'regular') if 'game_type' in row.index else 'regular',
+            'game_type': row['game_type'],
             'home_pts_actual': int(row['home_pts_actual']),
             'away_pts_actual': int(row['away_pts_actual']),
             'home_pts_adj': round(row['home_pts_adj'], 1),
@@ -189,7 +182,6 @@ def generate_report():
     games_json = json.dumps(games_by_date)
     most_recent_date = df['date'].max()
 
-    # Build season months for calendar
     min_date = pd.to_datetime(df['date'].min())
     max_date = pd.to_datetime(df['date'].max())
     season_months = []
@@ -202,7 +194,6 @@ def generate_report():
             current = current.replace(month=current.month + 1)
     season_months_json = json.dumps(season_months)
 
-    # Replace placeholders in template
     html = template
     html = html.replace('{{SEASON_DATE}}', df['date'].max())
     html = html.replace('{{GAME_COUNT}}', str(len(rs_df)))
@@ -210,10 +201,10 @@ def generate_report():
     html = html.replace('{{MOST_RECENT_DATE}}', most_recent_date)
     html = html.replace('{{SEASON_MONTHS_JSON}}', season_months_json)
     html = html.replace('{{TEAM_RANKINGS_ROWS}}', team_rows)
+    html = html.replace('{{PLAYOFF_RANKINGS_ROWS}}', playoff_team_rows)
     html = html.replace('{{BIGGEST_SWINGS_ROWS}}', swing_rows)
     html = html.replace('{{GENERATED_TIMESTAMP}}', datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-    # Write output files
     output_path = Path("data/3pt_luck_report.html")
     output_path.write_text(html, encoding='utf-8')
     print(f"Report saved to: {output_path.absolute()}")

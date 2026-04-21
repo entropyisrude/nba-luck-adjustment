@@ -12,7 +12,7 @@ import src.ingest as ingest_module
 from src.onoff import compute_adjusted_onoff_for_game
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 CONFIG_PATH = ROOT / "config.yaml"
 

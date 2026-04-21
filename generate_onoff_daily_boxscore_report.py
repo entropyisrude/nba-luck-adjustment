@@ -73,6 +73,9 @@ def _load_player_name_map() -> dict[int, str]:
 def _prepare_box() -> pd.DataFrame:
     if not BOX_PATH.exists():
         raise FileNotFoundError(f"Missing {BOX_PATH}")
+    with BOX_PATH.open(encoding="utf-8") as f:
+        if f.readline().startswith("version https://git-lfs.github.com"):
+            raise FileNotFoundError(f"{BOX_PATH} is an LFS pointer — not pulled")
     df = pd.read_csv(BOX_PATH, dtype={"game_id": str, "player_id": int})
     df["game_id"] = df["game_id"].astype(str).str.lstrip("0")
     df["date"] = df["date"].astype(str)
@@ -478,4 +481,8 @@ def generate_daily_boxscores_report() -> Path:
 
 
 if __name__ == "__main__":
-    generate_daily_boxscores_report()
+    try:
+        generate_daily_boxscores_report()
+    except FileNotFoundError as e:
+        print(f"Skipping daily boxscore report: {e}")
+        raise SystemExit(0)
