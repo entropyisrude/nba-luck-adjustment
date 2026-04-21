@@ -510,6 +510,7 @@ def main() -> None:
                 SELECT game_id, poss_index, date, off_p1, off_p2, off_p3, off_p4, off_p5, def_p1, def_p2, def_p3, def_p4, def_p5 FROM raw_possessions
                 UNION ALL
                 SELECT game_id, poss_index, date, off_p1, off_p2, off_p3, off_p4, off_p5, def_p1, def_p2, def_p3, def_p4, def_p5 FROM raw_hist_possessions
+                WHERE CAST(game_id AS VARCHAR) NOT IN (SELECT DISTINCT CAST(game_id AS VARCHAR) FROM raw_possessions)
             )
         ),
         player_possession_totals AS (
