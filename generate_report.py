@@ -15,7 +15,7 @@ TEMPLATE_PATH = Path("template.html")
 def _build_team_rows(source_df: pd.DataFrame) -> str:
     """Build HTML rows for the team rankings table from a given slice of games."""
     if source_df.empty:
-        return '<tr><td colspan="8" style="text-align:center;color:#888;">No games yet</td></tr>'
+        return '<tr><td colspan="12" style="text-align:center;color:#888;">No games yet</td></tr>'
 
     home_luck = source_df.groupby('home_team').agg({
         'margin_delta': 'sum',
@@ -40,7 +40,8 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
     for team in set(source_df['home_team'].unique()) | set(source_df['away_team'].unique()):
         team_records[team] = {
             'wins': 0, 'losses': 0, 'adj_wins': 0, 'adj_losses': 0,
-            'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0
+            'opp_3pa': 0, 'opp_3pm': 0, 'opp_3pm_exp': 0,
+            'team_3pa': 0, 'team_3pm': 0, 'team_3pm_exp': 0,
         }
 
     for _, row in source_df.iterrows():
@@ -64,13 +65,23 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
         team_records[away]['opp_3pa'] += row['home_3pa']
         team_records[away]['opp_3pm'] += row['home_3pm_actual']
         team_records[away]['opp_3pm_exp'] += row['home_3pm_exp']
+        team_records[home]['team_3pa'] += row['home_3pa']
+        team_records[home]['team_3pm'] += row['home_3pm_actual']
+        team_records[home]['team_3pm_exp'] += row['home_3pm_exp']
+        team_records[away]['team_3pa'] += row['away_3pa']
+        team_records[away]['team_3pm'] += row['away_3pm_actual']
+        team_records[away]['team_3pm_exp'] += row['away_3pm_exp']
 
     teams = teams.reset_index()
     teams.columns = ['team'] + list(teams.columns[1:])
-    for col in ('wins', 'losses', 'adj_wins', 'adj_losses', 'opp_3pa', 'opp_3pm', 'opp_3pm_exp'):
+    for col in ('wins', 'losses', 'adj_wins', 'adj_losses',
+                'opp_3pa', 'opp_3pm', 'opp_3pm_exp',
+                'team_3pa', 'team_3pm', 'team_3pm_exp'):
         teams[col] = teams['team'].map(lambda t, c=col: team_records.get(t, {}).get(c, 0))
     teams['opp_3p_pct'] = (teams['opp_3pm'] / teams['opp_3pa'] * 100).round(1)
     teams['opp_3p_exp_pct'] = (teams['opp_3pm_exp'] / teams['opp_3pa'] * 100).round(1)
+    teams['team_3p_pct'] = (teams['team_3pm'] / teams['team_3pa'] * 100).round(1)
+    teams['team_3p_exp_pct'] = (teams['team_3pm_exp'] / teams['team_3pa'] * 100).round(1)
     teams = teams.sort_values('wins', ascending=False)
 
     rows = ""
@@ -83,7 +94,14 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
         opp_diff = row['opp_3p_pct'] - row['opp_3p_exp_pct']
         opp_diff_class = "positive" if opp_diff < 0 else ("negative" if opp_diff > 0 else "")
         opp_diff_str = f"{opp_diff:+.1f}%"
-        rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}">
+        team_diff = row['team_3p_pct'] - row['team_3p_exp_pct']
+        team_diff_class = "positive" if team_diff > 0 else ("negative" if team_diff < 0 else "")
+        team_diff_str = f"{team_diff:+.1f}%"
+        # net: positive means overall lucky (team shot above expected AND/OR opp shot below expected)
+        net_diff = team_diff - opp_diff
+        net_diff_class = "positive" if net_diff > 0 else ("negative" if net_diff < 0 else "")
+        net_diff_str = f"{net_diff:+.1f}%"
+        rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}" data-teamexp="{row['team_3p_exp_pct']:.1f}" data-teamact="{row['team_3p_pct']:.1f}" data-teamdiff="{team_diff:.1f}" data-netdiff="{net_diff:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
@@ -92,6 +110,38 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
             <td>{row['opp_3p_exp_pct']:.1f}%</td>
             <td>{row['opp_3p_pct']:.1f}%</td>
             <td class="{opp_diff_class}">{opp_diff_str}</td>
+            <td>{row['team_3p_exp_pct']:.1f}%</td>
+            <td>{row['team_3p_pct']:.1f}%</td>
+            <td class="{team_diff_class}">{team_diff_str}</td>
+            <td class="{net_diff_class}">{net_diff_str}</td>
+        </tr>
+"""
+    return rows
+
+
+def _build_swing_rows(source_df: pd.DataFrame) -> str:
+    if source_df.empty:
+        return '        <tr><td colspan="5" style="text-align:center;color:#888;">No games yet</td></tr>\n'
+    df = source_df.copy()
+    df['abs_margin_delta'] = df['margin_delta'].abs()
+    biggest = df.nlargest(15, 'abs_margin_delta')
+    rows = ""
+    for _, row in biggest.iterrows():
+        winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
+        adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
+        flip = "&#9888;" if winner != adj_winner else ""
+        away_adj = f"{row['away_pts_adj']:.1f}"
+        home_adj = f"{row['home_pts_adj']:.1f}"
+        adj_score = (f"{away_adj}-<strong>{home_adj}</strong>" if row['margin_adj'] > 0
+                     else f"<strong>{away_adj}</strong>-{home_adj}")
+        lucky_team = row['home_team'] if row['margin_delta'] < 0 else row['away_team']
+        luck_amount = abs(row['margin_delta'])
+        rows += f"""        <tr>
+            <td>{row['date']}</td>
+            <td>{row['away_team']} @ {row['home_team']}</td>
+            <td>{int(row['away_pts_actual'])}-{int(row['home_pts_actual'])}</td>
+            <td>{adj_score} {flip}</td>
+            <td class="positive">{lucky_team}: +{luck_amount:.1f}</td>
         </tr>
 """
     return rows
@@ -117,28 +167,8 @@ def generate_report():
     team_rows = _build_team_rows(rs_df)
     playoff_team_rows = _build_team_rows(playoff_df)
 
-    # Biggest swing games (all game types)
-    df['abs_margin_delta'] = df['margin_delta'].abs()
-    biggest_swings = df.nlargest(15, 'abs_margin_delta')
-    swing_rows = ""
-    for _, row in biggest_swings.iterrows():
-        winner = row['home_team'] if row['margin_actual'] > 0 else row['away_team']
-        adj_winner = row['home_team'] if row['margin_adj'] > 0 else row['away_team']
-        flip = "&#9888;" if winner != adj_winner else ""
-        away_adj = f"{row['away_pts_adj']:.1f}"
-        home_adj = f"{row['home_pts_adj']:.1f}"
-        adj_score = (f"{away_adj}-<strong>{home_adj}</strong>" if row['margin_adj'] > 0
-                     else f"<strong>{away_adj}</strong>-{home_adj}")
-        lucky_team = row['home_team'] if row['margin_delta'] < 0 else row['away_team']
-        luck_amount = abs(row['margin_delta'])
-        swing_rows += f"""        <tr>
-            <td>{row['date']}</td>
-            <td>{row['away_team']} @ {row['home_team']}</td>
-            <td>{int(row['away_pts_actual'])}-{int(row['home_pts_actual'])}</td>
-            <td>{adj_score} {flip}</td>
-            <td class="positive">{lucky_team}: +{luck_amount:.1f}</td>
-        </tr>
-"""
+    swing_rows = _build_swing_rows(rs_df)
+    playoff_swing_rows = _build_swing_rows(playoff_df)
 
     # Calendar game objects
     has_swing_player = 'swing_player' in df.columns
@@ -203,6 +233,7 @@ def generate_report():
     html = html.replace('{{TEAM_RANKINGS_ROWS}}', team_rows)
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS}}', playoff_team_rows)
     html = html.replace('{{BIGGEST_SWINGS_ROWS}}', swing_rows)
+    html = html.replace('{{PLAYOFF_BIGGEST_SWINGS_ROWS}}', playoff_swing_rows)
     html = html.replace('{{GENERATED_TIMESTAMP}}', datetime.now().strftime('%Y-%m-%d %H:%M'))
 
     output_path = Path("data/3pt_luck_report.html")

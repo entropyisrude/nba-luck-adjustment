@@ -541,7 +541,11 @@
             <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
             <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
             <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
-            <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
+            <th class="sortable" data-sort="oppdiff" data-type="number">Opp 3P% Diff</th>
+            <th class="sortable" data-sort="teamexp" data-type="number">Team Exp 3P%</th>
+            <th class="sortable" data-sort="teamact" data-type="number">Team Actual 3P%</th>
+            <th class="sortable" data-sort="teamdiff" data-type="number">Team 3P% Diff</th>
+            <th class="sortable" data-sort="netdiff" data-type="number">Net 3P% Diff</th>
         </tr>
 {{TEAM_RANKINGS_ROWS}}
     </table>
@@ -557,14 +561,19 @@
             <th class="sortable" data-sort="diff" data-type="number">Net Games Swung</th>
             <th class="sortable" data-sort="oppexp" data-type="number">Opp Exp 3P%</th>
             <th class="sortable" data-sort="oppact" data-type="number">Opp Actual 3P%</th>
-            <th class="sortable" data-sort="oppdiff" data-type="number">3P% Diff</th>
+            <th class="sortable" data-sort="oppdiff" data-type="number">Opp 3P% Diff</th>
+            <th class="sortable" data-sort="teamexp" data-type="number">Team Exp 3P%</th>
+            <th class="sortable" data-sort="teamact" data-type="number">Team Actual 3P%</th>
+            <th class="sortable" data-sort="teamdiff" data-type="number">Team 3P% Diff</th>
+            <th class="sortable" data-sort="netdiff" data-type="number">Net 3P% Diff</th>
         </tr>
 {{PLAYOFF_RANKINGS_ROWS}}
     </table>
     </div>
 
+    <div id="swings-regular">
     <h2 id="biggest-swings">Highest 3PT Variance Games</h2>
-    <p>Games where 3PT variance most dramatically affected the outcome</p>
+    <p>Regular season games where 3PT variance most dramatically affected the outcome</p>
     <table>
         <tr>
             <th>Date</th>
@@ -576,6 +585,23 @@
 {{BIGGEST_SWINGS_ROWS}}
     </table>
     <p><small>&#9888; = Adjusted margin flips the winner</small></p>
+    </div>
+
+    <div id="swings-playoff" style="display:none;">
+    <h2>Highest 3PT Variance Games — Playoffs</h2>
+    <p>Playoff games where 3PT variance most dramatically affected the outcome</p>
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Matchup</th>
+            <th>Actual</th>
+            <th>Adjusted</th>
+            <th>3PT Luck</th>
+        </tr>
+{{PLAYOFF_BIGGEST_SWINGS_ROWS}}
+    </table>
+    <p><small>&#9888; = Adjusted margin flips the winner</small></p>
+    </div>
 
     <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated {{GENERATED_TIMESTAMP}} | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
 
@@ -831,28 +857,30 @@
         selectDate(mostRecentDate);
     }
 
-    // Sortable table functionality
-    function setupSortableTable() {
-        const table = document.getElementById('team-table');
+    // Sortable table functionality (defined below, called after tab init)
+    function setupSortableTable(tableId) {
+        const table = document.getElementById(tableId || 'team-table');
         if (!table) return;
 
         const headers = table.querySelectorAll('th.sortable');
-        const tbody = table.querySelector('tbody') || table;
 
         headers.forEach(header => {
+            // Remove any previously bound listeners by replacing the node
+            const fresh = header.cloneNode(true);
+            header.parentNode.replaceChild(fresh, header);
+        });
+
+        table.querySelectorAll('th.sortable').forEach(header => {
             header.addEventListener('click', () => {
                 const sortKey = header.dataset.sort;
                 const sortType = header.dataset.type;
                 const isAsc = header.classList.contains('asc');
 
-                // Remove sort classes from all headers
-                headers.forEach(h => h.classList.remove('asc', 'desc'));
+                table.querySelectorAll('th.sortable').forEach(h => h.classList.remove('asc', 'desc'));
 
-                // Toggle sort direction
                 const newDir = isAsc ? 'desc' : 'asc';
                 header.classList.add(newDir);
 
-                // Get all data rows (skip header row)
                 const rows = Array.from(table.querySelectorAll('tr[data-team]'));
 
                 rows.sort((a, b) => {
@@ -872,7 +900,6 @@
                     return 0;
                 });
 
-                // Re-append rows in sorted order and update ranks
                 rows.forEach((row, index) => {
                     row.querySelector('td:first-child').textContent = index + 1;
                     table.appendChild(row);
@@ -881,15 +908,28 @@
         });
     }
 
-    setupSortableTable();
-
     // Modal functions for showing flipped games
     function switchRankingsTab(tab, btn) {
         document.getElementById('rankings-regular').style.display = tab === 'regular' ? '' : 'none';
         document.getElementById('rankings-playoff').style.display = tab === 'playoff' ? '' : 'none';
+        document.getElementById('swings-regular').style.display = tab === 'regular' ? '' : 'none';
+        document.getElementById('swings-playoff').style.display = tab === 'playoff' ? '' : 'none';
         document.querySelectorAll('.rankings-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        setupSortableTable(tab === 'playoff' ? 'team-table-playoff' : 'team-table');
     }
+
+    // Default to playoffs tab if any playoff games exist in the data
+    (function initTab() {
+        const hasPlayoffs = Object.values(gamesByDate).some(games =>
+            games.some(g => g.game_type === 'playoff'));
+        if (hasPlayoffs) {
+            const playoffBtn = document.querySelectorAll('.rankings-tab')[1];
+            switchRankingsTab('playoff', playoffBtn);
+        } else {
+            setupSortableTable('team-table');
+        }
+    })();
 
     function showFlippedGames(team) {
         const overlay = document.getElementById('modal-overlay');
