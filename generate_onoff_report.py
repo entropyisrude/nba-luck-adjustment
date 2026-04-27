@@ -90,6 +90,9 @@ def _season_from_date(date_str: str) -> str:
 def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     if not ONOFF_PATH.exists():
         raise FileNotFoundError(f"Missing {ONOFF_PATH}")
+    with ONOFF_PATH.open(encoding="utf-8") as _f:
+        if _f.readline().startswith("version https://git-lfs.github.com"):
+            raise FileNotFoundError(f"{ONOFF_PATH} is an LFS pointer — run_onoff.py did not produce real data")
 
     rows: list[dict] = []
     name_map = _load_player_name_map()
@@ -1035,4 +1038,8 @@ def generate_onoff_report() -> Path:
 
 
 if __name__ == "__main__":
-    generate_onoff_report()
+    try:
+        generate_onoff_report()
+    except FileNotFoundError as e:
+        print(f"Skipping on/off report: {e}")
+        raise SystemExit(0)
