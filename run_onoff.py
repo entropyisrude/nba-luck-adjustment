@@ -93,18 +93,30 @@ def main():
     state_path = DATA_DIR / f"player_state{suffix}.csv"
 
     player_state = load_player_state(state_path)
+    _lfs_pointer_skip = False
     if out_path.exists():
-        existing = pd.read_csv(out_path)
-        if "game_id" in existing.columns:
-            existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
-            if "player_id" in existing.columns:
-                try:
-                    existing["player_id"] = existing["player_id"].astype(int)
-                except Exception:
-                    pass
-        else:
-            # Likely an LFS pointer or malformed file; treat as empty.
+        with open(out_path, "rb") as _f:
+            _header = _f.read(512)
+        if b"version https://git-lfs.github.com/spec/v1" in _header:
+            # File is an LFS pointer — the full data was never pulled.
+            # Do NOT read it as CSV and do NOT overwrite it with a truncated
+            # 14-day window; skip all writes this run so the real data is
+            # preserved when LFS is eventually pulled (weekly workflow).
+            print(f"WARNING: {out_path} is an LFS pointer; skipping read/write to avoid data truncation.")
             existing = pd.DataFrame()
+            _lfs_pointer_skip = True
+        else:
+            existing = pd.read_csv(out_path)
+            if "game_id" in existing.columns:
+                existing["game_id"] = existing["game_id"].astype(str).str.lstrip("0")
+                if "player_id" in existing.columns:
+                    try:
+                        existing["player_id"] = existing["player_id"].astype(int)
+                    except Exception:
+                        pass
+            else:
+                # Malformed file; treat as empty.
+                existing = pd.DataFrame()
     else:
         existing = pd.DataFrame()
 
@@ -271,7 +283,7 @@ def main():
                 print("ERROR processing game", game_id, "->", repr(e))
                 continue
 
-    if rows:
+    if rows and not _lfs_pointer_skip:
         new_df = pd.concat(rows, ignore_index=True)
         if not existing.empty:
             combined = pd.concat([existing, new_df], ignore_index=True)
@@ -283,6 +295,8 @@ def main():
         )
         combined.to_csv(out_path, index=False)
         print(f"Wrote: {out_path} (rows={len(combined)})")
+    elif _lfs_pointer_skip:
+        print("Skipped writing adjusted_onoff.csv (LFS pointer detected — data not pulled).")
     else:
         if out_path.exists():
             print("No new on/off rows produced; kept existing adjusted_onoff.csv.")
@@ -321,7 +335,7 @@ def main():
     save_player_state(player_state, state_path)
     print(f"Wrote: {state_path} (players={len(player_state)})")
 
-    if not args.skip_history and out_path.exists():
+    if not args.skip_history and not _lfs_pointer_skip and out_path.exists():
         history_path = DATA_DIR / f"player_onoff_history{suffix}.csv"
         hist = write_player_onoff_history(
             input_path=out_path,
@@ -331,7 +345,7 @@ def main():
         )
         print(f"Wrote: {history_path} (players={len(hist)})")
 
-    if not args.skip_boxscore and out_path.exists():
+    if not args.skip_boxscore and not _lfs_pointer_skip and out_path.exists():
         boxscore_path = DATA_DIR / f"player_daily_boxscore{suffix}.csv"
         box = write_player_daily_boxscore(
             input_path=out_path,
