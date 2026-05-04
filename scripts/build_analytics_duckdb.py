@@ -621,6 +621,35 @@ def main() -> None:
             WITH current_games AS (
                 SELECT DISTINCT CAST(game_id AS VARCHAR) AS game_id
                 FROM raw_player_box_stats
+            ),
+            -- Preferred on/off source: raw_hist_adjusted_onoff (verified accurate) for games it
+            -- covers, raw_player_daily_boxscore only for games the historical file doesn't have.
+            -- This avoids the player_id scrambling bug in adjusted_onoff.csv / player_daily_boxscore.csv.
+            preferred_onoff AS (
+                SELECT
+                    CAST(game_id AS VARCHAR) AS game_id,
+                    CAST(player_id AS BIGINT) AS player_id,
+                    CAST(on_diff_reconstructed AS DOUBLE) AS plus_minus_actual,
+                    CAST(on_diff_adj AS DOUBLE) AS plus_minus_adjusted,
+                    CAST(on_diff_adj AS DOUBLE) - CAST(on_diff_reconstructed AS DOUBLE) AS plus_minus_delta,
+                    CAST(on_off_diff_reconstructed AS DOUBLE) AS on_off_actual,
+                    CAST(on_off_diff_adj AS DOUBLE) AS on_off_adjusted,
+                    CAST(on_off_diff_adj AS DOUBLE) - CAST(on_off_diff_reconstructed AS DOUBLE) AS on_off_delta
+                FROM raw_hist_adjusted_onoff
+                UNION ALL
+                SELECT
+                    CAST(game_id AS VARCHAR) AS game_id,
+                    CAST(player_id AS BIGINT) AS player_id,
+                    CAST(plus_minus_actual AS DOUBLE) AS plus_minus_actual,
+                    CAST(plus_minus_adjusted AS DOUBLE) AS plus_minus_adjusted,
+                    CAST(plus_minus_delta AS DOUBLE) AS plus_minus_delta,
+                    CAST(on_off_actual AS DOUBLE) AS on_off_actual,
+                    CAST(on_off_adjusted AS DOUBLE) AS on_off_adjusted,
+                    CAST(on_off_delta AS DOUBLE) AS on_off_delta
+                FROM raw_player_daily_boxscore
+                WHERE CAST(game_id AS VARCHAR) NOT IN (
+                    SELECT DISTINCT CAST(game_id AS VARCHAR) FROM raw_hist_adjusted_onoff
+                )
             )
             SELECT
                 CAST(bs.date AS DATE) AS date,
@@ -659,9 +688,9 @@ def main() -> None:
                 CAST(cur.on_off_delta AS DOUBLE) AS on_off_delta,
                 1 AS source_priority
             FROM raw_player_box_stats bs
-            LEFT JOIN raw_player_daily_boxscore cur
-              ON CAST(bs.game_id AS VARCHAR) = CAST(cur.game_id AS VARCHAR)
-             AND CAST(bs.player_id AS BIGINT) = CAST(cur.player_id AS BIGINT)
+            LEFT JOIN preferred_onoff cur
+              ON CAST(bs.game_id AS VARCHAR) = cur.game_id
+             AND CAST(bs.player_id AS BIGINT) = cur.player_id
             UNION ALL
             SELECT
                 CAST(b.date AS DATE) AS date,
@@ -698,9 +727,14 @@ def main() -> None:
                 CAST(o.on_off_diff_reconstructed AS DOUBLE) AS on_off_diff_reconstructed
             FROM player_base p
             LEFT JOIN (
-                SELECT * FROM raw_adjusted_onoff
-                UNION ALL
+                -- Prefer raw_hist_adjusted_onoff (verified accurate) for games it covers.
+                -- Fall back to raw_adjusted_onoff only for games not yet in the historical file.
                 SELECT * FROM raw_hist_adjusted_onoff
+                UNION ALL
+                SELECT * FROM raw_adjusted_onoff
+                WHERE CAST(game_id AS VARCHAR) NOT IN (
+                    SELECT DISTINCT CAST(game_id AS VARCHAR) FROM raw_hist_adjusted_onoff
+                )
             ) o
               ON p.game_id = CAST(o.game_id AS VARCHAR)
              AND p.player_id = CAST(o.player_id AS BIGINT)
