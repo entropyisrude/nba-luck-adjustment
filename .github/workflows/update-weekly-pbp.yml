@@ -43,6 +43,7 @@ jobs:
       - name: Refresh PBP and Stints
         run: |
           python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
+          python scripts/extend_historical_onoff.py
           python generate_possessions_from_pbp.py
           python scripts/build_player_boxscore_stats_csv.py
           python scripts/build_analytics_duckdb.py

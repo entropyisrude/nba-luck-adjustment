@@ -38,6 +38,14 @@ DRAFT_HISTORY = DATA_DIR / "draft_history.csv"
 PLAYER_METADATA_OFFICIAL_RECENT = DATA_DIR / "player_metadata_official_recent.csv"
 
 
+def _is_lfs_pointer(path: Path) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return b"version https://git-lfs.github.com/spec/v1" in f.read(512)
+    except Exception:
+        return False
+
+
 def _lineup_id_expr(prefix: str) -> str:
     cols = ", ".join(f"CAST({prefix}_p{i} AS BIGINT)" for i in range(1, 6))
     return f"array_to_string(list_sort([ {cols} ]), '-')"
@@ -90,18 +98,26 @@ def main() -> None:
     ]:
         con.execute(f"DROP TABLE IF EXISTS {table}")
 
-    con.execute(
-        f"""
-        CREATE TABLE raw_player_daily_boxscore AS
-        SELECT * FROM read_csv_auto('{PLAYER_DAILY_BOX}', header=true);
-        """
-    )
-    con.execute(
-        f"""
-        CREATE TABLE raw_adjusted_onoff AS
-        SELECT * FROM read_csv_auto('{ADJUSTED_ONOFF}', header=true, sample_size=-1, quote='\"');
-        """
-    )
+    if _is_lfs_pointer(PLAYER_DAILY_BOX):
+        print(f"WARNING: {PLAYER_DAILY_BOX} is an LFS pointer — creating empty raw_player_daily_boxscore.")
+        con.execute("CREATE TABLE raw_player_daily_boxscore (date VARCHAR, game_id VARCHAR, team_id BIGINT, player_id BIGINT, player_name VARCHAR, minutes_on DOUBLE, plus_minus_actual DOUBLE, plus_minus_adjusted DOUBLE, plus_minus_delta DOUBLE, on_off_actual DOUBLE, on_off_adjusted DOUBLE, on_off_delta DOUBLE)")
+    else:
+        con.execute(
+            f"""
+            CREATE TABLE raw_player_daily_boxscore AS
+            SELECT * FROM read_csv_auto('{PLAYER_DAILY_BOX}', header=true);
+            """
+        )
+    if _is_lfs_pointer(ADJUSTED_ONOFF):
+        print(f"WARNING: {ADJUSTED_ONOFF} is an LFS pointer — creating empty raw_adjusted_onoff.")
+        con.execute("CREATE TABLE raw_adjusted_onoff (game_id VARCHAR, team_id BIGINT, player_id BIGINT, player_name VARCHAR, on_pts_for DOUBLE, on_pts_against DOUBLE, on_diff DOUBLE, off_pts_for DOUBLE, off_pts_against DOUBLE, off_diff DOUBLE, on_pts_for_adj DOUBLE, on_pts_against_adj DOUBLE, on_diff_adj DOUBLE, off_pts_for_adj DOUBLE, off_pts_against_adj DOUBLE, off_diff_adj DOUBLE, on_off_diff DOUBLE, on_off_diff_adj DOUBLE, on_diff_reconstructed DOUBLE, off_diff_reconstructed DOUBLE, on_off_diff_reconstructed DOUBLE, minutes_on DOUBLE, date VARCHAR)")
+    else:
+        con.execute(
+            f"""
+            CREATE TABLE raw_adjusted_onoff AS
+            SELECT * FROM read_csv_auto('{ADJUSTED_ONOFF}', header=true, sample_size=-1, quote='\"');
+            """
+        )
     if HIST_ADJUSTED_ONOFF.exists():
         con.execute(
             f"""
@@ -111,12 +127,19 @@ def main() -> None:
         )
     else:
         con.execute("CREATE TABLE raw_hist_adjusted_onoff AS SELECT * FROM raw_adjusted_onoff WHERE FALSE;")
-    con.execute(
-        f"""
-        CREATE TABLE raw_stints AS
-        SELECT * FROM read_csv_auto('{STINTS}', header=true);
-        """
-    )
+    if _is_lfs_pointer(STINTS):
+        print(f"WARNING: {STINTS} is an LFS pointer — creating empty raw_stints from historical schema.")
+        if HIST_STINTS.exists():
+            con.execute(f"CREATE TABLE raw_stints AS SELECT * FROM read_csv_auto('{HIST_STINTS}', header=true) WHERE FALSE;")
+        else:
+            con.execute("CREATE TABLE raw_stints (game_id VARCHAR, stint_index BIGINT, home_id BIGINT, away_id BIGINT, home_p1 BIGINT, home_p2 BIGINT, home_p3 BIGINT, home_p4 BIGINT, home_p5 BIGINT, away_p1 BIGINT, away_p2 BIGINT, away_p3 BIGINT, away_p4 BIGINT, away_p5 BIGINT, seconds DOUBLE, home_pts DOUBLE, away_pts DOUBLE, date VARCHAR)")
+    else:
+        con.execute(
+            f"""
+            CREATE TABLE raw_stints AS
+            SELECT * FROM read_csv_auto('{STINTS}', header=true);
+            """
+        )
     if HIST_STINTS.exists():
         con.execute(
             f"""
@@ -126,12 +149,19 @@ def main() -> None:
         )
     else:
         con.execute("CREATE TABLE raw_hist_stints AS SELECT * FROM raw_stints WHERE FALSE;")
-    con.execute(
-        f"""
-        CREATE TABLE raw_possessions AS
-        SELECT * FROM read_csv_auto('{POSSESSIONS}', header=true);
-        """
-    )
+    if _is_lfs_pointer(POSSESSIONS):
+        print(f"WARNING: {POSSESSIONS} is an LFS pointer — creating empty raw_possessions from historical schema.")
+        if HIST_POSSESSIONS.exists():
+            con.execute(f"CREATE TABLE raw_possessions AS SELECT * FROM read_csv_auto('{HIST_POSSESSIONS}', header=true) WHERE FALSE;")
+        else:
+            con.execute("CREATE TABLE raw_possessions (game_id VARCHAR, poss_index BIGINT, offense_team BIGINT, defense_team BIGINT, off_p1 BIGINT, off_p2 BIGINT, off_p3 BIGINT, off_p4 BIGINT, off_p5 BIGINT, def_p1 BIGINT, def_p2 BIGINT, def_p3 BIGINT, def_p4 BIGINT, def_p5 BIGINT, points DOUBLE, points_adj DOUBLE, ended_by VARCHAR, period BIGINT, date VARCHAR)")
+    else:
+        con.execute(
+            f"""
+            CREATE TABLE raw_possessions AS
+            SELECT * FROM read_csv_auto('{POSSESSIONS}', header=true);
+            """
+        )
     if HIST_POSSESSIONS.exists():
         con.execute(
             f"""

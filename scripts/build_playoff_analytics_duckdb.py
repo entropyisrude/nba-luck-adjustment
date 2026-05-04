@@ -8,20 +8,33 @@ import csv
 import duckdb
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
 DATA_DIR = ROOT / "data"
-BOX_ROOT = Path("/mnt/c/users/dave/Downloads/nba-boxscore-data")
+# External boxscore data — optional, falls back gracefully when not present.
+_BOX_ROOT_CANDIDATES = [
+    Path(os.environ.get("NBA_BOX_ROOT", "")),
+    Path("/mnt/c/users/dave/Downloads/nba-boxscore-data"),
+    Path("C:/Users/Dave/Downloads/nba-boxscore-data"),
+]
+BOX_ROOT = next((p for p in _BOX_ROOT_CANDIDATES if p.exists()), Path(""))
 
 FINAL_DB_PATH = Path(os.environ.get("NBA_PLAYOFF_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics_playoffs.duckdb")))
-BUILD_DB_PATH = Path(os.environ.get("NBA_PLAYOFF_ANALYTICS_BUILD_PATH", "/tmp/nba_analytics_playoffs_build.duckdb"))
+_default_build = str(Path(os.environ.get("TEMP", "/tmp")) / "nba_analytics_playoffs_build.duckdb")
+BUILD_DB_PATH = Path(os.environ.get("NBA_PLAYOFF_ANALYTICS_BUILD_PATH", _default_build))
 
 PLAYOFF_ONOFF = DATA_DIR / "adjusted_onoff_playoffs.csv"
 PLAYOFF_STINTS = DATA_DIR / "stints_playoffs.csv"
 PLAYOFF_POSSESSIONS = DATA_DIR / "possessions_playoffs.csv"
 MODERN_PLAYOFF_BOX = BOX_ROOT / "NBA-Data-2010-2024" / "play_off_box_scores_2010_2024.csv"
 KAGGLE_TRADITIONAL = BOX_ROOT / "kaggle-traditional" / "traditional.csv"
-PLAYER_RIM_SIGNATURES = Path("/mnt/c/users/dave/player_rim_signatures.csv")
+_rim_sig_candidates = [
+    Path("/mnt/c/users/dave/player_rim_signatures.csv"),
+    Path("C:/Users/Dave/player_rim_signatures.csv"),
+    DATA_DIR / "player_rim_signatures.csv",
+]
+PLAYER_RIM_SIGNATURES = next((p for p in _rim_sig_candidates if p.exists()), DATA_DIR / "player_rim_signatures.csv")
 PLAYER_RIM_DEFENSE_BY_SEASON = DATA_DIR / "player_rim_defense_by_season.csv"
+RECENT_PLAYER_BOX = DATA_DIR / "player_boxscore_stats.csv"
 
 
 TEAM_ID_TO_ABBR = {
@@ -91,16 +104,59 @@ def main() -> None:
             WHERE FALSE
             """
         )
-    con.execute(f"CREATE TABLE raw_playoff_box_modern AS SELECT * FROM read_csv_auto('{MODERN_PLAYOFF_BOX}', header=true, sample_size=-1)")
-    con.execute(
-        f"""
-        CREATE TABLE raw_playoff_box_kaggle AS
-        SELECT * FROM read_csv_auto('{KAGGLE_TRADITIONAL}', header=true, sample_size=-1)
-        WHERE lower(type) = 'playoff'
-        """
-    )
-    con.execute(f"CREATE TABLE raw_player_rim_signatures AS SELECT * FROM read_csv_auto('{PLAYER_RIM_SIGNATURES}', header=true, sample_size=-1)")
-    con.execute(f"CREATE TABLE raw_player_rim_defense_by_season AS SELECT * FROM read_csv_auto('{PLAYER_RIM_DEFENSE_BY_SEASON}', header=true, sample_size=-1)")
+    if MODERN_PLAYOFF_BOX.exists():
+        con.execute(f"CREATE TABLE raw_playoff_box_modern AS SELECT * FROM read_csv_auto('{MODERN_PLAYOFF_BOX}', header=true, sample_size=-1)")
+    else:
+        print(f"WARNING: {MODERN_PLAYOFF_BOX} not found — creating empty raw_playoff_box_modern.")
+        con.execute("""
+            CREATE TABLE raw_playoff_box_modern (
+                game_date VARCHAR, gameId VARCHAR, teamId BIGINT, teamTricode VARCHAR,
+                personId BIGINT, personName VARCHAR, points DOUBLE,
+                reboundsTotal DOUBLE, reboundsOffensive DOUBLE, reboundsDefensive DOUBLE,
+                assists DOUBLE, steals DOUBLE, blocks DOUBLE, turnovers DOUBLE,
+                foulsPersonal DOUBLE, fieldGoalsMade DOUBLE, fieldGoalsAttempted DOUBLE,
+                threePointersMade DOUBLE, threePointersAttempted DOUBLE,
+                freeThrowsMade DOUBLE, freeThrowsAttempted DOUBLE
+            )
+        """)
+    if KAGGLE_TRADITIONAL.exists():
+        con.execute(
+            f"""
+            CREATE TABLE raw_playoff_box_kaggle AS
+            SELECT * RENAME ("3PM" AS fg3m_raw, "3PA" AS fg3a_raw)
+            FROM read_csv_auto('{KAGGLE_TRADITIONAL}', header=true, sample_size=-1)
+            WHERE lower(type) = 'playoff'
+            """
+        )
+    else:
+        print(f"WARNING: {KAGGLE_TRADITIONAL} not found — creating empty raw_playoff_box_kaggle.")
+        con.execute("""
+            CREATE TABLE raw_playoff_box_kaggle (
+                date VARCHAR, gameid VARCHAR, home VARCHAR, away VARCHAR, type VARCHAR,
+                team VARCHAR, playerid BIGINT, player VARCHAR,
+                PTS DOUBLE, REB DOUBLE, OREB DOUBLE, DREB DOUBLE, AST DOUBLE,
+                STL DOUBLE, BLK DOUBLE, TOV DOUBLE, PF DOUBLE,
+                FGM DOUBLE, FGA DOUBLE, fg3m_raw DOUBLE, fg3a_raw DOUBLE, FTM DOUBLE, FTA DOUBLE
+            )
+        """)
+    if PLAYER_RIM_SIGNATURES.exists():
+        con.execute(f"CREATE TABLE raw_player_rim_signatures AS SELECT * FROM read_csv_auto('{PLAYER_RIM_SIGNATURES}', header=true, sample_size=-1)")
+    else:
+        con.execute("CREATE TABLE raw_player_rim_signatures (player_id BIGINT, season VARCHAR, rim_attempts DOUBLE, rim_fg_pct DOUBLE)")
+    if PLAYER_RIM_DEFENSE_BY_SEASON.exists():
+        con.execute(f"CREATE TABLE raw_player_rim_defense_by_season AS SELECT * FROM read_csv_auto('{PLAYER_RIM_DEFENSE_BY_SEASON}', header=true, sample_size=-1)")
+    else:
+        con.execute("CREATE TABLE raw_player_rim_defense_by_season (player_id BIGINT, season VARCHAR)")
+    if RECENT_PLAYER_BOX.exists():
+        con.execute(
+            f"""
+            CREATE TABLE raw_recent_playoff_box AS
+            SELECT * FROM read_csv_auto('{RECENT_PLAYER_BOX}', header=true, sample_size=-1)
+            WHERE CAST(game_id AS VARCHAR) LIKE '4%'
+            """
+        )
+    else:
+        con.execute("CREATE TABLE raw_recent_playoff_box (date VARCHAR, game_id VARCHAR, team_id BIGINT, team_abbr VARCHAR, player_id BIGINT, player_name VARCHAR, starter BIGINT, minutes VARCHAR, pts BIGINT, reb BIGINT, oreb BIGINT, dreb BIGINT, ast BIGINT, stl BIGINT, blk BIGINT, tov BIGINT, pf BIGINT, fgm BIGINT, fga BIGINT, fg3m BIGINT, fg3a BIGINT, ftm BIGINT, fta BIGINT)")
 
     con.execute(
         """
@@ -234,11 +290,37 @@ def main() -> None:
                 CAST(PF AS INTEGER) AS pf,
                 CAST(FGM AS INTEGER) AS fgm,
                 CAST(FGA AS INTEGER) AS fga,
-                CAST("3PM" AS INTEGER) AS fg3m,
-                CAST("3PA" AS INTEGER) AS fg3a,
+                CAST(fg3m_raw AS INTEGER) AS fg3m,
+                CAST(fg3a_raw AS INTEGER) AS fg3a,
                 CAST(FTM AS INTEGER) AS ftm,
                 CAST(FTA AS INTEGER) AS fta
             FROM raw_playoff_box_kaggle
+        ),
+        recent_box AS (
+            SELECT
+                CAST(date AS DATE) AS date,
+                CAST(game_id AS VARCHAR) AS game_id,
+                CAST(team_id AS BIGINT) AS team_id,
+                CAST(team_abbr AS VARCHAR) AS team_abbr,
+                CAST(player_id AS BIGINT) AS player_id,
+                CAST(player_name AS VARCHAR) AS player_name,
+                CAST(CASE WHEN CAST(starter AS VARCHAR) IN ('1','true','True') THEN true ELSE false END AS BOOLEAN) AS starter,
+                CAST(pts AS INTEGER) AS pts,
+                CAST(reb AS INTEGER) AS reb,
+                CAST(oreb AS INTEGER) AS oreb,
+                CAST(dreb AS INTEGER) AS dreb,
+                CAST(ast AS INTEGER) AS ast,
+                CAST(stl AS INTEGER) AS stl,
+                CAST(blk AS INTEGER) AS blk,
+                CAST(tov AS INTEGER) AS tov,
+                CAST(pf AS INTEGER) AS pf,
+                CAST(fgm AS INTEGER) AS fgm,
+                CAST(fga AS INTEGER) AS fga,
+                CAST(fg3m AS INTEGER) AS fg3m,
+                CAST(fg3a AS INTEGER) AS fg3a,
+                CAST(ftm AS INTEGER) AS ftm,
+                CAST(fta AS INTEGER) AS fta
+            FROM raw_recent_playoff_box
         ),
         player_base AS (
             SELECT
@@ -293,6 +375,12 @@ def main() -> None:
                 rd.rim_dfg_pct_expected AS rd_rim_dfg_pct_expected,
                 rd.rim_dfg_pct_diff AS rd_rim_dfg_pct_diff,
                 rd.rim_dfg_plusminus AS rd_rim_dfg_plusminus,
+                rb.team_abbr AS rb_team_abbr,
+                rb.player_name AS rb_player_name,
+                rb.starter AS rb_starter,
+                rb.pts AS rb_pts, rb.reb AS rb_reb, rb.oreb AS rb_oreb, rb.dreb AS rb_dreb,
+                rb.ast AS rb_ast, rb.stl AS rb_stl, rb.blk AS rb_blk, rb.tov AS rb_tov, rb.pf AS rb_pf,
+                rb.fgm AS rb_fgm, rb.fga AS rb_fga, rb.fg3m AS rb_fg3m, rb.fg3a AS rb_fg3a, rb.ftm AS rb_ftm, rb.fta AS rb_fta,
                 pp.on_possessions AS pp_on_possessions,
                 pa.player_id AS pa_player_id,
                 gt.home_team, gt.away_team, gt.home_pts_actual, gt.away_pts_actual, gt.home_pts_adj, gt.away_pts_adj
@@ -303,6 +391,8 @@ def main() -> None:
               ON p.game_id = mb.game_id AND p.player_id = mb.player_id
             LEFT JOIN kaggle_box kb
               ON p.game_id = kb.game_id AND p.player_id = kb.player_id
+            LEFT JOIN recent_box rb
+              ON p.game_id = rb.game_id AND p.player_id = rb.player_id
             LEFT JOIN raw_player_rim_signatures rs
               ON p.player_id = CAST(rs.player_id AS BIGINT)
             LEFT JOIN raw_player_rim_defense_by_season rd
@@ -320,60 +410,60 @@ def main() -> None:
                 season,
                 game_id,
                 player_id,
-                COALESCE(mb_player_name, kb_player_name, player_name) AS player_name,
+                COALESCE(mb_player_name, kb_player_name, rb_player_name, player_name) AS player_name,
                 team_id,
-                COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) AS team_abbr,
+                COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) AS team_abbr,
                 CAST(NULL AS BIGINT) AS opp_team_id,
                 CASE
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = home_team THEN away_team
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = away_team THEN home_team
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = home_team THEN away_team
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = away_team THEN home_team
                     ELSE NULL
                 END AS opp_team_abbr,
                 CASE
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = home_team THEN 'home'
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = away_team THEN 'away'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = home_team THEN 'home'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = away_team THEN 'away'
                     ELSE NULL
                 END AS home_away,
                 CASE
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = home_team AND home_pts_actual > away_pts_actual THEN 'W'
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = home_team AND home_pts_actual < away_pts_actual THEN 'L'
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = away_team AND away_pts_actual > home_pts_actual THEN 'W'
-                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, tm_team_abbr) = away_team AND away_pts_actual < home_pts_actual THEN 'L'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = home_team AND home_pts_actual > away_pts_actual THEN 'W'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = home_team AND home_pts_actual < away_pts_actual THEN 'L'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = away_team AND away_pts_actual > home_pts_actual THEN 'W'
+                    WHEN COALESCE(mb_team_abbr, kb_team_abbr, rb_team_abbr, tm_team_abbr) = away_team AND away_pts_actual < home_pts_actual THEN 'L'
                     ELSE NULL
                 END AS win_loss,
-                COALESCE(mb_starter, kb_starter) AS starter,
+                COALESCE(mb_starter, kb_starter, rb_starter) AS starter,
                 minutes,
-                COALESCE(mb_pts, kb_pts) AS pts,
-                COALESCE(mb_reb, kb_reb) AS reb,
-                COALESCE(mb_oreb, kb_oreb) AS oreb,
-                COALESCE(mb_dreb, kb_dreb) AS dreb,
-                COALESCE(mb_ast, kb_ast) AS ast,
-                COALESCE(mb_stl, kb_stl) AS stl,
-                COALESCE(mb_blk, kb_blk) AS blk,
-                COALESCE(mb_tov, kb_tov) AS tov,
-                COALESCE(mb_pf, kb_pf) AS pf,
-                COALESCE(mb_fgm, kb_fgm) AS fgm,
-                COALESCE(mb_fga, kb_fga) AS fga,
-                COALESCE(mb_fg3m, kb_fg3m) AS fg3m,
-                COALESCE(mb_fg3a, kb_fg3a) AS fg3a,
-                COALESCE(mb_ftm, kb_ftm) AS ftm,
-                COALESCE(mb_fta, kb_fta) AS fta,
-                CAST(COALESCE(mb_fgm, kb_fgm, 0) - COALESCE(mb_fg3m, kb_fg3m, 0) AS INTEGER) AS fg2m,
-                CAST(COALESCE(mb_fga, kb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, 0) AS INTEGER) AS fg2a,
+                COALESCE(mb_pts, kb_pts, rb_pts) AS pts,
+                COALESCE(mb_reb, kb_reb, rb_reb) AS reb,
+                COALESCE(mb_oreb, kb_oreb, rb_oreb) AS oreb,
+                COALESCE(mb_dreb, kb_dreb, rb_dreb) AS dreb,
+                COALESCE(mb_ast, kb_ast, rb_ast) AS ast,
+                COALESCE(mb_stl, kb_stl, rb_stl) AS stl,
+                COALESCE(mb_blk, kb_blk, rb_blk) AS blk,
+                COALESCE(mb_tov, kb_tov, rb_tov) AS tov,
+                COALESCE(mb_pf, kb_pf, rb_pf) AS pf,
+                COALESCE(mb_fgm, kb_fgm, rb_fgm) AS fgm,
+                COALESCE(mb_fga, kb_fga, rb_fga) AS fga,
+                COALESCE(mb_fg3m, kb_fg3m, rb_fg3m) AS fg3m,
+                COALESCE(mb_fg3a, kb_fg3a, rb_fg3a) AS fg3a,
+                COALESCE(mb_ftm, kb_ftm, rb_ftm) AS ftm,
+                COALESCE(mb_fta, kb_fta, rb_fta) AS fta,
+                CAST(COALESCE(mb_fgm, kb_fgm, rb_fgm, 0) - COALESCE(mb_fg3m, kb_fg3m, rb_fg3m, 0) AS INTEGER) AS fg2m,
+                CAST(COALESCE(mb_fga, kb_fga, rb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, rb_fg3a, 0) AS INTEGER) AS fg2a,
                 CASE
-                    WHEN COALESCE(mb_fga, kb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, 0) > 0
-                    THEN (COALESCE(mb_fgm, kb_fgm, 0) - COALESCE(mb_fg3m, kb_fg3m, 0)) * 1.0 /
-                         (COALESCE(mb_fga, kb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, 0))
+                    WHEN COALESCE(mb_fga, kb_fga, rb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, rb_fg3a, 0) > 0
+                    THEN (COALESCE(mb_fgm, kb_fgm, rb_fgm, 0) - COALESCE(mb_fg3m, kb_fg3m, rb_fg3m, 0)) * 1.0 /
+                         (COALESCE(mb_fga, kb_fga, rb_fga, 0) - COALESCE(mb_fg3a, kb_fg3a, rb_fg3a, 0))
                     ELSE NULL
                 END AS fg2_pct,
                 CASE
-                    WHEN COALESCE(mb_fg3a, kb_fg3a, 0) > 0
-                    THEN COALESCE(mb_fg3m, kb_fg3m, 0) * 1.0 / COALESCE(mb_fg3a, kb_fg3a, 0)
+                    WHEN COALESCE(mb_fg3a, kb_fg3a, rb_fg3a, 0) > 0
+                    THEN COALESCE(mb_fg3m, kb_fg3m, rb_fg3m, 0) * 1.0 / COALESCE(mb_fg3a, kb_fg3a, rb_fg3a, 0)
                     ELSE NULL
                 END AS fg3_pct,
                 CASE
-                    WHEN COALESCE(mb_fta, kb_fta, 0) > 0
-                    THEN COALESCE(mb_ftm, kb_ftm, 0) * 1.0 / COALESCE(mb_fta, kb_fta, 0)
+                    WHEN COALESCE(mb_fta, kb_fta, rb_fta, 0) > 0
+                    THEN COALESCE(mb_ftm, kb_ftm, rb_ftm, 0) * 1.0 / COALESCE(mb_fta, kb_fta, rb_fta, 0)
                     ELSE NULL
                 END AS ft_pct,
                 CAST(0 AS INTEGER) AS assisted_2pm,
@@ -455,10 +545,15 @@ def main() -> None:
                 FROM normalized
             )
             WHERE rn = 1
+        ),
+        with_team_poss AS (
+            SELECT
+                * EXCLUDE(source_priority, rn),
+                SUM(on_possessions) OVER (PARTITION BY game_id, team_id) / 5.0 AS team_possessions
+            FROM deduped
         )
-        SELECT
-            * EXCLUDE(source_priority, rn)
-        FROM deduped
+        SELECT *
+        FROM with_team_poss
         WHERE COALESCE(minutes, 0) > 0
           AND pts IS NOT NULL
         """
