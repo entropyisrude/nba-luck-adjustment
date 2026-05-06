@@ -17,19 +17,34 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
     if source_df.empty:
         return '<tr><td colspan="12" style="text-align:center;color:#888;">No games yet</td></tr>'
 
-    home_luck = source_df.groupby('home_team').agg({
+    df = source_df.copy()
+    df['game_poss_est'] = (df['home_pts_actual'] + df['away_pts_actual']) / 2
+
+    home_luck = df.groupby('home_team').agg({
         'margin_delta': 'sum',
         'home_pts_adj': 'sum',
+        'away_pts_adj': 'sum',
         'home_pts_actual': 'sum',
+        'game_poss_est': 'sum',
         'game_id': 'count'
-    }).rename(columns={'game_id': 'home_games', 'margin_delta': 'home_luck'})
+    }).rename(columns={
+        'game_id': 'home_games', 'margin_delta': 'home_luck',
+        'home_pts_adj': 'home_pts_adj_for', 'away_pts_adj': 'home_pts_adj_against',
+        'game_poss_est': 'home_poss_est',
+    })
 
-    away_luck = source_df.groupby('away_team').agg({
+    away_luck = df.groupby('away_team').agg({
         'margin_delta': lambda x: -x.sum(),
         'away_pts_adj': 'sum',
+        'home_pts_adj': 'sum',
         'away_pts_actual': 'sum',
+        'game_poss_est': 'sum',
         'game_id': 'count'
-    }).rename(columns={'game_id': 'away_games', 'margin_delta': 'away_luck'})
+    }).rename(columns={
+        'game_id': 'away_games', 'margin_delta': 'away_luck',
+        'away_pts_adj': 'away_pts_adj_for', 'home_pts_adj': 'away_pts_adj_against',
+        'game_poss_est': 'away_poss_est',
+    })
 
     teams = home_luck.join(away_luck, how='outer').fillna(0)
     teams['total_luck'] = teams['home_luck'] + teams['away_luck']
@@ -82,6 +97,14 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
     teams['opp_3p_exp_pct'] = (teams['opp_3pm_exp'] / teams['opp_3pa'] * 100).round(1)
     teams['team_3p_pct'] = (teams['team_3pm'] / teams['team_3pa'] * 100).round(1)
     teams['team_3p_exp_pct'] = (teams['team_3pm_exp'] / teams['team_3pa'] * 100).round(1)
+
+    total_poss = teams['home_poss_est'].fillna(0) + teams['away_poss_est'].fillna(0)
+    total_adj_for = teams['home_pts_adj_for'].fillna(0) + teams['away_pts_adj_for'].fillna(0)
+    total_adj_against = teams['home_pts_adj_against'].fillna(0) + teams['away_pts_adj_against'].fillna(0)
+    teams['adj_ortg'] = (total_adj_for / total_poss * 100).round(1)
+    teams['adj_drtg'] = (total_adj_against / total_poss * 100).round(1)
+    teams['adj_nrtg'] = (teams['adj_ortg'] - teams['adj_drtg']).round(1)
+
     teams = teams.sort_values('wins', ascending=False)
 
     rows = ""
@@ -101,7 +124,11 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
         net_diff = team_diff - opp_diff
         net_diff_class = "positive" if net_diff > 0 else ("negative" if net_diff < 0 else "")
         net_diff_str = f"{net_diff:+.1f}%"
-        rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}" data-teamexp="{row['team_3p_exp_pct']:.1f}" data-teamact="{row['team_3p_pct']:.1f}" data-teamdiff="{team_diff:.1f}" data-netdiff="{net_diff:.1f}">
+        adj_ortg = row['adj_ortg']
+        adj_drtg = row['adj_drtg']
+        adj_nrtg = row['adj_nrtg']
+        nrtg_class = "negative" if adj_nrtg > 0 else ("positive" if adj_nrtg < 0 else "")
+        rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}" data-teamexp="{row['team_3p_exp_pct']:.1f}" data-teamact="{row['team_3p_pct']:.1f}" data-teamdiff="{team_diff:.1f}" data-netdiff="{net_diff:.1f}" data-adjortg="{adj_ortg:.1f}" data-adjdrtg="{adj_drtg:.1f}" data-adjnrtg="{adj_nrtg:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
             <td>{record}</td>
@@ -114,6 +141,9 @@ def _build_team_rows(source_df: pd.DataFrame) -> str:
             <td>{row['team_3p_pct']:.1f}%</td>
             <td class="{team_diff_class}">{team_diff_str}</td>
             <td class="{net_diff_class}">{net_diff_str}</td>
+            <td>{adj_ortg:.1f}</td>
+            <td>{adj_drtg:.1f}</td>
+            <td class="{nrtg_class}">{adj_nrtg:+.1f}</td>
         </tr>
 """
     return rows
