@@ -12,11 +12,11 @@ ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 # External boxscore data — optional, falls back gracefully when not present.
 _BOX_ROOT_CANDIDATES = [
-    Path(os.environ.get("NBA_BOX_ROOT", "")),
+    Path(os.environ["NBA_BOX_ROOT"]) if os.environ.get("NBA_BOX_ROOT") else None,
     Path("/mnt/c/users/dave/Downloads/nba-boxscore-data"),
     Path("C:/Users/Dave/Downloads/nba-boxscore-data"),
 ]
-BOX_ROOT = next((p for p in _BOX_ROOT_CANDIDATES if p.exists()), Path(""))
+BOX_ROOT = next((p for p in _BOX_ROOT_CANDIDATES if p is not None and p.exists()), Path(""))
 
 FINAL_DB_PATH = Path(os.environ.get("NBA_PLAYOFF_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics_playoffs.duckdb")))
 _default_build = str(Path(os.environ.get("TEMP", "/tmp")) / "nba_analytics_playoffs_build.duckdb")

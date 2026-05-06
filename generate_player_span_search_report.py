@@ -22,6 +22,7 @@ REGULAR_GAME_SEARCH_HREF = os.environ.get("REGULAR_GAME_SEARCH_HREF", "game-sear
 REGULAR_SPAN_SEARCH_HREF = os.environ.get("REGULAR_SPAN_SEARCH_HREF", "player-span-search.html")
 PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-search-playoffs.html")
 PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
+GAME_ID_PREFIX = os.environ.get("PLAYER_SPAN_SEARCH_GAME_ID_PREFIX", "2")
 SOURCE_LABEL = os.environ.get("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
 ALLOW_PER100 = os.environ.get("PLAYER_SPAN_SEARCH_ALLOW_PER100", "1") != "0"
 PLAYER_RIM_ASSISTS_BY_SEASON = DATA_DIR / "player_rim_assists_by_season.csv"
@@ -186,7 +187,7 @@ def generate_player_span_search_report() -> Path:
             on_off_adjusted
         FROM player_game_facts
         WHERE pts IS NOT NULL
-          AND game_id LIKE '2%'
+          AND game_id LIKE '{game_id_prefix}%'
         ORDER BY date DESC, pts DESC, plus_minus_adjusted DESC
         """
         .format(
@@ -216,6 +217,7 @@ def generate_player_span_search_report() -> Path:
             other_rim_assists_created_per_game=select_col("other_rim_assists_created_per_game"),
             rim_assists_strict_per_game=select_col("rim_assists_strict_per_game"),
             rim_assists_all_per_game=select_col("rim_assists_all_per_game"),
+            game_id_prefix=GAME_ID_PREFIX,
         )
     ).fetchall()
     cols = [d[0] for d in con.description]
@@ -316,7 +318,7 @@ def generate_player_span_search_report() -> Path:
                         out_row[idx] = player_old[idx]
             merged_rows[key] = out_row
         for key, old_row in existing_by_key.items():
-            if key not in merged_rows:
+            if key not in merged_rows and str(key[0]).startswith(GAME_ID_PREFIX):
                 merged_rows[key] = old_row
         season_rows = sorted(
             merged_rows.values(),
@@ -934,6 +936,8 @@ def generate_player_span_search_report() -> Path:
       expr2: {{ left: "stl", op: "+", right: "blk", label: "" }},
     }};
     const displayModes = Object.fromEntries(DISPLAY_TOGGLE_KEYS.map(key => [key, "match"]));
+    displayModes["plus_minus_actual"] = "per100";
+    displayModes["plus_minus_adjusted"] = "per100";
     let lastResults = [];
     const CHUNK_BASE = window.location.pathname.includes('/data/') ? '{CHUNK_DIR.name}/' : 'data/{CHUNK_DIR.name}/';
     const BASE_HEADER_ROW = document.querySelector("#search-table thead tr");

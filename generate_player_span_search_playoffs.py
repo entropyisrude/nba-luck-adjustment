@@ -10,6 +10,7 @@ os.environ.setdefault("PLAYER_SPAN_SEARCH_CHUNK_DIR", os.path.join(ROOT, "data",
 os.environ.setdefault("PLAYER_SPAN_SEARCH_PAGE_TITLE", "Player Span Search: Playoffs")
 os.environ.setdefault("PLAYER_GAME_SEARCH_HREF", "game-search-playoffs.html")
 os.environ.setdefault("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics_playoffs.duckdb")
+os.environ.setdefault("PLAYER_SPAN_SEARCH_GAME_ID_PREFIX", "4")
 
 from generate_player_span_search_report import generate_player_span_search_report
 
