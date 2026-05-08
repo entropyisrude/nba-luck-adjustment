@@ -164,15 +164,52 @@ def main() -> None:
         con.execute(f"ATTACH '{regular_db}' AS rs_db (READ_ONLY)")
         con.execute("""
             CREATE TABLE player_bio AS
+            WITH common AS (
+                SELECT
+                    CAST(person_id AS BIGINT) AS player_id,
+                    CAST(height AS VARCHAR) AS listed_height,
+                    TRY_CAST(
+                        CASE
+                            WHEN height LIKE '%-%' THEN
+                                CAST(SPLIT_PART(height, '-', 1) AS INTEGER) * 12
+                                + CAST(SPLIT_PART(height, '-', 2) AS INTEGER)
+                            ELSE NULL
+                        END AS INTEGER
+                    ) AS height_inches,
+                    TRY_CAST(substr(CAST(birthdate AS VARCHAR), 1, 10) AS DATE) AS birthdate,
+                    TRY_CAST(from_year AS INTEGER) AS from_year,
+                    TRY_CAST(draft_year AS INTEGER) AS draft_year,
+                    TRY_CAST(draft_number AS INTEGER) AS draft_number
+                FROM rs_db.raw_common_player_info
+            ),
+            draft AS (
+                SELECT
+                    CAST(person_id AS BIGINT) AS player_id,
+                    TRY_CAST(overall_pick AS INTEGER) AS draft_overall_pick
+                FROM rs_db.raw_draft_history
+            ),
+            recent AS (
+                SELECT
+                    player_id,
+                    listed_height,
+                    height_inches,
+                    TRY_CAST(substr(CAST(birthdate AS VARCHAR), 1, 10) AS DATE) AS birthdate,
+                    from_year,
+                    TRY_CAST(draft_year AS INTEGER) AS draft_year,
+                    TRY_CAST(draft_overall_pick AS INTEGER) AS draft_overall_pick
+                FROM rs_db.raw_player_metadata_official_recent
+            )
             SELECT
-                player_id,
-                listed_height,
-                height_inches,
-                TRY_CAST(substr(CAST(birthdate AS VARCHAR), 1, 10) AS DATE) AS birthdate,
-                from_year,
-                draft_year,
-                draft_overall_pick
-            FROM rs_db.raw_player_metadata_official_recent
+                c.player_id,
+                COALESCE(r.listed_height, c.listed_height) AS listed_height,
+                COALESCE(r.height_inches, c.height_inches) AS height_inches,
+                COALESCE(r.birthdate, c.birthdate) AS birthdate,
+                COALESCE(r.from_year, c.from_year) AS from_year,
+                COALESCE(r.draft_year, c.draft_year) AS draft_year,
+                COALESCE(r.draft_overall_pick, d.draft_overall_pick, c.draft_number) AS draft_overall_pick
+            FROM common c
+            LEFT JOIN draft d ON c.player_id = d.player_id
+            LEFT JOIN recent r ON c.player_id = r.player_id
         """)
         con.execute("DETACH rs_db")
     else:
