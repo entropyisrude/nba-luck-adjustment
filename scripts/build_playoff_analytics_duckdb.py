@@ -158,6 +158,36 @@ def main() -> None:
     else:
         con.execute("CREATE TABLE raw_recent_playoff_box (date VARCHAR, game_id VARCHAR, team_id BIGINT, team_abbr VARCHAR, player_id BIGINT, player_name VARCHAR, starter BIGINT, minutes VARCHAR, pts BIGINT, reb BIGINT, oreb BIGINT, dreb BIGINT, ast BIGINT, stl BIGINT, blk BIGINT, tov BIGINT, pf BIGINT, fgm BIGINT, fga BIGINT, fg3m BIGINT, fg3a BIGINT, ftm BIGINT, fta BIGINT)")
 
+    # Pull player bio data from the regular season DB if available
+    regular_db = DATA_DIR / "nba_analytics.duckdb"
+    if regular_db.exists():
+        con.execute(f"ATTACH '{regular_db}' AS rs_db (READ_ONLY)")
+        con.execute("""
+            CREATE TABLE player_bio AS
+            SELECT
+                player_id,
+                listed_height,
+                height_inches,
+                TRY_CAST(substr(CAST(birthdate AS VARCHAR), 1, 10) AS DATE) AS birthdate,
+                from_year,
+                draft_year,
+                draft_overall_pick
+            FROM rs_db.raw_player_metadata_official_recent
+        """)
+        con.execute("DETACH rs_db")
+    else:
+        con.execute("""
+            CREATE TABLE player_bio (
+                player_id BIGINT,
+                listed_height VARCHAR,
+                height_inches INTEGER,
+                birthdate DATE,
+                from_year INTEGER,
+                draft_year INTEGER,
+                draft_overall_pick INTEGER
+            )
+        """)
+
     con.execute(
         """
         CREATE TABLE player_game_facts AS
@@ -548,9 +578,31 @@ def main() -> None:
         ),
         with_team_poss AS (
             SELECT
-                * EXCLUDE(source_priority, rn),
-                SUM(on_possessions) OVER (PARTITION BY game_id, team_id) / 5.0 AS team_possessions
-            FROM deduped
+                d.* EXCLUDE(source_priority, rn),
+                SUM(d.on_possessions) OVER (PARTITION BY d.game_id, d.team_id) / 5.0 AS team_possessions,
+                b.listed_height,
+                b.height_inches,
+                CASE
+                    WHEN b.birthdate IS NOT NULL THEN
+                        CAST(EXTRACT(year FROM d.date) - EXTRACT(year FROM b.birthdate) AS INTEGER)
+                        - CASE
+                            WHEN (EXTRACT(month FROM d.date) < EXTRACT(month FROM b.birthdate))
+                              OR (EXTRACT(month FROM d.date) = EXTRACT(month FROM b.birthdate)
+                                  AND EXTRACT(day FROM d.date) < EXTRACT(day FROM b.birthdate))
+                            THEN 1 ELSE 0
+                          END
+                    ELSE NULL
+                END AS age,
+                CASE
+                    WHEN b.from_year IS NOT NULL THEN
+                        CAST(EXTRACT(year FROM d.date) AS INTEGER) - b.from_year
+                        - CASE WHEN EXTRACT(month FROM d.date) < 9 THEN 0 ELSE -1 END
+                    ELSE NULL
+                END AS career_year,
+                b.draft_year,
+                b.draft_overall_pick
+            FROM deduped d
+            LEFT JOIN player_bio b ON d.player_id = b.player_id
         )
         SELECT *
         FROM with_team_poss
