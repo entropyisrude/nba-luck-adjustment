@@ -210,7 +210,7 @@ def generate_playoff_series_report() -> Path:
   }}
   .series-grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
     gap: 16px;
     margin-bottom: 8px;
   }}
@@ -243,18 +243,20 @@ def generate_playoff_series_report() -> Path:
   .series-table th {{
     background: #f0f0f0;
     color: #444;
-    padding: 6px 8px;
+    padding: 6px 5px;
     text-align: right;
     font-weight: 600;
-    font-size: 0.82em;
+    font-size: 0.78em;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }}
   .series-table th:first-child {{ text-align: left; }}
   .series-table td {{
-    padding: 8px 8px;
+    padding: 8px 5px;
     border-bottom: 1px solid #f0f0f0;
     text-align: right;
+    white-space: nowrap;
   }}
   .series-table td.team-cell {{ text-align: left; }}
   .series-table tr:last-child td {{ border-bottom: none; }}
