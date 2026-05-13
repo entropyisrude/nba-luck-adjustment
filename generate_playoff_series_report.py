@@ -77,6 +77,7 @@ def _series_stats(games: pd.DataFrame) -> dict:
             "adj_nrtg": round((s["adj_for"] - s["adj_against"]) / p * 100, 1) if p else None,
             "act_ortg": round(s["act_for"] / p * 100, 1) if p else None,
             "act_drtg": round(s["act_against"] / p * 100, 1) if p else None,
+            "act_nrtg": round((s["act_for"] - s["act_against"]) / p * 100, 1) if p else None,
         }
     return result
 
@@ -97,20 +98,24 @@ def _series_card(teams_sorted: list[str], stats: dict, in_progress: bool) -> str
         header = f"{winner} def. {loser} &nbsp;<span class='record'>({ww}–{lw})</span>"
 
     def row_html(team: str, s: dict) -> str:
-        nrtg = s["adj_nrtg"]
-        nrtg_class = "positive" if nrtg and nrtg > 0 else ("negative" if nrtg and nrtg < 0 else "")
-        nrtg_str = f"{nrtg:+.1f}" if nrtg is not None else "—"
-        ortg = f"{s['adj_ortg']:.1f}" if s["adj_ortg"] is not None else "—"
-        drtg = f"{s['adj_drtg']:.1f}" if s["adj_drtg"] is not None else "—"
+        act_nrtg = s["act_nrtg"]
+        act_nrtg_class = "positive" if act_nrtg and act_nrtg > 0 else ("negative" if act_nrtg and act_nrtg < 0 else "")
+        act_nrtg_str = f"{act_nrtg:+.1f}" if act_nrtg is not None else "—"
+        adj_nrtg = s["adj_nrtg"]
+        adj_nrtg_class = "positive" if adj_nrtg and adj_nrtg > 0 else ("negative" if adj_nrtg and adj_nrtg < 0 else "")
+        adj_nrtg_str = f"{adj_nrtg:+.1f}" if adj_nrtg is not None else "—"
         act_ortg = f"{s['act_ortg']:.1f}" if s["act_ortg"] is not None else "—"
         act_drtg = f"{s['act_drtg']:.1f}" if s["act_drtg"] is not None else "—"
+        adj_ortg = f"{s['adj_ortg']:.1f}" if s["adj_ortg"] is not None else "—"
+        adj_drtg = f"{s['adj_drtg']:.1f}" if s["adj_drtg"] is not None else "—"
         return (
             f"<tr>"
             f"<td class='team-cell'><strong>{team}</strong></td>"
             f"<td>{act_ortg}</td><td>{act_drtg}</td>"
-            f"<td class='adj-col'>{ortg}</td>"
-            f"<td class='adj-col'>{drtg}</td>"
-            f"<td class='adj-col {nrtg_class}'>{nrtg_str}</td>"
+            f"<td class='{act_nrtg_class}'>{act_nrtg_str}</td>"
+            f"<td class='adj-col'>{adj_ortg}</td>"
+            f"<td class='adj-col'>{adj_drtg}</td>"
+            f"<td class='adj-col {adj_nrtg_class}'>{adj_nrtg_str}</td>"
             f"</tr>"
         )
 
@@ -123,6 +128,7 @@ def _series_card(teams_sorted: list[str], stats: dict, in_progress: bool) -> str
         <th></th>
         <th title="Actual offensive rating">OffRtg</th>
         <th title="Actual defensive rating">DefRtg</th>
+        <th title="Actual net rating">NetRtg</th>
         <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
         <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
         <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
