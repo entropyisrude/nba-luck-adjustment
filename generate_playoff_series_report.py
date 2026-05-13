@@ -129,9 +129,9 @@ def _series_card(teams_sorted: list[str], stats: dict, in_progress: bool) -> str
         <th title="Actual offensive rating">OffRtg</th>
         <th title="Actual defensive rating">DefRtg</th>
         <th title="Actual net rating">NetRtg</th>
-        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
-        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
-        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj Off</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj Def</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj Net</th>
       </tr>
     </thead>
     <tbody>
@@ -210,7 +210,7 @@ def generate_playoff_series_report() -> Path:
   }}
   .series-grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
     gap: 16px;
     margin-bottom: 8px;
   }}
