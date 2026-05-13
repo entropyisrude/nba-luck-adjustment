@@ -71,6 +71,7 @@ jobs:
           python generate_onoff_daily_boxscore_report.py
           python fetch_bbref_advanced.py
           python build_65_daily.py
+          python generate_playoff_series_report.py
 
       - name: Copy report to index.html
         run: |

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NBA Playoff Series Ratings — 2025-26</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f5f5f5;
+    color: #333;
+  }
+  h1 { color: #1a1a2e; margin-top: 0; }
+  .nav { margin-bottom: 18px; font-size: 0.9em; }
+  .nav a { color: #1a1a2e; text-decoration: none; }
+  .nav a:hover { text-decoration: underline; }
+  h2.round-heading {
+    color: #16213e;
+    margin: 32px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #1a1a2e;
+  }
+  .series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .series-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .series-card.in-progress {
+    border-left: 4px solid #f0a500;
+  }
+  .series-header {
+    background: #1a1a2e;
+    color: white;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+  .series-header .record {
+    font-weight: 400;
+    opacity: 0.85;
+    font-size: 0.9em;
+  }
+  .series-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+  }
+  .series-table th {
+    background: #f0f0f0;
+    color: #444;
+    padding: 6px 8px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.82em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .series-table th:first-child { text-align: left; }
+  .series-table td {
+    padding: 8px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+  }
+  .series-table td.team-cell { text-align: left; }
+  .series-table tr:last-child td { border-bottom: none; }
+  .adj-col { background: #fafaf2; }
+  .series-table th.adj-col { background: #efefdc; }
+  .positive { color: #28a745; font-weight: 700; }
+  .negative { color: #dc3545; font-weight: 700; }
+  .methodology {
+    background: #e8f4f8;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 0.87em;
+    margin-top: 30px;
+    color: #555;
+  }
+  .timestamp { color: #888; font-size: 0.82em; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="nav"><a href="index.html">← Back to main report</a></div>
+<h1>NBA Playoff Series — Luck-Adjusted Ratings</h1>
+<p style="color:#555;margin-top:-8px;">2025-26 &nbsp;·&nbsp; Adjusted for 3-point shooting luck</p>
+
+<h2 class="round-heading">First Round</h2>
+<div class="series-grid">
+
+<div class="series-card">
+  <div class="series-header">DET def. ORL &nbsp;<span class='record'>(4–3)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>DET</strong></td><td>102.4</td><td>97.6</td><td class='adj-col'>107.2</td><td class='adj-col'>99.9</td><td class='adj-col positive'>+7.3</td></tr>
+      <tr><td class='team-cell'><strong>ORL</strong></td><td>97.6</td><td>102.4</td><td class='adj-col'>99.9</td><td class='adj-col'>107.2</td><td class='adj-col negative'>-7.3</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">PHI def. BOS &nbsp;<span class='record'>(4–3)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>BOS</strong></td><td>101.4</td><td>98.6</td><td class='adj-col'>106.2</td><td class='adj-col'>100.0</td><td class='adj-col positive'>+6.1</td></tr>
+      <tr><td class='team-cell'><strong>PHI</strong></td><td>98.6</td><td>101.4</td><td class='adj-col'>100.0</td><td class='adj-col'>106.2</td><td class='adj-col negative'>-6.1</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">NYK def. ATL &nbsp;<span class='record'>(4–2)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>ATL</strong></td><td>92.0</td><td>108.0</td><td class='adj-col'>97.4</td><td class='adj-col'>107.5</td><td class='adj-col negative'>-10.1</td></tr>
+      <tr><td class='team-cell'><strong>NYK</strong></td><td>108.0</td><td>92.0</td><td class='adj-col'>107.5</td><td class='adj-col'>97.4</td><td class='adj-col positive'>+10.1</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">CLE def. TOR &nbsp;<span class='record'>(4–3)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>CLE</strong></td><td>100.8</td><td>99.2</td><td class='adj-col'>103.2</td><td class='adj-col'>101.1</td><td class='adj-col positive'>+2.1</td></tr>
+      <tr><td class='team-cell'><strong>TOR</strong></td><td>99.2</td><td>100.8</td><td class='adj-col'>101.1</td><td class='adj-col'>103.2</td><td class='adj-col negative'>-2.1</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">OKC def. PHX &nbsp;<span class='record'>(4–0)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>OKC</strong></td><td>107.6</td><td>92.4</td><td class='adj-col'>109.6</td><td class='adj-col'>93.6</td><td class='adj-col positive'>+16.0</td></tr>
+      <tr><td class='team-cell'><strong>PHX</strong></td><td>92.4</td><td>107.6</td><td class='adj-col'>93.6</td><td class='adj-col'>109.6</td><td class='adj-col negative'>-16.0</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">SAS def. POR &nbsp;<span class='record'>(4–1)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>POR</strong></td><td>94.2</td><td>105.8</td><td class='adj-col'>100.5</td><td class='adj-col'>101.0</td><td class='adj-col negative'>-0.6</td></tr>
+      <tr><td class='team-cell'><strong>SAS</strong></td><td>105.8</td><td>94.2</td><td class='adj-col'>101.0</td><td class='adj-col'>100.5</td><td class='adj-col positive'>+0.6</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">MIN def. DEN &nbsp;<span class='record'>(4–2)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>DEN</strong></td><td>97.9</td><td>102.1</td><td class='adj-col'>104.5</td><td class='adj-col'>104.3</td><td class='adj-col positive'>+0.2</td></tr>
+      <tr><td class='team-cell'><strong>MIN</strong></td><td>102.1</td><td>97.9</td><td class='adj-col'>104.3</td><td class='adj-col'>104.5</td><td class='adj-col negative'>-0.2</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card">
+  <div class="series-header">LAL def. HOU &nbsp;<span class='record'>(4–2)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>HOU</strong></td><td>98.7</td><td>101.3</td><td class='adj-col'>104.2</td><td class='adj-col'>100.5</td><td class='adj-col positive'>+3.8</td></tr>
+      <tr><td class='team-cell'><strong>LAL</strong></td><td>101.3</td><td>98.7</td><td class='adj-col'>100.5</td><td class='adj-col'>104.2</td><td class='adj-col negative'>-3.8</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+<h2 class="round-heading">Conference Semifinals</h2>
+<div class="series-grid">
+
+<div class="series-card  in-progress">
+  <div class="series-header">CLE vs DET &nbsp;<span class='record'>(1–2)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>CLE</strong></td><td>98.0</td><td>102.0</td><td class='adj-col'>101.5</td><td class='adj-col'>100.0</td><td class='adj-col positive'>+1.5</td></tr>
+      <tr><td class='team-cell'><strong>DET</strong></td><td>102.0</td><td>98.0</td><td class='adj-col'>100.0</td><td class='adj-col'>101.5</td><td class='adj-col negative'>-1.5</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card  in-progress">
+  <div class="series-header">NYK vs PHI &nbsp;<span class='record'>(3–0)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>NYK</strong></td><td>109.1</td><td>90.9</td><td class='adj-col'>108.3</td><td class='adj-col'>93.4</td><td class='adj-col positive'>+14.9</td></tr>
+      <tr><td class='team-cell'><strong>PHI</strong></td><td>90.9</td><td>109.1</td><td class='adj-col'>93.4</td><td class='adj-col'>108.3</td><td class='adj-col negative'>-14.9</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card  in-progress">
+  <div class="series-header">LAL vs OKC &nbsp;<span class='record'>(0–3)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>LAL</strong></td><td>91.2</td><td>108.8</td><td class='adj-col'>90.3</td><td class='adj-col'>105.3</td><td class='adj-col negative'>-15.0</td></tr>
+      <tr><td class='team-cell'><strong>OKC</strong></td><td>108.8</td><td>91.2</td><td class='adj-col'>105.3</td><td class='adj-col'>90.3</td><td class='adj-col positive'>+15.0</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="series-card  in-progress">
+  <div class="series-header">MIN vs SAS &nbsp;<span class='record'>(1–2)</span></div>
+  <table class="series-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th title="Actual offensive rating">OffRtg</th>
+        <th title="Actual defensive rating">DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj OffRtg</th>
+        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj DefRtg</th>
+        <th class="adj-col" title="3-point luck adjusted net rating">Adj NetRtg</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class='team-cell'><strong>MIN</strong></td><td>93.5</td><td>106.5</td><td class='adj-col'>95.6</td><td class='adj-col'>107.3</td><td class='adj-col negative'>-11.7</td></tr>
+      <tr><td class='team-cell'><strong>SAS</strong></td><td>106.5</td><td>93.5</td><td class='adj-col'>107.3</td><td class='adj-col'>95.6</td><td class='adj-col positive'>+11.7</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+
+<div class="methodology">
+  <strong>How it works:</strong> Offensive and defensive ratings are adjusted by replacing each team's actual 3-point makes with their statistically expected makes (based on shot location and volume), then recomputing the score. This removes randomness from 3-point shooting variance, leaving a more stable estimate of team quality.
+  Shaded columns (<strong>Adj OffRtg, Adj DefRtg, Adj NetRtg</strong>) are luck-adjusted; the first two columns show unadjusted actuals for comparison.
+  In-progress series are highlighted in orange.
+</div>
+
+<div class="timestamp">Generated 2026-05-13 07:57</div>
+</body>
+</html>
