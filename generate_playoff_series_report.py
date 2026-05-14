@@ -14,18 +14,31 @@ OUT_SITE = Path("playoff-series.html")
 
 ROUND_NAMES = {1: "First Round", 2: "Conference Semifinals", 3: "Conference Finals", 4: "NBA Finals"}
 BOX_CSV = DATA_DIR / "player_boxscore_stats.csv"
+POSS_CSV = DATA_DIR / "possessions_playoffs.csv"
 
 
 def _load_game_possessions() -> dict[str, float]:
-    """Return {game_id: avg_possessions} using four-factor formula per team."""
-    if not BOX_CSV.exists():
-        return {}
-    box = pd.read_csv(BOX_CSV, usecols=["game_id", "team_abbr", "fga", "fta", "oreb", "tov"])
-    box["game_id"] = box["game_id"].astype(str).str.lstrip("0")
-    team_game = box.groupby(["game_id", "team_abbr"], as_index=False).sum(numeric_only=True)
-    team_game["poss"] = team_game["fga"] - team_game["oreb"] + team_game["tov"] + 0.44 * team_game["fta"]
-    game_poss = team_game.groupby("game_id")["poss"].mean()
-    return game_poss.to_dict()
+    """Return {game_id: avg_possessions}, preferring PBP counts over four-factor formula."""
+    result: dict[str, float] = {}
+
+    # Four-factor formula from player boxscores (covers most games)
+    if BOX_CSV.exists():
+        box = pd.read_csv(BOX_CSV, usecols=["game_id", "team_abbr", "fga", "fta", "oreb", "tov"])
+        box["game_id"] = box["game_id"].astype(str).str.lstrip("0")
+        team_game = box.groupby(["game_id", "team_abbr"], as_index=False).sum(numeric_only=True)
+        team_game["poss"] = team_game["fga"] - team_game["oreb"] + team_game["tov"] + 0.44 * team_game["fta"]
+        for gid, poss in team_game.groupby("game_id")["poss"].mean().items():
+            result[str(gid)] = poss
+
+    # PBP actual possession counts — override formula values where available
+    if POSS_CSV.exists():
+        poss_df = pd.read_csv(POSS_CSV, usecols=["game_id", "offense_team"])
+        poss_df["game_id"] = poss_df["game_id"].astype(str).str.lstrip("0")
+        pbp_counts = poss_df.groupby(["game_id", "offense_team"]).size().reset_index(name="poss")
+        for gid, grp in pbp_counts.groupby("game_id"):
+            result[str(gid)] = grp["poss"].mean()
+
+    return result
 
 
 def _parse_game_id(game_id: str) -> tuple[str, int, int]:
