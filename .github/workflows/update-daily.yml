@@ -64,6 +64,11 @@ jobs:
         run: |
           python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
 
+      - name: Fetch player boxscores
+        continue-on-error: true
+        run: |
+          python scripts/build_player_boxscore_stats_csv.py
+
       - name: Generate derived reports
         run: |
           python generate_onoff_report.py

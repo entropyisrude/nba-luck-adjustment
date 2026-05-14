@@ -13,6 +13,19 @@ OUT_DATA = DATA_DIR / "playoff_series_report.html"
 OUT_SITE = Path("playoff-series.html")
 
 ROUND_NAMES = {1: "First Round", 2: "Conference Semifinals", 3: "Conference Finals", 4: "NBA Finals"}
+BOX_CSV = DATA_DIR / "player_boxscore_stats.csv"
+
+
+def _load_game_possessions() -> dict[str, float]:
+    """Return {game_id: avg_possessions} using four-factor formula per team."""
+    if not BOX_CSV.exists():
+        return {}
+    box = pd.read_csv(BOX_CSV, usecols=["game_id", "team_abbr", "fga", "fta", "oreb", "tov"])
+    box["game_id"] = box["game_id"].astype(str).str.lstrip("0")
+    team_game = box.groupby(["game_id", "team_abbr"], as_index=False).sum(numeric_only=True)
+    team_game["poss"] = team_game["fga"] - team_game["oreb"] + team_game["tov"] + 0.44 * team_game["fta"]
+    game_poss = team_game.groupby("game_id")["poss"].mean()
+    return game_poss.to_dict()
 
 
 def _parse_game_id(game_id: str) -> tuple[str, int, int]:
@@ -30,26 +43,24 @@ def _parse_game_id(game_id: str) -> tuple[str, int, int]:
         return "", 0, 0
 
 
-def _series_stats(games: pd.DataFrame) -> dict:
+def _series_stats(games: pd.DataFrame, game_poss: dict[str, float]) -> dict:
     """Compute per-team luck-adjusted and actual ratings for a series."""
     teams = sorted(set(games["home_team"]) | set(games["away_team"]))
     if len(teams) != 2:
         return {}
 
-    t1, t2 = teams[0], teams[1]
-    stats = {t: {"wins": 0, "games": 0,
-                 "adj_for": 0.0, "adj_against": 0.0,
-                 "act_for": 0.0, "act_against": 0.0,
-                 "poss": 0.0} for t in teams}
+    stats = {t: {"wins": 0, "adj_for": 0.0, "adj_against": 0.0,
+                 "act_for": 0.0, "act_against": 0.0, "poss": 0.0}
+             for t in teams}
 
     for _, row in games.iterrows():
-        poss = (row["home_pts_actual"] + row["away_pts_actual"]) / 2.0
+        gid = str(row["game_id"]).lstrip("0")
+        # Use four-factor possessions when available, fall back to points estimate
+        poss = game_poss.get(gid, (row["home_pts_actual"] + row["away_pts_actual"]) / 2.0)
         home, away = row["home_team"], row["away_team"]
         home_win = row["home_pts_actual"] > row["away_pts_actual"]
         for team, is_home in [(home, True), (away, False)]:
-            opp = away if is_home else home
             s = stats[team]
-            s["games"] += 1
             s["poss"] += poss
             if (is_home and home_win) or (not is_home and not home_win):
                 s["wins"] += 1
@@ -64,11 +75,10 @@ def _series_stats(games: pd.DataFrame) -> dict:
                 s["act_for"] += row["away_pts_actual"]
                 s["act_against"] += row["home_pts_actual"]
 
+    actual_games = len(games)
     result = {}
     for team, s in stats.items():
         p = s["poss"]
-        games_played = s["games"] // 2  # each game counted once per team
-        actual_games = len(games)
         result[team] = {
             "wins": s["wins"],
             "games": actual_games,
@@ -159,6 +169,7 @@ def generate_playoff_series_report() -> Path:
     playoff = pd.concat([playoff, parsed], axis=1)
 
     season_label = playoff["season"].mode()[0]
+    game_poss = _load_game_possessions()
 
     # Build sections per round
     body_html = ""
@@ -172,7 +183,7 @@ def generate_playoff_series_report() -> Path:
             teams = sorted(set(series_games["home_team"]) | set(series_games["away_team"]))
             if len(teams) != 2:
                 continue
-            stats = _series_stats(series_games)
+            stats = _series_stats(series_games, game_poss)
             if not stats:
                 continue
             wins = [stats[t]["wins"] for t in teams]
