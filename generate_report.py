@@ -10,15 +10,45 @@ from pathlib import Path
 from datetime import datetime
 
 TEMPLATE_PATH = Path("template.html")
+DATA_DIR = Path("data")
 
 
-def _build_team_rows(source_df: pd.DataFrame) -> str:
+def _load_game_possessions() -> dict[str, float]:
+    """Return {game_id: avg_possessions}, preferring PBP counts over four-factor formula."""
+    result: dict[str, float] = {}
+
+    box_csv = DATA_DIR / "player_boxscore_stats.csv"
+    if box_csv.exists():
+        box = pd.read_csv(box_csv, usecols=["game_id", "team_abbr", "fga", "fta", "oreb", "tov"])
+        box["game_id"] = box["game_id"].astype(str).str.lstrip("0")
+        tg = box.groupby(["game_id", "team_abbr"], as_index=False).sum(numeric_only=True)
+        tg["poss"] = tg["fga"] - tg["oreb"] + tg["tov"] + 0.44 * tg["fta"]
+        for gid, poss in tg.groupby("game_id")["poss"].mean().items():
+            result[str(gid)] = poss
+
+    poss_csv = DATA_DIR / "possessions_playoffs.csv"
+    if poss_csv.exists():
+        poss_df = pd.read_csv(poss_csv, usecols=["game_id", "offense_team"])
+        poss_df["game_id"] = poss_df["game_id"].astype(str).str.lstrip("0")
+        pbp = poss_df.groupby(["game_id", "offense_team"]).size().reset_index(name="poss")
+        for gid, grp in pbp.groupby("game_id"):
+            result[str(gid)] = grp["poss"].mean()
+
+    return result
+
+
+def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None) -> str:
     """Build HTML rows for the team rankings table from a given slice of games."""
     if source_df.empty:
         return '<tr><td colspan="12" style="text-align:center;color:#888;">No games yet</td></tr>'
 
     df = source_df.copy()
-    df['game_poss_est'] = (df['home_pts_actual'] + df['away_pts_actual']) / 2
+    if game_poss:
+        df['game_poss_est'] = df['game_id'].astype(str).str.lstrip("0").map(game_poss)
+        fallback = (df['home_pts_actual'] + df['away_pts_actual']) / 2
+        df['game_poss_est'] = df['game_poss_est'].fillna(fallback)
+    else:
+        df['game_poss_est'] = (df['home_pts_actual'] + df['away_pts_actual']) / 2
 
     home_luck = df.groupby('home_team').agg({
         'margin_delta': 'sum',
@@ -194,8 +224,9 @@ def generate_report():
     playoff_df = df[df['game_type'] == 'playoff'].copy()
     # play-in (game_type == 'playin') is excluded from both ranking tables
 
-    team_rows = _build_team_rows(rs_df)
-    playoff_team_rows = _build_team_rows(playoff_df)
+    game_poss = _load_game_possessions()
+    team_rows = _build_team_rows(rs_df, game_poss)
+    playoff_team_rows = _build_team_rows(playoff_df, game_poss)
 
     swing_rows = _build_swing_rows(rs_df)
     playoff_swing_rows = _build_swing_rows(playoff_df)
