@@ -223,9 +223,12 @@ def generate_playoff_series_report() -> Path:
     color: #333;
   }}
   h1 {{ color: #1a1a2e; margin-top: 0; }}
-  .nav {{ margin-bottom: 18px; font-size: 0.9em; }}
-  .nav a {{ color: #1a1a2e; text-decoration: none; }}
-  .nav a:hover {{ text-decoration: underline; }}
+  .nav-links {{ margin: 20px 0 14px; display: grid; gap: 8px; }}
+  .nav-row {{ display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; }}
+  .nav-label {{ font-size: 0.85em; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.04em; }}
+  .nav-row a {{ text-decoration: underline; text-underline-offset: 3px; font-weight: 600; color: #1d4ed8; }}
+  .nav-row a:hover {{ color: #e94560; }}
+  .nav-row .current-page {{ font-weight: 700; color: #1a1a2e; }}
   h2.round-heading {{
     color: #16213e;
     margin: 32px 0 12px;
@@ -300,14 +303,36 @@ def generate_playoff_series_report() -> Path:
 </style>
 </head>
 <body>
-<div class="nav"><a href="index.html">← Back to main report</a></div>
+<div class="nav-links">
+  <div class="nav-row">
+    <span class="nav-label">Regular Season</span>
+    <a href="onoff-daily.html">+/- Games</a>
+    <a href="onoff.html">+/- Stats</a>
+    <a href="rapm.html">RAPM</a>
+    <a href="game-search.html">Game Search</a>
+    <a href="player-span-search.html">Player Span Search</a>
+    <a href="65-game-tracker.html">65-Game Rule</a>
+  </div>
+  <div class="nav-row">
+    <span class="nav-label">Playoffs</span>
+    <a href="onoff-playoffs.html">+/- Playoffs</a>
+    <a href="rapm-playoffs.html">Playoff RAPM</a>
+    <span class="current-page">Series Ratings</span>
+    <a href="game-search-playoffs.html">Game Search: Playoffs</a>
+    <a href="player-span-search-playoffs.html">Player Span Search: Playoffs</a>
+  </div>
+  <div class="nav-row">
+    <span class="nav-label">Site</span>
+    <a href="index.html">Home</a>
+  </div>
+</div>
 <h1>NBA Playoff Series — Luck-Adjusted Ratings</h1>
 <p style="color:#555;margin-top:-8px;">{season_label} &nbsp;·&nbsp; Adjusted for 3-point shooting luck</p>
 
 {body_html}
 
 <div class="methodology">
-  <strong>How it works:</strong> Offensive and defensive ratings are adjusted by replacing each team's actual 3-point makes with their statistically expected makes (based on shot location and volume), then recomputing the score. This removes randomness from 3-point shooting variance, leaving a more stable estimate of team quality.
+  <strong>How it works:</strong> Offensive and defensive ratings are adjusted by replacing each team's actual 3-point makes with their statistically expected makes (based on shooter, shot location, shot type (e.g. catch-and-shoot vs. pull-up), and whether the shot is assisted or unassisted), then recomputing the score. This removes randomness from 3-point shooting variance, leaving a more stable estimate of team quality.
   Shaded columns (<strong>Adj OffRtg, Adj DefRtg, Adj NetRtg</strong>) are luck-adjusted; the first two columns show unadjusted actuals for comparison.
   In-progress series are highlighted in orange.
 </div>
