@@ -292,8 +292,10 @@ def generate_onoff_report_playoffs() -> Path:
     .toggle-btn:hover {{ background: #dbe7f5; }}
     .toggle-btn.active {{ background: #0b2d4d; color: #fff; border-color: #0b2d4d; }}
     .col-hidden {{ display: none; }}
-    thead th.sort-asc::after {{ content: " ↑"; font-size: 10px; opacity: 0.7; }}
-    thead th.sort-desc::after {{ content: " ↓"; font-size: 10px; opacity: 0.7; }}
+    thead th.sort-asc {{ background: #c8dcf2 !important; color: #0a1f3a !important; }}
+    thead th.sort-desc {{ background: #c8dcf2 !important; color: #0a1f3a !important; }}
+    thead th.sort-asc::after {{ content: " ▲"; font-size: 9px; }}
+    thead th.sort-desc::after {{ content: " ▼"; font-size: 9px; }}
   </style>
 </head>
 <body>
@@ -428,8 +430,10 @@ def generate_onoff_report_playoffs() -> Path:
 
     let sortKey = "onoff_adj";
     let sortDir = "desc";
+    let sortLastClicked = null;
     let seasonSortKey = "onoff_adj";
     let seasonSortDir = "desc";
+    let seasonSortLastClicked = null;
 
     // Aggregate rows for a season range (e.g. "2020-21" to "2024-25")
     function aggregateForSeasonRange(startSeason, endSeason) {{
@@ -743,15 +747,17 @@ def generate_onoff_report_playoffs() -> Path:
         }});
       }});
 
-      // Sort on header click
+      // Sort on header click — first click on a column always defaults to desc (asc for names).
+      // Only toggles direction when the same column is clicked twice in a row.
       document.querySelectorAll("#main-table thead th").forEach(th => {{
         th.addEventListener("click", () => {{
           const key = th.dataset.key;
-          if (sortKey === key) {{
+          if (sortLastClicked === key) {{
             sortDir = sortDir === "desc" ? "asc" : "desc";
           }} else {{
             sortKey = key;
             sortDir = key === "player_name" ? "asc" : "desc";
+            sortLastClicked = key;
           }}
           render();
         }});
@@ -760,11 +766,12 @@ def generate_onoff_report_playoffs() -> Path:
       document.querySelectorAll("#season-table thead th").forEach(th => {{
         th.addEventListener("click", () => {{
           const key = th.dataset.key;
-          if (seasonSortKey === key) {{
+          if (seasonSortLastClicked === key) {{
             seasonSortDir = seasonSortDir === "desc" ? "asc" : "desc";
           }} else {{
             seasonSortKey = key;
             seasonSortDir = key === "player_name" || key === "team_abbr" ? "asc" : "desc";
+            seasonSortLastClicked = key;
           }}
           renderSeasonTable();
         }});
