@@ -88,11 +88,9 @@ def _season_from_date(date_str: str) -> str:
 
 
 def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
-    if not ONOFF_PATH.exists():
-        raise FileNotFoundError(f"Missing {ONOFF_PATH}")
-    with ONOFF_PATH.open(encoding="utf-8") as _f:
-        if _f.readline().startswith("version https://git-lfs.github.com"):
-            raise FileNotFoundError(f"{ONOFF_PATH} is an LFS pointer — run_onoff.py did not produce real data")
+    # adjusted_onoff.csv may be an LFS pointer if not pulled locally;
+    # ingest() already skips LFS files, so we fall through to use the
+    # historical PBP file which covers the full date range.
 
     rows: list[dict] = []
     name_map = _load_player_name_map()
