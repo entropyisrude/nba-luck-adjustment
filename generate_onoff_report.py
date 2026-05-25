@@ -618,6 +618,9 @@ def generate_onoff_report() -> Path:
         <label>Min total minutes
           <input id=\"team-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"50\" />
         </label>
+        <label>Search
+          <input id=\"team-search\" type=\"text\" placeholder=\"Player name...\" />
+        </label>
       </div>
       <div class=\"toggle-row\">
         <button class=\"toggle-btn\" data-cols=\"ortg-adj\" onclick=\"toggleCols('ortg-adj')\">Show ORtg Adj</button>
@@ -884,6 +887,7 @@ def generate_onoff_report() -> Path:
       const team = document.getElementById("team-filter").value;
       const minGames = Number(document.getElementById("team-min-games").value || 0);
       const minMin = Number(document.getElementById("team-min-minutes").value || 0);
+      const search = document.getElementById("team-search").value.toLowerCase();
       const tbody = document.querySelector("#team-table tbody");
 
       const base = ROWS.filter(r => r.season === season);
@@ -894,6 +898,7 @@ def generate_onoff_report() -> Path:
       const rows = filtered
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
+        .filter(r => !search || String(r.player_name || "").toLowerCase().includes(search))
         .slice()
         .sort((a,b) => {{
           const dir = teamSortDir === "asc" ? 1 : -1;
@@ -992,7 +997,7 @@ def generate_onoff_report() -> Path:
       multiStartSel.value = sortedSeasons[Math.max(0, sortedSeasons.length - 3)] || "";
       multiEndSel.value   = sortedSeasons[sortedSeasons.length - 1] || "";
 
-      ["season-filter","team-filter","team-min-games","team-min-minutes"].forEach(id =>
+      ["season-filter","team-filter","team-min-games","team-min-minutes","team-search"].forEach(id =>
         document.getElementById(id).addEventListener("input", () => {{
           if (id === "season-filter") {{
             refreshTeamOptions();

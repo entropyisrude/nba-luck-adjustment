@@ -227,7 +227,8 @@ def generate_onoff_report_playoffs() -> Path:
       font-size: 12px;
     }}
     .nav {{ margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }}
-    .nav a {{ color: #f5d4ef; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }}
+    .nav a {{ color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 7px; padding: 6px 10px; font-size: 12px; }}
+    .nav a:hover {{ background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.6); }}
     .card {{
       background: var(--card);
       border: 1px solid var(--line);
@@ -269,14 +270,28 @@ def generate_onoff_report_playoffs() -> Path:
       position: sticky;
       top: 0;
       z-index: 2;
-      background: #f3edf2;
-      color: #3d1a35;
+      background: #edf3fc;
+      color: #123154;
       cursor: pointer;
     }}
-    thead th:hover {{ background: #ebe3ea; }}
+    thead th:hover {{ background: #e4edf9; }}
     .pos {{ color: var(--good); font-weight: 600; }}
     .neg {{ color: var(--bad); font-weight: 600; }}
     .muted {{ color: var(--muted); }}
+    .metric-emph {{ font-weight: 700; }}
+    .toggle-row {{ display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }}
+    .toggle-btn {{
+      background: #e8f0fa;
+      border: 1px solid #c5d4e8;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--ink);
+    }}
+    .toggle-btn:hover {{ background: #dbe7f5; }}
+    .toggle-btn.active {{ background: #0b2d4d; color: #fff; border-color: #0b2d4d; }}
+    .col-hidden {{ display: none; }}
   </style>
 </head>
 <body>
@@ -315,6 +330,12 @@ def generate_onoff_report_playoffs() -> Path:
           <input id="season-search" type="text" placeholder="Player name..." />
         </label>
       </div>
+      <div class="toggle-row">
+        <button class="toggle-btn" data-cols="actual" onclick="toggleCols('actual')">Show Unadjusted</button>
+        <button class="toggle-btn" data-cols="ortg-adj" onclick="toggleCols('ortg-adj')">Show ORtg Adj</button>
+        <button class="toggle-btn" data-cols="drtg-adj" onclick="toggleCols('drtg-adj')">Show DRtg Adj</button>
+        <button class="toggle-btn" data-cols="delta" onclick="toggleCols('delta')">Show Adj Delta</button>
+      </div>
       <p class="muted" style="margin: 0 0 8px; font-size: 11px;">All stats per 48 minutes. One row per player/team/season.</p>
       <div class="table-wrap">
         <table id="season-table">
@@ -324,10 +345,18 @@ def generate_onoff_report_playoffs() -> Path:
               <th data-key="team_abbr">Team</th>
               <th data-key="games">G</th>
               <th data-key="minutes">Min</th>
-              <th data-key="pm_adj" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
-              <th data-key="onoff_adj" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
+              <th data-key="pm_actual" class="col-actual col-hidden" title="Unadjusted plus-minus per 48 min">+/-</th>
+              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
+              <th data-key="pm_delta" class="col-delta col-hidden" title="PM Adj minus unadjusted PM">+/- Delta</th>
+              <th data-key="onoff_actual" class="col-actual col-hidden" title="Unadjusted on-off per 48 min">On/Off</th>
+              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
               <th data-key="onoff_adj_off" title="Offensive On-Off (team ORtg impact)">Off</th>
+              <th data-key="on_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is ON">On ORtg</th>
+              <th data-key="off_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is OFF">Off ORtg</th>
               <th data-key="onoff_adj_def" title="Defensive On-Off (team DRtg impact)">Def</th>
+              <th data-key="on_drtg_adj" class="col-drtg-adj col-hidden" title="Team adjusted DRtg when player is ON">On DRtg</th>
+              <th data-key="off_drtg_adj" class="col-drtg-adj col-hidden" title="Team adjusted DRtg when player is OFF">Off DRtg</th>
+              <th data-key="onoff_delta" class="col-delta col-hidden" title="OnOff Adj minus unadjusted OnOff">OnOff Delta</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -360,6 +389,12 @@ def generate_onoff_report_playoffs() -> Path:
           <input id="search" type="text" placeholder="Player name..." />
         </label>
       </div>
+      <div class="toggle-row">
+        <button class="toggle-btn" data-cols="actual" onclick="toggleCols('actual')">Show Unadjusted</button>
+        <button class="toggle-btn" data-cols="ortg-adj" onclick="toggleCols('ortg-adj')">Show ORtg Adj</button>
+        <button class="toggle-btn" data-cols="drtg-adj" onclick="toggleCols('drtg-adj')">Show DRtg Adj</button>
+        <button class="toggle-btn" data-cols="delta" onclick="toggleCols('delta')">Show Adj Delta</button>
+      </div>
       <p class="muted" style="margin: 0 0 8px; font-size: 11px;">All stats per 48 minutes. Players aggregated across selected period.</p>
       <div class="table-wrap">
         <table id="main-table">
@@ -368,10 +403,18 @@ def generate_onoff_report_playoffs() -> Path:
               <th data-key="player_name">Player</th>
               <th data-key="games">G</th>
               <th data-key="minutes">Min</th>
-              <th data-key="pm_adj" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
-              <th data-key="onoff_adj" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
+              <th data-key="pm_actual" class="col-actual col-hidden" title="Unadjusted plus-minus per 48 min">+/-</th>
+              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
+              <th data-key="pm_delta" class="col-delta col-hidden" title="PM Adj minus unadjusted PM">+/- Delta</th>
+              <th data-key="onoff_actual" class="col-actual col-hidden" title="Unadjusted on-off per 48 min">On/Off</th>
+              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
               <th data-key="onoff_adj_off" title="Offensive On-Off (team ORtg impact)">Off</th>
+              <th data-key="on_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is ON">On ORtg</th>
+              <th data-key="off_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is OFF">Off ORtg</th>
               <th data-key="onoff_adj_def" title="Defensive On-Off (team DRtg impact)">Def</th>
+              <th data-key="on_drtg_adj" class="col-drtg-adj col-hidden" title="Team adjusted DRtg when player is ON">On DRtg</th>
+              <th data-key="off_drtg_adj" class="col-drtg-adj col-hidden" title="Team adjusted DRtg when player is OFF">Off DRtg</th>
+              <th data-key="onoff_delta" class="col-delta col-hidden" title="OnOff Adj minus unadjusted OnOff">OnOff Delta</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -472,31 +515,44 @@ def generate_onoff_report_playoffs() -> Path:
         const onMin = a.minutes_on;
         const offMin = a.minutes_off;
 
-        // Per-48 stats
         const pm_adj = onMin > 0 ? (a.on_diff_adj * 48.0 / onMin) : 0;
         const off_pm_adj = offMin > 0 ? (a.off_diff_adj * 48.0 / offMin) : 0;
         const onoff_adj = pm_adj - off_pm_adj;
 
-        // Offensive/defensive components
+        const pm_actual = onMin > 0 ? (a.on_diff * 48.0 / onMin) : 0;
+        const off_pm_actual = offMin > 0 ? (a.off_diff * 48.0 / offMin) : 0;
+        const onoff_actual = pm_actual - off_pm_actual;
+
+        const pm_delta = pm_adj - pm_actual;
+        const onoff_delta = onoff_adj - onoff_actual;
+
         const poss_per_min = 100.0 / 48.0;
         const on_poss = onMin * poss_per_min;
         const off_poss = offMin * poss_per_min;
-        const on_ortg = on_poss > 0 ? (a.on_pts_for_adj * 100.0 / on_poss) : 0;
-        const on_drtg = on_poss > 0 ? (a.on_pts_against_adj * 100.0 / on_poss) : 0;
-        const off_ortg = off_poss > 0 ? (a.off_pts_for_adj * 100.0 / off_poss) : 0;
-        const off_drtg = off_poss > 0 ? (a.off_pts_against_adj * 100.0 / off_poss) : 0;
-        const onoff_adj_off = on_ortg - off_ortg;
-        const onoff_adj_def = off_drtg - on_drtg;
+        const on_ortg_adj = on_poss > 0 ? (a.on_pts_for_adj * 100.0 / on_poss) : 0;
+        const on_drtg_adj = on_poss > 0 ? (a.on_pts_against_adj * 100.0 / on_poss) : 0;
+        const off_ortg_adj = off_poss > 0 ? (a.off_pts_for_adj * 100.0 / off_poss) : 0;
+        const off_drtg_adj = off_poss > 0 ? (a.off_pts_against_adj * 100.0 / off_poss) : 0;
+        const onoff_adj_off = on_ortg_adj - off_ortg_adj;
+        const onoff_adj_def = off_drtg_adj - on_drtg_adj;
 
         return {{
           player_id: a.player_id,
           player_name: a.player_name,
           games: a.games,
           minutes: Math.round(onMin),
+          pm_actual: pm_actual,
           pm_adj: pm_adj,
+          pm_delta: pm_delta,
+          onoff_actual: onoff_actual,
           onoff_adj: onoff_adj,
           onoff_adj_off: onoff_adj_off,
+          on_ortg_adj: on_ortg_adj,
+          off_ortg_adj: off_ortg_adj,
           onoff_adj_def: onoff_adj_def,
+          on_drtg_adj: on_drtg_adj,
+          off_drtg_adj: off_drtg_adj,
+          onoff_delta: onoff_delta,
         }};
       }});
     }}
@@ -504,22 +560,41 @@ def generate_onoff_report_playoffs() -> Path:
     const fmt = (x, d=1) => Number.isFinite(x) ? x.toFixed(d) : "";
     const cls = (x) => (x > 0 ? "pos" : (x < 0 ? "neg" : ""));
 
+    function toggleCols(colGroup) {{
+      const btns = document.querySelectorAll(`.toggle-btn[data-cols="${{colGroup}}"]`);
+      const cols = document.querySelectorAll(`.col-${{colGroup}}`);
+      const isHidden = cols[0]?.classList.contains("col-hidden");
+      btns.forEach(btn => btn.classList.toggle("active", isHidden));
+      cols.forEach(col => col.classList.toggle("col-hidden", !isHidden));
+      btns.forEach(btn => btn.textContent = isHidden
+        ? btn.textContent.replace("Show", "Hide")
+        : btn.textContent.replace("Hide", "Show"));
+    }}
+
     function rowToStats(r) {{
       const onMin = r.minutes_on;
       const offMin = r.minutes_off;
+
       const pm_adj = onMin > 0 ? (r.on_diff_adj * 48.0 / onMin) : 0;
       const off_pm_adj = offMin > 0 ? (r.off_diff_adj * 48.0 / offMin) : 0;
       const onoff_adj = pm_adj - off_pm_adj;
 
+      const pm_actual = onMin > 0 ? (r.on_diff * 48.0 / onMin) : 0;
+      const off_pm_actual = offMin > 0 ? (r.off_diff * 48.0 / offMin) : 0;
+      const onoff_actual = pm_actual - off_pm_actual;
+
+      const pm_delta = pm_adj - pm_actual;
+      const onoff_delta = onoff_adj - onoff_actual;
+
       const poss_per_min = 100.0 / 48.0;
       const on_poss = onMin * poss_per_min;
       const off_poss = offMin * poss_per_min;
-      const on_ortg = on_poss > 0 ? (r.on_pts_for_adj * 100.0 / on_poss) : 0;
-      const on_drtg = on_poss > 0 ? (r.on_pts_against_adj * 100.0 / on_poss) : 0;
-      const off_ortg = off_poss > 0 ? (r.off_pts_for_adj * 100.0 / off_poss) : 0;
-      const off_drtg = off_poss > 0 ? (r.off_pts_against_adj * 100.0 / off_poss) : 0;
-      const onoff_adj_off = on_ortg - off_ortg;
-      const onoff_adj_def = off_drtg - on_drtg;
+      const on_ortg_adj = on_poss > 0 ? (r.on_pts_for_adj * 100.0 / on_poss) : 0;
+      const on_drtg_adj = on_poss > 0 ? (r.on_pts_against_adj * 100.0 / on_poss) : 0;
+      const off_ortg_adj = off_poss > 0 ? (r.off_pts_for_adj * 100.0 / off_poss) : 0;
+      const off_drtg_adj = off_poss > 0 ? (r.off_pts_against_adj * 100.0 / off_poss) : 0;
+      const onoff_adj_off = on_ortg_adj - off_ortg_adj;
+      const onoff_adj_def = off_drtg_adj - on_drtg_adj;
 
       return {{
         player_id: r.player_id,
@@ -528,10 +603,18 @@ def generate_onoff_report_playoffs() -> Path:
         team_abbr: TEAM_MAP[r.team_id] || "???",
         games: r.games,
         minutes: Math.round(onMin),
+        pm_actual: pm_actual,
         pm_adj: pm_adj,
+        pm_delta: pm_delta,
+        onoff_actual: onoff_actual,
         onoff_adj: onoff_adj,
         onoff_adj_off: onoff_adj_off,
+        on_ortg_adj: on_ortg_adj,
+        off_ortg_adj: off_ortg_adj,
         onoff_adj_def: onoff_adj_def,
+        on_drtg_adj: on_drtg_adj,
+        off_drtg_adj: off_drtg_adj,
+        onoff_delta: onoff_delta,
       }};
     }}
 
@@ -559,10 +642,18 @@ def generate_onoff_report_playoffs() -> Path:
           <td>${{r.player_name}}</td>
           <td>${{r.games}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
-          <td class="${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
-          <td class="${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
+          <td class="col-actual col-hidden ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
+          <td class="metric-emph ${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
+          <td class="col-delta col-hidden ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
+          <td class="col-actual col-hidden ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
+          <td class="metric-emph ${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
           <td class="${{cls(r.onoff_adj_off)}}">${{fmt(r.onoff_adj_off)}}</td>
+          <td class="col-ortg-adj col-hidden">${{fmt(r.on_ortg_adj)}}</td>
+          <td class="col-ortg-adj col-hidden">${{fmt(r.off_ortg_adj)}}</td>
           <td class="${{cls(r.onoff_adj_def)}}">${{fmt(r.onoff_adj_def)}}</td>
+          <td class="col-drtg-adj col-hidden">${{fmt(r.on_drtg_adj)}}</td>
+          <td class="col-drtg-adj col-hidden">${{fmt(r.off_drtg_adj)}}</td>
+          <td class="col-delta col-hidden ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
         </tr>
       `).join("");
     }}
@@ -596,10 +687,18 @@ def generate_onoff_report_playoffs() -> Path:
           <td>${{r.team_abbr}}</td>
           <td>${{r.games}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
-          <td class="${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
-          <td class="${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
+          <td class="col-actual col-hidden ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
+          <td class="metric-emph ${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
+          <td class="col-delta col-hidden ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
+          <td class="col-actual col-hidden ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
+          <td class="metric-emph ${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
           <td class="${{cls(r.onoff_adj_off)}}">${{fmt(r.onoff_adj_off)}}</td>
+          <td class="col-ortg-adj col-hidden">${{fmt(r.on_ortg_adj)}}</td>
+          <td class="col-ortg-adj col-hidden">${{fmt(r.off_ortg_adj)}}</td>
           <td class="${{cls(r.onoff_adj_def)}}">${{fmt(r.onoff_adj_def)}}</td>
+          <td class="col-drtg-adj col-hidden">${{fmt(r.on_drtg_adj)}}</td>
+          <td class="col-drtg-adj col-hidden">${{fmt(r.off_drtg_adj)}}</td>
+          <td class="col-delta col-hidden ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
         </tr>
       `).join("");
     }}
