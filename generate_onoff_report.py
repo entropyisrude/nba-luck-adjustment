@@ -18,7 +18,7 @@ OUTPUT_SITE_PATH = Path("onoff.html")
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
 
 PBP_BASE = "https://api.pbpstats.com"
-PBP_TIMEOUT = 10
+PBP_TIMEOUT = 45
 
 TEAM_ID_TO_ABBR = {
     "1610612737": "ATL",
@@ -202,6 +202,22 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     return out, latest_date, len(game_ids), team_ids
 
 
+PBPSTATS_CACHE = DATA_DIR / "pbpstats_cache.json"
+
+
+def _load_pbpstats_cache() -> dict:
+    if PBPSTATS_CACHE.exists():
+        try:
+            return json.loads(PBPSTATS_CACHE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_pbpstats_cache(cache: dict) -> None:
+    PBPSTATS_CACHE.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+
+
 def _fetch_json(url: str, params: dict) -> dict | None:
     try:
         r = requests.get(url, params=params, timeout=PBP_TIMEOUT)
@@ -212,21 +228,34 @@ def _fetch_json(url: str, params: dict) -> dict | None:
         return None
 
 
-def _build_pbp_maps(season_to_team_ids: dict[str, list[str]]) -> dict[tuple[str, str, str], dict]:
+def _build_pbp_maps(season_to_team_ids: dict[str, list[str]], latest_season: str) -> dict[tuple[str, str, str], dict]:
     """
     Returns map keyed by (season, team_id, player_id) with possession-based raw PM/100 and OnOff/100.
+    Caches successful API responses to disk; re-fetches only the latest season and any uncached seasons.
     """
     out: dict[tuple[str, str, str], dict] = {}
+    cache = _load_pbpstats_cache()
+    cache_updated = False
 
     for season, team_ids in season_to_team_ids.items():
-        all_players_payload = _fetch_json(
-            f"{PBP_BASE}/get-totals/nba",
-            {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
-        )
-        all_teams_payload = _fetch_json(
-            f"{PBP_BASE}/get-totals/nba",
-            {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
-        )
+        season_cache = cache.get(season)
+        if season_cache and season != latest_season:
+            # Use cached payloads for completed seasons
+            all_players_payload = season_cache.get("players")
+            all_teams_payload = season_cache.get("teams")
+        else:
+            all_players_payload = _fetch_json(
+                f"{PBP_BASE}/get-totals/nba",
+                {"Season": season, "SeasonType": "Regular Season", "Type": "Player"},
+            )
+            all_teams_payload = _fetch_json(
+                f"{PBP_BASE}/get-totals/nba",
+                {"Season": season, "SeasonType": "Regular Season", "Type": "Team"},
+            )
+            if all_players_payload and all_teams_payload:
+                cache[season] = {"players": all_players_payload, "teams": all_teams_payload}
+                cache_updated = True
+
         if not all_players_payload or not all_teams_payload:
             continue
 
@@ -298,6 +327,9 @@ def _build_pbp_maps(season_to_team_ids: dict[str, list[str]]) -> dict[tuple[str,
                     "off_poss": off_poss,
                     "source": "pbpstats",
                 }
+
+    if cache_updated:
+        _save_pbpstats_cache(cache)
 
     return out
 
@@ -415,9 +447,11 @@ def generate_onoff_report() -> Path:
         tid = str(r["team_id"])
         if tid not in season_to_team_ids[s]:
             season_to_team_ids[s].append(tid)
-    # Historical seasons can be rendered from the CSV aggregates alone.
-    # Keep live PBP totals only for the latest season to avoid dozens of slow API calls.
-    pbp_map = _build_pbp_maps({latest_season: season_to_team_ids.get(latest_season, [])})
+    # Query pbpstats for recent seasons where it has data. Seasons that time out
+    # or return errors fall back gracefully to the minutes-based CSV calculation.
+    PBPSTATS_FROM = "2016-17"
+    pbp_seasons = {s: tids for s, tids in season_to_team_ids.items() if s >= PBPSTATS_FROM}
+    pbp_map = _build_pbp_maps(pbp_seasons, latest_season)
     records = _finalize_records(raw_rows, pbp_map)
 
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
