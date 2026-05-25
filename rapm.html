@@ -196,10 +196,10 @@
       <h2 style="margin-top: 18px;">Multi-Year Leaderboard (All Teams)</h2>
       <div class="controls">
         <label>Start Season
-          <input id="lb-start-year" type="number" min="1996" max="2030" step="1" style="width:5em" />
+          <select id="lb-start-year"></select>
         </label>
         <label>End Season
-          <input id="lb-end-year" type="number" min="1996" max="2030" step="1" style="width:5em" />
+          <select id="lb-end-year"></select>
         </label>
         <label>Time Decay
           <select id="lb-decay-filter">
@@ -392,19 +392,16 @@
     }
 
     function getSelectedLeaderboardGroup() {
-      const startYear = Number(document.getElementById("lb-start-year").value) || 1996;
-      const endYear = Number(document.getElementById("lb-end-year").value) || 9999;
-      const seasons = getRegularSeasonBaseKeys().filter(s => {
-        const yr = Number(s.slice(0, 4));
-        return yr >= startYear && yr <= endYear;
-      });
+      const startSeason = document.getElementById("lb-start-year").value || "1996-97";
+      const endSeason   = document.getElementById("lb-end-year").value   || "2099-99";
+      const seasons = getRegularSeasonBaseKeys().filter(s => s >= startSeason && s <= endSeason);
       const pooledKeys = ["Last3","Last5","2020s","2010s","2000s","1996-99","All"];
       const matchedKey = pooledKeys.find(k => {
         const ps = DATA[`${k}_seasons`];
         return Array.isArray(ps) && ps.length === seasons.length && ps.every((s, i) => s === seasons[i]);
       });
-      const key = matchedKey || `custom_${startYear}_${endYear}`;
-      return { key, label: `${startYear}–${endYear}`, seasons, pooled: !!matchedKey };
+      const key = matchedKey || `custom_${startSeason}_${endSeason}`;
+      return { key, label: `${startSeason}–${endSeason}`, seasons, pooled: !!matchedKey };
     }
 
     function populateSeasonFilter(prefix = "") {
@@ -633,10 +630,14 @@
       populateSeasonFilter();
       populateAlphaFilter();
       const sortedSeasons = getRegularSeasonBaseKeys();
-      const latestLbYear = sortedSeasons.length ? Number(sortedSeasons[sortedSeasons.length - 1].slice(0, 4)) : new Date().getFullYear();
-      const earliestLbYear = sortedSeasons.length ? Number(sortedSeasons[0].slice(0, 4)) : 1996;
-      document.getElementById("lb-start-year").value = Math.max(latestLbYear - 2, earliestLbYear);
-      document.getElementById("lb-end-year").value = latestLbYear;
+      const lbStartSel = document.getElementById("lb-start-year");
+      const lbEndSel   = document.getElementById("lb-end-year");
+      sortedSeasons.forEach(s => {
+        lbStartSel.appendChild(Object.assign(document.createElement("option"), {value: s, textContent: s}));
+        lbEndSel.appendChild(Object.assign(document.createElement("option"), {value: s, textContent: s}));
+      });
+      lbStartSel.value = sortedSeasons[Math.max(0, sortedSeasons.length - 3)] || "";
+      lbEndSel.value   = sortedSeasons[sortedSeasons.length - 1] || "";
       populateAlphaFilter("lb-");
       document.getElementById("season-filter").addEventListener("change", () => {
         populateAlphaFilter();
@@ -649,11 +650,11 @@
       });
       document.getElementById("team-filter").addEventListener("change", render);
       document.getElementById("min-minutes").addEventListener("input", render);
-      document.getElementById("lb-start-year").addEventListener("input", () => {
+      document.getElementById("lb-start-year").addEventListener("change", () => {
         populateAlphaFilter("lb-");
         render();
       });
-      document.getElementById("lb-end-year").addEventListener("input", () => {
+      document.getElementById("lb-end-year").addEventListener("change", () => {
         populateAlphaFilter("lb-");
         render();
       });

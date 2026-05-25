@@ -274,10 +274,10 @@ def generate_rapm_report_playoffs() -> None:
       <h2 style="margin-top: 18px;">Multi-Year Leaderboard</h2>
       <div class="controls">
         <label>Start Season
-          <input id="lb-start-year" type="number" min="1995" max="2030" step="1" style="width:5em" />
+          <select id="lb-start-year"></select>
         </label>
         <label>End Season
-          <input id="lb-end-year" type="number" min="1995" max="2030" step="1" style="width:5em" />
+          <select id="lb-end-year"></select>
         </label>
         <label>Time Decay
           <select id="lb-decay-filter">
@@ -445,17 +445,14 @@ def generate_rapm_report_playoffs() -> None:
     }}
 
     function renderLeaderboardTable() {{
-      const startYear = Number(document.getElementById("lb-start-year").value) || 1995;
-      const endYear   = Number(document.getElementById("lb-end-year").value)   || 9999;
+      const startSeason = document.getElementById("lb-start-year").value || "1995-96";
+      const endSeason   = document.getElementById("lb-end-year").value   || "2099-99";
       const decay  = Number(document.getElementById("lb-decay-filter").value || 1.0);
       const alpha  = document.getElementById("lb-alpha-filter").value;
       const minMin = Number(document.getElementById("lb-min-minutes").value || 0);
       const search = document.getElementById("lb-search").value.toLowerCase().trim();
 
-      const seasons = getPlayoffSeasonKeys().filter(s => {{
-        const yr = Number(s.slice(0, 4));
-        return yr >= startYear && yr <= endYear;
-      }});
+      const seasons = getPlayoffSeasonKeys().filter(s => s >= startSeason && s <= endSeason);
 
       const rows = aggregateLeaderboardRows(seasons, alpha, decay)
         .filter(r => Number(r.minutes || 0) >= minMin)
@@ -479,16 +476,23 @@ def generate_rapm_report_playoffs() -> None:
       seasonSel.value = LATEST_SEASON;
 
       const sortedAsc = getPlayoffSeasonKeys();
-      const latestYear   = sortedAsc.length ? Number(sortedAsc[sortedAsc.length - 1].slice(0, 4)) : new Date().getFullYear();
-      const earliestYear = sortedAsc.length ? Number(sortedAsc[0].slice(0, 4)) : 1995;
-      document.getElementById("lb-start-year").value = Math.max(latestYear - 2, earliestYear);
-      document.getElementById("lb-end-year").value   = latestYear;
+      const lbStartSel = document.getElementById("lb-start-year");
+      const lbEndSel   = document.getElementById("lb-end-year");
+      sortedAsc.forEach(s => {{
+        lbStartSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+        lbEndSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+      }});
+      lbStartSel.value = sortedAsc[Math.max(0, sortedAsc.length - 3)] || "";
+      lbEndSel.value   = sortedAsc[sortedAsc.length - 1] || "";
 
       ["season-filter","alpha-filter","min-minutes","search"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderSeasonTable)
       );
-      ["lb-start-year","lb-end-year","lb-decay-filter","lb-alpha-filter","lb-min-minutes","lb-search"].forEach(id =>
+      ["lb-decay-filter","lb-alpha-filter","lb-min-minutes","lb-search"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderLeaderboardTable)
+      );
+      ["lb-start-year","lb-end-year"].forEach(id =>
+        document.getElementById(id).addEventListener("change", renderLeaderboardTable)
       );
 
       document.querySelectorAll("thead th.sortable").forEach(th => {{

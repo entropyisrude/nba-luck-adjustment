@@ -657,10 +657,10 @@ def generate_onoff_report() -> Path:
       <h2>Multi-Year (All Teams)</h2>
       <div class=\"controls\">
         <label>Start Season
-          <input id=\"multi-start-year\" type=\"number\" min=\"1996\" max=\"2030\" step=\"1\" style=\"width:5em\" />
+          <select id=\"multi-start-year\"></select>
         </label>
         <label>End Season
-          <input id=\"multi-end-year\" type=\"number\" min=\"1996\" max=\"2030\" step=\"1\" style=\"width:5em\" />
+          <select id=\"multi-end-year\"></select>
         </label>
         <label>Min games
           <input id=\"multi-min-games\" type=\"number\" min=\"0\" step=\"1\" value=\"20\" />
@@ -820,12 +820,9 @@ def generate_onoff_report() -> Path:
     }}
 
     function seasonsInRange() {{
-      const startYear = Number(document.getElementById("multi-start-year").value) || 1996;
-      const endYear = Number(document.getElementById("multi-end-year").value) || 9999;
-      return SEASONS.filter(s => {{
-        const yr = Number(s.slice(0, 4));
-        return yr >= startYear && yr <= endYear;
-      }});
+      const startSeason = document.getElementById("multi-start-year").value || "1996-97";
+      const endSeason   = document.getElementById("multi-end-year").value   || "2099-99";
+      return SEASONS.filter(s => s >= startSeason && s <= endSeason);
     }}
 
     function toggleCols(colGroup) {{
@@ -986,9 +983,14 @@ def generate_onoff_report() -> Path:
       refreshTeamOptions();
 
       const sortedSeasons = SEASONS.slice().sort();
-      const latestYear = Number(sortedSeasons[sortedSeasons.length - 1].slice(0, 4));
-      document.getElementById("multi-start-year").value = Math.max(latestYear - 2, Number(sortedSeasons[0].slice(0, 4)));
-      document.getElementById("multi-end-year").value = latestYear;
+      const multiStartSel = document.getElementById("multi-start-year");
+      const multiEndSel   = document.getElementById("multi-end-year");
+      sortedSeasons.forEach(s => {{
+        multiStartSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+        multiEndSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+      }});
+      multiStartSel.value = sortedSeasons[Math.max(0, sortedSeasons.length - 3)] || "";
+      multiEndSel.value   = sortedSeasons[sortedSeasons.length - 1] || "";
 
       ["season-filter","team-filter","team-min-games","team-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", () => {{
@@ -1004,8 +1006,11 @@ def generate_onoff_report() -> Path:
         document.getElementById(id).addEventListener("input", renderLeaderboard)
       );
 
-      ["multi-start-year","multi-end-year","multi-min-games","multi-min-minutes"].forEach(id =>
+      ["multi-min-games","multi-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderMultiTable)
+      );
+      ["multi-start-year","multi-end-year"].forEach(id =>
+        document.getElementById(id).addEventListener("change", renderMultiTable)
       );
 
       document.querySelectorAll("#lb-table thead th.sortable").forEach(th => {{
