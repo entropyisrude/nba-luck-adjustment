@@ -201,6 +201,14 @@
         <label>End Season
           <input id="lb-end-year" type="number" min="1996" max="2030" step="1" style="width:5em" />
         </label>
+        <label>Time Decay
+          <select id="lb-decay-filter">
+            <option value="1.0">None</option>
+            <option value="0.85">Mild (0.85/yr)</option>
+            <option value="0.70">Moderate (0.70/yr)</option>
+            <option value="0.50">Strong (0.50/yr)</option>
+          </select>
+        </label>
         <label>Alpha
           <select id="lb-alpha-filter"></select>
         </label>
@@ -494,30 +502,37 @@
       return season;
     }
 
-    function aggregateLeaderboardRows(seasons, alphaVal) {
+    function aggregateLeaderboardRows(seasons, alphaVal, decayRate = 1.0) {
       const metricKeys = ["rapm", "orapm", "drapm", "rapm_raw", "orapm_raw", "drapm_raw"];
       const map = new Map();
+      const sortedSeasons = [...seasons].sort();
+      const mostRecentYear = sortedSeasons.length ? Number(sortedSeasons[sortedSeasons.length - 1].slice(0, 4)) : 0;
 
       seasons.forEach(season => {
+        const yearsBack = mostRecentYear - Number(season.slice(0, 4));
+        const decayWeight = Math.pow(decayRate, yearsBack);
         const key = DATA[`${season}_a${alphaVal}`] ? `${season}_a${alphaVal}` : season;
         const rows = DATA[key] || [];
         rows.forEach(row => {
-          const minutes = Number(row.minutes || 0);
+          const rawMin = Number(row.minutes || 0);
+          const wMin = rawMin * decayWeight;
           const pid = row.player_id;
           if (!map.has(pid)) {
             map.set(pid, {
               player_id: pid,
               player_name: row.player_name,
               minutes: 0,
+              wMinutes: 0,
               team_abbrs: new Set(),
               sums: Object.fromEntries(metricKeys.map(k => [k, 0])),
             });
           }
           const agg = map.get(pid);
-          agg.minutes += minutes;
+          agg.minutes += rawMin;
+          agg.wMinutes += wMin;
           if (row.team_abbr) agg.team_abbrs.add(row.team_abbr);
           metricKeys.forEach(k => {
-            agg.sums[k] += minutes * Number(row[k] || 0);
+            agg.sums[k] += wMin * Number(row[k] || 0);
           });
         });
       });
@@ -530,21 +545,19 @@
           minutes: agg.minutes,
         };
         metricKeys.forEach(k => {
-          out[k] = agg.minutes ? agg.sums[k] / agg.minutes : 0;
+          out[k] = agg.wMinutes ? agg.sums[k] / agg.wMinutes : 0;
         });
         return out;
       });
     }
 
-    function getLeaderboardRows(group, alphaVal) {
-      const pooledKey = `${group.key}_a${alphaVal}`;
-      if (group.pooled && DATA[pooledKey]) {
-        return DATA[pooledKey];
+    function getLeaderboardRows(group, alphaVal, decayRate = 1.0) {
+      if (decayRate === 1.0) {
+        const pooledKey = `${group.key}_a${alphaVal}`;
+        if (group.pooled && DATA[pooledKey]) return DATA[pooledKey];
+        if (group.pooled && DATA[group.key]) return DATA[group.key];
       }
-      if (group.pooled && DATA[group.key]) {
-        return DATA[group.key];
-      }
-      return aggregateLeaderboardRows(group.seasons, alphaVal);
+      return aggregateLeaderboardRows(group.seasons, alphaVal, decayRate);
     }
 
     const fmt = (x, d=2) => (x === null || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
@@ -596,7 +609,8 @@
       const minMin = Number(document.getElementById("min-minutes").value || 0);
       const lbMinMin = Number(document.getElementById("lb-min-minutes").value || 0);
       const rows = (DATA[season] || []).filter(r => Number(r.minutes || 0) >= minMin);
-      const lbRows = getLeaderboardRows(lbGroup, lbAlpha).filter(r => Number(r.minutes || 0) >= lbMinMin);
+      const lbDecay = Number(document.getElementById("lb-decay-filter").value || 1.0);
+      const lbRows = getLeaderboardRows(lbGroup, lbAlpha, lbDecay).filter(r => Number(r.minutes || 0) >= lbMinMin);
       renderTable("rapm-table", rows.filter(r => team === "ALL" || r.team_abbr === team), sortState.team);
       renderTable("rapm-all-table", lbRows, sortState.all);
     }
@@ -643,6 +657,7 @@
         populateAlphaFilter("lb-");
         render();
       });
+      document.getElementById("lb-decay-filter").addEventListener("change", render);
       document.getElementById("lb-alpha-filter").addEventListener("change", render);
       document.getElementById("lb-min-minutes").addEventListener("input", render);
 
