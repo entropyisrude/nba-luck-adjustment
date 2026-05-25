@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 from datetime import datetime
 from pathlib import Path
@@ -202,20 +203,22 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     return out, latest_date, len(game_ids), team_ids
 
 
-PBPSTATS_CACHE = DATA_DIR / "pbpstats_cache.json"
+PBPSTATS_CACHE = DATA_DIR / "pbpstats_cache.json.gz"
 
 
 def _load_pbpstats_cache() -> dict:
     if PBPSTATS_CACHE.exists():
         try:
-            return json.loads(PBPSTATS_CACHE.read_text(encoding="utf-8"))
+            with gzip.open(PBPSTATS_CACHE, "rt", encoding="utf-8") as f:
+                return json.load(f)
         except Exception:
             pass
     return {}
 
 
 def _save_pbpstats_cache(cache: dict) -> None:
-    PBPSTATS_CACHE.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+    with gzip.open(PBPSTATS_CACHE, "wt", encoding="utf-8") as f:
+        json.dump(cache, f)
 
 
 def _fetch_json(url: str, params: dict) -> dict | None:
@@ -449,7 +452,7 @@ def generate_onoff_report() -> Path:
             season_to_team_ids[s].append(tid)
     # Query pbpstats for recent seasons where it has data. Seasons that time out
     # or return errors fall back gracefully to the minutes-based CSV calculation.
-    PBPSTATS_FROM = "2016-17"
+    PBPSTATS_FROM = "2000-01"
     pbp_seasons = {s: tids for s, tids in season_to_team_ids.items() if s >= PBPSTATS_FROM}
     pbp_map = _build_pbp_maps(pbp_seasons, latest_season)
     records = _finalize_records(raw_rows, pbp_map)
