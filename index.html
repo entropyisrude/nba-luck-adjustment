@@ -4,58 +4,87 @@
     <title>NBA 3-Point Shooting Luck-Adjusted Results - 2025-26 Season</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: "Segoe UI", Arial, sans-serif;
             max-width: 1100px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
-            color: #333;
+            background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+            color: #192231;
         }
         h1 {
-            color: #1a1a2e;
-            padding-bottom: 10px;
-            margin-top: 0;
+            color: #f8fbff;
+            margin: 0 0 16px;
+            text-shadow: 1px 2px 6px rgba(0,0,0,0.7);
         }
         .hero-banner {
-            background: linear-gradient(rgba(26, 26, 46, 0.55), rgba(26, 26, 46, 0.55)),
+            background: linear-gradient(rgba(10, 22, 42, 0.60), rgba(10, 22, 42, 0.60)),
                         url('images/starks218.jpg') left center,
                         url('images/rocket027.jpg') right center;
             background-size: cover, 50% auto, 50% auto;
             background-repeat: no-repeat;
-            padding: 120px 25px;
+            padding: 60px 30px 28px;
             margin: -20px -20px 20px -20px;
-            border-radius: 0 0 12px 12px;
-        }
-        .hero-banner h1 {
-            color: white;
-            border-bottom: none;
+            border-radius: 0 0 14px 14px;
             text-align: center;
-            margin-bottom: 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .hero-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+        .hero-nav-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            align-items: center;
+        }
+        .hero-nav-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            min-width: 72px;
+            text-align: right;
+        }
+        .hero-nav a {
+            color: #e8f4ff;
+            text-decoration: none;
+            border: 1px solid rgba(255,255,255,.35);
+            border-radius: 7px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .hero-nav a:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.6);
         }
         h2 {
-            color: #16213e;
-            margin-top: 40px;
+            color: #192231;
+            margin-top: 32px;
         }
         .summary {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            border: 1px solid #d6e1ef;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
             margin-bottom: 20px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            border: 1px solid #d6e1ef;
+            margin-bottom: 24px;
         }
         th {
-            background: #1a1a2e;
-            color: white;
+            background: #0d2f53;
+            color: #f0f6ff;
             padding: 12px 8px;
             text-align: left;
             font-weight: 600;
@@ -76,57 +105,22 @@
             font-weight: 600;
         }
         .methodology {
-            background: #e8f4f8;
+            background: #eef4fb;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 10px;
+            border: 1px solid #d6e1ef;
             font-size: 0.9em;
             margin-top: 40px;
         }
-        .timestamp {
-            color: #666;
-            font-size: 0.85em;
-        }
-
-        /* Navigation Links */
-        .nav-links {
-            margin: 20px 0 14px;
-            display: grid;
-            gap: 8px;
-        }
-        .nav-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            align-items: baseline;
-        }
-        .nav-label {
-            font-size: 0.85em;
-            font-weight: 700;
-            color: #4b5563;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-        .nav-row a {
-            text-decoration: underline;
-            text-underline-offset: 3px;
-            font-weight: 600;
-        }
-        .nav-row.project-links a {
-            color: #1d4ed8;
-        }
-        .nav-row.this-page-links a {
-            color: #000000;
-        }
-        .nav-row a:hover {
-            color: #e94560;
-        }
+        .timestamp { color: rgba(255,255,255,0.7); font-size: 0.82em; margin: 6px 0 12px; }
 
         /* Calendar Styles */
         .calendar-container {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            border: 1px solid #d6e1ef;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
             margin-bottom: 20px;
         }
         .calendar-grid {
@@ -188,8 +182,9 @@
         .selected-date-section {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            border: 1px solid #d6e1ef;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
             margin-bottom: 30px;
         }
         .selected-date-title {
@@ -483,32 +478,31 @@
 <body>
     <div class="hero-banner">
         <h1>NBA 3-Point Shooting Luck-Adjusted Results</h1>
-    </div>
-    <p class="timestamp" style="text-align: center; margin-top: 10px;">2025-26 Season through 2026-05-24 | 1230 games analyzed</p>
-
-    <div class="nav-links">
-        <div class="nav-row project-links">
-            <span class="nav-label">Regular Season</span>
-            <a href="onoff-daily.html">+/- Games</a>
-            <a href="onoff.html">+/- Stats</a>
-            <a href="rapm.html">RAPM</a>
-            <a href="game-search.html">Game Search</a>
-            <a href="player-span-search.html">Player Span Search</a>
-            <a href="65-game-tracker.html" style="color: #e94560;">65-Game Rule</a>
-        </div>
-        <div class="nav-row project-links">
-            <span class="nav-label">Playoffs</span>
-            <a href="onoff-playoffs.html">+/- Playoffs</a>
-            <a href="rapm-playoffs.html">Playoff RAPM</a>
-            <a href="playoff-series.html">Series Ratings</a>
-            <a href="game-search-playoffs.html">Game Search: Playoffs</a>
-            <a href="player-span-search-playoffs.html">Player Span Search: Playoffs</a>
-        </div>
-        <div class="nav-row this-page-links">
-            <span class="nav-label">This Page</span>
-            <a href="#team-rankings">Team Rankings</a>
-            <a href="#biggest-swings">Highest Variance</a>
-            <a href="example.html">Example</a>
+        <p class="timestamp">2025-26 Season through 2026-05-24 | 1230 games analyzed</p>
+        <div class="hero-nav">
+            <div class="hero-nav-row">
+                <span class="hero-nav-label">Regular&nbsp;Season</span>
+                <a href="onoff-daily.html">+/- Games</a>
+                <a href="onoff.html">+/- Stats</a>
+                <a href="rapm.html">RAPM</a>
+                <a href="game-search.html">Game Search</a>
+                <a href="player-span-search.html">Player Span</a>
+                <a href="65-game-tracker.html">65-Game Rule</a>
+            </div>
+            <div class="hero-nav-row">
+                <span class="hero-nav-label">Playoffs</span>
+                <a href="onoff-playoffs.html">+/- Playoffs</a>
+                <a href="rapm-playoffs.html">Playoff RAPM</a>
+                <a href="playoff-series.html">Series Ratings</a>
+                <a href="game-search-playoffs.html">Game Search</a>
+                <a href="player-span-search-playoffs.html">Player Span</a>
+            </div>
+            <div class="hero-nav-row">
+                <span class="hero-nav-label">Jump&nbsp;To</span>
+                <a href="#team-rankings">Team Rankings</a>
+                <a href="#biggest-swings">Highest Variance</a>
+                <a href="example.html">Method</a>
+            </div>
         </div>
     </div>
 
@@ -1101,7 +1095,7 @@
             <td>108.2</td>
             <td class="negative">+10.3</td>
         </tr>
-        <tr data-team="OKC" data-wins="10" data-adjwins="10" data-diff="0" data-oppexp="36.6" data-oppact="34.7" data-oppdiff="-1.9" data-teamexp="38.2" data-teamact="37.2" data-teamdiff="-1.0" data-netdiff="0.9" data-adjortg="119.6" data-adjdrtg="109.6" data-adjnrtg="10.0">
+        <tr data-team="OKC" data-wins="10" data-adjwins="10" data-diff="0" data-oppexp="36.6" data-oppact="34.7" data-oppdiff="-1.9" data-teamexp="38.2" data-teamact="37.2" data-teamdiff="-1.0" data-netdiff="0.9" data-adjortg="118.5" data-adjdrtg="108.6" data-adjnrtg="9.9">
             <td>2</td>
             <td><strong>OKC</strong></td>
             <td>10-2</td>
@@ -1114,11 +1108,11 @@
             <td>37.2%</td>
             <td class="negative">-1.0%</td>
             <td class="positive">+0.9%</td>
-            <td>119.6</td>
-            <td>109.6</td>
-            <td class="negative">+10.0</td>
+            <td>118.5</td>
+            <td>108.6</td>
+            <td class="negative">+9.9</td>
         </tr>
-        <tr data-team="SAS" data-wins="10" data-adjwins="10" data-diff="0" data-oppexp="37.3" data-oppact="32.8" data-oppdiff="-4.5" data-teamexp="36.0" data-teamact="36.6" data-teamdiff="0.6" data-netdiff="5.1" data-adjortg="113.1" data-adjdrtg="107.2" data-adjnrtg="5.9">
+        <tr data-team="SAS" data-wins="10" data-adjwins="10" data-diff="0" data-oppexp="37.3" data-oppact="32.8" data-oppdiff="-4.5" data-teamexp="36.0" data-teamact="36.6" data-teamdiff="0.6" data-netdiff="5.1" data-adjortg="112.3" data-adjdrtg="106.4" data-adjnrtg="5.9">
             <td>3</td>
             <td><strong>SAS</strong></td>
             <td>10-5</td>
@@ -1131,8 +1125,8 @@
             <td>36.6%</td>
             <td class="positive">+0.6%</td>
             <td class="positive">+5.1%</td>
-            <td>113.1</td>
-            <td>107.2</td>
+            <td>112.3</td>
+            <td>106.4</td>
             <td class="negative">+5.9</td>
         </tr>
         <tr data-team="CLE" data-wins="8" data-adjwins="9" data-diff="-1" data-oppexp="37.9" data-oppact="37.0" data-oppdiff="-0.9" data-teamexp="36.5" data-teamact="33.1" data-teamdiff="-3.4" data-netdiff="-2.5" data-adjortg="113.0" data-adjdrtg="111.3" data-adjnrtg="1.7">
@@ -1602,7 +1596,7 @@
     <p><small>&#9888; = Adjusted margin flips the winner</small></p>
     </div>
 
-    <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated 2026-05-25 11:46 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
+    <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated 2026-05-25 17:51 | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
 
     <script>
     // Game data embedded as JSON

@@ -187,9 +187,9 @@ def generate_daily_boxscores_report() -> Path:
     }}
     .wrap {{ max-width: 1500px; margin: 0 auto; padding: 18px; }}
     .hero {{
-      background: linear-gradient(120deg, #0b2d4d 0%, #133f6a 100%);
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
       color: #f8fbff;
-      border: 1px solid #2a5278;
+      border: 1px solid #254b72;
       border-radius: 14px;
       padding: 18px 20px;
       margin-bottom: 14px;

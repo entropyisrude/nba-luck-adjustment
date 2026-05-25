@@ -208,11 +208,11 @@ def generate_onoff_report_playoffs() -> Path:
     }}
     .wrap {{ max-width: 1400px; margin: 0 auto; padding: 18px; }}
     .hero {{
-      background: radial-gradient(circle at 20% 20%, #6b2d5c 0%, #3d1a35 45%, #1f0d1a 100%);
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
       color: #f8fbff;
       border-radius: 14px;
       padding: 18px 20px;
-      border: 1px solid #6b4263;
+      border: 1px solid #254b72;
       margin-bottom: 14px;
       text-align: center;
     }}

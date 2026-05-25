@@ -107,24 +107,33 @@ def generate_example_page():
     <title>Detailed Example: {away_team} @ {home_team} - NBA 3PT Luck Analysis</title>
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-            color: #333;
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 0;
+            background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+            color: #192231;
         }}
-        h1 {{ color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }}
-        h2 {{ color: #16213e; margin-top: 30px; }}
-        h3 {{ color: #1a1a2e; margin-top: 25px; }}
-        .back-link {{ margin-bottom: 20px; }}
-        .back-link a {{ color: #e94560; text-decoration: none; font-weight: 500; }}
-        .back-link a:hover {{ text-decoration: underline; }}
+        .wrap {{ max-width: 1200px; margin: 0 auto; padding: 18px; }}
+        .hero {{
+            background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+            color: #f8fbff;
+            border-radius: 14px;
+            padding: 18px 20px;
+            border: 1px solid #254b72;
+            margin-bottom: 18px;
+            text-align: center;
+        }}
+        h1 {{ margin: 0; font-size: 26px; }}
+        .nav {{ margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }}
+        .nav a {{ color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 7px; padding: 6px 10px; font-size: 12px; }}
+        .nav a:hover {{ background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.6); }}
+        h2 {{ color: #192231; margin-top: 28px; }}
+        h3 {{ color: #192231; margin-top: 20px; }}
         .summary-box {{
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            border: 1px solid #d6e1ef;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
             margin-bottom: 20px;
         }}
         .game-score {{
@@ -137,28 +146,29 @@ def generate_example_page():
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #d6e1ef;
             margin-bottom: 20px;
             font-size: 0.9em;
         }}
         th {{
-            background: #1a1a2e;
-            color: white;
+            background: #0d2f53;
+            color: #f0f6ff;
             padding: 10px 6px;
             text-align: left;
             font-weight: 600;
         }}
         td {{
             padding: 8px 6px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #edf2f9;
         }}
-        tr:hover {{ background: #f8f9fa; }}
+        tr:hover {{ background: #f4f8ff; }}
         .formula {{
-            background: #e8f4f8;
+            background: #eef4fb;
             padding: 15px;
             border-radius: 8px;
+            border: 1px solid #d6e1ef;
             font-family: monospace;
             margin: 15px 0;
             overflow-x: auto;
@@ -166,8 +176,9 @@ def generate_example_page():
         .step {{
             background: white;
             padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            border: 1px solid #d6e1ef;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
             margin-bottom: 15px;
         }}
         .step-number {{
@@ -195,10 +206,21 @@ def generate_example_page():
     </style>
 </head>
 <body>
-    <div class="back-link"><a href="index.html">&larr; Back to Main Report</a></div>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Method: How the Luck Adjustment Works</h1>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="onoff-daily.html">+/- Games</a>
+        <a href="onoff.html">+/- Stats</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="onoff-playoffs.html">+/- Playoffs</a>
+        <a href="rapm-playoffs.html">Playoff RAPM</a>
+        <a href="example.html">Method</a>
+      </div>
+    </section>
 
-    <h1>How the Luck Adjustment Works</h1>
-    <p>A detailed breakdown using the <strong>{away_team} @ {home_team}</strong> game from <strong>{game_row['date']}</strong></p>
+    <p style="color:#5b6778;font-size:0.9em;margin-top:0">A detailed breakdown using the <strong>{away_team} @ {home_team}</strong> game from <strong>{game_row['date']}</strong></p>
 
     <div class="summary-box">
         <div class="game-score">
@@ -575,12 +597,11 @@ Point Adjustment = Raw 3PT Value − ORB Opportunity Cost
         <p><strong>Adjusted margin:</strong> {home_team} {'+' if (game_row['home_pts_adj'] - game_row['away_pts_adj']) >= 0 else ''}{(game_row['home_pts_adj'] - game_row['away_pts_adj']):.1f}</p>
     </div>
 
-    <div class="back-link" style="margin-top: 30px;"><a href="index.html">&larr; Back to Main Report</a></div>
-
-    <p style="color: #666; font-size: 0.85em; margin-top: 40px;">
+    <p style="color: #5b6778; font-size: 0.85em; margin-top: 40px;">
         Generated {datetime.now().strftime('%Y-%m-%d %H:%M')} |
-        <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a>
+        <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank" style="color:#1d4ed8">View on GitHub</a>
     </p>
+  </div>
 </body>
 </html>
 """
