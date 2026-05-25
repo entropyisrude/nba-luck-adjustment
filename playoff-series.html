@@ -5,25 +5,32 @@
 <title>NBA Playoff Series Ratings — 2025-26</title>
 <style>
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    max-width: 1100px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
-    background: #f5f5f5;
-    color: #333;
+    padding: 18px;
+    background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    color: #192231;
   }
-  h1 { color: #1a1a2e; margin-top: 0; }
-  .nav-links { margin: 20px 0 14px; display: grid; gap: 8px; }
-  .nav-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; }
-  .nav-label { font-size: 0.85em; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.04em; }
-  .nav-row a { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; color: #1d4ed8; }
-  .nav-row a:hover { color: #e94560; }
-  .nav-row .current-page { font-weight: 700; color: #1a1a2e; }
+  .hero {
+    background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+    color: #f8fbff;
+    border-radius: 14px;
+    padding: 18px 20px;
+    border: 1px solid #254b72;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+  h1 { margin: 0; font-size: 26px; }
+  .subtitle { color: rgba(255,255,255,0.75); font-size: 0.88em; margin: 6px 0 0; }
+  .nav { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .nav a { color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 7px; padding: 6px 10px; font-size: 12px; }
+  .nav a:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.6); }
   h2.round-heading {
-    color: #16213e;
+    color: #192231;
     margin: 32px 0 12px;
     padding-bottom: 6px;
-    border-bottom: 2px solid #1a1a2e;
+    border-bottom: 2px solid #d6e1ef;
   }
   .series-grid {
     display: grid;
@@ -33,16 +40,17 @@
   }
   .series-card {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    border: 1px solid #d6e1ef;
+    box-shadow: 0 3px 12px rgba(23,38,62,0.06);
     overflow: hidden;
   }
   .series-card.in-progress {
     border-left: 4px solid #f0a500;
   }
   .series-header {
-    background: #1a1a2e;
-    color: white;
+    background: #0d2f53;
+    color: #f0f6ff;
     padding: 10px 14px;
     font-weight: 600;
     font-size: 0.95em;
@@ -82,42 +90,32 @@
   .positive { color: #28a745; font-weight: 700; }
   .negative { color: #dc3545; font-weight: 700; }
   .methodology {
-    background: #e8f4f8;
+    background: #eef4fb;
     padding: 14px 18px;
-    border-radius: 8px;
+    border-radius: 10px;
+    border: 1px solid #d6e1ef;
     font-size: 0.87em;
     margin-top: 30px;
-    color: #555;
+    color: #5b6778;
   }
-  .timestamp { color: #888; font-size: 0.82em; margin-top: 24px; }
+  .timestamp { color: #5b6778; font-size: 0.82em; margin-top: 24px; }
 </style>
 </head>
 <body>
-<div class="nav-links">
-  <div class="nav-row">
-    <span class="nav-label">Regular Season</span>
+<section class="hero">
+  <h1>NBA Playoff Series &ndash; Luck-Adjusted Ratings</h1>
+  <p class="subtitle">2025-26 &middot; Adjusted for 3-point shooting luck</p>
+  <div class="nav">
+    <a href="index.html">Overview</a>
     <a href="onoff-daily.html">+/- Games</a>
     <a href="onoff.html">+/- Stats</a>
     <a href="rapm.html">RAPM</a>
-    <a href="game-search.html">Game Search</a>
-    <a href="player-span-search.html">Player Span Search</a>
-    <a href="65-game-tracker.html">65-Game Rule</a>
-  </div>
-  <div class="nav-row">
-    <span class="nav-label">Playoffs</span>
     <a href="onoff-playoffs.html">+/- Playoffs</a>
     <a href="rapm-playoffs.html">Playoff RAPM</a>
-    <span class="current-page">Series Ratings</span>
-    <a href="game-search-playoffs.html">Game Search: Playoffs</a>
-    <a href="player-span-search-playoffs.html">Player Span Search: Playoffs</a>
+    <a href="playoff-series.html">Series Ratings</a>
+    <a href="example.html">Method</a>
   </div>
-  <div class="nav-row">
-    <span class="nav-label">Site</span>
-    <a href="index.html">Home</a>
-  </div>
-</div>
-<h1>NBA Playoff Series — Luck-Adjusted Ratings</h1>
-<p style="color:#555;margin-top:-8px;">2025-26 &nbsp;·&nbsp; Adjusted for 3-point shooting luck</p>
+</section>
 
 <h2 class="round-heading">First Round</h2>
 <div class="series-grid">
@@ -419,6 +417,6 @@
   In-progress series are highlighted in orange.
 </div>
 
-<div class="timestamp">Generated 2026-05-25 11:46</div>
+<div class="timestamp">Generated 2026-05-25 18:37</div>
 </body>
 </html>

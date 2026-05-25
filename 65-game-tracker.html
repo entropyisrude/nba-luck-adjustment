@@ -5,11 +5,17 @@
     <title>NBA Award Tracker | EntropyIsRude</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 20px; }
-        .header { background: #003366; color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
-        .intro { max-width: 800px; margin: 0 auto 20px auto; line-height: 1.6; color: #eee; font-size: 0.95em; }
-        .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        .player-name { font-weight: 700; color: #003366; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%); color: #192231; margin: 0; padding: 18px; }
+        .wrap { max-width: 1100px; margin: 0 auto; }
+        .hero { background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%); color: #f8fbff; border-radius: 14px; padding: 18px 20px; border: 1px solid #254b72; margin-bottom: 18px; text-align: center; }
+        .hero h1 { margin: 0; font-size: 24px; }
+        .hero .intro { max-width: 800px; margin: 8px auto 0; line-height: 1.5; color: rgba(255,255,255,0.8); font-size: 0.88em; }
+        .hero .meta { color: rgba(255,255,255,0.7); font-size: 0.85em; margin-top: 6px; }
+        .nav { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .nav a { color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 7px; padding: 6px 10px; font-size: 12px; }
+        .nav a:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.6); }
+        .table-container { background: white; padding: 20px; border-radius: 12px; border: 1px solid #d6e1ef; box-shadow: 0 3px 12px rgba(23,38,62,0.06); }
+        .player-name { font-weight: 700; color: #0d2f53; }
         .vorp-val { font-weight: 800; color: #d41111; }
         .vorp-prev { color: #7f8c8d; font-size: 0.9em; }
         .progress-box { width: 100px; background: #eee; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }
@@ -17,18 +23,27 @@
         .bg-eliminated { color: #c0392b; font-weight: bold; font-size: 0.85em; }
         .bg-bubble { color: #f39c12; font-weight: bold; font-size: 0.85em; }
         .bg-clinched { color: #27ae60; font-weight: bold; font-size: 0.85em; }
-        .footnote { font-size: 0.85em; color: #666; margin-top: 20px; padding: 15px; background: #fff; border-radius: 8px; border-left: 4px solid #003366; }
+        .footnote { font-size: 0.85em; color: #5b6778; margin-top: 20px; padding: 15px; background: #eef4fb; border-radius: 8px; border: 1px solid #d6e1ef; border-left: 4px solid #154f8b; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1 style="margin:0;">NBA Award Eligibility Tracker</h1>
+<div class="wrap">
+    <section class="hero">
+        <h1>NBA Award Eligibility Tracker</h1>
         <div class="intro">
-            To be eligible for major end-of-season honors—including <strong>MVP, All-NBA, Defensive Player of the Year, Most Improved, and All-Defensive teams</strong>—a player must participate in at least 65 games. For a game to count, a player must play at least 20 minutes, though up to two "near-miss" games of 15-20 minutes may also be credited toward the total.
+            To be eligible for major end-of-season honors&mdash;including <strong>MVP, All-NBA, DPOY, Most Improved, and All-Defensive teams</strong>&mdash;a player must participate in at least 65 games (20+ min, up to two 15&ndash;20 min near-miss games credited).
         </div>
-        <p>Sorted by <strong>VORP</strong> | Authoritative Counts through: <strong>2026-04-03</strong> (Live CDN Feed)</p> 
-        <p><a href="index.html" style="color: #4db8ff; text-decoration: none; font-weight: 600;">&larr; Back to Homepage</a></p>
-    </div>
+        <p class="meta">Sorted by <strong>VORP</strong> &middot; Authoritative counts through <strong>2026-04-03</strong></p>
+        <div class="nav">
+            <a href="index.html">Overview</a>
+            <a href="onoff-daily.html">+/- Games</a>
+            <a href="onoff.html">+/- Stats</a>
+            <a href="rapm.html">RAPM</a>
+            <a href="onoff-playoffs.html">+/- Playoffs</a>
+            <a href="rapm-playoffs.html">Playoff RAPM</a>
+            <a href="example.html">Method</a>
+        </div>
+    </section>
 
     <div class="table-container">
         <table id="tracker" class="display" style="width:100%">
@@ -5782,5 +5797,6 @@
             });
         });
     </script>
+</div>
 </body>
 </html>
