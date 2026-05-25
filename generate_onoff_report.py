@@ -656,8 +656,11 @@ def generate_onoff_report() -> Path:
     <section class=\"card\">
       <h2>Multi-Year (All Teams)</h2>
       <div class=\"controls\">
-        <label>Season Group
-          <select id=\"multi-season-filter\"></select>
+        <label>Start Season
+          <input id=\"multi-start-year\" type=\"number\" min=\"1996\" max=\"2030\" step=\"1\" style=\"width:5em\" />
+        </label>
+        <label>End Season
+          <input id=\"multi-end-year\" type=\"number\" min=\"1996\" max=\"2030\" step=\"1\" style=\"width:5em\" />
         </label>
         <label>Min games
           <input id=\"multi-min-games\" type=\"number\" min=\"0\" step=\"1\" value=\"20\" />
@@ -816,20 +819,13 @@ def generate_onoff_report() -> Path:
       }});
     }}
 
-    function buildSeasonGroups() {{
-      const seasons = SEASONS.slice().sort();
-      const last3 = seasons.slice(-3);
-      const last5 = seasons.slice(-5);
-      const groups = [
-        {{ key: "Last3", label: `Last 3 Seasons (${{last3[0]}}-${{last3[last3.length-1]}})`, seasons: last3 }},
-        {{ key: "Last5", label: `Last 5 Seasons (${{last5[0]}}-${{last5[last5.length-1]}})`, seasons: last5 }},
-        {{ key: "2020s", label: "2020s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2020) }},
-        {{ key: "2010s", label: "2010s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2010 && Number(s.slice(0,4)) < 2020) }},
-        {{ key: "2000s", label: "2000s", seasons: seasons.filter(s => Number(s.slice(0,4)) >= 2000 && Number(s.slice(0,4)) < 2010) }},
-        {{ key: "1996-99", label: "1996-99", seasons: seasons.filter(s => Number(s.slice(0,4)) < 2000) }},
-        {{ key: "All", label: "All Seasons", seasons }}
-      ].filter(g => g.seasons.length);
-      return groups;
+    function seasonsInRange() {{
+      const startYear = Number(document.getElementById("multi-start-year").value) || 1996;
+      const endYear = Number(document.getElementById("multi-end-year").value) || 9999;
+      return SEASONS.filter(s => {{
+        const yr = Number(s.slice(0, 4));
+        return yr >= startYear && yr <= endYear;
+      }});
     }}
 
     function toggleCols(colGroup) {{
@@ -936,14 +932,12 @@ def generate_onoff_report() -> Path:
     }}
 
     function renderMultiTable() {{
-      const groupKey = document.getElementById("multi-season-filter").value;
       const minGames = Number(document.getElementById("multi-min-games").value || 0);
       const minMin = Number(document.getElementById("multi-min-minutes").value || 0);
       const tbody = document.querySelector("#multi-table tbody");
 
-      const groups = buildSeasonGroups();
-      const group = groups.find(g => g.key === groupKey) || groups[0];
-      const rows = aggregateRows(ROWS.filter(r => group.seasons.includes(r.season)))
+      const activeSeason = seasonsInRange();
+      const rows = aggregateRows(ROWS.filter(r => activeSeason.includes(r.season)))
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
         .slice()
@@ -991,14 +985,10 @@ def generate_onoff_report() -> Path:
 
       refreshTeamOptions();
 
-      const multiSel = document.getElementById("multi-season-filter");
-      buildSeasonGroups().forEach(g => {{
-        const o = document.createElement("option");
-        o.value = g.key;
-        o.textContent = g.label;
-        multiSel.appendChild(o);
-      }});
-      multiSel.value = "Last3";
+      const sortedSeasons = SEASONS.slice().sort();
+      const latestYear = Number(sortedSeasons[sortedSeasons.length - 1].slice(0, 4));
+      document.getElementById("multi-start-year").value = Math.max(latestYear - 2, Number(sortedSeasons[0].slice(0, 4)));
+      document.getElementById("multi-end-year").value = latestYear;
 
       ["season-filter","team-filter","team-min-games","team-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", () => {{
@@ -1014,7 +1004,7 @@ def generate_onoff_report() -> Path:
         document.getElementById(id).addEventListener("input", renderLeaderboard)
       );
 
-      ["multi-season-filter","multi-min-games","multi-min-minutes"].forEach(id =>
+      ["multi-start-year","multi-end-year","multi-min-games","multi-min-minutes"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderMultiTable)
       );
 
