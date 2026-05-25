@@ -292,6 +292,8 @@ def generate_onoff_report_playoffs() -> Path:
     .toggle-btn:hover {{ background: #dbe7f5; }}
     .toggle-btn.active {{ background: #0b2d4d; color: #fff; border-color: #0b2d4d; }}
     .col-hidden {{ display: none; }}
+    thead th.sort-asc::after {{ content: " ↑"; font-size: 10px; opacity: 0.7; }}
+    thead th.sort-desc::after {{ content: " ↓"; font-size: 10px; opacity: 0.7; }}
   </style>
 </head>
 <body>
@@ -596,26 +598,36 @@ def generate_onoff_report_playoffs() -> Path:
           return dir * ((a[sortKey] || 0) - (b[sortKey] || 0));
         }});
 
+      const actualHidden = !document.querySelector('.toggle-btn[data-cols="actual"]')?.classList.contains('active');
+      const ortgHidden = !document.querySelector('.toggle-btn[data-cols="ortg-adj"]')?.classList.contains('active');
+      const drtgHidden = !document.querySelector('.toggle-btn[data-cols="drtg-adj"]')?.classList.contains('active');
+      const deltaHidden = !document.querySelector('.toggle-btn[data-cols="delta"]')?.classList.contains('active');
+
       const tbody = document.querySelector("#main-table tbody");
       tbody.innerHTML = rows.map(r => `
         <tr>
           <td>${{r.player_name}}</td>
           <td>${{r.games}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
-          <td class="col-actual col-hidden ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
+          <td class="col-actual ${{actualHidden ? 'col-hidden' : ''}} ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
           <td class="metric-emph ${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
-          <td class="col-delta col-hidden ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
-          <td class="col-actual col-hidden ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
+          <td class="col-delta ${{deltaHidden ? 'col-hidden' : ''}} ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
+          <td class="col-actual ${{actualHidden ? 'col-hidden' : ''}} ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
           <td class="metric-emph ${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
           <td class="${{cls(r.onoff_adj_off)}}">${{fmt(r.onoff_adj_off)}}</td>
-          <td class="col-ortg-adj col-hidden">${{fmt(r.on_ortg_adj)}}</td>
-          <td class="col-ortg-adj col-hidden">${{fmt(r.off_ortg_adj)}}</td>
+          <td class="col-ortg-adj ${{ortgHidden ? 'col-hidden' : ''}}">${{fmt(r.on_ortg_adj)}}</td>
+          <td class="col-ortg-adj ${{ortgHidden ? 'col-hidden' : ''}}">${{fmt(r.off_ortg_adj)}}</td>
           <td class="${{cls(r.onoff_adj_def)}}">${{fmt(r.onoff_adj_def)}}</td>
-          <td class="col-drtg-adj col-hidden">${{fmt(r.on_drtg_adj)}}</td>
-          <td class="col-drtg-adj col-hidden">${{fmt(r.off_drtg_adj)}}</td>
-          <td class="col-delta col-hidden ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
+          <td class="col-drtg-adj ${{drtgHidden ? 'col-hidden' : ''}}">${{fmt(r.on_drtg_adj)}}</td>
+          <td class="col-drtg-adj ${{drtgHidden ? 'col-hidden' : ''}}">${{fmt(r.off_drtg_adj)}}</td>
+          <td class="col-delta ${{deltaHidden ? 'col-hidden' : ''}} ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
         </tr>
       `).join("");
+
+      document.querySelectorAll("#main-table thead th").forEach(th => {{
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.key === sortKey) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }});
     }}
 
     function renderSeasonTable() {{
@@ -640,6 +652,11 @@ def generate_onoff_report_playoffs() -> Path:
           return dir * ((a[seasonSortKey] || 0) - (b[seasonSortKey] || 0));
         }});
 
+      const actualHiddenS = !document.querySelector('.toggle-btn[data-cols="actual"]')?.classList.contains('active');
+      const ortgHiddenS = !document.querySelector('.toggle-btn[data-cols="ortg-adj"]')?.classList.contains('active');
+      const drtgHiddenS = !document.querySelector('.toggle-btn[data-cols="drtg-adj"]')?.classList.contains('active');
+      const deltaHiddenS = !document.querySelector('.toggle-btn[data-cols="delta"]')?.classList.contains('active');
+
       const tbody = document.querySelector("#season-table tbody");
       tbody.innerHTML = rows.map(r => `
         <tr>
@@ -647,20 +664,25 @@ def generate_onoff_report_playoffs() -> Path:
           <td>${{r.team_abbr}}</td>
           <td>${{r.games}}</td>
           <td>${{r.minutes.toLocaleString()}}</td>
-          <td class="col-actual col-hidden ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
+          <td class="col-actual ${{actualHiddenS ? 'col-hidden' : ''}} ${{cls(r.pm_actual)}}">${{fmt(r.pm_actual)}}</td>
           <td class="metric-emph ${{cls(r.pm_adj)}}">${{fmt(r.pm_adj)}}</td>
-          <td class="col-delta col-hidden ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
-          <td class="col-actual col-hidden ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
+          <td class="col-delta ${{deltaHiddenS ? 'col-hidden' : ''}} ${{cls(r.pm_delta)}}">${{fmt(r.pm_delta)}}</td>
+          <td class="col-actual ${{actualHiddenS ? 'col-hidden' : ''}} ${{cls(r.onoff_actual)}}">${{fmt(r.onoff_actual)}}</td>
           <td class="metric-emph ${{cls(r.onoff_adj)}}">${{fmt(r.onoff_adj)}}</td>
           <td class="${{cls(r.onoff_adj_off)}}">${{fmt(r.onoff_adj_off)}}</td>
-          <td class="col-ortg-adj col-hidden">${{fmt(r.on_ortg_adj)}}</td>
-          <td class="col-ortg-adj col-hidden">${{fmt(r.off_ortg_adj)}}</td>
+          <td class="col-ortg-adj ${{ortgHiddenS ? 'col-hidden' : ''}}">${{fmt(r.on_ortg_adj)}}</td>
+          <td class="col-ortg-adj ${{ortgHiddenS ? 'col-hidden' : ''}}">${{fmt(r.off_ortg_adj)}}</td>
           <td class="${{cls(r.onoff_adj_def)}}">${{fmt(r.onoff_adj_def)}}</td>
-          <td class="col-drtg-adj col-hidden">${{fmt(r.on_drtg_adj)}}</td>
-          <td class="col-drtg-adj col-hidden">${{fmt(r.off_drtg_adj)}}</td>
-          <td class="col-delta col-hidden ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
+          <td class="col-drtg-adj ${{drtgHiddenS ? 'col-hidden' : ''}}">${{fmt(r.on_drtg_adj)}}</td>
+          <td class="col-drtg-adj ${{drtgHiddenS ? 'col-hidden' : ''}}">${{fmt(r.off_drtg_adj)}}</td>
+          <td class="col-delta ${{deltaHiddenS ? 'col-hidden' : ''}} ${{cls(r.onoff_delta)}}">${{fmt(r.onoff_delta)}}</td>
         </tr>
       `).join("");
+
+      document.querySelectorAll("#season-table thead th").forEach(th => {{
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.key === seasonSortKey) th.classList.add(seasonSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }});
     }}
 
     function init() {{
