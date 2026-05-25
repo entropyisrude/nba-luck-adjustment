@@ -365,19 +365,13 @@ def generate_onoff_report_playoffs() -> Path:
     </section>
 
     <section class="card">
-      <h2>Playoff Leaderboard</h2>
+      <h2>Playoff Multi-Year Leaderboard</h2>
       <div class="controls">
-        <label>Period
-          <select id="period-filter">
-            <option value="all">All Time (1996-2025)</option>
-            <option value="last3">Last 3 Years</option>
-            <option value="last5">Last 5 Years</option>
-            <option value="last10">Last 10 Years</option>
-            <option value="2020s">2020s</option>
-            <option value="2010s">2010s</option>
-            <option value="2000s">2000s</option>
-            <option value="1990s">1990s</option>
-          </select>
+        <label>Start Season
+          <select id="lb-start-year"></select>
+        </label>
+        <label>End Season
+          <select id="lb-end-year"></select>
         </label>
         <label>Min Games
           <input id="min-games" type="number" min="0" step="1" value="4" />
@@ -395,7 +389,7 @@ def generate_onoff_report_playoffs() -> Path:
         <button class="toggle-btn" data-cols="drtg-adj" onclick="toggleCols('drtg-adj')">Show DRtg Adj</button>
         <button class="toggle-btn" data-cols="delta" onclick="toggleCols('delta')">Show Adj Delta</button>
       </div>
-      <p class="muted" style="margin: 0 0 8px; font-size: 11px;">All stats per 48 minutes. Players aggregated across selected period.</p>
+      <p class="muted" style="margin: 0 0 8px; font-size: 11px;">All stats per 48 minutes. Players aggregated across selected season range.</p>
       <div class="table-wrap">
         <table id="main-table">
           <thead>
@@ -435,44 +429,9 @@ def generate_onoff_report_playoffs() -> Path:
     let seasonSortKey = "onoff_adj";
     let seasonSortDir = "desc";
 
-    // Get seasons for a period
-    function getSeasonsForPeriod(period) {{
-      const latestYear = parseInt(LATEST_SEASON.split("-")[0]);
-      switch(period) {{
-        case "last3":
-          return SEASONS.filter(s => parseInt(s.split("-")[0]) >= latestYear - 2);
-        case "last5":
-          return SEASONS.filter(s => parseInt(s.split("-")[0]) >= latestYear - 4);
-        case "last10":
-          return SEASONS.filter(s => parseInt(s.split("-")[0]) >= latestYear - 9);
-        case "2020s":
-          return SEASONS.filter(s => {{
-            const y = parseInt(s.split("-")[0]);
-            return y >= 2020 && y < 2030;
-          }});
-        case "2010s":
-          return SEASONS.filter(s => {{
-            const y = parseInt(s.split("-")[0]);
-            return y >= 2010 && y < 2020;
-          }});
-        case "2000s":
-          return SEASONS.filter(s => {{
-            const y = parseInt(s.split("-")[0]);
-            return y >= 2000 && y < 2010;
-          }});
-        case "1990s":
-          return SEASONS.filter(s => {{
-            const y = parseInt(s.split("-")[0]);
-            return y >= 1990 && y < 2000;
-          }});
-        default: // "all"
-          return SEASONS;
-      }}
-    }}
-
-    // Aggregate rows for selected period
-    function aggregateForPeriod(period) {{
-      const validSeasons = new Set(getSeasonsForPeriod(period));
+    // Aggregate rows for a season range (e.g. "2020-21" to "2024-25")
+    function aggregateForSeasonRange(startSeason, endSeason) {{
+      const validSeasons = new Set(SEASONS.filter(s => s >= startSeason && s <= endSeason));
       const agg = {{}};
 
       for (const r of RAW_ROWS) {{
@@ -619,12 +578,13 @@ def generate_onoff_report_playoffs() -> Path:
     }}
 
     function render() {{
-      const period = document.getElementById("period-filter").value;
+      const startSeason = document.getElementById("lb-start-year").value || "1996-97";
+      const endSeason   = document.getElementById("lb-end-year").value   || "2099-99";
       const minGames = Number(document.getElementById("min-games").value || 0);
       const minMin = Number(document.getElementById("min-minutes").value || 0);
       const search = document.getElementById("search").value.toLowerCase();
 
-      const rows = aggregateForPeriod(period)
+      const rows = aggregateForSeasonRange(startSeason, endSeason)
         .filter(r => r.games >= minGames)
         .filter(r => r.minutes >= minMin)
         .filter(r => !search || r.player_name.toLowerCase().includes(search))
@@ -734,8 +694,22 @@ def generate_onoff_report_playoffs() -> Path:
 
       refreshSeasonTeams();
 
+      // Populate multi-year season dropdowns
+      const sortedSeasons = SEASONS.slice().sort();
+      const lbStartSel = document.getElementById("lb-start-year");
+      const lbEndSel   = document.getElementById("lb-end-year");
+      sortedSeasons.forEach(s => {{
+        lbStartSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+        lbEndSel.appendChild(Object.assign(document.createElement("option"), {{value: s, textContent: s}}));
+      }});
+      lbStartSel.value = sortedSeasons[Math.max(0, sortedSeasons.length - 3)] || "";
+      lbEndSel.value   = sortedSeasons[sortedSeasons.length - 1] || "";
+
       // Event listeners
-      ["period-filter", "min-games", "min-minutes", "search"].forEach(id => {{
+      ["lb-start-year", "lb-end-year"].forEach(id => {{
+        document.getElementById(id).addEventListener("change", render);
+      }});
+      ["min-games", "min-minutes", "search"].forEach(id => {{
         document.getElementById(id).addEventListener("input", render);
       }});
       ["season-filter", "season-team-filter", "season-min-games", "season-min-minutes", "season-search"].forEach(id => {{

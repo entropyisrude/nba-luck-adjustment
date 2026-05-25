@@ -671,6 +671,9 @@ def generate_onoff_report() -> Path:
         <label>Min total minutes
           <input id=\"multi-min-minutes\" type=\"number\" min=\"0\" step=\"1\" value=\"500\" />
         </label>
+        <label>Search
+          <input id=\"multi-search\" type=\"text\" placeholder=\"Player name...\" />
+        </label>
       </div>
       <div class=\"toggle-row\">
         <button class=\"toggle-btn\" data-cols=\"ortg-adj\" onclick=\"toggleCols('ortg-adj')\">Show ORtg Adj</button>
@@ -936,12 +939,14 @@ def generate_onoff_report() -> Path:
     function renderMultiTable() {{
       const minGames = Number(document.getElementById("multi-min-games").value || 0);
       const minMin = Number(document.getElementById("multi-min-minutes").value || 0);
+      const search = document.getElementById("multi-search").value.toLowerCase();
       const tbody = document.querySelector("#multi-table tbody");
 
       const activeSeason = seasonsInRange();
       const rows = aggregateRows(ROWS.filter(r => activeSeason.includes(r.season)))
         .filter(r => Number(r.games || 0) >= minGames)
         .filter(r => Number(r.minutes_total || 0) >= minMin)
+        .filter(r => !search || String(r.player_name || "").toLowerCase().includes(search))
         .slice()
         .sort((a,b) => {{
           const dir = multiSortDir === "asc" ? 1 : -1;
@@ -1011,7 +1016,7 @@ def generate_onoff_report() -> Path:
         document.getElementById(id).addEventListener("input", renderLeaderboard)
       );
 
-      ["multi-min-games","multi-min-minutes"].forEach(id =>
+      ["multi-min-games","multi-min-minutes","multi-search"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderMultiTable)
       );
       ["multi-start-year","multi-end-year"].forEach(id =>
