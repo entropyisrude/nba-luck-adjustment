@@ -452,7 +452,7 @@ def generate_onoff_report() -> Path:
             season_to_team_ids[s].append(tid)
     # Query pbpstats for recent seasons where it has data. Seasons that time out
     # or return errors fall back gracefully to the minutes-based CSV calculation.
-    PBPSTATS_FROM = "2000-01"
+    PBPSTATS_FROM = "1996-97"
     pbp_seasons = {s: tids for s, tids in season_to_team_ids.items() if s >= PBPSTATS_FROM}
     pbp_map = _build_pbp_maps(pbp_seasons, latest_season)
     records = _finalize_records(raw_rows, pbp_map)
