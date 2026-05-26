@@ -69,6 +69,16 @@ jobs:
         run: |
           python scripts/build_player_boxscore_stats_csv.py
 
+      - name: Update playoff on/off (Apr–Jun only)
+        continue-on-error: true
+        run: |
+          MONTH=$(date -u +'%m')
+          if [ "$MONTH" -ge "4" ] && [ "$MONTH" -le "6" ]; then
+            python run_onoff.py --playoffs --start ${{ steps.date.outputs.start }} --end ${{ steps.date.outputs.end }}
+            python generate_onoff_report_playoffs.py
+            python generate_rapm_report_playoffs.py
+          fi
+
       - name: Generate derived reports
         run: |
           python generate_onoff_report.py
