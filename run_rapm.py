@@ -583,7 +583,24 @@ def get_player_info(player_ids: list[int], stints: pd.DataFrame, suffix: str = "
         parts = name.strip().split()
         return len(parts) >= 2
 
-    # First, scan historical PBP files for full names (these have "First Last" format)
+    # Load player_info_map.json as a full-name source (covers all seasons)
+    pmap_path = DATA_DIR / "player_info_map.json"
+    if pmap_path.exists():
+        try:
+            import json as _json
+            with open(pmap_path) as _f:
+                pmap = _json.load(_f)
+            for pid in needed_ids:
+                entry = pmap.get(str(pid))
+                if entry and is_full_name(entry.get("name", "")):
+                    player_info[pid] = {
+                        "name": entry["name"],
+                        "team_id": entry.get("team_id", 0),
+                    }
+        except Exception as e:
+            print(f"Warning: could not read player_info_map.json: {e}")
+
+    # Then scan historical PBP files for full names (these have "First Last" format)
     print("Loading player names from historical PBP...")
     historical_dir = DATA_DIR / "historical_pbp"
     if historical_dir.exists():
