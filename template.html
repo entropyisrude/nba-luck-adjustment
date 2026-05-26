@@ -115,14 +115,39 @@
         .timestamp { color: rgba(255,255,255,0.7); font-size: 0.82em; margin: 6px 0 12px; }
 
         /* Calendar Styles */
+        .calendar-section {
+            margin-bottom: 20px;
+        }
+        .calendar-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border: 1px solid #d6e1ef;
+            border-radius: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 3px 12px rgba(23,38,62,0.06);
+            font-weight: 600;
+            color: #1a1a2e;
+            font-size: 1em;
+            transition: background 0.15s;
+        }
+        .calendar-toggle:hover { background: #f0f5fb; }
+        .calendar-toggle.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; }
+        .calendar-toggle-arrow { font-size: 0.8em; transition: transform 0.2s; }
+        .calendar-toggle.open .calendar-toggle-arrow { transform: rotate(180deg); }
         .calendar-container {
             background: white;
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 0 0 12px 12px;
             border: 1px solid #d6e1ef;
+            border-top: none;
             box-shadow: 0 3px 12px rgba(23,38,62,0.06);
-            margin-bottom: 20px;
+            display: none;
         }
+        .calendar-container.open { display: block; }
         .calendar-grid {
             display: flex;
             flex-wrap: wrap;
@@ -514,8 +539,14 @@
         </div>
     </div>
 
-    <div class="calendar-container">
-        <div class="calendar-grid" id="calendar"></div>
+    <div class="calendar-section">
+        <div class="calendar-toggle" id="calendar-toggle" onclick="toggleCalendar()">
+            <span>Game Calendar</span>
+            <span class="calendar-toggle-arrow">&#9660;</span>
+        </div>
+        <div class="calendar-container" id="calendar-container">
+            <div class="calendar-grid" id="calendar"></div>
+        </div>
     </div>
 
     <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
@@ -633,6 +664,13 @@
 
     function formatDate(year, month, day) {
         return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    function toggleCalendar() {
+        const toggle = document.getElementById('calendar-toggle');
+        const container = document.getElementById('calendar-container');
+        toggle.classList.toggle('open');
+        container.classList.toggle('open');
     }
 
     function renderCalendar() {
