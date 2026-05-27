@@ -2,7 +2,8 @@ name: Update NBA 3PT Luck Report
 
 on:
   schedule:
-    - cron: '0 10 * 10-12,1-6 *'
+    - cron: '0 9 * 10-12,1-6 *'   # 4 AM EST (9 AM UTC) — primary run
+    - cron: '0 11 * 10-12,1-6 *'  # 6 AM EST (11 AM UTC) — backup if primary failed
   workflow_dispatch:  # Allow manual trigger
     inputs:
       start_date:
@@ -15,7 +16,39 @@ on:
         default: ''
 
 jobs:
+  # Lightweight check: did the primary run already succeed today?
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.guard.outputs.skip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 20  # Enough history to detect today's auto-update commit
+
+      - name: Check if already updated today
+        id: guard
+        run: |
+          # Manual dispatches always run; only guard scheduled runs
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          YESTERDAY=$(date -u -d '1 day ago' +'%Y-%m-%d')
+          TODAY=$(date -u +'%Y-%m-%d')
+          # Look for an auto-update commit for yesterday made today by the bot
+          if git log --after="${TODAY}T00:00:00Z" --format="%s" | grep -q "Auto-update.*${YESTERDAY}"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Already updated for ${YESTERDAY} — backup run not needed."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "No update found for ${YESTERDAY} — proceeding."
+          fi
+
   update-report:
+    needs: check
+    if: needs.check.outputs.skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
