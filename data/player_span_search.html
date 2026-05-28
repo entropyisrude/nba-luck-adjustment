@@ -91,6 +91,9 @@
       max-height: 700px;
       background: #fff;
     }
+    .season-col, .qualifying-seasons-col { display: none; }
+    #search-table.season-rows-mode .season-col { display: table-cell; }
+    #search-table.season-combined-mode .qualifying-seasons-col { display: table-cell; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td {
       border-bottom: 1px solid #edf2f9;
@@ -160,7 +163,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-05-24 13:13 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-05-24 13:13 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Use the Filter/Results mode to search combined span totals, latest-season only, each season separately, or combined qualifying seasons.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -215,10 +218,12 @@
             <option value="per100">Per 100 poss</option>
           </select>
         </label>
-        <label>Impact/Games filter basis
+        <label>Filter/Results mode
           <select id="span_filter_basis">
             <option value="span">Whole selected span</option>
             <option value="latest">Latest season in span</option>
+            <option value="season_rows">Each season separately (one row per season)</option>
+            <option value="season_combined">Qualifying seasons combined (one row per player)</option>
           </select>
         </label>
         <label>Date range
@@ -498,6 +503,8 @@
         <table id="search-table">
           <thead>
             <tr>
+              <th class="sortable season-col" data-key="season"><div class="th-wrap"><span>Season</span></div></th>
+              <th class="sortable qualifying-seasons-col" data-key="qualifying_seasons"><div class="th-wrap"><span>Qual Seas</span></div></th>
               <th class="sortable" data-key="player_name"><div class="th-wrap"><span>Player</span></div></th>
               <th class="sortable" data-key="listed_height"><div class="th-wrap"><span>Ht</span></div></th>
               <th class="sortable" data-key="age"><div class="th-wrap"><span>Age</span></div></th>
@@ -946,7 +953,7 @@
       );
     }
 
-    function aggregateRows() {
+    function aggregateRows(bySeason=false) {
       const teamGameMinutes = new Map();
       for (const r of scopedRows()) {
         const key = `${v(r, "game_id")}|${v(r, "team_abbr")}`;
@@ -955,10 +962,12 @@
       const grouped = new Map();
       for (const r of baseFilteredRows()) {
         const playerId = v(r, "player_id");
-        const key = String(playerId);
+        const seasonKey = String(v(r, "season") || "");
+        const key = bySeason ? `${playerId}|${seasonKey}` : String(playerId);
         if (!grouped.has(key)) {
           grouped.set(key, {
             player_id: playerId,
+            season: seasonKey,
             player_name: v(r, "player_name"),
             listed_height: v(r, "listed_height"),
             height_inches: v(r, "height_inches"),
@@ -1074,7 +1083,7 @@
         g.off_minutes_total += offMinutes;
         g.on_possessions += poss;
         g.off_possessions += offPoss;
-        const metricSeasonKey = String(v(r, "season") || "");
+        const metricSeasonKey = seasonKey;
         if (metricSeasonKey) {
           g.games_by_season[metricSeasonKey] = (g.games_by_season[metricSeasonKey] || 0) + 1;
           g.minutes_by_season[metricSeasonKey] = (g.minutes_by_season[metricSeasonKey] || 0) + minutes;
@@ -1244,6 +1253,7 @@
         };
         const out = {
           ...g,
+          qualifying_seasons: null,
           ts_game: ts,
           latest_season: latestSeason,
           latest_games: latestGames,
@@ -1299,7 +1309,136 @@
       return null;
     }
 
-    function filteredAggRows() {
+    function reAggregateByPlayer(qualifyingSeasonRows) {
+      const grouped = new Map();
+      for (const s of qualifyingSeasonRows) {
+        const pid = String(s.player_id);
+        if (!grouped.has(pid)) {
+          grouped.set(pid, {
+            player_id: s.player_id, player_name: s.player_name, season: null,
+            listed_height: s.listed_height, height_inches: s.height_inches,
+            age: s.age !== null && s.age !== "" ? Number(s.age) : null,
+            career_year: s.career_year !== null && s.career_year !== "" ? Number(s.career_year) : null,
+            draft_year: s.draft_year, draft_overall_pick: s.draft_overall_pick,
+            qualifying_seasons: 0,
+            games: 0, minutes: 0, off_minutes_total: 0, on_possessions: 0, off_possessions: 0,
+            pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0,
+            fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
+            assisted_2pm: 0, unassisted_2pm: 0, assisted_3pm: 0, unassisted_3pm: 0,
+            assisted_fgm: 0, unassisted_fgm: 0,
+            plus_minus_actual: 0, plus_minus_adjusted: 0,
+            off_diff_actual_total: 0, off_diff_adjusted_total: 0,
+            rim_anchor_sum: 0, rim_det_sum: 0, rim_dfg_pct_sum: 0, rim_dfg_pct_diff_sum: 0,
+            rim_dfga_sum: 0, rim_metric_count: 0,
+            contested_shots_sum: 0, contested_shots_2pt_sum: 0, contested_shots_3pt_sum: 0,
+            deflections_sum: 0, charges_drawn_sum: 0, screen_assists_sum: 0,
+            screen_ast_pts_sum: 0, loose_balls_recovered_sum: 0, box_outs_sum: 0,
+            layup_assists_sum: 0, dunk_assists_sum: 0, other_rim_assists_sum: 0,
+            rim_assists_strict_sum: 0, rim_assists_all_sum: 0, hustle_metric_count: 0,
+            rim_assist_metric_count: 0,
+            games_by_season: {}, minutes_by_season: {},
+            plus_minus_actual_by_season: {}, plus_minus_adjusted_by_season: {},
+            on_possessions_by_season: {}, off_possessions_by_season: {},
+            off_diff_actual_by_season: {}, off_diff_adjusted_by_season: {},
+          });
+        }
+        const g = grouped.get(pid);
+        g.qualifying_seasons++;
+        if (s.age !== null && s.age !== "") g.age = g.age === null ? Number(s.age) : Math.min(g.age, Number(s.age));
+        if (s.career_year !== null && s.career_year !== "") g.career_year = g.career_year === null ? Number(s.career_year) : Math.min(g.career_year, Number(s.career_year));
+        g.games += s.games || 0;
+        g.minutes += s.minutes || 0;
+        g.off_minutes_total += s.off_minutes_total || 0;
+        g.on_possessions += s.on_possessions || 0;
+        g.off_possessions += s.off_possessions || 0;
+        ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(k => { g[k] += s[k] || 0; });
+        g.plus_minus_actual += s.plus_minus_actual || 0;
+        g.plus_minus_adjusted += s.plus_minus_adjusted || 0;
+        g.off_diff_actual_total += s.off_diff_actual_total || 0;
+        g.off_diff_adjusted_total += s.off_diff_adjusted_total || 0;
+        if (s.rim_metric_count > 0) {
+          g.rim_anchor_sum += (s.rim_anchor_signature || 0) * s.rim_metric_count;
+          g.rim_det_sum += (s.rim_deterrence_signature || 0) * s.rim_metric_count;
+          g.rim_dfg_pct_sum += (s.rim_dfg_pct || 0) * s.rim_metric_count;
+          g.rim_dfg_pct_diff_sum += (s.rim_dfg_pct_diff || 0) * s.rim_metric_count;
+          g.rim_dfga_sum += s.rim_dfga || 0;
+          g.rim_metric_count += s.rim_metric_count;
+        }
+        if (s.contested_shots !== null) { g.contested_shots_sum += s.contested_shots; g.hustle_metric_count++; }
+        if (s.contested_shots_2pt !== null) g.contested_shots_2pt_sum += s.contested_shots_2pt;
+        if (s.contested_shots_3pt !== null) g.contested_shots_3pt_sum += s.contested_shots_3pt;
+        if (s.deflections !== null) g.deflections_sum += s.deflections;
+        if (s.charges_drawn !== null) g.charges_drawn_sum += s.charges_drawn;
+        if (s.screen_assists !== null) g.screen_assists_sum += s.screen_assists;
+        if (s.screen_ast_pts !== null) g.screen_ast_pts_sum += s.screen_ast_pts;
+        if (s.loose_balls_recovered !== null) g.loose_balls_recovered_sum += s.loose_balls_recovered;
+        if (s.box_outs !== null) g.box_outs_sum += s.box_outs;
+        if (s.layup_assists_created !== null) { g.layup_assists_sum += s.layup_assists_created; g.rim_assist_metric_count++; }
+        if (s.dunk_assists_created !== null) g.dunk_assists_sum += s.dunk_assists_created;
+        if (s.other_rim_assists_created !== null) g.other_rim_assists_sum += s.other_rim_assists_created;
+        if (s.rim_assists_strict !== null) g.rim_assists_strict_sum += s.rim_assists_strict;
+        if (s.rim_assists_all !== null) g.rim_assists_all_sum += s.rim_assists_all;
+        if (s.season) {
+          g.games_by_season[s.season] = s.games || 0;
+          g.minutes_by_season[s.season] = s.minutes || 0;
+          g.plus_minus_actual_by_season[s.season] = s.plus_minus_actual || 0;
+          g.plus_minus_adjusted_by_season[s.season] = s.plus_minus_adjusted || 0;
+          g.on_possessions_by_season[s.season] = s.on_possessions || 0;
+          g.off_possessions_by_season[s.season] = s.off_possessions || 0;
+          g.off_diff_actual_by_season[s.season] = s.off_diff_actual_total || 0;
+          g.off_diff_adjusted_by_season[s.season] = s.off_diff_adjusted_total || 0;
+        }
+      }
+      return Array.from(grouped.values()).map(g => {
+        const ts = (g.fga + 0.44 * g.fta) > 0 ? g.pts / (2 * (g.fga + 0.44 * g.fta)) : null;
+        const onOffActual = g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_actual / g.on_possessions) - (100 * g.off_diff_actual_total / g.off_possessions) : null;
+        const onOffAdjusted = g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_adjusted / g.on_possessions) - (100 * g.off_diff_adjusted_total / g.off_possessions) : null;
+        const latestSeason = Object.keys(g.games_by_season).sort((a,b) => seasonStart(a)-seasonStart(b)).at(-1) || null;
+        const latestGames = latestSeason ? g.games_by_season[latestSeason] : null;
+        const latestMinutes = latestSeason ? g.minutes_by_season[latestSeason] : null;
+        const latestOnPoss = latestSeason ? (g.on_possessions_by_season[latestSeason] || 0) : 0;
+        const latestOffPoss = latestSeason ? (g.off_possessions_by_season[latestSeason] || 0) : 0;
+        const latestPm = latestSeason ? (g.plus_minus_actual_by_season[latestSeason] || 0) : null;
+        const latestAdjPm = latestSeason ? (g.plus_minus_adjusted_by_season[latestSeason] || 0) : null;
+        const latestOnOffActual = latestOnPoss > 0 && latestOffPoss > 0
+          ? (100 * latestPm / latestOnPoss) - (100 * (g.off_diff_actual_by_season[latestSeason] || 0) / latestOffPoss) : null;
+        const latestOnOffAdjusted = latestOnPoss > 0 && latestOffPoss > 0
+          ? (100 * latestAdjPm / latestOnPoss) - (100 * (g.off_diff_adjusted_by_season[latestSeason] || 0) / latestOffPoss) : null;
+        return {
+          ...g,
+          ts_game: ts, on_off_actual: onOffActual, on_off_adjusted: onOffAdjusted,
+          latest_season: latestSeason, latest_games: latestGames, latest_minutes: latestMinutes,
+          latest_plus_minus_actual: latestPm, latest_plus_minus_adjusted: latestAdjPm,
+          latest_on_off_actual: latestOnOffActual, latest_on_off_adjusted: latestOnOffAdjusted,
+          fg2_pct: g.fg2a > 0 ? g.fg2m / g.fg2a : null,
+          fg3_pct: g.fg3a > 0 ? g.fg3m / g.fg3a : null,
+          ft_pct: g.fta > 0 ? g.ftm / g.fta : null,
+          rim_anchor_signature: g.rim_metric_count > 0 ? g.rim_anchor_sum / g.rim_metric_count : null,
+          rim_deterrence_signature: g.rim_metric_count > 0 ? g.rim_det_sum / g.rim_metric_count : null,
+          rim_dfga: g.rim_metric_count > 0 ? g.rim_dfga_sum : null,
+          rim_dfg_pct: g.rim_metric_count > 0 ? g.rim_dfg_pct_sum / g.rim_metric_count : null,
+          rim_dfg_pct_diff: g.rim_metric_count > 0 ? g.rim_dfg_pct_diff_sum / g.rim_metric_count : null,
+          contested_shots: g.hustle_metric_count > 0 ? g.contested_shots_sum : null,
+          contested_shots_2pt: g.hustle_metric_count > 0 ? g.contested_shots_2pt_sum : null,
+          contested_shots_3pt: g.hustle_metric_count > 0 ? g.contested_shots_3pt_sum : null,
+          deflections: g.hustle_metric_count > 0 ? g.deflections_sum : null,
+          charges_drawn: g.hustle_metric_count > 0 ? g.charges_drawn_sum : null,
+          screen_assists: g.hustle_metric_count > 0 ? g.screen_assists_sum : null,
+          screen_ast_pts: g.hustle_metric_count > 0 ? g.screen_ast_pts_sum : null,
+          loose_balls_recovered: g.hustle_metric_count > 0 ? g.loose_balls_recovered_sum : null,
+          box_outs: g.hustle_metric_count > 0 ? g.box_outs_sum : null,
+          layup_assists_created: g.rim_assist_metric_count > 0 ? g.layup_assists_sum : null,
+          dunk_assists_created: g.rim_assist_metric_count > 0 ? g.dunk_assists_sum : null,
+          other_rim_assists_created: g.rim_assist_metric_count > 0 ? g.other_rim_assists_sum : null,
+          rim_assists_strict: g.rim_assist_metric_count > 0 ? g.rim_assists_strict_sum : null,
+          rim_assists_all: g.rim_assist_metric_count > 0 ? g.rim_assists_all_sum : null,
+        };
+      });
+    }
+
+    function applyStatFilters(rows) {
       const filterMode = document.getElementById("stat_mode").value;
       const minHeightInches = document.getElementById("min_height_inches").value;
       const maxHeightInches = document.getElementById("max_height_inches").value;
@@ -1379,7 +1518,7 @@
       const expr1Target = document.getElementById("expr1_target").value;
       const expr2Cmp = document.getElementById("expr2_cmp").value;
       const expr2Target = document.getElementById("expr2_target").value;
-      return aggregateRows().filter(r =>
+      return rows.filter(r =>
         inRange(r.height_inches, minHeightInches, maxHeightInches) &&
         inRange(r.age, minAge, maxAge) &&
         inRange(r.career_year, minCareerYear, maxCareerYear) &&
@@ -1424,11 +1563,21 @@
       );
     }
 
+    function filteredAggRows() {
+      const basis = spanFilterBasis();
+      if (basis === "season_rows" || basis === "season_combined") {
+        const seasonAgg = aggregateRows(true);
+        const filtered = applyStatFilters(seasonAgg);
+        return basis === "season_rows" ? filtered : reAggregateByPlayer(filtered);
+      }
+      return applyStatFilters(aggregateRows(false));
+    }
+
     function sortRows(rows) {
       const mult = state.dir === "asc" ? 1 : -1;
       return rows.slice().sort((a, b) => {
         const key = state.key;
-        if (["player_name", "listed_height"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
+        if (["player_name", "listed_height", "season"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
         if (CUSTOM_KEYS.includes(key)) return mult * ((Number(computeExpr(a, key)) || 0) - (Number(computeExpr(b, key)) || 0));
         if (DISPLAY_TOGGLE_KEYS.includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
         if (["games", "minutes", "on_off_actual", "on_off_adjusted"].includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
@@ -1485,7 +1634,11 @@
 
     function applyColumnOrder() {
       const headerRow = document.querySelector("#search-table thead tr");
-      const desired = ["player_name"].concat(activeColumnKeys());
+      const basis = spanFilterBasis();
+      const prefixCols = basis === "season_rows" ? ["season", "player_name"]
+        : basis === "season_combined" ? ["qualifying_seasons", "player_name"]
+        : ["player_name"];
+      const desired = prefixCols.concat(activeColumnKeys().filter(k => !prefixCols.includes(k)));
       const hiddenKeys = [];
       const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key) && !hiddenKeys.includes(key)));
       headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
@@ -1503,15 +1656,24 @@
       const mode = document.getElementById("stat_mode").value;
       const basis = spanFilterBasis();
       const shown = (row, key) => modeValue(row, key, displayModes[key] || "match");
-      document.getElementById("row_count").textContent = `${rows.length.toLocaleString()} players${rows.length > 1000 ? ' (showing first 1,000)' : ''}`;
-      document.getElementById("mode_note").textContent =
-        mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
-        : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
-        : (mode === "per100" ? "counting stats shown per 100 possessions over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level" : "counting stats shown as totals over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated totals over the selected span, while rim signatures and rim DFG% fields are season-level"))
-        + `; games/minutes/plus-minus/on-off filters use the ${basis === "latest" ? "latest season in the selected span" : "whole selected span"} basis`;
+      const table = document.getElementById("search-table");
+      table.classList.toggle("season-rows-mode", basis === "season_rows");
+      table.classList.toggle("season-combined-mode", basis === "season_combined");
+      const rowLabel = basis === "season_rows" ? "player-seasons" : "players";
+      document.getElementById("row_count").textContent = `${rows.length.toLocaleString()} ${rowLabel}${rows.length > 1000 ? ' (showing first 1,000)' : ''}`;
+      const statDesc = mode === "pergame" ? "counting stats shown per game"
+        : mode === "per36" ? "counting stats shown per 36 minutes"
+        : mode === "per100" ? "counting stats shown per 100 possessions"
+        : "counting stats shown as totals";
+      const basisDesc = basis === "season_rows" ? "; each row is one player-season that passed the filters"
+        : basis === "season_combined" ? "; filters applied per season, combined stats shown for qualifying seasons only"
+        : `; games/minutes/plus-minus/on-off filters use the ${basis === "latest" ? "latest season in the selected span" : "whole selected span"} basis`;
+      document.getElementById("mode_note").textContent = statDesc + " over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated; rim signatures and rim DFG% fields stay season-level" + basisDesc;
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
+          <td data-key="season" class="season-col">${r.season || ""}</td>
+          <td data-key="qualifying_seasons" class="qualifying-seasons-col">${r.qualifying_seasons !== null ? r.qualifying_seasons : ""}</td>
           <td data-key="player_name">${r.player_name || ""}</td>
           <td data-key="listed_height">${r.listed_height || ""}</td>
           <td data-key="age">${r.age || ""}</td>
