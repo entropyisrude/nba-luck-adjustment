@@ -57,16 +57,17 @@
     }
     .panels {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 14px;
       margin-bottom: 12px;
     }
-    @media (max-width: 860px) { .panels { grid-template-columns: 1fr; } }
+    @media (max-width: 860px) { .panels { grid-template-columns: minmax(0, 1fr); } }
     .panel {
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 12px;
       background: #fbfdff;
+      min-width: 0;
     }
     .rs-panel { border-top: 3px solid #0d2f53; }
     .po-panel { border-top: 3px solid #8b1a1a; }
@@ -81,7 +82,7 @@
     .po-panel h3 { color: #8b1a1a; }
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
     .controls label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
