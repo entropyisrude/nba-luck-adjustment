@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RS + Playoffs Combined Span Search</title>
+  <style>
+    :root {
+      --bg: #f2f6fb;
+      --card: #fff;
+      --line: #d6e1ef;
+      --ink: #192231;
+      --muted: #5b6778;
+      --good: #0f766e;
+      --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }
+    .wrap { max-width: 1700px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      border: 1px solid #254b72;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06);
+      margin-bottom: 14px;
+    }
+    .common-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 860px) { .panels { grid-template-columns: 1fr; } }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+    .rs-panel { border-top: 3px solid #0d2f53; }
+    .po-panel { border-top: 3px solid #8b1a1a; }
+    .panel h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .rs-panel h3 { color: #0d2f53; }
+    .po-panel h3 { color: #8b1a1a; }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .controls label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+    .range { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    select, input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 700px;
+      background: #fff;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid #edf2f9; padding: 6px 8px; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    thead tr:first-child th {
+      position: sticky; top: 0; z-index: 3;
+      background: #d4e0f0; color: #0a1f38;
+      font-size: 11px; letter-spacing: 0.05em; text-align: center;
+    }
+    thead tr:first-child th.po-grp { background: #e8d4d4; color: #5a0f0f; }
+    thead tr:nth-child(2) th {
+      position: sticky; top: 26px; z-index: 2;
+      background: #edf3fc; color: #123154;
+    }
+    thead th.sortable { cursor: pointer; }
+    thead th.sortable:hover { background: #dce8f8; }
+    td.po-sep, th.po-sep { border-left: 2px solid #b0bdd0; }
+    .pos { color: var(--good); font-weight: 600; }
+    .neg { color: var(--bad); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .summary { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: #123154;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: var(--ink); }
+    .th-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+    th:first-child .th-wrap { justify-content: flex-start; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>RS + Playoffs Combined Span Search</h1>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="game-search.html">Game Search</a>
+        <a href="player-span-search.html">Player Span Search</a>
+        <a href="game-search-playoffs.html">Game Search: Playoffs</a>
+        <a href="player-span-search-playoffs.html">Player Span Search: Playoffs</a>
+        <a href="combined-span-search.html">RS + Playoffs Combined</a>
+        <a href="onoff.html">+/- Stats</a>
+        <a href="rapm.html">RAPM</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="muted">Filter players by Regular Season AND Playoff stats simultaneously. Set independent season ranges and stat thresholds in each panel; only players meeting both sets of criteria appear. PM and On/Off filters are always per-100 possessions; other stat filters follow Stat mode. Generated from <code>data/nba_analytics.duckdb</code>.</p>
+
+      <div class="common-controls">
+        <label>Player
+          <input id="player" type="text" placeholder="Name contains..." />
+        </label>
+        <label>Stat mode (counting stats)
+          <select id="stat_mode">
+            <option value="totals">Totals</option>
+            <option value="pergame">Per Game</option>
+            <option value="per36">Per 36</option>
+            <option value="per100">Per 100 poss</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="panels">
+        <div class="panel rs-panel">
+          <h3>Regular Season Filters</h3>
+          <div class="controls">
+            <label>RS Season start
+              <select id="rs_season_start"><option value="ALL">All</option></select>
+            </label>
+            <label>RS Season end
+              <select id="rs_season_end"><option value="ALL">All</option></select>
+            </label>
+            <label>Games
+              <div class="range">
+                <input id="rs_min_games" type="number" step="1" placeholder="Min" />
+                <input id="rs_max_games" type="number" step="1" placeholder="Max" />
+              </div>
+            </label>
+            <label>Minutes
+              <div class="range">
+                <input id="rs_min_minutes" type="number" step="1" placeholder="Min" />
+                <input id="rs_max_minutes" type="number" step="1" placeholder="Max" />
+              </div>
+            </label>
+            <label>Points
+              <div class="range">
+                <input id="rs_min_pts" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_pts" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Rebounds
+              <div class="range">
+                <input id="rs_min_reb" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_reb" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Assists
+              <div class="range">
+                <input id="rs_min_ast" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_ast" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Steals
+              <div class="range">
+                <input id="rs_min_stl" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_stl" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Blocks
+              <div class="range">
+                <input id="rs_min_blk" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_blk" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Turnovers
+              <div class="range">
+                <input id="rs_min_tov" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_tov" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>3P%
+              <div class="range">
+                <input id="rs_min_fg3_pct" type="number" step="0.001" placeholder="Min" />
+                <input id="rs_max_fg3_pct" type="number" step="0.001" placeholder="Max" />
+              </div>
+            </label>
+            <label>Raw PM (per 100)
+              <div class="range">
+                <input id="rs_min_pm" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_pm" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Adj PM (per 100)
+              <div class="range">
+                <input id="rs_min_adj_pm" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_adj_pm" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Raw On/Off (per 100)
+              <div class="range">
+                <input id="rs_min_on_off" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_on_off" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Adj On/Off (per 100)
+              <div class="range">
+                <input id="rs_min_on_off_adj" type="number" step="0.01" placeholder="Min" />
+                <input id="rs_max_on_off_adj" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="panel po-panel">
+          <h3>Playoff Filters</h3>
+          <div class="controls">
+            <label>PO Season start
+              <select id="po_season_start"><option value="ALL">All</option></select>
+            </label>
+            <label>PO Season end
+              <select id="po_season_end"><option value="ALL">All</option></select>
+            </label>
+            <label>Games
+              <div class="range">
+                <input id="po_min_games" type="number" step="1" placeholder="Min" />
+                <input id="po_max_games" type="number" step="1" placeholder="Max" />
+              </div>
+            </label>
+            <label>Minutes
+              <div class="range">
+                <input id="po_min_minutes" type="number" step="1" placeholder="Min" />
+                <input id="po_max_minutes" type="number" step="1" placeholder="Max" />
+              </div>
+            </label>
+            <label>Points
+              <div class="range">
+                <input id="po_min_pts" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_pts" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Rebounds
+              <div class="range">
+                <input id="po_min_reb" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_reb" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Assists
+              <div class="range">
+                <input id="po_min_ast" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_ast" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Steals
+              <div class="range">
+                <input id="po_min_stl" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_stl" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Blocks
+              <div class="range">
+                <input id="po_min_blk" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_blk" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Turnovers
+              <div class="range">
+                <input id="po_min_tov" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_tov" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>3P%
+              <div class="range">
+                <input id="po_min_fg3_pct" type="number" step="0.001" placeholder="Min" />
+                <input id="po_max_fg3_pct" type="number" step="0.001" placeholder="Max" />
+              </div>
+            </label>
+            <label>Raw PM (per 100)
+              <div class="range">
+                <input id="po_min_pm" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_pm" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Adj PM (per 100)
+              <div class="range">
+                <input id="po_min_adj_pm" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_adj_pm" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Raw On/Off (per 100)
+              <div class="range">
+                <input id="po_min_on_off" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_on_off" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+            <label>Adj On/Off (per 100)
+              <div class="range">
+                <input id="po_min_on_off_adj" type="number" step="0.01" placeholder="Min" />
+                <input id="po_max_on_off_adj" type="number" step="0.01" placeholder="Max" />
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="run_search" type="button">Search</button>
+        <button id="clear_filters" class="secondary" type="button">Clear</button>
+      </div>
+      <div class="summary">
+        <span id="row_count">Set filters, then press Search</span>
+        <span id="mode_note"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table id="combined-table">
+          <thead>
+            <tr>
+              <th colspan="6">Player</th>
+              <th colspan="13">Regular Season</th>
+              <th colspan="13" class="po-grp">Playoffs</th>
+            </tr>
+            <tr>
+              <th class="sortable" data-key="player_name"><div class="th-wrap"><span>Player</span></div></th>
+              <th class="sortable" data-key="listed_height"><div class="th-wrap"><span>Ht</span></div></th>
+              <th class="sortable" data-key="age"><div class="th-wrap"><span>Age</span></div></th>
+              <th class="sortable" data-key="career_year"><div class="th-wrap"><span>Yr</span></div></th>
+              <th class="sortable" data-key="draft_year"><div class="th-wrap"><span>Draft Yr</span></div></th>
+              <th class="sortable" data-key="draft_overall_pick"><div class="th-wrap"><span>Draft</span></div></th>
+              <th class="sortable" data-key="rs_games"><div class="th-wrap"><span>G</span></div></th>
+              <th class="sortable" data-key="rs_minutes"><div class="th-wrap"><span>Min</span></div></th>
+              <th class="sortable" data-key="rs_pts"><div class="th-wrap"><span>PTS</span></div></th>
+              <th class="sortable" data-key="rs_reb"><div class="th-wrap"><span>REB</span></div></th>
+              <th class="sortable" data-key="rs_ast"><div class="th-wrap"><span>AST</span></div></th>
+              <th class="sortable" data-key="rs_stl"><div class="th-wrap"><span>STL</span></div></th>
+              <th class="sortable" data-key="rs_blk"><div class="th-wrap"><span>BLK</span></div></th>
+              <th class="sortable" data-key="rs_tov"><div class="th-wrap"><span>TOV</span></div></th>
+              <th class="sortable" data-key="rs_fg3_pct"><div class="th-wrap"><span>3P%</span></div></th>
+              <th class="sortable" data-key="rs_ts"><div class="th-wrap"><span>TS%</span></div></th>
+              <th class="sortable" data-key="rs_pm"><div class="th-wrap"><span>PM/100</span></div></th>
+              <th class="sortable" data-key="rs_adj_pm"><div class="th-wrap"><span>AdjPM/100</span></div></th>
+              <th class="sortable" data-key="rs_on_off"><div class="th-wrap"><span>On/Off</span></div></th>
+              <th class="po-sep sortable" data-key="po_games"><div class="th-wrap"><span>G</span></div></th>
+              <th class="sortable" data-key="po_minutes"><div class="th-wrap"><span>Min</span></div></th>
+              <th class="sortable" data-key="po_pts"><div class="th-wrap"><span>PTS</span></div></th>
+              <th class="sortable" data-key="po_reb"><div class="th-wrap"><span>REB</span></div></th>
+              <th class="sortable" data-key="po_ast"><div class="th-wrap"><span>AST</span></div></th>
+              <th class="sortable" data-key="po_stl"><div class="th-wrap"><span>STL</span></div></th>
+              <th class="sortable" data-key="po_blk"><div class="th-wrap"><span>BLK</span></div></th>
+              <th class="sortable" data-key="po_tov"><div class="th-wrap"><span>TOV</span></div></th>
+              <th class="sortable" data-key="po_fg3_pct"><div class="th-wrap"><span>3P%</span></div></th>
+              <th class="sortable" data-key="po_ts"><div class="th-wrap"><span>TS%</span></div></th>
+              <th class="sortable" data-key="po_pm"><div class="th-wrap"><span>PM/100</span></div></th>
+              <th class="sortable" data-key="po_adj_pm"><div class="th-wrap"><span>AdjPM/100</span></div></th>
+              <th class="sortable" data-key="po_on_off"><div class="th-wrap"><span>On/Off</span></div></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Shared chunk row format (identical for RS and PO chunks)
+    const COLS = ["date","season","game_id","player_id","player_name","team_abbr","opp_team_abbr","home_away","win_loss","starter","minutes","pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg2_pct","fg3m","fg3a","fg3_pct","ftm","fta","ft_pct","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","listed_height","height_inches","age","career_year","draft_year","draft_overall_pick","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","rim_assists_season_games","layup_assists_created_per_game","dunk_assists_created_per_game","other_rim_assists_created_per_game","rim_assists_strict_per_game","rim_assists_all_per_game","rim_anchor_signature","rim_deterrence_signature","rim_dfga","rim_tracking_games","rim_dfg_pct","rim_dfg_pct_diff","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs","on_possessions","off_possessions","plus_minus_actual","plus_minus_adjusted","on_off_actual","on_off_adjusted"];
+    const LEGACY_COLS_BY_LENGTH = {
+      68: ["date","season","game_id","player_id","player_name","team_abbr","opp_team_abbr","home_away","win_loss","starter","minutes","pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg2_pct","fg3m","fg3a","fg3_pct","ftm","fta","ft_pct","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","listed_height","height_inches","age","career_year","draft_year","draft_overall_pick","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","rim_anchor_signature","rim_deterrence_signature","rim_dfga","rim_tracking_games","rim_dfg_pct","rim_dfg_pct_diff","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs","on_possessions","plus_minus_actual","plus_minus_adjusted","on_off_actual","on_off_adjusted"],
+      69: ["date","season","game_id","player_id","player_name","team_abbr","opp_team_abbr","home_away","win_loss","starter","minutes","pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg2_pct","fg3m","fg3a","fg3_pct","ftm","fta","ft_pct","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","listed_height","height_inches","age","career_year","draft_year","draft_overall_pick","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","rim_anchor_signature","rim_deterrence_signature","rim_dfga","rim_tracking_games","rim_dfg_pct","rim_dfg_pct_diff","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs","on_possessions","off_possessions","plus_minus_actual","plus_minus_adjusted","on_off_actual","on_off_adjusted"]
+    };
+    const IDX = Object.fromEntries(COLS.map((c, i) => [c, i]));
+    const v = (r, key) => r[IDX[key]];
+
+    // RS season/file data (1996-97 through 2025-26)
+    const RS_SEASONS = ["1996-97","1997-98","1998-99","1999-00","2000-01","2001-02","2002-03","2003-04","2004-05","2005-06","2006-07","2007-08","2008-09","2009-10","2010-11","2011-12","2012-13","2013-14","2014-15","2015-16","2016-17","2017-18","2018-19","2019-20","2020-21","2021-22","2022-23","2023-24","2024-25","2025-26"];
+    const RS_DATA_FILES = {"2007-08":"2007_08.js","1999-00":"1999_00.js","2011-12":"2011_12.js","2016-17":"2016_17.js","2015-16":"2015_16.js","2019-20":"2019_20.js","2018-19":"2018_19.js","2025-26":"2025_26.js","2020-21":"2020_21.js","2009-10":"2009_10.js","1998-99":"1998_99.js","2004-05":"2004_05.js","2001-02":"2001_02.js","1997-98":"1997_98.js","2017-18":"2017_18.js","2002-03":"2002_03.js","1996-97":"1996_97.js","2005-06":"2005_06.js","2010-11":"2010_11.js","2013-14":"2013_14.js","2023-24":"2023_24.js","2014-15":"2014_15.js","2003-04":"2003_04.js","2000-01":"2000_01.js","2022-23":"2022_23.js","2024-25":"2024_25.js","2008-09":"2008_09.js","2021-22":"2021_22.js","2012-13":"2012_13.js","2006-07":"2006_07.js"};
+
+    // PO season/file data (1995-96 through 2025-26)
+    const PO_SEASONS = ["1995-96","1996-97","1997-98","1998-99","1999-00","2000-01","2001-02","2002-03","2003-04","2004-05","2005-06","2006-07","2007-08","2008-09","2009-10","2010-11","2011-12","2012-13","2013-14","2014-15","2015-16","2016-17","2017-18","2018-19","2019-20","2020-21","2021-22","2022-23","2023-24","2024-25","2025-26"];
+    const PO_DATA_FILES = {"1995-96":"1995_96.js","1996-97":"1996_97.js","1997-98":"1997_98.js","1998-99":"1998_99.js","1999-00":"1999_00.js","2000-01":"2000_01.js","2001-02":"2001_02.js","2002-03":"2002_03.js","2003-04":"2003_04.js","2004-05":"2004_05.js","2005-06":"2005_06.js","2006-07":"2006_07.js","2007-08":"2007_08.js","2008-09":"2008_09.js","2009-10":"2009_10.js","2010-11":"2010_11.js","2011-12":"2011_12.js","2012-13":"2012_13.js","2013-14":"2013_14.js","2014-15":"2014_15.js","2015-16":"2015_16.js","2016-17":"2016_17.js","2017-18":"2017_18.js","2018-19":"2018_19.js","2019-20":"2019_20.js","2020-21":"2020_21.js","2021-22":"2021_22.js","2022-23":"2022_23.js","2023-24":"2023_24.js","2024-25":"2024_25.js","2025-26":"2025_26.js"};
+
+    const RS_CHUNK_BASE = window.location.pathname.includes('/data/') ? 'player_span_chunks/' : 'data/player_span_chunks/';
+    const PO_CHUNK_BASE = window.location.pathname.includes('/data/') ? 'player_span_playoff_chunks/' : 'data/player_span_playoff_chunks/';
+
+    let ROWS_RS = [];
+    let ROWS_PO = [];
+    const LOADED_RS = new Set();
+    const LOADED_PO = new Set();
+
+    const sortState = { key: "rs_minutes", dir: "desc" };
+    let lastResults = [];
+
+    function normalizeChunkRow(row) {
+      if (!Array.isArray(row)) return row;
+      if (row.length === COLS.length) return row;
+      const legacyCols = LEGACY_COLS_BY_LENGTH[row.length];
+      if (!legacyCols) return row;
+      const legacyIdx = Object.fromEntries(legacyCols.map((c, i) => [c, i]));
+      return COLS.map(col => { const idx = legacyIdx[col]; return idx === undefined ? null : row[idx]; });
+    }
+
+    async function fetchAndParseChunk(url) {
+      const resp = await fetch(url);
+      if (!resp.ok) return [];
+      const text = await resp.text();
+      const start = text.indexOf('[[');
+      const end = text.lastIndexOf(']]');
+      if (start === -1 || end === -1) return [];
+      return JSON.parse(text.slice(start, end + 2));
+    }
+
+    const seasonStart = (s) => Number(String(s || "").split("-")[0] || 0);
+    const seasonMatches = (rowSeason, selStart, selEnd) => {
+      const rs = seasonStart(rowSeason);
+      return (selStart === "ALL" || rs >= Number(selStart)) && (selEnd === "ALL" || rs <= Number(selEnd));
+    };
+
+    function selectedRsSeasons() {
+      const start = document.getElementById("rs_season_start").value;
+      const end = document.getElementById("rs_season_end").value;
+      return RS_SEASONS.filter(s => seasonMatches(s, start, end));
+    }
+    function selectedPoSeasons() {
+      const start = document.getElementById("po_season_start").value;
+      const end = document.getElementById("po_season_end").value;
+      return PO_SEASONS.filter(s => seasonMatches(s, start, end));
+    }
+
+    async function ensureRsLoaded(seasons) {
+      const needed = seasons.filter(s => !LOADED_RS.has(s));
+      for (let i = 0; i < needed.length; i++) {
+        const season = needed[i];
+        document.getElementById("row_count").textContent = `Loading RS season data (${i + 1}/${needed.length}): ${season}...`;
+        const file = RS_DATA_FILES[season];
+        if (!file) { LOADED_RS.add(season); continue; }
+        const raw = await fetchAndParseChunk(RS_CHUNK_BASE + file);
+        raw.map(normalizeChunkRow).forEach(r => ROWS_RS.push(r));
+        LOADED_RS.add(season);
+      }
+    }
+
+    async function ensurePoLoaded(seasons) {
+      const needed = seasons.filter(s => !LOADED_PO.has(s));
+      for (let i = 0; i < needed.length; i++) {
+        const season = needed[i];
+        document.getElementById("row_count").textContent = `Loading PO season data (${i + 1}/${needed.length}): ${season}...`;
+        const file = PO_DATA_FILES[season];
+        if (!file) { LOADED_PO.add(season); continue; }
+        const raw = await fetchAndParseChunk(PO_CHUNK_BASE + file);
+        raw.map(normalizeChunkRow).forEach(r => ROWS_PO.push(r));
+        LOADED_PO.add(season);
+      }
+    }
+
+    // Aggregate game-level rows into a Map<player_id_string, aggregated_obj>
+    function aggregateByPlayer(rows) {
+      // Compute team total minutes per game for off-court minute estimation
+      const teamGameMinutes = new Map();
+      for (const r of rows) {
+        const key = `${v(r, "game_id")}|${v(r, "team_abbr")}`;
+        teamGameMinutes.set(key, (teamGameMinutes.get(key) || 0) + Number(v(r, "minutes") || 0));
+      }
+
+      const grouped = new Map();
+      for (const r of rows) {
+        const pid = String(v(r, "player_id"));
+        if (!grouped.has(pid)) {
+          grouped.set(pid, {
+            player_id: v(r, "player_id"),
+            player_name: v(r, "player_name"),
+            listed_height: v(r, "listed_height"),
+            height_inches: v(r, "height_inches"),
+            age: null, career_year: null,
+            draft_year: null, draft_overall_pick: null,
+            games: 0, minutes: 0,
+            on_possessions: 0, off_possessions: 0,
+            off_diff_actual_total: 0, off_diff_adjusted_total: 0,
+            pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0,
+            fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
+            plus_minus_actual: 0, plus_minus_adjusted: 0,
+          });
+        }
+        const g = grouped.get(pid);
+        if (!g.listed_height && v(r, "listed_height")) g.listed_height = v(r, "listed_height");
+        if (g.height_inches == null && v(r, "height_inches") != null) g.height_inches = v(r, "height_inches");
+        const rowAge = v(r, "age");
+        if (rowAge != null && rowAge !== "") g.age = g.age == null ? Number(rowAge) : Math.min(g.age, Number(rowAge));
+        const rowCy = v(r, "career_year");
+        if (rowCy != null && rowCy !== "") g.career_year = g.career_year == null ? Number(rowCy) : Math.min(g.career_year, Number(rowCy));
+        if (g.draft_year == null && v(r, "draft_year") != null && v(r, "draft_year") !== "") g.draft_year = v(r, "draft_year");
+        if (g.draft_overall_pick == null && v(r, "draft_overall_pick") != null && v(r, "draft_overall_pick") !== "") g.draft_overall_pick = v(r, "draft_overall_pick");
+
+        const minutes = Number(v(r, "minutes") || 0);
+        const poss = Number(v(r, "on_possessions") || 0);
+        const offPoss = Number(v(r, "off_possessions") || 0);
+        const pm = Number(v(r, "plus_minus_actual") || 0);
+        const adjPm = Number(v(r, "plus_minus_adjusted") || 0);
+        const onOff = Number(v(r, "on_off_actual") || 0);
+        const onOffAdj = Number(v(r, "on_off_adjusted") || 0);
+
+        g.games += 1;
+        g.minutes += minutes;
+        g.on_possessions += poss;
+        g.off_possessions += offPoss;
+        g.off_diff_actual_total += pm - onOff;
+        g.off_diff_adjusted_total += adjPm - onOffAdj;
+        g.plus_minus_actual += pm;
+        g.plus_minus_adjusted += adjPm;
+        ["pts","reb","ast","stl","blk","tov","fg2m","fg2a","fg3m","fg3a","ftm","fta"].forEach(k => {
+          g[k] += Number(v(r, k) || 0);
+        });
+      }
+
+      const result = new Map();
+      for (const [pid, g] of grouped) {
+        const ts = (g.fg2a + g.fg3a + 0.44 * g.fta) > 0 ? (g.fg2m * 2 + g.fg3m * 3 + g.ftm) / (2 * (g.fg2a + g.fg3a + 0.44 * g.fta)) : null;
+        const onOffActual = g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_actual / g.on_possessions) - (100 * g.off_diff_actual_total / g.off_possessions) : null;
+        const onOffAdj = g.on_possessions > 0 && g.off_possessions > 0
+          ? (100 * g.plus_minus_adjusted / g.on_possessions) - (100 * g.off_diff_adjusted_total / g.off_possessions) : null;
+        result.set(pid, {
+          ...g,
+          fg3_pct: g.fg3a > 0 ? g.fg3m / g.fg3a : null,
+          ts_game: ts,
+          pm_per100: g.on_possessions > 0 ? 100 * g.plus_minus_actual / g.on_possessions : null,
+          adj_pm_per100: g.on_possessions > 0 ? 100 * g.plus_minus_adjusted / g.on_possessions : null,
+          on_off_actual: onOffActual,
+          on_off_adjusted: onOffAdj,
+        });
+      }
+      return result;
+    }
+
+    function buildCombinedRows(rsAgg, poAgg) {
+      const allIds = new Set([...rsAgg.keys(), ...poAgg.keys()]);
+      return Array.from(allIds).map(pid => {
+        const rs = rsAgg.get(pid) || null;
+        const po = poAgg.get(pid) || null;
+        const base = rs || po;
+        const minAge = [rs && rs.age, po && po.age].filter(a => a != null).map(Number).filter(Number.isFinite);
+        const minCy = [rs && rs.career_year, po && po.career_year].filter(a => a != null).map(Number).filter(Number.isFinite);
+        return {
+          player_id: pid,
+          player_name: base.player_name,
+          listed_height: base.listed_height,
+          height_inches: base.height_inches,
+          age: minAge.length > 0 ? Math.min(...minAge) : null,
+          career_year: minCy.length > 0 ? Math.min(...minCy) : null,
+          draft_year: (rs || po).draft_year,
+          draft_overall_pick: (rs || po).draft_overall_pick,
+          // RS stats
+          rs_games: rs ? rs.games : null,
+          rs_minutes: rs ? rs.minutes : null,
+          rs_pts: rs ? rs.pts : null,
+          rs_reb: rs ? rs.reb : null,
+          rs_ast: rs ? rs.ast : null,
+          rs_stl: rs ? rs.stl : null,
+          rs_blk: rs ? rs.blk : null,
+          rs_tov: rs ? rs.tov : null,
+          rs_fg3_pct: rs ? rs.fg3_pct : null,
+          rs_ts: rs ? rs.ts_game : null,
+          rs_on_poss: rs ? rs.on_possessions : null,
+          rs_pm: rs ? rs.pm_per100 : null,
+          rs_adj_pm: rs ? rs.adj_pm_per100 : null,
+          rs_on_off: rs ? rs.on_off_actual : null,
+          rs_on_off_adj: rs ? rs.on_off_adjusted : null,
+          // PO stats
+          po_games: po ? po.games : null,
+          po_minutes: po ? po.minutes : null,
+          po_pts: po ? po.pts : null,
+          po_reb: po ? po.reb : null,
+          po_ast: po ? po.ast : null,
+          po_stl: po ? po.stl : null,
+          po_blk: po ? po.blk : null,
+          po_tov: po ? po.tov : null,
+          po_fg3_pct: po ? po.fg3_pct : null,
+          po_ts: po ? po.ts_game : null,
+          po_on_poss: po ? po.on_possessions : null,
+          po_pm: po ? po.pm_per100 : null,
+          po_adj_pm: po ? po.adj_pm_per100 : null,
+          po_on_off: po ? po.on_off_actual : null,
+          po_on_off_adj: po ? po.on_off_adjusted : null,
+        };
+      });
+    }
+
+    // Apply stat mode to a counting stat value (null treated as 0 for filtering purposes)
+    function statVal(raw, games, minutes, onPoss, mode) {
+      if (raw === null || raw === undefined) return null;
+      if (mode === "totals") return raw;
+      if (mode === "pergame") return (games || 0) > 0 ? raw / games : null;
+      if (mode === "per36") return (minutes || 0) > 0 ? raw * 36 / minutes : null;
+      if (mode === "per100") return (onPoss || 0) > 0 ? raw * 100 / onPoss : null;
+      return raw;
+    }
+
+    const inRange = (value, minVal, maxVal) => {
+      const hasMin = minVal !== "";
+      const hasMax = maxVal !== "";
+      if (!hasMin && !hasMax) return true;
+      const n = (value === null || value === undefined) ? 0 : Number(value);
+      if (Number.isNaN(n)) return (hasMin || hasMax) ? false : true;
+      return (!hasMin || n >= Number(minVal)) && (!hasMax || n <= Number(maxVal));
+    };
+
+    function applyFilters(combined) {
+      const mode = document.getElementById("stat_mode").value;
+      const playerStr = document.getElementById("player").value.trim().toLowerCase();
+
+      const g = (id) => document.getElementById(id).value;
+
+      return combined.filter(r => {
+        if (playerStr && !String(r.player_name || "").toLowerCase().includes(playerStr)) return false;
+
+        // RS filters
+        if (!inRange(r.rs_games, g("rs_min_games"), g("rs_max_games"))) return false;
+        if (!inRange(r.rs_minutes, g("rs_min_minutes"), g("rs_max_minutes"))) return false;
+        if (!inRange(statVal(r.rs_pts, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_pts"), g("rs_max_pts"))) return false;
+        if (!inRange(statVal(r.rs_reb, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_reb"), g("rs_max_reb"))) return false;
+        if (!inRange(statVal(r.rs_ast, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_ast"), g("rs_max_ast"))) return false;
+        if (!inRange(statVal(r.rs_stl, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_stl"), g("rs_max_stl"))) return false;
+        if (!inRange(statVal(r.rs_blk, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_blk"), g("rs_max_blk"))) return false;
+        if (!inRange(statVal(r.rs_tov, r.rs_games, r.rs_minutes, r.rs_on_poss, mode), g("rs_min_tov"), g("rs_max_tov"))) return false;
+        if (!inRange(r.rs_fg3_pct, g("rs_min_fg3_pct"), g("rs_max_fg3_pct"))) return false;
+        if (!inRange(r.rs_pm, g("rs_min_pm"), g("rs_max_pm"))) return false;
+        if (!inRange(r.rs_adj_pm, g("rs_min_adj_pm"), g("rs_max_adj_pm"))) return false;
+        if (!inRange(r.rs_on_off, g("rs_min_on_off"), g("rs_max_on_off"))) return false;
+        if (!inRange(r.rs_on_off_adj, g("rs_min_on_off_adj"), g("rs_max_on_off_adj"))) return false;
+
+        // PO filters
+        if (!inRange(r.po_games, g("po_min_games"), g("po_max_games"))) return false;
+        if (!inRange(r.po_minutes, g("po_min_minutes"), g("po_max_minutes"))) return false;
+        if (!inRange(statVal(r.po_pts, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_pts"), g("po_max_pts"))) return false;
+        if (!inRange(statVal(r.po_reb, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_reb"), g("po_max_reb"))) return false;
+        if (!inRange(statVal(r.po_ast, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_ast"), g("po_max_ast"))) return false;
+        if (!inRange(statVal(r.po_stl, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_stl"), g("po_max_stl"))) return false;
+        if (!inRange(statVal(r.po_blk, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_blk"), g("po_max_blk"))) return false;
+        if (!inRange(statVal(r.po_tov, r.po_games, r.po_minutes, r.po_on_poss, mode), g("po_min_tov"), g("po_max_tov"))) return false;
+        if (!inRange(r.po_fg3_pct, g("po_min_fg3_pct"), g("po_max_fg3_pct"))) return false;
+        if (!inRange(r.po_pm, g("po_min_pm"), g("po_max_pm"))) return false;
+        if (!inRange(r.po_adj_pm, g("po_min_adj_pm"), g("po_max_adj_pm"))) return false;
+        if (!inRange(r.po_on_off, g("po_min_on_off"), g("po_max_on_off"))) return false;
+        if (!inRange(r.po_on_off_adj, g("po_min_on_off_adj"), g("po_max_on_off_adj"))) return false;
+
+        return true;
+      });
+    }
+
+    function sortRows(rows) {
+      const mult = sortState.dir === "asc" ? 1 : -1;
+      const key = sortState.key;
+      return rows.slice().sort((a, b) => {
+        if (key === "player_name" || key === "listed_height") return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
+        return mult * ((Number(a[key]) || 0) - (Number(b[key]) || 0));
+      });
+    }
+
+    const fmt = (x, d = 1) => (x === null || x === undefined || Number.isNaN(Number(x))) ? "" : Number(x).toFixed(d);
+    const cls = (x) => Number(x) > 0 ? "pos" : Number(x) < 0 ? "neg" : "";
+
+    function displayStat(r, prefix, key, mode) {
+      const raw = r[`${prefix}_${key}`];
+      const games = r[`${prefix}_games`];
+      const min = r[`${prefix}_minutes`];
+      const poss = r[`${prefix}_on_poss`];
+      return statVal(raw, games, min, poss, mode);
+    }
+
+    function renderRows(rows) {
+      const mode = document.getElementById("stat_mode").value;
+      const tbody = document.querySelector("#combined-table tbody");
+      const isTotal = mode === "totals";
+      const d = (val, decimals) => fmt(val, decimals);
+      const ds = (r, pfx, key) => {
+        const val = displayStat(r, pfx, key, mode);
+        return d(val, isTotal ? 0 : 2);
+      };
+
+      document.getElementById("row_count").textContent =
+        `${rows.length.toLocaleString()} player${rows.length !== 1 ? "s" : ""}${rows.length > 1000 ? " (showing first 1,000)" : ""}`;
+
+      const modeDesc = mode === "pergame" ? "per game" : mode === "per36" ? "per 36 min" : mode === "per100" ? "per 100 poss" : "totals";
+      document.getElementById("mode_note").textContent = `Counting stats shown as ${modeDesc}; PM and On/Off always per-100 possessions`;
+
+      tbody.innerHTML = rows.slice(0, 1000).map(r => `
+        <tr>
+          <td>${r.player_name || ""}</td>
+          <td>${r.listed_height || ""}</td>
+          <td>${r.age != null ? r.age : ""}</td>
+          <td>${r.career_year != null ? r.career_year : ""}</td>
+          <td>${r.draft_year != null ? r.draft_year : ""}</td>
+          <td>${r.draft_overall_pick != null ? r.draft_overall_pick : ""}</td>
+          <td>${r.rs_games != null ? fmt(r.rs_games, 0) : ""}</td>
+          <td>${r.rs_minutes != null ? fmt(r.rs_minutes, isTotal ? 0 : 1) : ""}</td>
+          <td>${r.rs_pts != null ? ds(r, "rs", "pts") : ""}</td>
+          <td>${r.rs_reb != null ? ds(r, "rs", "reb") : ""}</td>
+          <td>${r.rs_ast != null ? ds(r, "rs", "ast") : ""}</td>
+          <td>${r.rs_stl != null ? ds(r, "rs", "stl") : ""}</td>
+          <td>${r.rs_blk != null ? ds(r, "rs", "blk") : ""}</td>
+          <td>${r.rs_tov != null ? ds(r, "rs", "tov") : ""}</td>
+          <td>${d(r.rs_fg3_pct, 3)}</td>
+          <td>${d(r.rs_ts, 3)}</td>
+          <td class="${cls(r.rs_pm)}">${d(r.rs_pm, 2)}</td>
+          <td class="${cls(r.rs_adj_pm)}">${d(r.rs_adj_pm, 3)}</td>
+          <td class="${cls(r.rs_on_off)}">${d(r.rs_on_off, 2)}</td>
+          <td class="po-sep">${r.po_games != null ? fmt(r.po_games, 0) : ""}</td>
+          <td>${r.po_minutes != null ? fmt(r.po_minutes, isTotal ? 0 : 1) : ""}</td>
+          <td>${r.po_pts != null ? ds(r, "po", "pts") : ""}</td>
+          <td>${r.po_reb != null ? ds(r, "po", "reb") : ""}</td>
+          <td>${r.po_ast != null ? ds(r, "po", "ast") : ""}</td>
+          <td>${r.po_stl != null ? ds(r, "po", "stl") : ""}</td>
+          <td>${r.po_blk != null ? ds(r, "po", "blk") : ""}</td>
+          <td>${r.po_tov != null ? ds(r, "po", "tov") : ""}</td>
+          <td>${d(r.po_fg3_pct, 3)}</td>
+          <td>${d(r.po_ts, 3)}</td>
+          <td class="${cls(r.po_pm)}">${d(r.po_pm, 2)}</td>
+          <td class="${cls(r.po_adj_pm)}">${d(r.po_adj_pm, 3)}</td>
+          <td class="${cls(r.po_on_off)}">${d(r.po_on_off, 2)}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function runSearch() {
+      document.getElementById("row_count").textContent = "Loading data...";
+      document.getElementById("mode_note").textContent = "";
+      try {
+        const rsSeasons = selectedRsSeasons();
+        const poSeasons = selectedPoSeasons();
+
+        await ensureRsLoaded(rsSeasons);
+        await ensurePoLoaded(poSeasons);
+
+        document.getElementById("row_count").textContent = "Aggregating...";
+
+        // Scope rows to the selected season ranges
+        const rsStart = document.getElementById("rs_season_start").value;
+        const rsEnd = document.getElementById("rs_season_end").value;
+        const poStart = document.getElementById("po_season_start").value;
+        const poEnd = document.getElementById("po_season_end").value;
+
+        const scopedRs = ROWS_RS.filter(r => seasonMatches(v(r, "season"), rsStart, rsEnd));
+        const scopedPo = ROWS_PO.filter(r => seasonMatches(v(r, "season"), poStart, poEnd));
+
+        const rsAgg = aggregateByPlayer(scopedRs);
+        const poAgg = aggregateByPlayer(scopedPo);
+
+        const combined = buildCombinedRows(rsAgg, poAgg);
+        const filtered = applyFilters(combined);
+        lastResults = sortRows(filtered);
+        renderRows(lastResults);
+      } catch (err) {
+        document.getElementById("row_count").textContent = `Error: ${err && err.message ? err.message : err}`;
+      }
+    }
+
+    function populate() {
+      const rsOpts = ['<option value="ALL">All</option>'].concat(
+        RS_SEASONS.map(s => `<option value="${seasonStart(s)}">${s}</option>`)
+      ).join("");
+      document.getElementById("rs_season_start").innerHTML = rsOpts;
+      document.getElementById("rs_season_end").innerHTML = rsOpts;
+
+      const poOpts = ['<option value="ALL">All</option>'].concat(
+        PO_SEASONS.map(s => `<option value="${seasonStart(s)}">${s}</option>`)
+      ).join("");
+      document.getElementById("po_season_start").innerHTML = poOpts;
+      document.getElementById("po_season_end").innerHTML = poOpts;
+    }
+
+    function clearFilters() {
+      document.querySelectorAll("input").forEach(el => { el.value = ""; });
+      document.getElementById("rs_season_start").value = "ALL";
+      document.getElementById("rs_season_end").value = "ALL";
+      document.getElementById("po_season_start").value = "ALL";
+      document.getElementById("po_season_end").value = "ALL";
+      document.getElementById("stat_mode").value = "totals";
+      lastResults = [];
+      document.getElementById("row_count").textContent = "Set filters, then press Search";
+      document.getElementById("mode_note").textContent = "";
+      document.querySelector("#combined-table tbody").innerHTML = "";
+    }
+
+    // Header sort handlers
+    document.querySelectorAll("#combined-table thead th.sortable").forEach(th => {
+      th.onclick = () => {
+        if (!lastResults.length) return;
+        const key = th.dataset.key;
+        if (sortState.key === key) {
+          sortState.dir = sortState.dir === "desc" ? "asc" : "desc";
+        } else {
+          sortState.key = key;
+          sortState.dir = key === "player_name" || key === "listed_height" ? "asc" : "desc";
+        }
+        lastResults = sortRows(lastResults);
+        renderRows(lastResults);
+      };
+    });
+
+    document.getElementById("run_search").addEventListener("click", runSearch);
+    document.getElementById("clear_filters").addEventListener("click", clearFilters);
+    document.querySelectorAll("input").forEach(el => {
+      el.addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
+    });
+
+    populate();
+    clearFilters();
+  </script>
+</body>
+</html>
