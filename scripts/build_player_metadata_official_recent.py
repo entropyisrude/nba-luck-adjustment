@@ -26,28 +26,15 @@ def height_to_inches(height: str | None) -> int | None:
 
 def main() -> None:
     con = duckdb.connect(str(DB_PATH), read_only=True)
-    columns = {row[1] for row in con.execute("PRAGMA table_info('player_game_facts')").fetchall()}
-    if "age" in columns:
-        targets = con.execute(
-            """
-            SELECT DISTINCT player_id, player_name
-            FROM player_game_facts
-            WHERE season = '2025-26'
-              AND player_id IS NOT NULL
-              AND age IS NULL
-            ORDER BY player_name
-            """
-        ).fetchall()
-    else:
-        targets = con.execute(
-            """
-            SELECT DISTINCT player_id, player_name
-            FROM player_game_facts
-            WHERE season = '2025-26'
-              AND player_id IS NOT NULL
-            ORDER BY player_name
-            """
-        ).fetchall()
+    targets = con.execute(
+        """
+        SELECT DISTINCT player_id, player_name
+        FROM player_game_facts
+        WHERE player_id IS NOT NULL
+          AND (listed_height IS NULL OR height_inches IS NULL)
+        ORDER BY player_name
+        """
+    ).fetchall()
     con.close()
 
     existing: dict[int, dict[str, str]] = {}

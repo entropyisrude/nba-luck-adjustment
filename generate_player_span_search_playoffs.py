@@ -13,7 +13,9 @@ os.environ.setdefault("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics_pla
 os.environ.setdefault("PLAYER_SPAN_SEARCH_GAME_ID_PREFIX", "4")
 
 from generate_player_span_search_report import generate_player_span_search_report
+from generate_player_span_search_playoffs_pbpstats import generate as generate_pbpstats_chunks
 
 
 if __name__ == "__main__":
     generate_player_span_search_report()
+    generate_pbpstats_chunks()
