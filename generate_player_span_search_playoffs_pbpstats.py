@@ -1,33 +1,39 @@
-"""Generate playoff span search chunks: DB box stats + pbpstats on/off correction.
+"""Generate playoff span search chunks: Kaggle box scores + pbpstats on/off.
+
+Box score source is now PlayerStatistics.csv from the Kaggle dataset
+'historical-nba-data-and-player-box-scores', which has complete game-by-game
+coverage from 1947 through the current season.  The old DB source was built by
+joining box scores WITH play-by-play, so seasons whose PBP had gaps (e.g.
+1998-99 SAS had only 4 of 16 games in the source) produced incomplete rows.
+Kaggle has no such gap — it's purely box-score-sourced.
 
 The workflow:
-1. Query player_game_facts (playoff DB) for real game-by-game rows — correct box
-   stats, dates, opponents, starters, etc. — but on/off possessions may be wrong
-   for seasons where the play-by-play source has incomplete coverage (e.g. 1998-99
-   SAS had only 4 of 16 games in the source PBP).
-2. Fetch pbpstats season-level totals (on/off possessions, plus/minus).
-3. For each pbpstats player-team, match to DB game rows by (player_id, team_abbr):
-   - If DB game count is within 1 of pbpstats GamesPlayed: use real DB game rows
-     and patch on/off columns proportionally by minutes.
-   - Otherwise (DB data incomplete): create pbpstats-based synthetic rows.
-4. Players in DB but absent from pbpstats keep their DB on/off unchanged.
-5. Write JS chunk files.
-
-For 1995-96 (before pbpstats coverage), existing chunk is left untouched.
+1. Load playoff game rows from Kaggle PlayerStatistics.csv.
+   Map team IDs → abbreviations via Kaggle TeamHistories.csv.
+2. Load bio (height, age, draft) and rim data from the playoff DB.
+3. Fetch pbpstats season-level on/off totals.
+4. For each pbpstats player-team:
+   - If Kaggle game count ≥ pbpstats GamesPlayed − 1: use real Kaggle rows and
+     patch on/off columns proportionally by minutes.
+   - Otherwise (Kaggle has fewer games than pbpstats): create synthetic rows
+     from pbpstats season totals.
+5. Players in Kaggle but absent from pbpstats (bench players under the
+   minimum possessions threshold): include with on/off zeroed out.
+6. Write JS chunk files.
 
 On/off patching formula for real game rows:
   on_poss_game  = pbp_on_poss  × (game_min / season_min)
   off_poss_game = pbp_off_poss × (game_min / season_min)
-  pm_game       = actual per-game PM from DB (unchanged)
+  pm_game       = actual per-game PM from Kaggle (unchanged)
   on_off_game   = pm_game − pbp_off_diff / n_games
-    (ensures sum(pm - on_off) = team_pm - player_pm → correct JS OnOffRtg)
+    (ensures sum(pm − on_off) = team_pm − player_pm → correct JS OnOffRtg)
 
 JS on/off formula (player_span_search_playoffs.html):
-  offDiffActual = plusMinusActual - onOffActual  (per row)
+  offDiffActual = plusMinusActual − onOffActual  (per row)
   g.off_diff_actual_total += offDiffActual
   onOffActual = (100*g.plus_minus_actual/g.on_possessions)
-              - (100*g.off_diff_actual_total/g.off_possessions)
-Chunk indices:  69=on_poss  70=off_poss  71=pm_actual  72=pm_adj  73=on_off_actual  74=on_off_adj
+              − (100*g.off_diff_actual_total/g.off_possessions)
+Chunk indices: 69=on_poss  70=off_poss  71=pm_actual  72=pm_adj  73=on_off_actual  74=on_off_adj
 """
 
 from __future__ import annotations
@@ -36,9 +42,12 @@ import gzip
 import json
 import os
 import time
+import zipfile
+from collections import defaultdict
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 import requests
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parent)))
@@ -50,10 +59,17 @@ CHUNK_DIR = Path(
     os.environ.get("PLAYER_SPAN_SEARCH_CHUNK_DIR", str(DATA_DIR / "player_span_playoff_chunks"))
 )
 PBPSTATS_PLAYOFFS_CACHE = DATA_DIR / "pbpstats_playoffs_cache.json.gz"
+KAGGLE_ZIP = ROOT / "historical-nba-data-and-player-box-scores.zip"
 
 PBP_BASE = "https://api.pbpstats.com"
 PBP_TIMEOUT = 45
 PBPSTATS_FROM = "1996-97"
+
+# TeamHistories.csv uses different abbreviations than NBA.com/pbpstats for some franchises
+ABBREV_OVERRIDES = {
+    "SAN": "SAS",  # San Antonio Spurs
+    "NJ": "NJN",   # New Jersey Nets
+}
 
 # Chunk row indices for on/off columns
 IDX_MINUTES = 10
@@ -163,144 +179,232 @@ def _build_pbp_index(
 
 
 # ---------------------------------------------------------------------------
-# DB query — same column order as the 75-element chunk row format
+# Kaggle data loading
 # ---------------------------------------------------------------------------
 
-_QUERY = """
-SELECT
-    CAST(date AS VARCHAR)                          AS date,
-    season,
-    game_id,
-    player_id,
-    player_name,
-    team_abbr,
-    opp_team_abbr,
-    home_away,
-    win_loss,
-    starter,
-    minutes,
-    pts,
-    reb,
-    oreb,
-    dreb,
-    ast,
-    stl,
-    blk,
-    tov,
-    pf,
-    fgm,
-    fga,
-    fg2m,
-    fg2a,
-    fg2_pct,
-    fg3m,
-    fg3a,
-    fg3_pct,
-    ftm,
-    fta,
-    ft_pct,
-    {assisted_2pm},
-    {unassisted_2pm},
-    {assisted_3pm},
-    {unassisted_3pm},
-    {assisted_fgm},
-    {unassisted_fgm},
-    {listed_height},
-    {height_inches},
-    {age},
-    {career_year},
-    {draft_year},
-    {draft_overall_pick},
-    {layup_assists_created},
-    {dunk_assists_created},
-    {other_rim_assists_created},
-    {rim_assists_strict},
-    {rim_assists_all},
-    {rim_assists_season_games},
-    {layup_assists_created_per_game},
-    {dunk_assists_created_per_game},
-    {other_rim_assists_created_per_game},
-    {rim_assists_strict_per_game},
-    {rim_assists_all_per_game},
-    rim_anchor_signature,
-    rim_deterrence_signature,
-    rim_dfga,
-    rim_tracking_games,
-    rim_dfg_pct,
-    rim_dfg_pct_diff,
-    {contested_shots},
-    {contested_shots_2pt},
-    {contested_shots_3pt},
-    {deflections},
-    {charges_drawn},
-    {screen_assists},
-    {screen_ast_pts},
-    {loose_balls_recovered},
-    {box_outs},
-    on_possessions,
-    (team_possessions - on_possessions) AS off_possessions,
-    plus_minus_actual,
-    plus_minus_adjusted,
-    on_off_actual,
-    on_off_adjusted
-FROM player_game_facts
-WHERE pts IS NOT NULL
-  AND game_id LIKE '4%'
-ORDER BY season, player_id, team_abbr, date
-"""
+def _load_team_maps(
+    zf: zipfile.ZipFile,
+) -> tuple[dict[tuple[int, int], str], dict[tuple[str, str, int], tuple[int, str]]]:
+    """Returns two maps from TeamHistories.csv:
+
+    id_map:   {(teamId_int, season_year_int): abbrev_str}
+    name_map: {(city_lower, name_lower, season_year_int): (teamId_int, abbrev_str)}
+
+    TeamHistories abbreviations have trailing whitespace and a few differ from
+    NBA.com/pbpstats (e.g. 'SAN' vs 'SAS').  Both are corrected here.
+    Some Kaggle seasons have NaN teamId — name_map provides the fallback.
+    """
+    with zf.open("TeamHistories.csv") as f:
+        th = pd.read_csv(f)
+    for col in ("teamAbbrev", "teamCity", "teamName", "league"):
+        th[col] = th[col].str.strip()
+    th = th[th["league"].str.lower() == "nba"]
+
+    id_map: dict[tuple[int, int], str] = {}
+    name_map: dict[tuple[str, str, int], tuple[int, str]] = {}
+    for _, row in th.iterrows():
+        tid = int(row["teamId"])
+        abbrev = ABBREV_OVERRIDES.get(str(row["teamAbbrev"]), str(row["teamAbbrev"]))
+        city = str(row["teamCity"]).lower()
+        name = str(row["teamName"]).lower()
+        founded = int(row["seasonFounded"])
+        till = int(row["seasonActiveTill"])
+        for yr in range(founded, till + 1):
+            id_map[(tid, yr)] = abbrev
+            name_map[(city, name, yr)] = (tid, abbrev)
+    return id_map, name_map
 
 
-def _load_db_rows(con: duckdb.DuckDBPyConnection) -> list[list]:
-    """Return all playoff game rows in 75-column chunk format."""
-    available = {
-        row[1]
-        for row in con.execute("PRAGMA table_info('player_game_facts')").fetchall()
-    }
+def _load_player_names(zf: zipfile.ZipFile) -> dict[int, str]:
+    """Returns {personId: 'First Last'} from Players.csv."""
+    with zf.open("Players.csv") as f:
+        df = pd.read_csv(f, usecols=["personId", "firstName", "lastName"])
+    names: dict[int, str] = {}
+    for _, row in df.iterrows():
+        pid = int(row["personId"])
+        first = str(row["firstName"]) if pd.notna(row["firstName"]) else ""
+        last = str(row["lastName"]) if pd.notna(row["lastName"]) else ""
+        names[pid] = f"{first} {last}".strip()
+    return names
 
-    def sc(name: str) -> str:
-        return name if name in available else f"NULL AS {name}"
 
-    rows = con.execute(
-        _QUERY.format(
-            assisted_2pm=sc("assisted_2pm"),
-            unassisted_2pm=sc("unassisted_2pm"),
-            assisted_3pm=sc("assisted_3pm"),
-            unassisted_3pm=sc("unassisted_3pm"),
-            assisted_fgm=sc("assisted_fgm"),
-            unassisted_fgm=sc("unassisted_fgm"),
-            listed_height=sc("listed_height"),
-            height_inches=sc("height_inches"),
-            age=sc("age"),
-            career_year=sc("career_year"),
-            draft_year=sc("draft_year"),
-            draft_overall_pick=sc("draft_overall_pick"),
-            layup_assists_created=sc("layup_assists_created"),
-            dunk_assists_created=sc("dunk_assists_created"),
-            other_rim_assists_created=sc("other_rim_assists_created"),
-            rim_assists_strict=sc("rim_assists_strict"),
-            rim_assists_all=sc("rim_assists_all"),
-            rim_assists_season_games=sc("rim_assists_season_games"),
-            layup_assists_created_per_game=sc("layup_assists_created_per_game"),
-            dunk_assists_created_per_game=sc("dunk_assists_created_per_game"),
-            other_rim_assists_created_per_game=sc("other_rim_assists_created_per_game"),
-            rim_assists_strict_per_game=sc("rim_assists_strict_per_game"),
-            rim_assists_all_per_game=sc("rim_assists_all_per_game"),
-            contested_shots=sc("contested_shots"),
-            contested_shots_2pt=sc("contested_shots_2pt"),
-            contested_shots_3pt=sc("contested_shots_3pt"),
-            deflections=sc("deflections"),
-            charges_drawn=sc("charges_drawn"),
-            screen_assists=sc("screen_assists"),
-            screen_ast_pts=sc("screen_ast_pts"),
-            loose_balls_recovered=sc("loose_balls_recovered"),
-            box_outs=sc("box_outs"),
+def _load_kaggle_rows(
+    bio_map: dict[int, dict],
+    rim_map: dict[tuple[str, int], dict],
+) -> dict[str, dict[tuple[str, str], list[list]]]:
+    """Load playoff game rows from Kaggle PlayerStatistics.csv.
+
+    Returns {season: {(player_id_str, team_abbr_upper): [75-col row, ...]}}
+
+    Columns 31-36 (assist splits) and 60-68 (hustle) are None; bio (37-42) and
+    rim (54-59) are filled from DB lookups passed in.  On/off columns (69-74)
+    are placeholders — patched in generate().
+    """
+    if not KAGGLE_ZIP.exists():
+        raise FileNotFoundError(f"Kaggle zip not found: {KAGGLE_ZIP}")
+
+    with zipfile.ZipFile(KAGGLE_ZIP, "r") as zf:
+        team_abbr_map, team_name_map = _load_team_maps(zf)
+        player_names = _load_player_names(zf)
+        with zf.open("PlayerStatistics.csv") as f:
+            ps = pd.read_csv(f, low_memory=False)
+
+    ps = ps[ps["gameType"] == "Playoffs"].copy()
+
+    ps["gameDateTimeEst"] = pd.to_datetime(ps["gameDateTimeEst"])
+    ps["_season_year"] = ps["gameDateTimeEst"].dt.year.astype(int) - 1
+    ps["season"] = ps["_season_year"].apply(lambda y: f"{y}-{str(y + 1)[-2:]}")
+    ps["date_str"] = ps["gameDateTimeEst"].dt.strftime("%Y-%m-%d")
+
+    ps["playerteamId"] = pd.to_numeric(ps["playerteamId"], errors="coerce")
+    ps["opponentteamId"] = pd.to_numeric(ps["opponentteamId"], errors="coerce")
+    for col in ("playerteamCity", "playerteamName", "opponentteamCity", "opponentteamName"):
+        ps[col] = ps[col].fillna("").str.strip()
+
+    stat_cols = [
+        "numMinutes", "points", "reboundsTotal", "reboundsOffensive",
+        "reboundsDefensive", "assists", "steals", "blocks", "turnovers",
+        "foulsPersonal", "fieldGoalsMade", "fieldGoalsAttempted",
+        "threePointersMade", "threePointersAttempted",
+        "freeThrowsMade", "freeThrowsAttempted", "plusMinusPoints",
+    ]
+    for col in stat_cols:
+        ps[col] = pd.to_numeric(ps[col], errors="coerce").fillna(0)
+
+    ps["fg2m"] = (ps["fieldGoalsMade"] - ps["threePointersMade"]).clip(lower=0)
+    ps["fg2a"] = (ps["fieldGoalsAttempted"] - ps["threePointersAttempted"]).clip(lower=0)
+    ps["starter_val"] = ps["startingPosition"].apply(
+        lambda x: 1 if (pd.notna(x) and str(x).strip()) else 0
+    )
+    ps["home_away_str"] = ps["home"].apply(lambda x: "H" if x == 1 else "A")
+    ps["win_loss_str"] = ps["win"].apply(lambda x: "W" if x == 1 else "L")
+    ps["personId"] = pd.to_numeric(ps["personId"], errors="coerce")
+    ps["gameId"] = ps["gameId"].astype(str)
+    ps = ps.dropna(subset=["personId"]).copy()
+    ps["personId"] = ps["personId"].astype(int)
+
+    def _pct(m: float, a: float) -> float | None:
+        return m / a if a > 0 else None
+
+    def _resolve_team(
+        team_id_raw: object,
+        city: str,
+        name: str,
+        season_year: int,
+    ) -> tuple[str, str]:
+        """Returns (team_id_str, team_abbr) using teamId when available, name-based fallback otherwise."""
+        if pd.notna(team_id_raw):
+            tid = int(team_id_raw)
+            abbrev = team_abbr_map.get((tid, season_year), str(tid))
+            return str(tid), abbrev
+        # NaN team ID — look up by city + name (some seasons have incomplete Kaggle data)
+        lookup = team_name_map.get((city.lower(), name.lower(), season_year))
+        if lookup:
+            return str(lookup[0]), lookup[1]
+        return "", ""
+
+    result: dict[str, dict[tuple[str, str], list[list]]] = {}
+
+    for r in ps.to_dict("records"):
+        pid = int(r["personId"])
+        season = str(r["season"])
+        season_year = int(r["_season_year"])
+        pid_str = str(pid)
+
+        team_id_str, team_abbr = _resolve_team(
+            r["playerteamId"], r["playerteamCity"], r["playerteamName"], season_year
         )
-    ).fetchall()
-    return [list(row) for row in rows]
+        _, opp_abbr = _resolve_team(
+            r["opponentteamId"], r["opponentteamCity"], r["opponentteamName"], season_year
+        )
+
+        bio = bio_map.get(pid, {})
+        rim = rim_map.get((season, pid), {})
+
+        fgm = float(r["fieldGoalsMade"])
+        fga = float(r["fieldGoalsAttempted"])
+        fg2m = float(r["fg2m"])
+        fg2a = float(r["fg2a"])
+        fg3m = float(r["threePointersMade"])
+        fg3a = float(r["threePointersAttempted"])
+        ftm = float(r["freeThrowsMade"])
+        fta = float(r["freeThrowsAttempted"])
+        pm = float(r["plusMinusPoints"])
+
+        row: list = [
+            r["date_str"],                        # 0: date
+            season,                               # 1: season
+            r["gameId"],                          # 2: game_id
+            pid,                                  # 3: player_id
+            player_names.get(pid, pid_str),       # 4: player_name
+            team_abbr,                            # 5: team_abbr
+            opp_abbr,                             # 6: opp_team_abbr
+            r["home_away_str"],                   # 7: home_away
+            r["win_loss_str"],                    # 8: win_loss
+            r["starter_val"],                     # 9: starter
+            float(r["numMinutes"]),               # 10: minutes
+            float(r["points"]),                   # 11: pts
+            float(r["reboundsTotal"]),            # 12: reb
+            float(r["reboundsOffensive"]),        # 13: oreb
+            float(r["reboundsDefensive"]),        # 14: dreb
+            float(r["assists"]),                  # 15: ast
+            float(r["steals"]),                   # 16: stl
+            float(r["blocks"]),                   # 17: blk
+            float(r["turnovers"]),                # 18: tov
+            float(r["foulsPersonal"]),            # 19: pf
+            fgm,                                  # 20: fgm
+            fga,                                  # 21: fga
+            fg2m,                                 # 22: fg2m
+            fg2a,                                 # 23: fg2a
+            _pct(fg2m, fg2a),                     # 24: fg2_pct
+            fg3m,                                 # 25: fg3m
+            fg3a,                                 # 26: fg3a
+            _pct(fg3m, fg3a),                     # 27: fg3_pct
+            ftm,                                  # 28: ftm
+            fta,                                  # 29: fta
+            _pct(ftm, fta),                       # 30: ft_pct
+            None, None, None, None, None, None,   # 31-36: assist splits
+            bio.get("listed_height"),             # 37: listed_height
+            bio.get("height_inches"),             # 38: height_inches
+            bio.get("age"),                       # 39: age
+            bio.get("career_year"),               # 40: career_year
+            bio.get("draft_year"),                # 41: draft_year
+            bio.get("draft_overall_pick"),        # 42: draft_overall_pick
+            None, None, None, None, None, None,   # 43-48: rim assists counts
+            None, None, None, None, None,         # 49-53: rim assists per game
+            rim.get("rim_anchor_signature"),      # 54
+            rim.get("rim_deterrence_signature"),  # 55
+            rim.get("rim_dfga"),                  # 56
+            rim.get("rim_tracking_games"),        # 57
+            rim.get("rim_dfg_pct"),               # 58
+            rim.get("rim_dfg_pct_diff"),          # 59
+            None, None, None, None, None,         # 60-64: hustle
+            None, None, None, None,               # 65-68: hustle
+            0.0,                                  # 69: on_poss (patched later)
+            0.0,                                  # 70: off_poss (patched later)
+            pm,                                   # 71: plus_minus_actual
+            pm,                                   # 72: plus_minus_adjusted
+            0.0,                                  # 73: on_off_actual (patched later)
+            0.0,                                  # 74: on_off_adjusted
+        ]
+
+        if season not in result:
+            result[season] = {}
+        key = (pid_str, team_id_str)
+        if key not in result[season]:
+            result[season][key] = []
+        result[season][key].append(row)
+
+    # Sort game rows within each player-team by date ascending
+    for season_data in result.values():
+        for rows in season_data.values():
+            rows.sort(key=lambda r: r[0])
+
+    return result
 
 
 # ---------------------------------------------------------------------------
-# Bio + rim helpers (used for pbpstats fake-row fallback)
+# Bio + rim helpers (from DB, for columns not in Kaggle)
 # ---------------------------------------------------------------------------
 
 def _load_bio_from_db(con: duckdb.DuckDBPyConnection) -> dict[int, dict]:
@@ -362,6 +466,10 @@ def _load_rim_from_db(con: duckdb.DuckDBPyConnection) -> dict[tuple[str, int], d
         for season, pid, anchor, det, dfga, tgames, dfg_pct, dfg_diff in rows
     }
 
+
+# ---------------------------------------------------------------------------
+# Fake row builder (used when Kaggle has fewer games than pbpstats)
+# ---------------------------------------------------------------------------
 
 def _make_fake_row(
     *,
@@ -465,37 +573,22 @@ def _make_fake_row(
 # ---------------------------------------------------------------------------
 
 def generate() -> None:
-    from collections import defaultdict
-
     con = duckdb.connect(str(DB_PATH), read_only=True)
-    seasons_in_db = [
-        r[0]
-        for r in con.execute(
-            "SELECT DISTINCT season FROM player_game_facts ORDER BY season"
-        ).fetchall()
-    ]
-    all_db_rows = _load_db_rows(con)
     bio_map = _load_bio_from_db(con)
     rim_map = _load_rim_from_db(con)
     con.close()
 
-    # Group DB rows by (season, player_id_str, team_abbr_upper)
-    db_by_season: dict[str, dict[tuple[str, str], list[list]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
-    for row in all_db_rows:
-        season = str(row[1] or "")
-        player_id = str(row[3] or "")
-        team_abbr = str(row[IDX_TEAM_ABBR] or "").upper()
-        db_by_season[season][(player_id, team_abbr)].append(row)
+    print("Loading Kaggle playoff box scores...")
+    kaggle_by_season = _load_kaggle_rows(bio_map, rim_map)
+    seasons = sorted(kaggle_by_season.keys(), key=_season_start)
+    latest_season = max(seasons, key=_season_start) if seasons else None
 
     cache = _load_cache()
     cache_updated = False
-    latest_season = max(seasons_in_db, key=_season_start) if seasons_in_db else None
 
     CHUNK_DIR.mkdir(parents=True, exist_ok=True)
 
-    for season in sorted(seasons_in_db, key=_season_start):
+    for season in seasons:
         if _season_start(season) < _season_start(PBPSTATS_FROM):
             print(f"  {season}: skipping (before pbpstats coverage, keeping existing chunk)")
             continue
@@ -510,9 +603,9 @@ def generate() -> None:
 
         pbp_index = _build_pbp_index(player_rows, team_rows)
 
-        season_db = db_by_season.get(season, {})
+        season_kaggle = kaggle_by_season.get(season, {})
         chunk_rows: list[list] = []
-        handled_db_keys: set[tuple[str, str]] = set()
+        handled_kaggle_keys: set[tuple[str, str]] = set()
 
         real_rows_used = 0
         fake_rows_used = 0
@@ -528,6 +621,7 @@ def generate() -> None:
             player_id_int = int(player_id_str) if player_id_str.isdigit() else 0
             pbpstats_n = max(int(_f(pr.get("GamesPlayed", 1))), 1)
             team_abbr = str(pr.get("TeamAbbreviation") or "").upper()
+            pbp_team_id = str(entry["player"].get("TeamId", ""))
             player_name = str(pr.get("Name") or "")
 
             player_pm = _f(pr.get("PlusMinus"))
@@ -541,16 +635,14 @@ def generate() -> None:
             off_poss_total = max((team_off_poss + team_def_poss) / 2.0 - on_poss_total, 0.0)
             pbpstats_off_diff = team_pm - player_pm
 
-            # Try to find matching DB game rows
-            db_key = (player_id_str, team_abbr)
-            game_rows = season_db.get(db_key, [])
+            # Match by (player_id, pbpstats team_id) — bypasses abbreviation mismatches
+            kaggle_key = (player_id_str, pbp_team_id)
+            game_rows = season_kaggle.get(kaggle_key, [])
 
-            # Accept DB rows only when game count is within 1 of pbpstats GamesPlayed
-            # (allows 1-game discrepancies from DNPs or minor source differences)
             use_real = bool(game_rows) and len(game_rows) >= pbpstats_n - 1
 
             if use_real:
-                handled_db_keys.add(db_key)
+                handled_kaggle_keys.add(kaggle_key)
                 real_rows_used += 1
                 n = len(game_rows)
                 season_min = sum(_f(r[IDX_MINUTES]) for r in game_rows)
@@ -566,14 +658,17 @@ def generate() -> None:
                     row[IDX_ON_OFF_ACTUAL] = on_off_game
                     row[IDX_ON_OFF_ADJ] = on_off_game
                     row[IDX_PM_ADJ] = game_pm
+                    # Use pbpstats abbreviation and name (authoritative)
+                    row[IDX_TEAM_ABBR] = team_abbr
+                    if not row[4]:
+                        row[4] = player_name
 
                 chunk_rows.extend(game_rows)
 
             else:
-                # Incomplete or missing DB data — use pbpstats fake rows
-                # Mark the DB key as handled so partial DB rows aren't also appended
-                if db_key in season_db:
-                    handled_db_keys.add(db_key)
+                # Kaggle has fewer games than pbpstats expects — use synthetic rows
+                if kaggle_key in season_kaggle:
+                    handled_kaggle_keys.add(kaggle_key)
                 fake_rows_used += 1
                 n = pbpstats_n
                 pts = _f(pr.get("Points"))
@@ -622,11 +717,12 @@ def generate() -> None:
                         )
                     )
 
-        # Include DB rows for players not found in pbpstats (keep their DB on/off)
-        db_only = 0
-        for db_key, game_rows in season_db.items():
-            if db_key not in handled_db_keys:
-                db_only += 1
+        # Players in Kaggle but absent from pbpstats (bench players): include
+        # with on/off zeroed (already 0.0 from _load_kaggle_rows)
+        kaggle_only = 0
+        for kaggle_key, game_rows in season_kaggle.items():
+            if kaggle_key not in handled_kaggle_keys:
+                kaggle_only += 1
                 chunk_rows.extend(game_rows)
 
         slug = _season_slug(season)
@@ -638,8 +734,8 @@ def generate() -> None:
         (CHUNK_DIR / f"{slug}.js").write_text(chunk_js, encoding="utf-8")
         total_pbp = real_rows_used + fake_rows_used
         print(
-            f"  {season}: {total_pbp + db_only} player-teams, {len(chunk_rows)} rows"
-            f" (real:{real_rows_used} fake:{fake_rows_used} db-only:{db_only})"
+            f"  {season}: {total_pbp + kaggle_only} player-teams, {len(chunk_rows)} rows"
+            f" (real:{real_rows_used} fake:{fake_rows_used} kaggle-only:{kaggle_only})"
         )
 
     if cache_updated:
