@@ -92,6 +92,11 @@ jobs:
         run: |
           python generate_report.py
 
+      - name: Pull on/off CSVs from LFS
+        run: |
+          git lfs install
+          git lfs pull --include="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv"
+
       - name: Recompute recent on/off
         continue-on-error: true
         run: |
