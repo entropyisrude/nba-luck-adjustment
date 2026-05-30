@@ -93,23 +93,23 @@ def _load_team_maps(zf: zipfile.ZipFile) -> tuple[dict, dict]:
     """Returns (abbrev_by_id_year, abbrev_by_city_name_year) from TeamHistories.csv."""
     with zf.open("TeamHistories.csv") as f:
         th = pd.read_csv(f, low_memory=False)
+    for col in ("teamAbbrev", "teamCity", "teamName", "league"):
+        th[col] = th[col].astype(str).str.strip()
+    th = th[th["league"].str.lower() == "nba"]
     abbrev_map: dict[tuple[int, int], str] = {}
     name_map: dict[tuple[str, str, int], tuple[int, str]] = {}
-    for r in th.to_dict("records"):
-        tid = r.get("teamId")
-        abbr_raw = str(r.get("abbreviation") or "").strip()
-        abbr = ABBREV_OVERRIDES.get(abbr_raw, abbr_raw)
+    for _, row in th.iterrows():
         try:
-            year_from = int(str(r.get("yearFounded") or 1900))
-            year_to = int(str(r.get("yearActiveTill") or 2100))
-            tid_int = int(tid)
+            tid_int = int(row["teamId"])
+            year_from = int(row["seasonFounded"])
+            year_to = int(row["seasonActiveTill"])
         except (TypeError, ValueError):
             continue
+        abbr = ABBREV_OVERRIDES.get(str(row["teamAbbrev"]), str(row["teamAbbrev"]))
+        city = str(row["teamCity"]).lower()
+        name = str(row["teamName"]).lower()
         for y in range(year_from, year_to + 1):
             abbrev_map[(tid_int, y)] = abbr
-        city = str(r.get("city") or "").strip().lower()
-        name = str(r.get("nickname") or "").strip().lower()
-        for y in range(year_from, year_to + 1):
             name_map[(city, name, y)] = (tid_int, abbr)
     return abbrev_map, name_map
 
@@ -396,7 +396,7 @@ def generate(force: bool = False) -> None:
 
             _write(span_path, "__PLAYER_SPAN_CHUNKS", span_rows)
             _write(game_path, "__PLAYER_GAME_CHUNKS", game_rows)
-            print(f"  {season}: {len(span_rows)} rows → span + game chunks written")
+            print(f"  {season}: {len(span_rows)} rows -> span + game chunks written")
 
     print("\nDone.")
 
