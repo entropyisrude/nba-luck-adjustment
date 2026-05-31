@@ -137,7 +137,7 @@
         </div>
         <div style="padding-bottom:1px">
           <label>&nbsp;</label>
-          <button id="run-btn" disabled>Find Similar</button>
+          <button id="run-btn">Find Similar</button>
         </div>
       </div>
 
@@ -272,7 +272,11 @@ input.addEventListener('keydown', e => {
   const items = dropdown.querySelectorAll('.ac-item');
   if (e.key === 'ArrowDown') { acActive = Math.min(acActive+1, items.length-1); highlight(items); e.preventDefault(); }
   else if (e.key === 'ArrowUp') { acActive = Math.max(acActive-1, 0); highlight(items); e.preventDefault(); }
-  else if (e.key === 'Enter' && acActive >= 0) { selectPlayerName(items[acActive].dataset.name); e.preventDefault(); }
+  else if (e.key === 'Enter') {
+    if (acActive >= 0) { selectPlayerName(items[acActive].dataset.name); }
+    else if (items.length === 1) { selectPlayerName(items[0].dataset.name); }
+    e.preventDefault();
+  }
   else if (e.key === 'Escape') { dropdown.style.display = 'none'; }
 });
 
@@ -294,7 +298,6 @@ function selectPlayerName(name) {
     .sort((a,b) => b.season.localeCompare(a.season))
     .map(s => `<option value="${s.idx}">${s.season}${s.team ? ' · '+s.team : ''}</option>`)
     .join('');
-  selectedSeason = entry.seasons[entry.seasons.length - 1];
   runBtn.disabled = false;
 }
 
@@ -302,6 +305,7 @@ seasonSel.addEventListener('change', () => {
   if (!seasonSel.value) return;
   runBtn.disabled = false;
 });
+
 
 // ─── Similarity ──────────────────────────────────────────────────────────────
 
@@ -464,7 +468,42 @@ function esc(s) {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
-document.getElementById('run-btn').addEventListener('click', renderResults);
+document.getElementById('run-btn').addEventListener('click', () => {
+  // If no player confirmed yet, try to resolve from whatever is typed
+  if (isNaN(parseInt(seasonSel.value))) {
+    const q = input.value.trim().toLowerCase();
+    const matches = q.length >= 2
+      ? Object.values(playerIndex).filter(p => p.name.toLowerCase().includes(q))
+      : [];
+    if (matches.length === 1) {
+      selectPlayerName(matches[0].name);
+    } else if (matches.length > 1) {
+      showError('Multiple players match "' + input.value.trim() + '" — please select one from the dropdown.');
+      return;
+    } else {
+      showError('No player found for "' + input.value.trim() + '" — please select from the dropdown.');
+      return;
+    }
+  }
+  renderResults();
+});
+
+function showError(msg) {
+  let el = document.getElementById('search-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'search-error';
+    el.style.cssText = 'color:#c0392b;font-size:.85em;margin-top:6px;font-weight:600';
+    document.querySelector('.search-row').after(el);
+  }
+  el.textContent = msg;
+  setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+function clearError() {
+  const el = document.getElementById('search-error');
+  if (el) el.textContent = '';
+}
 
 async function init() {
   try {
