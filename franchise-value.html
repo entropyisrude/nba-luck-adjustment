@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franchise Value Tool — NBA Future Draft Picks</title>
+<style>
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: linear-gradient(180deg,#eef5ff 0%,#f8fbff 30%,#f2f6fb 100%);
+    color: #192231;
+  }
+  h1 { color:#f8fbff; margin:0 0 6px; text-shadow:1px 2px 6px rgba(0,0,0,.7); }
+  h2 { color:#192231; margin:28px 0 12px; font-size:1.15em; }
+  h3 { color:#192231; margin:18px 0 8px; font-size:1em; }
+  .hero-banner {
+    background:linear-gradient(rgba(10,22,42,.62),rgba(10,22,42,.62)),
+               url('images/starks218.jpg') left center,
+               url('images/rocket027.jpg') right center;
+    background-size:cover,50% auto,50% auto;
+    background-repeat:no-repeat;
+    padding:50px 30px 22px;
+    margin:-20px -20px 20px;
+    border-radius:0 0 14px 14px;
+    text-align:center;
+  }
+  .timestamp { color:rgba(255,255,255,.7); font-size:.82em; margin:4px 0 12px; }
+  .hero-nav { display:flex; flex-direction:column; gap:6px; max-width:860px; margin:0 auto; }
+  .hero-nav-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .hero-nav-label { color:rgba(255,255,255,.6); font-size:10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; min-width:72px; text-align:right; }
+  .hero-nav a { color:#e8f4ff; text-decoration:none; border:1px solid rgba(255,255,255,.35);
+    border-radius:7px; padding:4px 9px; font-size:12px; }
+  .hero-nav a:hover { background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.6); }
+
+  .card {
+    background:#fff; border-radius:12px; border:1px solid #d6e1ef;
+    box-shadow:0 3px 12px rgba(23,38,62,.06); padding:18px 20px; margin-bottom:18px;
+  }
+  .note { font-size:.82em; color:#6680a0; margin:-8px 0 8px; }
+
+  /* Summary table */
+  table { width:100%; border-collapse:collapse; }
+  th {
+    background:#0d2f53; color:#f0f6ff; padding:10px 8px;
+    text-align:left; font-weight:600; font-size:.87em; white-space:nowrap;
+    cursor:pointer; user-select:none;
+  }
+  th:hover { background:#17407a; }
+  th .sort-arrow { margin-left:4px; font-size:.75em; color:rgba(255,255,255,.5); }
+  th.sorted .sort-arrow { color:#fff; }
+  td { padding:9px 8px; border-bottom:1px solid #eef2f8; font-size:.9em; }
+  tr.summary-row:hover td { background:#f0f6ff; cursor:pointer; }
+  tr.summary-row.selected td { background:#deeeff; }
+
+  .net-positive { color:#1a7a3a; font-weight:700; }
+  .net-negative { color:#c0392b; font-weight:700; }
+  .net-neutral  { color:#555; font-weight:600; }
+
+  .badge {
+    display:inline-block; padding:2px 7px; border-radius:10px;
+    font-size:.77em; font-weight:600; white-space:nowrap;
+  }
+  .badge-transfer   { background:#e0f5e9; color:#1a7a3a; }
+  .badge-swap       { background:#e0eeff; color:#1a4fa0; }
+  .badge-multi      { background:#fff0dc; color:#8a4800; }
+  .badge-conditional{ background:#fdf0e0; color:#7a5200; }
+
+  /* Stat cards */
+  .stat-cards { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .stat-card {
+    flex:1; min-width:160px; background:#fff; border:1px solid #d6e1ef;
+    border-radius:10px; padding:14px 18px; box-shadow:0 2px 8px rgba(23,38,62,.05);
+  }
+  .stat-card .label { font-size:.75em; color:#6680a0; text-transform:uppercase;
+    letter-spacing:.05em; font-weight:600; margin-bottom:4px; }
+  .stat-card .value { font-size:2em; font-weight:700; line-height:1; }
+  .stat-card.positive .value { color:#1a7a3a; }
+  .stat-card.negative .value { color:#c0392b; }
+  .stat-card.neutral  .value { color:#192231; }
+  .stat-card .sub { font-size:.74em; color:#8898af; margin-top:4px; }
+
+  /* Picks tables */
+  .picks-tables { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:860px) { .picks-tables { grid-template-columns:1fr; } }
+  .picks-panel h3 { margin:0 0 8px; font-size:.95em; padding:6px 10px;
+    border-radius:6px; display:inline-block; }
+  .picks-panel.incoming h3 { background:#e0f5e9; color:#1a5c30; }
+  .picks-panel.outgoing h3 { background:#fde8e8; color:#7a1a1a; }
+  .picks-table td { vertical-align:top; font-size:.83em; }
+  .picks-table tr:hover td { background:#f8fbff; }
+  .picks-table tr.expand-row td { background:#f4f8ff; font-size:.8em; color:#445; padding:6px 10px; }
+  .picks-table tr.clickable-row { cursor:pointer; }
+  .yr-badge {
+    background:#0d2f53; color:#e8f4ff; border-radius:5px;
+    padding:1px 6px; font-size:.8em; font-weight:700; display:inline-block;
+  }
+  .rd-badge {
+    background:#e8f0fb; color:#1a3a6a; border-radius:5px;
+    padding:1px 6px; font-size:.8em; font-weight:600; display:inline-block;
+  }
+  .top5-tag {
+    background:#fff0a0; color:#7a5200; border-radius:4px;
+    padding:1px 5px; font-size:.74em; font-weight:700; margin-left:4px;
+  }
+  .extinct-tag {
+    background:#f0e0ff; color:#4a1a7a; border-radius:4px;
+    padding:1px 5px; font-size:.74em; font-weight:600; margin-left:4px;
+  }
+  .prot-tag {
+    background:#f5e8d0; color:#6a3800; border-radius:4px;
+    padding:1px 5px; font-size:.74em; font-weight:600;
+  }
+  .full-desc { color:#445; line-height:1.5; word-break:break-word; }
+
+  /* Value chart */
+  .vc-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:3px; margin-bottom:10px; }
+  .vc-cell {
+    border-radius:5px; text-align:center; padding:5px 2px; font-size:.76em;
+    line-height:1.3; color:#fff;
+  }
+  .vc-cell .pick-n { font-weight:700; }
+  .vc-cell .pick-v { font-size:.85em; opacity:.9; }
+  .vc-section-label { font-size:.78em; color:#6680a0; font-weight:600;
+    text-transform:uppercase; letter-spacing:.06em; margin:10px 0 4px; }
+
+  /* Loading / error states */
+  #loading { text-align:center; color:#6680a0; padding:40px; }
+  #error-msg { color:#c0392b; padding:20px; display:none; }
+
+  .methodology {
+    background:#eef4fb; padding:14px 16px; border-radius:10px;
+    border:1px solid #d6e1ef; font-size:.82em; color:#445; margin-top:20px; line-height:1.6;
+  }
+  .methodology strong { color:#192231; }
+</style>
+</head>
+<body>
+
+<div class="hero-banner">
+  <h1>Franchise Value Tool</h1>
+  <p class="timestamp">Draft Pick Inventory 2026–2032 &nbsp;|&nbsp; Updated 2026-05-31</p>
+  <div class="hero-nav">
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Regular&nbsp;Season</span>
+      <a href="onoff-daily.html">+/- Games</a>
+      <a href="onoff.html">+/- Stats</a>
+      <a href="player-span-search.html">Player Span</a>
+      <a href="game-search.html">Game Search</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Playoffs</span>
+      <a href="onoff-playoffs.html">+/- Playoffs</a>
+      <a href="rapm-playoffs.html">Playoff RAPM</a>
+      <a href="player-span-search.html?mode=Playoffs">Playoff Span</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Front&nbsp;Office</span>
+      <a href="franchise-value.html" style="background:rgba(255,255,255,.15)">Franchise Value</a>
+    </div>
+  </div>
+</div>
+
+<div id="loading">Loading pick data…</div>
+<div id="error-msg"></div>
+
+<div id="app" style="display:none">
+
+  <!-- All-teams summary -->
+  <section id="summary-section">
+    <h2>All Teams — Pick Inventory Summary (2026–2032)</h2>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table id="summary-table">
+        <thead>
+          <tr>
+            <th data-col="name">Team <span class="sort-arrow">▲</span></th>
+            <th data-col="netPicks" style="text-align:right">Net Picks <span class="sort-arrow">↕</span></th>
+            <th data-col="inCount" style="text-align:right">Picks In <span class="sort-arrow">↕</span></th>
+            <th data-col="outCount" style="text-align:right">Picks Out <span class="sort-arrow">↕</span></th>
+            <th data-col="swapRights" style="text-align:right">Swap Rights <span class="sort-arrow">↕</span></th>
+            <th data-col="top5" style="text-align:right">Top-5 Eligible <span class="sort-arrow">↕</span><br><span style="font-weight:400;font-size:.78em;opacity:.75">(1st Rd, from others)</span></th>
+          </tr>
+        </thead>
+        <tbody id="summary-tbody"></tbody>
+      </table>
+    </div>
+    <p class="note">Click a team row to see their full pick inventory. "Net Picks" = base 14 (own picks) + picks in − picks out. Swap rights are net neutral for count purposes.</p>
+  </section>
+
+  <!-- Team detail -->
+  <section id="detail-section" style="display:none">
+    <h2 id="detail-title">— Select a team above —</h2>
+    <div class="stat-cards" id="stat-cards"></div>
+    <div class="picks-tables">
+      <div class="picks-panel incoming">
+        <h3>▲ Incoming Picks (Assets)</h3>
+        <table class="picks-table" id="incoming-table">
+          <thead><tr>
+            <th style="width:46px">Yr</th>
+            <th style="width:38px">Rd</th>
+            <th style="width:90px">Type</th>
+            <th>Description</th>
+            <th style="width:70px">Prot.</th>
+          </tr></thead>
+          <tbody id="incoming-tbody"></tbody>
+        </table>
+      </div>
+      <div class="picks-panel outgoing">
+        <h3>▼ Outgoing Picks (Obligations)</h3>
+        <table class="picks-table" id="outgoing-table">
+          <thead><tr>
+            <th style="width:46px">Yr</th>
+            <th style="width:38px">Rd</th>
+            <th style="width:90px">Type</th>
+            <th>Description</th>
+            <th style="width:70px">Prot.</th>
+          </tr></thead>
+          <tbody id="outgoing-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Draft value chart -->
+  <section id="value-section">
+    <h2>Draft Slot Value Chart</h2>
+    <div class="card">
+      <p style="margin:0 0 12px;font-size:.88em;color:#445;">
+        Reference values for picks #1–60, indexed to #1 pick = 100. Based on historical career production (approximate; use as starting point only). Values represent expected career contribution relative to the top pick.
+      </p>
+      <div class="vc-section-label">1st Round (Picks 1–30)</div>
+      <div class="vc-grid" id="vc-first-round"></div>
+      <div class="vc-section-label">2nd Round (Picks 31–60)</div>
+      <div class="vc-grid" id="vc-second-round"></div>
+    </div>
+  </section>
+
+  <div class="methodology">
+    <strong>Methodology notes.</strong>
+    <strong>Net Picks</strong> = 14 base own picks + picks received from other teams (transfers, multi-team arrangements, conditionals) − picks owed out (same types). Swap rights are excluded from both sides of the count since they exchange one pick for another.
+    <strong>Swap Rights</strong> = incoming arrangements where the team holds the right to swap their pick for another team's pick and keep the better result.
+    <strong>Top-5 Eligible</strong> = incoming 1st round picks from other teams whose protection clauses do not prevent the pick from conveying in the top 5 selections. A pick "protected 1–4" <em>is</em> eligible (can convey at #5); "protected 1–5" is <em>not</em> (conveys at #6 or later).
+    Data source: RealGM Future Draft Pick Details, as of 2026-05-31. Traded pick obligations only; each team additionally holds their own undisclosed picks for all years/rounds not listed as outgoing.
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+const TEAM_NAMES = {
+  ATL:'Atlanta Hawks', BOS:'Boston Celtics', BKN:'Brooklyn Nets',
+  CHA:'Charlotte Hornets', CHI:'Chicago Bulls', CLE:'Cleveland Cavaliers',
+  DAL:'Dallas Mavericks', DEN:'Denver Nuggets', DET:'Detroit Pistons',
+  GSW:'Golden State Warriors', HOU:'Houston Rockets', IND:'Indiana Pacers',
+  LAC:'Los Angeles Clippers', LAL:'Los Angeles Lakers', MEM:'Memphis Grizzlies',
+  MIA:'Miami Heat', MIL:'Milwaukee Bucks', MIN:'Minnesota Timberwolves',
+  NOP:'New Orleans Pelicans', NYK:'New York Knicks', OKC:'Oklahoma City Thunder',
+  ORL:'Orlando Magic', PHI:'Philadelphia 76ers', PHX:'Phoenix Suns',
+  POR:'Portland Trail Blazers', SAC:'Sacramento Kings', SAS:'San Antonio Spurs',
+  TOR:'Toronto Raptors', UTA:'Utah Jazz', WAS:'Washington Wizards',
+};
+
+// Draft slot value chart (indexed 1–60). Based on historical career production.
+// Pick #1 = 100 (reference). Values are approximate and editable.
+const PICK_VALUE = [
+  0,  // idx 0 unused
+  // 1st round
+  100,83,72,63,56, 51,46,42,38,35,
+   32,29,26,24,22, 20,18,17,15,14,
+   13,12,11,10, 9,  8, 8, 7, 6, 5,
+  // 2nd round
+   5, 4, 4, 4, 3,  3, 3, 3, 2, 2,
+   2, 2, 2, 2, 2,  1, 1, 1, 1, 1,
+   1, 1, 1, 0, 0,  0, 0, 0, 0, 0,
+];
+
+const ALL_TEAMS = Object.keys(TEAM_NAMES).sort();
+const BASE_PICKS = 14; // 7 years × 2 rounds
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function isTop5Eligible(pick) {
+  if (pick.round !== 1) return false;
+  if (!pick.protection) return true;
+  const parts = pick.protection.split('-').map(Number);
+  const lo = parts[0], hi = parts.length > 1 ? parts[1] : parts[0];
+  // Eligible if protection range doesn't cover pick #5
+  // Not eligible if lo<=5 AND hi>=5 (range includes position 5)
+  return hi < 5 || lo > 5;
+}
+
+function pickTypeBadge(type) {
+  const map = {
+    transfer:'<span class="badge badge-transfer">Outright</span>',
+    swap:'<span class="badge badge-swap">Swap Right</span>',
+    multi_swap:'<span class="badge badge-multi">Multi-Team</span>',
+    conditional:'<span class="badge badge-conditional">Conditional</span>',
+  };
+  return map[type] || type;
+}
+
+function protTag(p) {
+  return p ? `<span class="prot-tag">Prot ${p}</span>` : '—';
+}
+
+function formatDesc(pick) {
+  let s = pick.short_desc || '';
+  s = s.replace(/^20\d\d\s+/,'').replace(/(?:first|second) round draft pick(?:s)?\s*/i,'');
+  return s.trim() || '—';
+}
+
+function yrShort(y) { return String(y).slice(2); }
+
+// Compute stats for one team
+function computeStats(picks, team) {
+  const tp = picks.filter(p => p.context_team === team);
+  const incoming = tp.filter(p => p.direction === 'incoming');
+  const outgoing = tp.filter(p => p.direction === 'outgoing');
+
+  // Transfers + multi_swap + conditional count toward net picks;
+  // swap rights are 1-for-1 exchanges (net neutral for count)
+  const inCount  = incoming.filter(p => p.pick_type !== 'swap').length;
+  const outCount = outgoing.filter(p => p.pick_type !== 'swap').length;
+  const netPicks = BASE_PICKS + inCount - outCount;
+
+  const swapRights = incoming.filter(p => p.pick_type === 'swap').length;
+  const top5 = incoming.filter(p => isTop5Eligible(p)).length;
+
+  return { team, netPicks, inCount, outCount, swapRights, top5, incoming, outgoing };
+}
+
+// ─── Summary table ──────────────────────────────────────────────────────────
+
+let allStats = [];
+let sortCol = 'name';
+let sortDir = 1; // 1=asc, -1=desc
+let selectedTeam = null;
+
+function renderSummaryTable() {
+  const tbody = document.getElementById('summary-tbody');
+  const sorted = [...allStats].sort((a,b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (sortCol === 'name') { va = TEAM_NAMES[a.team]; vb = TEAM_NAMES[b.team]; }
+    return (va < vb ? -1 : va > vb ? 1 : 0) * sortDir;
+  });
+
+  tbody.innerHTML = sorted.map(s => {
+    const nCls = s.netPicks > BASE_PICKS ? 'net-positive'
+                : s.netPicks < BASE_PICKS ? 'net-negative'
+                : 'net-neutral';
+    const delta = s.netPicks - BASE_PICKS;
+    const deltaStr = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '±0';
+    const sel = selectedTeam === s.team ? ' selected' : '';
+    return `<tr class="summary-row${sel}" data-team="${s.team}">
+      <td><strong>${s.team}</strong>&nbsp;<span style="color:#6680a0;font-size:.83em">${TEAM_NAMES[s.team]}</span></td>
+      <td style="text-align:right"><span class="${nCls}">${s.netPicks}</span>&nbsp;<span style="color:#888;font-size:.8em">(${deltaStr})</span></td>
+      <td style="text-align:right;color:#1a7a3a;font-weight:600">${s.inCount}</td>
+      <td style="text-align:right;color:#c0392b;font-weight:600">${s.outCount}</td>
+      <td style="text-align:right">${s.swapRights}</td>
+      <td style="text-align:right;font-weight:700;color:${s.top5 > 0 ? '#8a4800' : '#aaa'}">${s.top5}</td>
+    </tr>`;
+  }).join('');
+
+  // Re-attach row click listeners
+  tbody.querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', () => selectTeam(row.dataset.team));
+  });
+
+  // Update sort arrows
+  document.querySelectorAll('#summary-table th').forEach(th => {
+    const col = th.dataset.col;
+    th.classList.toggle('sorted', col === sortCol);
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && col === sortCol) arrow.textContent = sortDir === 1 ? '▲' : '▼';
+    else if (arrow) arrow.textContent = '↕';
+  });
+}
+
+document.querySelectorAll('#summary-table th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = col === 'name' ? 1 : -1; }
+    renderSummaryTable();
+  });
+});
+
+// ─── Team detail panel ──────────────────────────────────────────────────────
+
+function selectTeam(team) {
+  selectedTeam = team;
+  renderSummaryTable(); // update selected row highlight
+
+  const stats = allStats.find(s => s.team === team);
+  const name = TEAM_NAMES[team] || team;
+
+  document.getElementById('detail-title').textContent = name + ' — Pick Inventory';
+  document.getElementById('detail-section').style.display = '';
+  document.getElementById('detail-section').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // Stat cards
+  const netCls = stats.netPicks > BASE_PICKS ? 'positive'
+                : stats.netPicks < BASE_PICKS ? 'negative'
+                : 'neutral';
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card ${netCls}">
+      <div class="label">Net Outright Picks</div>
+      <div class="value">${stats.netPicks}</div>
+      <div class="sub">2026–2032 (base 14 own picks)</div>
+    </div>
+    <div class="stat-card neutral">
+      <div class="label">Swap Rights Held</div>
+      <div class="value">${stats.swapRights}</div>
+      <div class="sub">Can swap own pick for better</div>
+    </div>
+    <div class="stat-card ${stats.top5 > 0 ? 'neutral' : 'neutral'}">
+      <div class="label">Top-5 Eligible Assets</div>
+      <div class="value" style="color:${stats.top5 > 0 ? '#8a4800' : '#aaa'}">${stats.top5}</div>
+      <div class="sub">1st Rd from others, unprotected or prot &lt;5</div>
+    </div>
+  `;
+
+  renderPicksTable('incoming-tbody', stats.incoming, true);
+  renderPicksTable('outgoing-tbody', stats.outgoing, false);
+}
+
+function renderPicksTable(tbodyId, picks, showTop5) {
+  const tbody = document.getElementById(tbodyId);
+  if (!picks.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">None</td></tr>';
+    return;
+  }
+  const rows = picks.map((p,i) => {
+    const desc = formatDesc(p);
+    const t5 = showTop5 && isTop5Eligible(p) ? '<span class="top5-tag">Top-5 ✓</span>' : '';
+    const ext = p.extinction ? '<span class="extinct-tag">Extinguishes</span>' : '';
+    return `<tr class="clickable-row" data-idx="${i}">
+      <td><span class="yr-badge">'${yrShort(p.year)}</span></td>
+      <td><span class="rd-badge">${p.round === 1 ? '1st' : '2nd'}</span></td>
+      <td>${pickTypeBadge(p.pick_type)}</td>
+      <td>${desc}${t5}${ext}</td>
+      <td>${protTag(p.protection)}</td>
+    </tr>
+    <tr class="expand-row" id="exp-${tbodyId}-${i}" style="display:none">
+      <td colspan="5"><div class="full-desc">${escHtml(p.full_desc)}</div></td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows;
+
+  tbody.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = row.dataset.idx;
+      const exp = document.getElementById(`exp-${tbodyId}-${idx}`);
+      if (exp) exp.style.display = exp.style.display === 'none' ? '' : 'none';
+    });
+  });
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Draft value chart ──────────────────────────────────────────────────────
+
+function renderValueChart() {
+  function buildRow(from, to, containerId) {
+    const container = document.getElementById(containerId);
+    let html = '';
+    for (let n = from; n <= to; n++) {
+      const v = PICK_VALUE[n] || 0;
+      const maxV = 100;
+      const t = v / maxV; // 0–1
+      // Color: dark blue (high) → light grey (0)
+      const L = Math.round(92 - t * 55); // 92% (light) to 37% (dark)
+      const S = Math.round(20 + t * 60);  // 20% to 80%
+      const textColor = t > 0.4 ? '#fff' : t > 0.15 ? '#2a3a5a' : '#aaa';
+      html += `<div class="vc-cell" style="background:hsl(215,${S}%,${L}%);color:${textColor}">
+        <div class="pick-n">#${n}</div>
+        <div class="pick-v">${v}</div>
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+  buildRow(1, 30, 'vc-first-round');
+  buildRow(31, 60, 'vc-second-round');
+}
+
+// ─── Data load ──────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const resp = await fetch('data/future_picks.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const picks = data.picks;
+
+    allStats = ALL_TEAMS.map(team => computeStats(picks, team));
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = '';
+
+    renderSummaryTable();
+    renderValueChart();
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    const err = document.getElementById('error-msg');
+    err.style.display = '';
+    err.textContent = 'Failed to load pick data: ' + e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
