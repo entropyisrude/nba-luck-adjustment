@@ -471,23 +471,28 @@ function esc(s) {
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 document.getElementById('run-btn').addEventListener('click', () => {
-  // If no player confirmed yet, try to resolve from whatever is typed
-  if (isNaN(parseInt(seasonSel.value))) {
-    const q = input.value.trim().toLowerCase();
-    const matches = q.length >= 2
-      ? Object.values(playerIndex).filter(p => p.name.toLowerCase().includes(q))
-      : [];
-    if (matches.length === 1) {
-      selectPlayerName(matches[0].name);
-    } else if (matches.length > 1) {
-      showError('Multiple players match "' + input.value.trim() + '" — please select one from the dropdown.');
-      return;
-    } else {
-      showError('No player found for "' + input.value.trim() + '" — please select from the dropdown.');
-      return;
+  try {
+    // If no player confirmed yet, try to resolve from whatever is typed
+    if (isNaN(parseInt(seasonSel.value))) {
+      const q = input.value.trim().toLowerCase();
+      const matches = q.length >= 2
+        ? Object.values(playerIndex).filter(p => p.name.toLowerCase().includes(q))
+        : [];
+      if (matches.length === 1) {
+        selectPlayerName(matches[0].name);
+      } else if (matches.length > 1) {
+        showError('Multiple players match "' + input.value.trim() + '" — please select one from the dropdown.');
+        return;
+      } else {
+        showError('No player found for "' + input.value.trim() + '" — please select from the dropdown.');
+        return;
+      }
     }
+    renderResults();
+  } catch(e) {
+    showError('Error: ' + e.message);
+    console.error(e);
   }
-  renderResults();
 });
 
 function showError(msg) {
