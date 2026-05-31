@@ -41,6 +41,39 @@ PBP gaps. Currently only wired into playoff span chunks. Opportunities:
 
 ---
 
+## Franchise Value
+
+Multi-phase project to value each team's total asset base: draft pick cache + (eventually) player value.
+
+### Phase 1 — Draft pick inventory + display
+- Maintain a JSON file (`data/draft_picks.json`) with each team's current pick ownership:
+  own picks, picks owed out, swap rights, and protections per pick.
+- **Data source challenge**: no clean public API — options are (a) manually curate from Tankathon/RealGM
+  and update after trades, or (b) scrape Tankathon. Manual curation is the right first-pass approach.
+- Build a `franchise-value.html` page showing each team's pick inventory in a readable table.
+
+### Phase 2 — Lottery odds valuation
+- 2019-reform lottery odds are fully specified by the 14-team order.
+- Given projected standings, compute each lottery team's probability distribution over all 30 picks.
+- For protected picks, compute expected value across the protection window (e.g. top-5 protected:
+  sum of probabilities of landing picks 6–30 × value at each slot).
+- For swap rights: option value (max of 0, value_their_pick − value_own_pick).
+
+### Phase 3 — Draft value chart
+- Map pick number → expected career production using the site's own historical data (e.g. career
+  BPM or VORP from draft class outcomes). More meaningful than using someone else's chart since it
+  reflects the same player universe.
+
+### Phase 4 — Player value combination
+- Restrict to controllable players (under-26 on rookie / rookie-scale deals) to focus on upside.
+- Combine draft cache value + young player value → single franchise score per team.
+- Possible display: ranked table of all 30 teams, with breakdown of draft assets vs player assets.
+
+### Key decision pending
+- How to keep pick inventory current after trades — manual JSON update vs automated scraping.
+
+---
+
 ## Navigation / UX
 
 - The Playoffs section in the index.html nav is now empty (no links left after unifying game
