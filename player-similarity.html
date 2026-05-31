@@ -489,6 +489,11 @@ document.getElementById('run-btn').addEventListener('click', () => {
       }
     }
     renderResults();
+    // Diagnose if results section is still hidden after renderResults
+    if (document.getElementById('results-section').style.display === 'none') {
+      showError('No results — seasonSel.value=' + JSON.stringify(seasonSel.value)
+        + ', playerIndex size=' + Object.keys(playerIndex).length);
+    }
   } catch(e) {
     showError('Error: ' + e.message);
     console.error(e);
