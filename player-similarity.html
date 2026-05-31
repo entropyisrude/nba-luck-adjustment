@@ -181,16 +181,18 @@ const STAT_DIMS = [
   { id:'rebounding', label:'Rebounding',  stats:['or','dr'],                note:'oreb, dreb per 36' },
   { id:'defense',    label:'Defense',     stats:['stl','blk'],              note:'stl, blk per 36' },
   { id:'threepoint', label:'3-Point',     stats:['fg3a','fg3p'],            note:'3PA per 36, 3P%' },
-  { id:'onoff',      label:'On/Off',      stats:['oo'],                     note:'post-1996 only', optional:true },
+  { id:'oooff',      label:'Off. On/Off', stats:['oo_off'],                 note:'off impact, post-1996', optional:true },
+  { id:'oodef',      label:'Def. On/Off', stats:['oo_def'],                 note:'def impact, post-1996', optional:true },
 ];
 
 const COL_FMT = {
   pts:'Pts/36', ast:'Ast/36', or:'ORb/36', dr:'DRb/36',
   stl:'Stl/36', blk:'Blk/36', tov:'Tov/36', fta:'FTA/36',
-  fg3a:'3PA/36', fgp:'FG%', fg3p:'3P%', ftp:'FT%', oo:'On/Off',
+  fg3a:'3PA/36', fgp:'FG%', fg3p:'3P%', ftp:'FT%',
+  oo:'On/Off', oo_off:'Off +/-', oo_def:'Def +/-',
 };
 
-const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fgp','fg3p','ftp','oo'];
+const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fgp','fg3p','ftp','oo_off','oo_def'];
 
 let allSeasons = [];
 let playerIndex = {};   // name → [{season, team, idx}]
@@ -204,14 +206,14 @@ function buildWeightsUI() {
   grid.innerHTML = STAT_DIMS.map(d => `
     <div class="weight-row">
       <label>${d.label}${d.optional ? ' <span class="note">(post-96)</span>' : ''}</label>
-      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${d.id==='onoff'?0.5:1}">
-      <div class="w-val" id="wv-${d.id}">${d.id==='onoff'?'0.5':'1.0'}</div>
+      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${(d.id==='oooff'||d.id==='oodef')?0.5:1}">
+      <div class="w-val" id="wv-${d.id}">${(d.id==='oooff'||d.id==='oodef')?'0.5':'1.0'}</div>
       <div class="note">${d.note}</div>
     </div>`).join('');
   STAT_DIMS.forEach(d => {
     const inp = document.getElementById('w-' + d.id);
     inp.addEventListener('input', () => {
-      document.getElementById('wv-' + d.id).textContent = parseFloat(inp.value).toFixed(1);
+      document.getElementById('wv-'+d.id).textContent = parseFloat(inp.value).toFixed(1);
     });
   });
 }
@@ -438,11 +440,11 @@ function renderResults() {
 
   document.getElementById('results-tbody').innerHTML = tbody;
 
-  const ooUsed = statCols.includes('oo');
+  const ooUsed = statCols.includes('oo_off') || statCols.includes('oo_def');
   const nPre96 = results.filter(r => parseInt(r.cand.season) < 1996).length;
   document.getElementById('results-note').textContent =
     `Similarity scored 0–100 (100 = identical profile). Weighted Euclidean distance on z-normalized per-36 stats.` +
-    (ooUsed ? ' On/off included in weights — may skew cross-era comparisons.' : '') +
+    (ooUsed ? ' On/off splits from pbpstats (post-1996 only) — may skew cross-era comparisons.' : '') +
     (nPre96 ? ` ${nPre96} result(s) are pre-1996 (box stats only, no on/off).` : '');
 }
 
