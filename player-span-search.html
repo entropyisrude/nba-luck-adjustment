@@ -239,12 +239,11 @@
             <option value="per100">Per 100 poss</option>
           </select>
         </label>
-        <label>Impact/Games filter basis
+        <label>Span type
           <select id="span_filter_basis">
-            <option value="span">Whole selected span</option>
-            <option value="latest">Latest season in span</option>
-            <option value="season_rows">Each season separately (one row per season)</option>
-            <option value="season_combined">Qualifying seasons combined (one row per player)</option>
+            <option value="span">Combined span</option>
+            <option value="season_rows">Single seasons (each)</option>
+            <option value="season_combined">Season threshold</option>
           </select>
         </label>
         <label data-single-only="1">Date range
@@ -965,7 +964,7 @@
     }
 
     function spanFilterBasis() {
-      return document.getElementById("span_filter_basis")?.value || "latest";
+      return document.getElementById("span_filter_basis")?.value || "span";
     }
 
     function updateOnOffAvailabilityUi() {
@@ -973,7 +972,7 @@
     }
 
     function basisValue(obj, spanKey, latestKey) {
-      return spanFilterBasis() === "latest" ? obj[latestKey] : obj[spanKey];
+      return obj[spanKey];
     }
 
     function basisDisplayValue(obj, key) {
@@ -1973,8 +1972,8 @@
         : mode === "per100" ? "counting stats shown per 100 possessions"
         : "counting stats shown as totals";
       const basisDesc = basis === "season_rows" ? "; each row is one player-season that passed the filters"
-        : basis === "season_combined" ? "; filters applied per season, combined stats shown for qualifying seasons only"
-        : `; games/minutes/plus-minus/on-off filters use the ${basis === "latest" ? "latest season in the selected span" : "whole selected span"} basis`;
+        : basis === "season_combined" ? "; filters applied per season — Qual Seas shows how many seasons each player met the threshold"
+        : "; stats combined across the whole selected span";
       document.getElementById("mode_note").textContent = statDesc + " over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated; rim signatures and rim DFG% fields stay season-level" + basisDesc;
       updateCustomHeaders();
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
