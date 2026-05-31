@@ -136,6 +136,17 @@
     border:1px solid #d6e1ef; font-size:.82em; color:#445; margin-top:20px; line-height:1.6;
   }
   .methodology strong { color:#192231; }
+
+  /* Tabs */
+  .tab-row { display:flex; gap:6px; margin-bottom:12px; }
+  .tab-btn {
+    padding:6px 18px; border-radius:8px; border:1px solid #c8d8ec;
+    background:#fff; color:#445; font-size:.88em; font-weight:600; cursor:pointer;
+  }
+  .tab-btn.active { background:#0d2f53; color:#fff; border-color:#0d2f53; }
+  .tab-btn:hover:not(.active) { background:#eef4fb; }
+  #summary-table.hide-top5 th:last-child,
+  #summary-table.hide-top5 td:last-child { display:none; }
 </style>
 </head>
 <body>
@@ -172,6 +183,10 @@
   <!-- All-teams summary -->
   <section id="summary-section">
     <h2>All Teams — Pick Inventory Summary (2026–2032)</h2>
+    <div class="tab-row" id="summary-tab-row">
+      <button class="tab-btn active" data-round="1">1st Round</button>
+      <button class="tab-btn" data-round="2">2nd Round</button>
+    </div>
     <div class="card" style="padding:0;overflow:hidden;">
       <table id="summary-table">
         <thead>
@@ -187,13 +202,17 @@
         <tbody id="summary-tbody"></tbody>
       </table>
     </div>
-    <p class="note">Click a team row to see their full pick inventory. "Net Picks" = base 14 (own picks) + picks in − picks out. Swap rights are net neutral for count purposes.</p>
+    <p class="note">Click a team row to see their full pick inventory. Net Picks = 7 base own picks (per round) + picks in − picks out. Swap rights are net neutral for count purposes.</p>
   </section>
 
   <!-- Team detail -->
   <section id="detail-section" style="display:none">
     <h2 id="detail-title">— Select a team above —</h2>
     <div class="stat-cards" id="stat-cards"></div>
+    <div class="tab-row" id="detail-tab-row">
+      <button class="tab-btn active" data-round="1">1st Round</button>
+      <button class="tab-btn" data-round="2">2nd Round</button>
+    </div>
     <div class="picks-tables">
       <div class="picks-panel incoming">
         <h3>▲ Incoming Picks (Assets)</h3>
@@ -240,7 +259,7 @@
 
   <div class="methodology">
     <strong>Methodology notes.</strong>
-    <strong>Net Picks</strong> = 14 base own picks + picks received from other teams (transfers, multi-team arrangements, conditionals) − picks owed out (same types). Swap rights are excluded from both sides of the count since they exchange one pick for another.
+    <strong>Net Picks</strong> = 7 base own picks per round + picks received from other teams (transfers, multi-team arrangements, conditionals) − picks owed out (same types). Swap rights are excluded from both sides of the count since they exchange one pick for another.
     <strong>Swap Rights</strong> = incoming arrangements where the team holds the right to swap their pick for another team's pick and keep the better result.
     <strong>Top-5 Eligible</strong> = incoming 1st round picks from other teams whose protection clauses do not prevent the pick from conveying in the top 5 selections. A pick "protected 1–4" <em>is</em> eligible (can convey at #5); "protected 1–5" is <em>not</em> (conveys at #6 or later).
     Data source: RealGM Future Draft Pick Details, as of 2026-05-31. Traded pick obligations only; each team additionally holds their own undisclosed picks for all years/rounds not listed as outgoing.
@@ -279,7 +298,7 @@ const PICK_VALUE = [
 ];
 
 const ALL_TEAMS = Object.keys(TEAM_NAMES).sort();
-const BASE_PICKS = 14; // 7 years × 2 rounds
+const BASE_PICKS_PER_ROUND = 7; // 7 years × 1 round
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -315,33 +334,39 @@ function formatDesc(pick) {
 
 function yrShort(y) { return String(y).slice(2); }
 
-// Compute stats for one team
-function computeStats(picks, team) {
-  const tp = picks.filter(p => p.context_team === team);
+// Compute stats for one team filtered by round (1 or 2)
+function computeStats(picks, team, round) {
+  const tp = picks.filter(p => p.context_team === team && p.round === round);
   const incoming = tp.filter(p => p.direction === 'incoming');
   const outgoing = tp.filter(p => p.direction === 'outgoing');
 
-  // Transfers + multi_swap + conditional count toward net picks;
-  // swap rights are 1-for-1 exchanges (net neutral for count)
   const inCount  = incoming.filter(p => p.pick_type !== 'swap').length;
   const outCount = outgoing.filter(p => p.pick_type !== 'swap').length;
-  const netPicks = BASE_PICKS + inCount - outCount;
+  const netPicks = BASE_PICKS_PER_ROUND + inCount - outCount;
 
   const swapRights = incoming.filter(p => p.pick_type === 'swap').length;
-  const top5 = incoming.filter(p => isTop5Eligible(p)).length;
+  const top5 = round === 1 ? incoming.filter(p => isTop5Eligible(p)).length : 0;
 
   return { team, netPicks, inCount, outCount, swapRights, top5, incoming, outgoing };
 }
 
 // ─── Summary table ──────────────────────────────────────────────────────────
 
+let allPicksData = [];
 let allStats = [];
 let sortCol = 'name';
 let sortDir = 1; // 1=asc, -1=desc
 let selectedTeam = null;
+let summaryRound = 1;
+let detailRound = 1;
+
+function recomputeAllStats() {
+  allStats = ALL_TEAMS.map(team => computeStats(allPicksData, team, summaryRound));
+}
 
 function renderSummaryTable() {
   const tbody = document.getElementById('summary-tbody');
+  document.getElementById('summary-table').classList.toggle('hide-top5', summaryRound === 2);
   const sorted = [...allStats].sort((a,b) => {
     let va = a[sortCol], vb = b[sortCol];
     if (sortCol === 'name') { va = TEAM_NAMES[a.team]; vb = TEAM_NAMES[b.team]; }
@@ -349,10 +374,10 @@ function renderSummaryTable() {
   });
 
   tbody.innerHTML = sorted.map(s => {
-    const nCls = s.netPicks > BASE_PICKS ? 'net-positive'
-                : s.netPicks < BASE_PICKS ? 'net-negative'
+    const nCls = s.netPicks > BASE_PICKS_PER_ROUND ? 'net-positive'
+                : s.netPicks < BASE_PICKS_PER_ROUND ? 'net-negative'
                 : 'net-neutral';
-    const delta = s.netPicks - BASE_PICKS;
+    const delta = s.netPicks - BASE_PICKS_PER_ROUND;
     const deltaStr = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '±0';
     const sel = selectedTeam === s.team ? ' selected' : '';
     return `<tr class="summary-row${sel}" data-team="${s.team}">
@@ -389,42 +414,72 @@ document.querySelectorAll('#summary-table th').forEach(th => {
   });
 });
 
+document.getElementById('summary-tab-row').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  summaryRound = parseInt(btn.dataset.round);
+  document.querySelectorAll('#summary-tab-row .tab-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.round) === summaryRound);
+  });
+  recomputeAllStats();
+  renderSummaryTable();
+});
+
+document.getElementById('detail-tab-row').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn || !selectedTeam) return;
+  detailRound = parseInt(btn.dataset.round);
+  document.querySelectorAll('#detail-tab-row .tab-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.round) === detailRound);
+  });
+  renderDetail();
+});
+
 // ─── Team detail panel ──────────────────────────────────────────────────────
 
 function selectTeam(team) {
   selectedTeam = team;
-  renderSummaryTable(); // update selected row highlight
+  detailRound = 1;
+  renderSummaryTable();
+  document.querySelectorAll('#detail-tab-row .tab-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.round) === detailRound);
+  });
+  const section = document.getElementById('detail-section');
+  section.style.display = '';
+  section.scrollIntoView({ behavior:'smooth', block:'start' });
+  renderDetail();
+}
 
-  const stats = allStats.find(s => s.team === team);
-  const name = TEAM_NAMES[team] || team;
+function renderDetail() {
+  if (!selectedTeam) return;
+  const stats = computeStats(allPicksData, selectedTeam, detailRound);
+  const name = TEAM_NAMES[selectedTeam] || selectedTeam;
+  const rdLabel = detailRound === 1 ? '1st' : '2nd';
 
   document.getElementById('detail-title').textContent = name + ' — Pick Inventory';
-  document.getElementById('detail-section').style.display = '';
-  document.getElementById('detail-section').scrollIntoView({ behavior:'smooth', block:'start' });
 
-  // Stat cards
-  const netCls = stats.netPicks > BASE_PICKS ? 'positive'
-                : stats.netPicks < BASE_PICKS ? 'negative'
+  const netCls = stats.netPicks > BASE_PICKS_PER_ROUND ? 'positive'
+                : stats.netPicks < BASE_PICKS_PER_ROUND ? 'negative'
                 : 'neutral';
   document.getElementById('stat-cards').innerHTML = `
     <div class="stat-card ${netCls}">
-      <div class="label">Net Outright Picks</div>
+      <div class="label">Net ${rdLabel} Round Picks</div>
       <div class="value">${stats.netPicks}</div>
-      <div class="sub">2026–2032 (base 14 own picks)</div>
+      <div class="sub">2026–2032 (base 7 own ${rdLabel} round picks)</div>
     </div>
     <div class="stat-card neutral">
       <div class="label">Swap Rights Held</div>
       <div class="value">${stats.swapRights}</div>
       <div class="sub">Can swap own pick for better</div>
     </div>
-    <div class="stat-card ${stats.top5 > 0 ? 'neutral' : 'neutral'}">
+    ${detailRound === 1 ? `<div class="stat-card neutral">
       <div class="label">Top-5 Eligible Assets</div>
       <div class="value" style="color:${stats.top5 > 0 ? '#8a4800' : '#aaa'}">${stats.top5}</div>
       <div class="sub">1st Rd from others, unprotected or prot &lt;5</div>
-    </div>
+    </div>` : ''}
   `;
 
-  renderPicksTable('incoming-tbody', stats.incoming, true);
+  renderPicksTable('incoming-tbody', stats.incoming, detailRound === 1);
   renderPicksTable('outgoing-tbody', stats.outgoing, false);
 }
 
@@ -496,9 +551,8 @@ async function init() {
     const resp = await fetch('data/future_picks.json');
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    const picks = data.picks;
-
-    allStats = ALL_TEAMS.map(team => computeStats(picks, team));
+    allPicksData = data.picks;
+    recomputeAllStats();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = '';
