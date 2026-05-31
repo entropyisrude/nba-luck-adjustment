@@ -3,7 +3,7 @@ from the Eoin Kaggle dataset (historical-nba-data-and-player-box-scores.zip).
 
 For these pre-pbpstats seasons we have real game-by-game box scores but no on/off data.
 All on/off columns are None; hustle, rim-defence, and assist-split columns are also None.
-Bio columns (height, draft) are filled where available from the RS or PO DB.
+Bio columns (height, age, draft) are filled from common_player_info.csv and draft_history.csv.
 
 Run:
     python generate_historical_eoin_chunks.py [--force]
@@ -17,9 +17,9 @@ import json
 import os
 import sys
 import zipfile
+from datetime import date
 from pathlib import Path
 
-import duckdb
 import pandas as pd
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parent)))
@@ -31,8 +31,8 @@ PO_SPAN_DIR = DATA_DIR / "player_span_playoff_chunks"
 RS_GAME_DIR = DATA_DIR / "player_game_chunks"
 PO_GAME_DIR = DATA_DIR / "player_game_playoff_chunks"
 
-RS_DB = DATA_DIR / "nba_analytics.duckdb"
-PO_DB = DATA_DIR / "nba_analytics_playoffs.duckdb"
+COMMON_PLAYER_INFO = DATA_DIR / "common_player_info.csv"
+DRAFT_HISTORY = DATA_DIR / "draft_history.csv"
 
 # Process RS seasons 1979-80 through 1995-96, PO through 1994-95
 RS_FIRST = 1979
@@ -163,40 +163,109 @@ def _load_player_stats(zf: zipfile.ZipFile) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Bio from DBs
+# Bio from CSVs
 # ---------------------------------------------------------------------------
 
-def _load_bio(db_path: Path) -> dict[int, dict]:
-    if not db_path.exists():
-        return {}
+def _height_str_to_inches(h: str) -> float | None:
+    """Convert '6-10' → 82.0, handling None/empty."""
     try:
-        con = duckdb.connect(str(db_path), read_only=True)
-        rows = con.execute("""
-            SELECT player_id,
-                   MAX(listed_height)      AS listed_height,
-                   MAX(height_inches)      AS height_inches,
-                   MAX(draft_year)         AS draft_year,
-                   MAX(draft_overall_pick) AS draft_overall_pick
-            FROM player_game_facts
-            WHERE player_id IS NOT NULL
-            GROUP BY player_id
-        """).fetchall()
-        con.close()
-        return {
-            int(pid): {
-                "listed_height": lh, "height_inches": hi,
-                "draft_year": dy, "draft_overall_pick": dp,
+        parts = str(h).strip().split("-")
+        return float(int(parts[0]) * 12 + int(parts[1]))
+    except Exception:
+        return None
+
+
+def _load_bio_from_csvs() -> dict[int, dict]:
+    """Build bio map from common_player_info.csv + draft_history.csv."""
+    bio: dict[int, dict] = {}
+
+    if COMMON_PLAYER_INFO.exists():
+        cpi = pd.read_csv(COMMON_PLAYER_INFO, low_memory=False)
+        for _, r in cpi.iterrows():
+            try:
+                pid = int(r["person_id"])
+            except (TypeError, ValueError):
+                continue
+            h_str = str(r.get("height") or "").strip()
+            h_in = _height_str_to_inches(h_str) if "-" in h_str else None
+            listed = h_str if h_str and "-" in h_str else None
+            bdate_raw = r.get("birthdate")
+            bdate = None
+            if pd.notna(bdate_raw):
+                try:
+                    bdate = pd.to_datetime(bdate_raw).date()
+                except Exception:
+                    pass
+            from_year = None
+            try:
+                from_year = int(float(r["from_year"]))
+            except (TypeError, ValueError):
+                pass
+            draft_yr = None
+            try:
+                draft_yr = int(float(r["draft_year"])) if pd.notna(r.get("draft_year")) else None
+            except (TypeError, ValueError):
+                pass
+            draft_pick = None
+            try:
+                draft_pick = int(float(r["draft_number"])) if pd.notna(r.get("draft_number")) else None
+            except (TypeError, ValueError):
+                pass
+            bio[pid] = {
+                "listed_height": listed,
+                "height_inches": h_in,
+                "birthdate": bdate,
+                "from_year": from_year,
+                "draft_year": draft_yr,
+                "draft_overall_pick": draft_pick,
             }
-            for pid, lh, hi, dy, dp in rows
-        }
-    except Exception as e:
-        print(f"  Warning: could not load bio from {db_path.name}: {e}", file=sys.stderr)
-        return {}
+        print(f"  Loaded {len(bio):,} players from common_player_info.csv")
+    else:
+        print(f"  Warning: {COMMON_PLAYER_INFO} not found", file=sys.stderr)
+
+    # Override draft pick with draft_history.csv (more complete/authoritative)
+    if DRAFT_HISTORY.exists():
+        dh = pd.read_csv(DRAFT_HISTORY, low_memory=False)
+        dh = dh[dh["draft_type"] == "Draft"]  # exclude undrafted free agents etc.
+        for _, r in dh.iterrows():
+            try:
+                pid = int(r["person_id"])
+            except (TypeError, ValueError):
+                continue
+            try:
+                pick = int(r["overall_pick"])
+            except (TypeError, ValueError):
+                continue
+            if pid not in bio:
+                bio[pid] = {}
+            bio[pid]["draft_overall_pick"] = pick
+            try:
+                bio[pid].setdefault("draft_year", int(r["season"]))
+            except (TypeError, ValueError):
+                pass
+        print(f"  Draft picks loaded from draft_history.csv")
+    else:
+        print(f"  Warning: {DRAFT_HISTORY} not found", file=sys.stderr)
+
+    return bio
 
 
 # ---------------------------------------------------------------------------
 # Row builders
 # ---------------------------------------------------------------------------
+
+def _compute_age(birthdate: date | None, game_date: date) -> float | None:
+    if birthdate is None:
+        return None
+    days = (game_date - birthdate).days
+    return round(days / 365.25, 1)
+
+
+def _compute_career_year(from_year: int | None, season_start_year: int) -> int | None:
+    if from_year is None:
+        return None
+    return max(1, season_start_year - from_year + 1)
+
 
 def _span_row(
     *, date_str: str, season: str, game_id: str, pid: int, name: str,
@@ -205,9 +274,11 @@ def _span_row(
     dreb: float, ast: float, stl: float, blk: float, tov: float, pf: float,
     fgm: float, fga: float, fg2m: float, fg2a: float,
     fg3m: float, fg3a: float, ftm: float, fta: float,
-    pm: float, bio: dict,
+    pm: float, bio: dict, game_date: date, season_start_year: int,
 ) -> list:
     """Build a 75-element span-search chunk row."""
+    age = _compute_age(bio.get("birthdate"), game_date)
+    career_year = _compute_career_year(bio.get("from_year"), season_start_year)
     return [
         date_str, season, game_id, pid, name,          # 0-4
         team_abbr, opp_abbr, home_away, win_loss, starter,  # 5-9
@@ -217,7 +288,7 @@ def _span_row(
         ftm, fta, _pct(ftm, fta),                      # 28-30
         None, None, None, None, None, None,             # 31-36 assist splits
         bio.get("listed_height"), bio.get("height_inches"),  # 37-38
-        None, None,                                    # 39-40 age, career_year
+        age, career_year,                              # 39-40
         bio.get("draft_year"), bio.get("draft_overall_pick"),  # 41-42
         None, None, None, None, None, None,            # 43-48 rim assists counts
         None, None, None, None, None,                  # 49-53 rim assists per game
@@ -236,12 +307,14 @@ def _game_row(
     dreb: float, ast: float, stl: float, blk: float, tov: float, pf: float,
     fgm: float, fga: float, fg2m: float, fg2a: float,
     fg3m: float, fg3a: float, ftm: float, fta: float,
-    pm: float, bio: dict,
+    pm: float, bio: dict, game_date: date, season_start_year: int,
 ) -> list:
     """Build a 56-element game-search chunk row."""
     ts = _ts(pts, fga, fta)
     dd = _dd(pts, reb, ast, stl, blk)
     td = _td(pts, reb, ast, stl, blk)
+    age = _compute_age(bio.get("birthdate"), game_date)
+    career_year = _compute_career_year(bio.get("from_year"), season_start_year)
     return [
         date_str, season, game_id, pid, name,               # 0-4
         team_abbr, opp_abbr,                                # 5-6
@@ -253,7 +326,7 @@ def _game_row(
         ftm, fta, _pct(ftm, fta),                          # 31-33
         None, None, None, None, None, None,                 # 34-39 assist splits
         bio.get("listed_height"), bio.get("height_inches"), # 40-41
-        None, None,                                         # 42-43 age, career_year
+        age, career_year,                                   # 42-43
         bio.get("draft_year"), bio.get("draft_overall_pick"),  # 44-45
         None,                                               # 46 on_possessions
         ts, dd, td,                                         # 47-49
@@ -299,11 +372,9 @@ def generate(force: bool = False) -> None:
         ps = _load_player_stats(zf)
     print(f"  {len(ps):,} rows loaded")
 
-    print("Loading bio data from DBs...")
-    bio_rs = _load_bio(RS_DB)
-    bio_po = _load_bio(PO_DB)
-    bio_map: dict[int, dict] = {**bio_po, **bio_rs}  # RS wins on conflict
-    print(f"  {len(bio_map):,} player bio records")
+    print("Loading bio data from CSVs...")
+    bio_map = _load_bio_from_csvs()
+    print(f"  {len(bio_map):,} total player bio records")
 
     for chunk_dirs, first_year, last_year, game_type, season_year_fn in [
         ((RS_SPAN_DIR, RS_GAME_DIR), RS_FIRST, RS_LAST, "Regular Season", _rs_season_year),
@@ -340,6 +411,7 @@ def generate(force: bool = False) -> None:
             for r in season_df.sort_values("_date_str").to_dict("records"):
                 pid = int(r["personId"])
                 bio = bio_map.get(pid, {})
+                game_date = r["gameDateTimeEst"].date()
 
                 team_abbr = _resolve_abbr(
                     r["playerteamId"], r["playerteamCity"], r["playerteamName"],
@@ -381,6 +453,8 @@ def generate(force: bool = False) -> None:
                     fta=float(r["freeThrowsAttempted"]),
                     pm=float(r["plusMinusPoints"]),
                     bio=bio,
+                    game_date=game_date,
+                    season_start_year=season_year,
                 )
 
                 span_rows.append(_span_row(**kwargs))
