@@ -175,8 +175,17 @@ def _height_str_to_inches(h: str) -> float | None:
         return None
 
 
-def _load_bio_from_csvs() -> dict[int, dict]:
-    """Build bio map from common_player_info.csv + draft_history.csv."""
+def _inches_to_listed(h: float) -> str | None:
+    """Convert 82.0 → '6-10'."""
+    try:
+        hi = int(h)
+        return f"{hi // 12}-{hi % 12}"
+    except Exception:
+        return None
+
+
+def _load_bio_from_csvs(kaggle_zip: Path | None = None) -> dict[int, dict]:
+    """Build bio map from common_player_info.csv + draft_history.csv + Eoin Players.csv."""
     bio: dict[int, dict] = {}
 
     if COMMON_PLAYER_INFO.exists():
@@ -246,6 +255,58 @@ def _load_bio_from_csvs() -> dict[int, dict]:
         print(f"  Draft picks loaded from draft_history.csv")
     else:
         print(f"  Warning: {DRAFT_HISTORY} not found", file=sys.stderr)
+
+    # Fill remaining gaps from Eoin Players.csv (comprehensive historical coverage)
+    if kaggle_zip and kaggle_zip.exists():
+        with zipfile.ZipFile(kaggle_zip, "r") as zf:
+            with zf.open("Players.csv") as f:
+                pl = pd.read_csv(f, low_memory=False)
+        eoin_added = 0
+        for _, r in pl.iterrows():
+            try:
+                pid = int(float(r["personId"]))
+            except (TypeError, ValueError):
+                continue
+            h_in_raw = r.get("heightInches")
+            h_in = float(h_in_raw) if pd.notna(h_in_raw) and float(h_in_raw) > 0 else None
+            bdate = None
+            bdate_raw = r.get("birthDate")
+            if pd.notna(bdate_raw):
+                try:
+                    bdate = pd.to_datetime(str(bdate_raw)).date()
+                except Exception:
+                    pass
+            fy_raw = r.get("fromYear")
+            from_yr = int(float(fy_raw)) if pd.notna(fy_raw) and float(fy_raw) > 0 else None
+            dy_raw = r.get("draftYear")
+            d_yr = int(float(dy_raw)) if pd.notna(dy_raw) and float(dy_raw) > 0 else None
+            dn_raw = r.get("draftNumber")
+            d_num = int(float(dn_raw)) if pd.notna(dn_raw) and float(dn_raw) > 0 else None
+            if pid not in bio:
+                bio[pid] = {
+                    "listed_height": _inches_to_listed(h_in) if h_in else None,
+                    "height_inches": h_in,
+                    "birthdate": bdate,
+                    "from_year": from_yr,
+                    "draft_year": d_yr,
+                    "draft_overall_pick": d_num,
+                }
+                eoin_added += 1
+            else:
+                # Fill in any missing fields for existing entries
+                entry = bio[pid]
+                if entry.get("height_inches") is None and h_in:
+                    entry["height_inches"] = h_in
+                    entry["listed_height"] = _inches_to_listed(h_in)
+                if entry.get("birthdate") is None and bdate:
+                    entry["birthdate"] = bdate
+                if entry.get("from_year") is None and from_yr:
+                    entry["from_year"] = from_yr
+                if entry.get("draft_year") is None and d_yr:
+                    entry["draft_year"] = d_yr
+                if entry.get("draft_overall_pick") is None and d_num:
+                    entry["draft_overall_pick"] = d_num
+        print(f"  Eoin Players.csv: added {eoin_added:,} new players, filled gaps for existing")
 
     return bio
 
@@ -373,7 +434,7 @@ def generate(force: bool = False) -> None:
     print(f"  {len(ps):,} rows loaded")
 
     print("Loading bio data from CSVs...")
-    bio_map = _load_bio_from_csvs()
+    bio_map = _load_bio_from_csvs(kaggle_zip=KAGGLE_ZIP)
     print(f"  {len(bio_map):,} total player bio records")
 
     for chunk_dirs, first_year, last_year, game_type, season_year_fn in [
