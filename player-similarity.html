@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player Similarity Machine — NBA Stats</title>
+<style>
+  body{font-family:"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:20px;
+    background:linear-gradient(180deg,#eef5ff 0%,#f8fbff 30%,#f2f6fb 100%);color:#192231}
+  h1{color:#f8fbff;margin:0 0 6px;text-shadow:1px 2px 6px rgba(0,0,0,.7)}
+  h2{color:#192231;margin:28px 0 10px;font-size:1.1em}
+  .hero-banner{background:linear-gradient(rgba(10,22,42,.62),rgba(10,22,42,.62)),
+    url('images/starks218.jpg') left center,url('images/rocket027.jpg') right center;
+    background-size:cover,50% auto,50% auto;background-repeat:no-repeat;
+    padding:50px 30px 22px;margin:-20px -20px 20px;border-radius:0 0 14px 14px;text-align:center}
+  .timestamp{color:rgba(255,255,255,.7);font-size:.82em;margin:4px 0 12px}
+  .hero-nav{display:flex;flex-direction:column;gap:6px;max-width:860px;margin:0 auto}
+  .hero-nav-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .hero-nav-label{color:rgba(255,255,255,.6);font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;min-width:72px;text-align:right}
+  .hero-nav a{color:#e8f4ff;text-decoration:none;border:1px solid rgba(255,255,255,.35);
+    border-radius:7px;padding:4px 9px;font-size:12px}
+  .hero-nav a:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6)}
+
+  .card{background:#fff;border-radius:12px;border:1px solid #d6e1ef;
+    box-shadow:0 3px 12px rgba(23,38,62,.06);padding:18px 20px;margin-bottom:18px}
+
+  /* Search bar */
+  .search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+  .search-row label{font-size:.82em;color:#6680a0;font-weight:600;text-transform:uppercase;
+    letter-spacing:.05em;display:block;margin-bottom:4px}
+  .search-row input,.search-row select{
+    padding:8px 12px;border:1px solid #c8d8ec;border-radius:8px;font-size:.95em;
+    background:#fff;color:#192231;outline:none}
+  .search-row input:focus,.search-row select:focus{border-color:#3a7bd5}
+  #player-input{min-width:220px;flex:1}
+  #season-select{min-width:110px}
+  #run-btn{padding:9px 22px;background:#0d2f53;color:#fff;border:none;border-radius:8px;
+    font-size:.95em;font-weight:600;cursor:pointer;white-space:nowrap}
+  #run-btn:hover{background:#17407a}
+  #run-btn:disabled{background:#aaa;cursor:default}
+
+  /* Autocomplete dropdown */
+  .autocomplete-wrap{position:relative;flex:1;min-width:220px}
+  #ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;
+    border:1px solid #c8d8ec;border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;
+    z-index:100;box-shadow:0 6px 18px rgba(23,38,62,.12);display:none}
+  .ac-item{padding:8px 12px;cursor:pointer;font-size:.9em;border-bottom:1px solid #f0f4fa}
+  .ac-item:hover,.ac-item.selected{background:#e8f2ff}
+  .ac-item .ac-season{color:#8898af;margin-left:6px;font-size:.85em}
+
+  /* Weights panel */
+  .weights-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 20px}
+  @media(max-width:700px){.weights-grid{grid-template-columns:1fr 1fr}}
+  .weight-row{display:flex;flex-direction:column;gap:3px}
+  .weight-row label{font-size:.8em;color:#445;font-weight:600}
+  .weight-row .w-val{font-size:.75em;color:#6680a0;text-align:right;margin-top:1px}
+  .weight-row input[type=range]{width:100%;accent-color:#0d2f53}
+  .weight-row .note{font-size:.7em;color:#aab;font-style:italic}
+
+  .filter-row{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:10px;
+    font-size:.85em;color:#445}
+  .filter-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .filter-row input[type=number]{width:60px;padding:3px 6px;border:1px solid #c8d8ec;
+    border-radius:5px;font-size:.9em}
+
+  /* Results */
+  #results-section{display:none}
+  .query-header{background:#0d2f53;color:#f0f6ff;padding:12px 16px;border-radius:8px 8px 0 0;
+    font-weight:700;font-size:1em}
+  .query-header .qs{font-size:.83em;opacity:.75;margin-left:8px;font-weight:400}
+  table{width:100%;border-collapse:collapse}
+  th{background:#152d52;color:#e8f4ff;padding:9px 8px;text-align:left;font-size:.83em;
+    font-weight:600;white-space:nowrap}
+  td{padding:8px 8px;border-bottom:1px solid #eef2f8;font-size:.87em;vertical-align:middle}
+  tr:hover td{background:#f4f8ff}
+  .rank{width:28px;color:#aaa;font-weight:700;text-align:center}
+  .sim-bar-wrap{width:90px}
+  .sim-bar{height:8px;border-radius:4px;background:#e0e8f5}
+  .sim-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#1a7a3a,#4fc36a)}
+  .sim-score{font-size:.82em;color:#1a7a3a;font-weight:700;white-space:nowrap}
+  .stat-diff{font-size:.78em;color:#6680a0}
+  .stat-diff.pos{color:#1a7a3a}
+  .stat-diff.neg{color:#c0392b}
+  .no-oo{color:#ccc;font-size:.75em;font-style:italic}
+  .era-tag{font-size:.72em;padding:1px 5px;border-radius:4px;
+    background:#f5e8d0;color:#6a3800;margin-left:4px;white-space:nowrap}
+  .era-tag.modern{background:#e0eeff;color:#1a4fa0}
+
+  #loading-msg{text-align:center;color:#6680a0;padding:30px}
+  .note{font-size:.79em;color:#8898af;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="hero-banner">
+  <h1>Player Similarity Machine</h1>
+  <p class="timestamp">1979-80 through 2025-26 &nbsp;|&nbsp; 14,600+ player-seasons</p>
+  <div class="hero-nav">
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Regular&nbsp;Season</span>
+      <a href="onoff-daily.html">+/- Games</a>
+      <a href="onoff.html">+/- Stats</a>
+      <a href="player-span-search.html">Player Span</a>
+      <a href="game-search.html">Game Search</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Playoffs</span>
+      <a href="onoff-playoffs.html">+/- Playoffs</a>
+      <a href="rapm-playoffs.html">Playoff RAPM</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Front&nbsp;Office</span>
+      <a href="franchise-value.html">Franchise Value</a>
+      <a href="player-similarity.html" style="background:rgba(255,255,255,.15)">Similarity</a>
+    </div>
+  </div>
+</div>
+
+<div id="loading-msg">Loading player data…</div>
+
+<div id="app" style="display:none">
+
+  <section>
+    <div class="card">
+      <div class="search-row">
+        <div>
+          <label>Player</label>
+          <div class="autocomplete-wrap">
+            <input id="player-input" type="text" placeholder="e.g. LeBron James" autocomplete="off">
+            <div id="ac-dropdown"></div>
+          </div>
+        </div>
+        <div>
+          <label>Season</label>
+          <select id="season-select"><option value="">— pick player first —</option></select>
+        </div>
+        <div style="padding-bottom:1px">
+          <label>&nbsp;</label>
+          <button id="run-btn" disabled>Find Similar</button>
+        </div>
+      </div>
+
+      <h2 style="margin:14px 0 10px;font-size:.9em;color:#445;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Stat Weights</h2>
+      <div class="weights-grid" id="weights-grid"></div>
+
+      <div class="filter-row">
+        <span>Min minutes/season:</span>
+        <input type="number" id="min-min" value="500" min="100" max="3000" step="100">
+        <label><input type="checkbox" id="excl-player" checked> Exclude other seasons by same player</label>
+        <label><input type="checkbox" id="same-era"> Same era only (±8 years)</label>
+        <span style="color:#aab">|</span>
+        <label>Results: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select></label>
+      </div>
+    </div>
+  </section>
+
+  <section id="results-section">
+    <div class="query-header" id="query-header"></div>
+    <div class="card" style="padding:0;overflow:hidden;border-radius:0 0 12px 12px;border-top:none">
+      <table id="results-table">
+        <thead id="results-thead"></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+    <p class="note" id="results-note"></p>
+  </section>
+
+</div><!-- #app -->
+
+<script>
+// ─── Data + constants ───────────────────────────────────────────────────────
+
+const STAT_DIMS = [
+  { id:'scoring',    label:'Scoring',     stats:['pts','fta','fgp','ftp'],  note:'pts, FTA, FG%, FT%' },
+  { id:'playmaking', label:'Playmaking',  stats:['ast','tov'],              note:'ast, tov per 36' },
+  { id:'rebounding', label:'Rebounding',  stats:['or','dr'],                note:'oreb, dreb per 36' },
+  { id:'defense',    label:'Defense',     stats:['stl','blk'],              note:'stl, blk per 36' },
+  { id:'threepoint', label:'3-Point',     stats:['fg3a','fg3p'],            note:'3PA per 36, 3P%' },
+  { id:'onoff',      label:'On/Off',      stats:['oo'],                     note:'post-1996 only', optional:true },
+];
+
+const COL_FMT = {
+  pts:'Pts/36', ast:'Ast/36', or:'ORb/36', dr:'DRb/36',
+  stl:'Stl/36', blk:'Blk/36', tov:'Tov/36', fta:'FTA/36',
+  fg3a:'3PA/36', fgp:'FG%', fg3p:'3P%', ftp:'FT%', oo:'On/Off',
+};
+
+const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fgp','fg3p','ftp','oo'];
+
+let allSeasons = [];
+let playerIndex = {};   // name → [{season, team, idx}]
+let selectedPlayer = null;
+let selectedSeason = null;
+
+// ─── Weights UI ─────────────────────────────────────────────────────────────
+
+function buildWeightsUI() {
+  const grid = document.getElementById('weights-grid');
+  grid.innerHTML = STAT_DIMS.map(d => `
+    <div class="weight-row">
+      <label>${d.label}${d.optional ? ' <span class="note">(post-96)</span>' : ''}</label>
+      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${d.id==='onoff'?0.5:1}">
+      <div class="w-val" id="wv-${d.id}">${d.id==='onoff'?'0.5':'1.0'}</div>
+      <div class="note">${d.note}</div>
+    </div>`).join('');
+  STAT_DIMS.forEach(d => {
+    const inp = document.getElementById('w-' + d.id);
+    inp.addEventListener('input', () => {
+      document.getElementById('wv-' + d.id).textContent = parseFloat(inp.value).toFixed(1);
+    });
+  });
+}
+
+function getWeights() {
+  const w = {};
+  STAT_DIMS.forEach(d => {
+    const v = parseFloat(document.getElementById('w-' + d.id).value);
+    d.stats.forEach(s => w[s] = v);
+  });
+  return w;
+}
+
+// ─── Autocomplete ────────────────────────────────────────────────────────────
+
+function buildPlayerIndex() {
+  playerIndex = {};
+  allSeasons.forEach((s, i) => {
+    const key = s.name.toLowerCase();
+    if (!playerIndex[key]) playerIndex[key] = { name: s.name, seasons: [] };
+    playerIndex[key].seasons.push({ season: s.season, team: s.team, idx: i });
+  });
+}
+
+const input = document.getElementById('player-input');
+const dropdown = document.getElementById('ac-dropdown');
+const seasonSel = document.getElementById('season-select');
+const runBtn = document.getElementById('run-btn');
+
+let acActive = -1;
+
+input.addEventListener('input', () => {
+  const q = input.value.trim().toLowerCase();
+  if (q.length < 2) { dropdown.style.display = 'none'; return; }
+  const matches = Object.values(playerIndex)
+    .filter(p => p.name.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const ai = a.name.toLowerCase().indexOf(q);
+      const bi = b.name.toLowerCase().indexOf(q);
+      return ai - bi || a.name.localeCompare(b.name);
+    })
+    .slice(0, 20);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matches.map((p, i) =>
+    `<div class="ac-item" data-name="${esc(p.name)}" data-i="${i}">
+      ${esc(p.name)}
+      <span class="ac-season">${p.seasons[0].season}–${p.seasons[p.seasons.length-1].season}</span>
+    </div>`
+  ).join('');
+  dropdown.style.display = 'block';
+  acActive = -1;
+  dropdown.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('mousedown', e => { e.preventDefault(); selectPlayerName(el.dataset.name); });
+  });
+});
+
+input.addEventListener('keydown', e => {
+  const items = dropdown.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') { acActive = Math.min(acActive+1, items.length-1); highlight(items); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { acActive = Math.max(acActive-1, 0); highlight(items); e.preventDefault(); }
+  else if (e.key === 'Enter' && acActive >= 0) { selectPlayerName(items[acActive].dataset.name); e.preventDefault(); }
+  else if (e.key === 'Escape') { dropdown.style.display = 'none'; }
+});
+
+document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) dropdown.style.display = 'none'; });
+
+function highlight(items) {
+  items.forEach((el,i) => el.classList.toggle('selected', i === acActive));
+  if (acActive >= 0) items[acActive].scrollIntoView({ block: 'nearest' });
+}
+
+function selectPlayerName(name) {
+  input.value = name;
+  dropdown.style.display = 'none';
+  const key = name.toLowerCase();
+  const entry = playerIndex[key];
+  if (!entry) return;
+  selectedPlayer = name;
+  seasonSel.innerHTML = entry.seasons
+    .sort((a,b) => b.season.localeCompare(a.season))
+    .map(s => `<option value="${s.idx}">${s.season}${s.team ? ' · '+s.team : ''}</option>`)
+    .join('');
+  selectedSeason = entry.seasons[entry.seasons.length - 1];
+  runBtn.disabled = false;
+}
+
+seasonSel.addEventListener('change', () => {
+  if (!seasonSel.value) return;
+  runBtn.disabled = false;
+});
+
+// ─── Similarity ──────────────────────────────────────────────────────────────
+
+function computeSimilarity() {
+  const queryIdx = parseInt(seasonSel.value);
+  if (isNaN(queryIdx)) return;
+  const query = allSeasons[queryIdx];
+  const weights = getWeights();
+  const minMin = parseInt(document.getElementById('min-min').value) || 500;
+  const exclPlayer = document.getElementById('excl-player').checked;
+  const sameEra = document.getElementById('same-era').checked;
+  const nResults = parseInt(document.getElementById('n-results').value) || 10;
+  const queryYear = parseInt(query.season);
+
+  // Determine which stats to use (both query and candidate must have value)
+  const statCols = Object.keys(weights).filter(s => weights[s] > 0);
+
+  // Build candidate pool
+  const pool = allSeasons.filter((s, i) => {
+    if (i === queryIdx) return false;
+    if (s.min < minMin) return false;
+    if (exclPlayer && s.pid === query.pid) return false;
+    if (sameEra && Math.abs(parseInt(s.season) - queryYear) > 8) return false;
+    return true;
+  });
+
+  // Compute z-score params across the full qualifying pool + query
+  const forNorm = [query, ...pool];
+  const means = {}, stds = {};
+  statCols.forEach(col => {
+    const vals = forNorm.map(s => s[col]).filter(v => v != null);
+    if (!vals.length) { means[col] = 0; stds[col] = 1; return; }
+    const mean = vals.reduce((a,b) => a+b, 0) / vals.length;
+    const std = Math.sqrt(vals.reduce((a,b) => a + (b-mean)**2, 0) / vals.length) || 1;
+    means[col] = mean;
+    stds[col] = std;
+  });
+
+  function zScore(val, col) {
+    if (val == null) return null;
+    return (val - means[col]) / stds[col];
+  }
+
+  const queryZ = {};
+  statCols.forEach(col => { queryZ[col] = zScore(query[col], col); });
+
+  // Compute distances
+  const scored = pool.map(cand => {
+    let sumSq = 0, nUsed = 0;
+    statCols.forEach(col => {
+      const qz = queryZ[col];
+      const cz = zScore(cand[col], col);
+      if (qz == null || cz == null) return;
+      const w = weights[col];
+      sumSq += w * (qz - cz) ** 2;
+      nUsed++;
+    });
+    if (nUsed === 0) return null;
+    const dist = Math.sqrt(sumSq / nUsed);
+    // Map distance to 0-100 similarity score
+    const sim = Math.round(100 * Math.exp(-dist * 0.55));
+    return { cand, dist, sim };
+  }).filter(Boolean);
+
+  scored.sort((a, b) => a.dist - b.dist);
+  return { query, results: scored.slice(0, nResults), statCols };
+}
+
+// ─── Render results ──────────────────────────────────────────────────────────
+
+function renderResults() {
+  const out = computeSimilarity();
+  if (!out) return;
+  const { query, results, statCols } = out;
+
+  const section = document.getElementById('results-section');
+  section.style.display = '';
+  section.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  document.getElementById('query-header').innerHTML =
+    `<span style="font-size:1.05em">${esc(query.name)}</span>` +
+    `<span class="qs">${query.season}${query.team ? ' · '+query.team : ''}` +
+    ` &nbsp;|&nbsp; ${fmtMin(query.min)} min, ${query.games} G` +
+    `${query.age ? ' &nbsp;|&nbsp; Age '+query.age : ''}</span>`;
+
+  // thead: show the display cols that are in statCols or always-show
+  const showCols = DISPLAY_COLS.filter(c => statCols.includes(c) || ['pts','ast','fgp'].includes(c));
+  document.getElementById('results-thead').innerHTML = `<tr>
+    <th class="rank">#</th>
+    <th>Player</th>
+    <th>Season</th>
+    ${showCols.map(c => `<th>${COL_FMT[c]||c}</th>`).join('')}
+    <th>Similarity</th>
+  </tr>`;
+
+  // Query row
+  let tbody = `<tr style="background:#f0f7ff;font-weight:600">
+    <td class="rank" style="color:#3a7bd5">★</td>
+    <td>${esc(query.name)}<span class="era-tag modern">Query</span></td>
+    <td>${query.season}</td>
+    ${showCols.map(c => `<td>${fmtStat(c, query[c])}</td>`).join('')}
+    <td>—</td>
+  </tr>`;
+
+  tbody += results.map((r, i) => {
+    const c = r.cand;
+    const isOld = parseInt(c.season) < 1996;
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td>${esc(c.name)}${isOld ? ' <span class="era-tag">pre-96</span>' : ''}</td>
+      <td>${c.season}${c.team ? ' <span style="color:#aaa;font-size:.82em">'+c.team+'</span>' : ''}</td>
+      ${showCols.map(c2 => {
+        const val = c[c2];
+        const qval = query[c2];
+        const diff = (val != null && qval != null) ? val - qval : null;
+        const cls = diff == null ? '' : (diff > 0.05 ? ' pos' : diff < -0.05 ? ' neg' : '');
+        const diffStr = diff == null ? '' : ` <span class="stat-diff${cls}">${diff>0?'+':''}${fmtDiff(c2,diff)}</span>`;
+        return `<td>${fmtStat(c2, val)}${diffStr}</td>`;
+      }).join('')}
+      <td>
+        <div class="sim-bar-wrap">
+          <div style="display:flex;align-items:center;gap:5px">
+            <div class="sim-bar" style="flex:1"><div class="sim-bar-fill" style="width:${r.sim}%"></div></div>
+            <span class="sim-score">${r.sim}</span>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('results-tbody').innerHTML = tbody;
+
+  const ooUsed = statCols.includes('oo');
+  const nPre96 = results.filter(r => parseInt(r.cand.season) < 1996).length;
+  document.getElementById('results-note').textContent =
+    `Similarity scored 0–100 (100 = identical profile). Weighted Euclidean distance on z-normalized per-36 stats.` +
+    (ooUsed ? ' On/off included in weights — may skew cross-era comparisons.' : '') +
+    (nPre96 ? ` ${nPre96} result(s) are pre-1996 (box stats only, no on/off).` : '');
+}
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+
+function fmtStat(col, val) {
+  if (val == null) return '<span class="no-oo">—</span>';
+  if (['fgp','fg3p','ftp'].includes(col)) return (val*100).toFixed(1)+'%';
+  return val.toFixed(1);
+}
+
+function fmtDiff(col, diff) {
+  if (diff == null) return '';
+  if (['fgp','fg3p','ftp'].includes(col)) return (diff*100).toFixed(1)+'%';
+  return Math.abs(diff).toFixed(1);
+}
+
+function fmtMin(m) { return m ? m.toLocaleString() : '—'; }
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+document.getElementById('run-btn').addEventListener('click', renderResults);
+
+async function init() {
+  try {
+    const resp = await fetch('data/player_seasons.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    allSeasons = data.seasons;
+    buildPlayerIndex();
+    buildWeightsUI();
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('app').style.display = '';
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'Error loading data: ' + e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
