@@ -336,60 +336,56 @@ function getActiveCupGame() {
   return g && g.cup ? g : null;
 }
 
-function possMatchesFilter(p) {
-  // p.sas = array of pid strings on court for SAS
-  // p.nyk = array of pid strings on court for NYK
+function stintMatchesFilter(s) {
   for (const [pid, state] of Object.entries(filters)) {
     if (!state) continue;
-    const inSas = p.sas.includes(pid);
-    const inNyk = p.nyk.includes(pid);
-    const onCourt = inSas || inNyk;
+    const onCourt = s.sas.includes(pid) || s.nyk.includes(pid);
     if (state === 'on' && !onCourt) return false;
     if (state === 'off' && onCourt) return false;
   }
   return true;
 }
 
-function computeTeamStats(possessions) {
-  let sas_off_poss = 0, sas_off_pts = 0;
-  let nyk_off_poss = 0, nyk_off_pts = 0;
-  for (const p of possessions) {
-    if (p.off === 'SAS') { sas_off_poss++; sas_off_pts += p.pts; }
-    else { nyk_off_poss++; nyk_off_pts += p.pts; }
-  }
-  const total_poss = sas_off_poss + nyk_off_poss;
-  const sas_ortg = sas_off_poss > 0 ? 100 * sas_off_pts / sas_off_poss : null;
-  const nyk_ortg = nyk_off_poss > 0 ? 100 * nyk_off_pts / nyk_off_poss : null;
-  const sas_drtg = nyk_ortg; // SAS defense = NYK offense
-  const nyk_drtg = sas_ortg; // NYK defense = SAS offense
-  return { sas_off_poss, sas_off_pts, nyk_off_poss, nyk_off_pts, total_poss,
+// stints: filtered stint array; gameTotalSec/gameTotalPoss: full-game totals for normalization
+function computeTeamStats(stints, gameTotalSec, gameTotalPoss) {
+  let sasPts = 0, nykPts = 0, secSum = 0;
+  for (const s of stints) { sasPts += s.sp; nykPts += s.np; secSum += s.sec; }
+  const estPoss = gameTotalSec > 0 ? secSum / gameTotalSec * gameTotalPoss : 0;
+  const estHalf = estPoss / 2; // approx possessions per team (offense/defense ~equal)
+  const sas_ortg = estHalf > 0 ? 100 * sasPts / estHalf : null;
+  const nyk_ortg = estHalf > 0 ? 100 * nykPts / estHalf : null;
+  const sas_drtg = nyk_ortg;
+  const nyk_drtg = sas_ortg;
+  const sas_off_poss = Math.round(estHalf), nyk_off_poss = Math.round(estHalf);
+  return { sas_off_pts: sasPts, nyk_off_pts: nykPts,
+           sas_off_poss, nyk_off_poss, total_poss: Math.round(estPoss),
            sas_ortg, sas_drtg, nyk_ortg, nyk_drtg };
 }
 
-function computePlayerStats(possGids, boxGids, filteredPoss) {
-  const onCourtFiltered = {}, onCourtTotal = {};
+function computePlayerStats(stintGids, boxGids, filteredStints) {
+  const onCourtSecFiltered = {}, onCourtSecTotal = {};
 
-  const possPoss = possGids.flatMap(gid => DATA.poss[gid] || []);
-  for (const p of possPoss) {
-    for (const pid of [...p.sas, ...p.nyk])
-      onCourtTotal[pid] = (onCourtTotal[pid] || 0) + 1;
+  const allStints = stintGids.flatMap(gid => DATA.stints[gid] || []);
+  for (const s of allStints) {
+    for (const pid of [...s.sas, ...s.nyk])
+      onCourtSecTotal[pid] = (onCourtSecTotal[pid] || 0) + s.sec;
   }
-  for (const p of filteredPoss) {
-    for (const pid of [...p.sas, ...p.nyk])
-      onCourtFiltered[pid] = (onCourtFiltered[pid] || 0) + 1;
+  for (const s of filteredStints) {
+    for (const pid of [...s.sas, ...s.nyk])
+      onCourtSecFiltered[pid] = (onCourtSecFiltered[pid] || 0) + s.sec;
   }
 
-  // Scale by possession fraction only when box and possession games match exactly
-  const scaleByPoss = possGids.length === boxGids.length &&
-    possGids.every(id => boxGids.includes(id));
+  // Scale by time fraction only when box and stint games match exactly
+  const scaleByPoss = stintGids.length === boxGids.length &&
+    stintGids.every(id => boxGids.includes(id));
 
   const rows = [];
   const allPlayers = [...DATA.sas_players, ...DATA.nyk_players];
 
   for (const player of allPlayers) {
     const pid = player.pid;
-    const filtPoss = onCourtFiltered[pid] || 0;
-    const totPoss = onCourtTotal[pid] || 0;
+    const filtPoss = onCourtSecFiltered[pid] || 0; // seconds (used as ratio)
+    const totPoss = onCourtSecTotal[pid] || 0;
     if (scaleByPoss && totPoss === 0) continue;
 
     let totalMin = 0, totalPts = 0, totalReb = 0, totalAst = 0, totalStl = 0,
@@ -460,16 +456,19 @@ function computeCupTeamStats(gid) {
 // When All 3 Games + player ON filter: sum box-PM / sum poss-per-team * 100
 // More accurate than PBP pts/poss because box PM matches official tracking.
 // Cup poss is scaled to player's actual playing time (min/48 × half of ~220 game poss).
-function computeBoxPMNet(possGids, boxGids) {
+function computeBoxPMNet(stintGids, boxGids) {
   const onPids = Object.entries(filters).filter(([,v]) => v === 'on').map(([pid]) => pid);
   if (!onPids.length) return null;
 
   let totalPM = 0, totalPossPerTeam = 0;
 
-  for (const gid of possGids) {
-    const gamePoss = DATA.poss[gid] || [];
-    const filtPoss = gamePoss.filter(possMatchesFilter);
-    if (!filtPoss.length) continue;
+  for (const gid of stintGids) {
+    const g = DATA.games.find(gg => gg.id === gid);
+    const gameStints = DATA.stints[gid] || [];
+    const filtStints = gameStints.filter(stintMatchesFilter);
+    if (!filtStints.length || !g || !g.total_sec) continue;
+    const filtSec = filtStints.reduce((s, st) => s + st.sec, 0);
+    const estHalfPoss = filtSec / g.total_sec * g.total_poss / 2;
     let pm = 0, n = 0;
     for (const pid of onPids) {
       const b = DATA.box[gid]?.[pid];
@@ -477,7 +476,7 @@ function computeBoxPMNet(possGids, boxGids) {
     }
     if (!n) continue;
     totalPM += pm / n;
-    totalPossPerTeam += filtPoss.length / 2;
+    totalPossPerTeam += estHalfPoss;
   }
 
   for (const gid of boxGids) {
@@ -518,37 +517,41 @@ function update() {
     return;
   }
 
-  const possGids = getPossGameIds();
+  const stintGids = getPossGameIds();
   const boxGids = getBoxGameIds();
-  const allPoss = possGids.flatMap(gid => DATA.poss[gid] || []);
-  const filteredPoss = allPoss.filter(possMatchesFilter);
+  const relevantGames = DATA.games.filter(g => stintGids.includes(g.id));
+  const gameTotalSec = relevantGames.reduce((s, g) => s + (g.total_sec || 0), 0);
+  const gameTotalPoss = relevantGames.reduce((s, g) => s + (g.total_poss || 0), 0);
+  const allStints = stintGids.flatMap(gid => DATA.stints[gid] || []);
+  const filteredStints = allStints.filter(stintMatchesFilter);
 
-  // Context
-  const nFiltered = filteredPoss.length;
-  const nTotal = allPoss.length;
+  // Context — convert filtered seconds to estimated possession count for display
+  const filtSec = filteredStints.reduce((s, t) => s + t.sec, 0);
+  const nFiltered = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss) : 0;
+  const nTotal = gameTotalPoss;
   const activeFilters = Object.entries(filters).filter(([,v]) => v).length;
   const isAll3 = activeGame === 'all3';
+  const activeOnFilters = Object.entries(filters).filter(([,v]) => v === 'on').length;
   const isBoxPMMode = isAll3 && activeOnFilters > 0;
   let ctxText = isAll3
-    ? `${nFiltered} / ${nTotal} RS possessions` + (activeFilters > 0 ? ` (${activeFilters} filter${activeFilters>1?'s':''} applied)` : '') +
+    ? `~${nFiltered} / ${nTotal} RS possessions` + (activeFilters > 0 ? ` (${activeFilters} filter${activeFilters>1?'s':''} applied)` : '') +
       (isBoxPMMode ? ' · net rating: sum(box PM) ÷ sum(poss) — Cup scaled to player on-court time' : ' + Cup Final (box est.) · combined 3-game ratings') +
       ' · individual stats are raw totals'
-    : `${nFiltered} / ${nTotal} possessions` + (activeFilters > 0 ? ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)` : ' — no player filter active (showing all possessions)');
+    : `~${nFiltered} / ${nTotal} possessions` + (activeFilters > 0 ? ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)` : ' — no player filter active (showing all lineups)');
   document.getElementById('poss-context').textContent = ctxText;
 
-  if (nFiltered === 0) {
+  if (filteredStints.length === 0) {
     showNoResults();
     return;
   }
 
   // Team stats
-  const rsTs = computeTeamStats(filteredPoss);
+  const rsTs = computeTeamStats(filteredStints, gameTotalSec, gameTotalPoss);
 
   // For All 3 Games + player ON filter: use box PM formula (sum PM / sum poss * 100).
   // This is more accurate than PBP pts/poss because box PM matches official tracking,
   // and correctly scales the Cup game to just the player's on-court minutes.
-  const activeOnFilters = Object.entries(filters).filter(([,v]) => v === 'on').length;
-  const pmResult = (isAll3 && activeOnFilters > 0) ? computeBoxPMNet(possGids, boxGids) : null;
+  const pmResult = (isAll3 && activeOnFilters > 0) ? computeBoxPMNet(stintGids, boxGids) : null;
 
   if (pmResult) {
     const sasNet = pmResult.net, nykNet = -pmResult.net;
@@ -595,7 +598,7 @@ function update() {
   }
 
   // Player stats
-  const playerRows = computePlayerStats(possGids, boxGids, filteredPoss);
+  const playerRows = computePlayerStats(stintGids, boxGids, filteredStints);
   renderPlayerTable(playerRows, rsTs);
 }
 
@@ -656,7 +659,7 @@ function showNoResults() {
   ['sas-ortg','sas-drtg','sas-poss','nyk-ortg','nyk-drtg','nyk-poss']
     .forEach(id => { document.getElementById(id).textContent = '—'; });
   document.getElementById('player-stats-body').innerHTML =
-    '<tr><td colspan="12" class="inactive-note">No possessions match current filter.</td></tr>';
+    '<tr><td colspan="12" class="inactive-note">No lineups match current filter.</td></tr>';
 }
 
 function renderPlayerTable(rows, ts) {
