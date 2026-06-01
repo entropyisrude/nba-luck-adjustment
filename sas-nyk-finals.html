@@ -212,7 +212,7 @@ async function init() {
     DATA = await resp.json();
     buildUI();
     document.getElementById('loading-msg').style.display = 'none';
-    document.getElementById('app').style.display = '';
+    document.getElementById('app').style.display = 'block';
     update();
   } catch(e) {
     document.getElementById('loading-msg').textContent = 'Error loading data: ' + e.message;
