@@ -546,7 +546,13 @@
               <th class="sortable" data-key="minutes">Min</th>
               <th class="sortable" data-key="pts">PTS</th>
               <th class="sortable" data-key="reb">REB</th>
+              <th class="sortable" data-key="oreb">ORB</th>
+              <th class="sortable" data-key="dreb">DRB</th>
               <th class="sortable" data-key="ast">AST</th>
+              <th class="sortable" data-key="stl">STL</th>
+              <th class="sortable" data-key="blk">BLK</th>
+              <th class="sortable" data-key="tov">TOV</th>
+              <th class="sortable" data-key="pf">PF</th>
               <th class="sortable" data-key="fgm">FGM</th>
               <th class="sortable" data-key="fga">FGA</th>
               <th class="sortable" data-key="fg2a">2PA</th>
@@ -1262,7 +1268,13 @@
           <td>${fmt(v(r,"minutes"))}</td>
           <td>${fmt(displayVal(r,"pts",statMode), statMode === "totals" ? 0 : 1)}</td>
           <td>${fmt(displayVal(r,"reb",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"oreb",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"dreb",statMode), statMode === "totals" ? 0 : 1)}</td>
           <td>${fmt(displayVal(r,"ast",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"stl",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"blk",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"tov",statMode), statMode === "totals" ? 0 : 1)}</td>
+          <td>${fmt(displayVal(r,"pf",statMode), statMode === "totals" ? 0 : 1)}</td>
           <td>${fmt(displayVal(r,"fgm",statMode), statMode === "totals" ? 0 : 1)}</td>
           <td>${fmt(displayVal(r,"fga",statMode), statMode === "totals" ? 0 : 1)}</td>
           <td>${fmt(displayVal(r,"fg2a",statMode), statMode === "totals" ? 0 : 1)}</td>
