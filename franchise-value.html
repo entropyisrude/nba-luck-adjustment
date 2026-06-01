@@ -311,16 +311,20 @@ function formatDesc(pick) {
 function yrShort(y) { return String(y).slice(2); }
 
 // Compute stats for one team filtered by round (1 or 2)
+// Both 'swap' (bilateral swap right) and 'multi_swap' (best-of-N arrangement)
+// are swap-type picks — neither is an outright pick transfer.
+function isSwap(p) { return p.pick_type === 'swap' || p.pick_type === 'multi_swap'; }
+
 function computeStats(picks, team, round) {
   const tp = picks.filter(p => p.context_team === team && p.round === round);
   const incoming = tp.filter(p => p.direction === 'incoming');
   const outgoing = tp.filter(p => p.direction === 'outgoing');
 
-  const inCount  = incoming.filter(p => p.pick_type !== 'swap').length;
-  const outCount = outgoing.filter(p => p.pick_type !== 'swap').length;
+  const inCount  = incoming.filter(p => !isSwap(p)).length;
+  const outCount = outgoing.filter(p => !isSwap(p)).length;
   const netPicks = BASE_PICKS_PER_ROUND + inCount - outCount;
 
-  const swapRights = incoming.filter(p => p.pick_type === 'swap').length;
+  const swapRights = incoming.filter(p => isSwap(p)).length;
   const top5 = round === 1 ? incoming.filter(p => isTop5Eligible(p)).length : 0;
 
   return { team, netPicks, inCount, outCount, swapRights, top5, incoming, outgoing };
@@ -455,10 +459,10 @@ function renderDetail() {
     </div>` : ''}
   `;
 
-  const inOutright = stats.incoming.filter(p => p.pick_type !== 'swap');
-  const inSwap     = stats.incoming.filter(p => p.pick_type === 'swap');
-  const outOutright = stats.outgoing.filter(p => p.pick_type !== 'swap');
-  const outSwap     = stats.outgoing.filter(p => p.pick_type === 'swap');
+  const inOutright = stats.incoming.filter(p => !isSwap(p));
+  const inSwap     = stats.incoming.filter(p => isSwap(p));
+  const outOutright = stats.outgoing.filter(p => !isSwap(p));
+  const outSwap     = stats.outgoing.filter(p => isSwap(p));
 
   const panels = [
     { picks: inOutright,  dir: 'incoming', label: '▲ Incoming — Outright', showTop5: detailRound === 1 },
