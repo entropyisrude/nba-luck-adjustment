@@ -592,9 +592,9 @@ function update() {
   let sasNet = sasOrtg != null && nykOrtg != null ? sasOrtg - nykOrtg : null;
   let displaySasP = sasP, displayNykP = nykP;
 
-  // For filtered all3: blend Cup box PM for ON players that have Cup data.
+  // For filtered all3: blend Cup box PM for ON players into the net rating.
   // Cup has no lineup tracking so we can't apply OFF filters; skip in that case.
-  // NYK players have no Cup box data so they're naturally excluded.
+  // b.pm is from each player's own team perspective; flip sign for NYK to get SAS net.
   if (isAll3 && activeFilters && sasNet != null) {
     const onPids = Object.entries(filters).filter(([,v]) => v === 'on').map(([pid]) => pid);
     const hasOffFilter = Object.entries(filters).some(([,v]) => v === 'off');
