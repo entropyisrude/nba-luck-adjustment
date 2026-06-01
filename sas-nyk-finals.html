@@ -589,19 +589,50 @@ function update() {
   }
   const sasOrtg = sasP > 0 ? 100 * sasPts / sasP : null;
   const nykOrtg = nykP > 0 ? 100 * nykPts / nykP : null;
-  const sasNet = sasOrtg != null && nykOrtg != null ? sasOrtg - nykOrtg : null;
+  let sasNet = sasOrtg != null && nykOrtg != null ? sasOrtg - nykOrtg : null;
+  let displaySasP = sasP, displayNykP = nykP;
+
+  // For filtered all3: blend Cup box PM for ON players that have Cup data.
+  // Cup has no lineup tracking so we can't apply OFF filters; skip in that case.
+  // NYK players have no Cup box data so they're naturally excluded.
+  if (isAll3 && activeFilters && sasNet != null) {
+    const onPids = Object.entries(filters).filter(([,v]) => v === 'on').map(([pid]) => pid);
+    const hasOffFilter = Object.entries(filters).some(([,v]) => v === 'off');
+    if (!hasOffFilter && onPids.length) {
+      let cupNetSum = 0, cupPossSum = 0, n = 0;
+      for (const gid of boxGids) {
+        if (!DATA.games.find(g => g.id === gid)?.cup) continue;
+        for (const pid of onPids) {
+          const b = DATA.box[gid]?.[pid];
+          if (!b || !b.min) continue;
+          cupNetSum += b.team === 'SAS' ? b.pm : -b.pm; // always from SAS perspective
+          cupPossSum += (b.min / 48) * 110; // 110 = half of ~220 estimated Cup poss
+          n++;
+        }
+      }
+      if (n > 0 && cupPossSum > 0) {
+        const rsNetPts = sasNet / 100 * sasP;
+        const avgCupNet = cupNetSum / n;
+        const avgCupPoss = cupPossSum / n;
+        sasNet = (rsNetPts + avgCupNet) / (sasP + avgCupPoss) * 100;
+        displaySasP = Math.round(sasP + avgCupPoss);
+        displayNykP = Math.round(nykP + avgCupPoss);
+      }
+    }
+  }
+
   const nykNet = sasNet != null ? -sasNet : null;
   document.getElementById('sas-net').textContent = sasNet != null ? (sasNet > 0 ? '+' : '') + sasNet.toFixed(1) : '—';
   document.getElementById('sas-net').className = 'big ' + (sasNet > 0 ? 'pos' : sasNet < 0 ? 'neg' : 'neu');
   document.getElementById('sas-ortg').textContent = sasOrtg != null ? sasOrtg.toFixed(1) : '—';
   document.getElementById('sas-drtg').textContent = nykOrtg != null ? nykOrtg.toFixed(1) : '—';
-  document.getElementById('sas-poss').textContent = sasP;
+  document.getElementById('sas-poss').textContent = displaySasP;
   setSubLabel('sas', 'Net Rating');
   document.getElementById('nyk-net').textContent = nykNet != null ? (nykNet > 0 ? '+' : '') + nykNet.toFixed(1) : '—';
   document.getElementById('nyk-net').className = 'big ' + (nykNet > 0 ? 'pos' : nykNet < 0 ? 'neg' : 'neu');
   document.getElementById('nyk-ortg').textContent = nykOrtg != null ? nykOrtg.toFixed(1) : '—';
   document.getElementById('nyk-drtg').textContent = sasOrtg != null ? sasOrtg.toFixed(1) : '—';
-  document.getElementById('nyk-poss').textContent = nykP;
+  document.getElementById('nyk-poss').textContent = displayNykP;
   setSubLabel('nyk', 'Net Rating');
 
   // Player stats
