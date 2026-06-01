@@ -300,10 +300,10 @@ function selectPlayerName(name) {
   const entry = playerIndex[key];
   if (!entry) return;
   selectedPlayer = name;
-  seasonSel.innerHTML = entry.seasons
-    .sort((a,b) => b.season.localeCompare(a.season))
-    .map(s => `<option value="${s.idx}">${s.season}${s.team ? ' · '+s.team : ''}</option>`)
-    .join('');
+  const sorted = entry.seasons.sort((a,b) => b.season.localeCompare(a.season));
+  seasonSel.innerHTML =
+    `<option value="career">Career (all seasons)</option>` +
+    sorted.map(s => `<option value="${s.idx}">${s.season}${s.team ? ' · '+s.team : ''}</option>`).join('');
   runBtn.disabled = false;
 }
 
@@ -313,30 +313,93 @@ seasonSel.addEventListener('change', () => {
 });
 
 
+// ─── Career profiles ──────────────────────────────────────────────────────────
+
+const CAREER_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg3a','fgp','fg3p','ftp','oo_off','oo_def'];
+
+function buildCareerProfile(seasons) {
+  let totalMin = 0, totalGames = 0;
+  const sums = {}, wmins = {};
+  for (const s of seasons) {
+    const m = s.min || 0;
+    totalMin += m;
+    totalGames += s.games || 0;
+    for (const col of CAREER_COLS) {
+      if (s[col] != null) {
+        sums[col] = (sums[col] || 0) + s[col] * m;
+        wmins[col] = (wmins[col] || 0) + m;
+      }
+    }
+  }
+  const sortedYears = seasons.map(s => s.season).sort();
+  const profile = {
+    pid: seasons[0].pid, name: seasons[0].name,
+    season: 'Career', team: '',
+    seasonStart: sortedYears[0], seasonEnd: sortedYears[sortedYears.length - 1],
+    games: totalGames, min: totalMin, age: null,
+  };
+  for (const col of CAREER_COLS) {
+    profile[col] = wmins[col] > 0 ? sums[col] / wmins[col] : null;
+  }
+  return profile;
+}
+
+function buildAllCareerProfiles(minMin) {
+  const byPid = {};
+  for (const s of allSeasons) {
+    if ((s.min || 0) < minMin) continue;
+    if (!byPid[s.pid]) byPid[s.pid] = [];
+    byPid[s.pid].push(s);
+  }
+  return Object.values(byPid).map(buildCareerProfile);
+}
+
+function midYear(p) {
+  if (p.season !== 'Career') return parseInt(p.season);
+  return Math.round((parseInt(p.seasonStart) + parseInt(p.seasonEnd)) / 2);
+}
+
 // ─── Similarity ──────────────────────────────────────────────────────────────
 
 function computeSimilarity() {
-  const queryIdx = parseInt(seasonSel.value);
-  if (isNaN(queryIdx)) return;
-  const query = allSeasons[queryIdx];
+  const val = seasonSel.value;
+  const isCareer = val === 'career';
+  const queryIdx = isCareer ? -1 : parseInt(val);
+  if (!isCareer && isNaN(queryIdx)) return;
+
   const weights = getWeights();
   const minMin = parseInt(document.getElementById('min-min').value) || 500;
   const exclPlayer = document.getElementById('excl-player').checked;
   const sameEra = document.getElementById('same-era').checked;
   const nResults = parseInt(document.getElementById('n-results').value) || 10;
-  const queryYear = parseInt(query.season);
+
+  let query, pool;
+
+  if (isCareer) {
+    const allCareer = buildAllCareerProfiles(minMin);
+    const queryPid = allSeasons.find(s => s.name.toLowerCase() === selectedPlayer.toLowerCase())?.pid;
+    query = allCareer.find(p => p.pid === queryPid);
+    if (!query) return;
+    const qMid = midYear(query);
+    pool = allCareer.filter(p => {
+      if (exclPlayer && p.pid === query.pid) return false;
+      if (sameEra && Math.abs(midYear(p) - qMid) > 8) return false;
+      return true;
+    });
+  } else {
+    query = allSeasons[queryIdx];
+    const queryYear = parseInt(query.season);
+    pool = allSeasons.filter((s, i) => {
+      if (i === queryIdx) return false;
+      if (s.min < minMin) return false;
+      if (exclPlayer && s.pid === query.pid) return false;
+      if (sameEra && Math.abs(parseInt(s.season) - queryYear) > 8) return false;
+      return true;
+    });
+  }
 
   // Determine which stats to use (both query and candidate must have value)
   const statCols = Object.keys(weights).filter(s => weights[s] > 0);
-
-  // Build candidate pool
-  const pool = allSeasons.filter((s, i) => {
-    if (i === queryIdx) return false;
-    if (s.min < minMin) return false;
-    if (exclPlayer && s.pid === query.pid) return false;
-    if (sameEra && Math.abs(parseInt(s.season) - queryYear) > 8) return false;
-    return true;
-  });
 
   // Compute z-score params across the full qualifying pool + query
   const forNorm = [query, ...pool];
@@ -391,18 +454,23 @@ function renderResults() {
   section.style.display = 'block';
   section.scrollIntoView({ behavior:'instant', block:'start' });
 
+  const seasonLabel = s => s.season === 'Career'
+    ? `Career (${s.seasonStart}–${s.seasonEnd})`
+    : s.season + (s.team ? ' · ' + s.team : '');
   document.getElementById('query-header').innerHTML =
     `<span style="font-size:1.05em">${esc(query.name)}</span>` +
-    `<span class="qs">${query.season}${query.team ? ' · '+query.team : ''}` +
+    `<span class="qs">${seasonLabel(query)}` +
     ` &nbsp;|&nbsp; ${fmtMin(query.min)} min, ${query.games} G` +
     `${query.age ? ' &nbsp;|&nbsp; Age '+query.age : ''}</span>`;
+
+  const isCareerMode = query.season === 'Career';
 
   // thead: show the display cols that are in statCols or always-show
   const showCols = DISPLAY_COLS.filter(c => statCols.includes(c) || ['pts','ast','fgp'].includes(c));
   document.getElementById('results-thead').innerHTML = `<tr>
     <th class="rank">#</th>
     <th>Player</th>
-    <th>Season</th>
+    <th>${isCareerMode ? 'Career Span' : 'Season'}</th>
     ${showCols.map(c => `<th>${COL_FMT[c]||c}</th>`).join('')}
     <th>Similarity</th>
   </tr>`;
@@ -411,18 +479,22 @@ function renderResults() {
   let tbody = `<tr style="background:#f0f7ff;font-weight:600">
     <td class="rank" style="color:#3a7bd5">★</td>
     <td>${esc(query.name)}<span class="era-tag modern">Query</span></td>
-    <td>${query.season}</td>
+    <td>${esc(seasonLabel(query))}</td>
     ${showCols.map(c => `<td>${fmtStat(c, query[c])}</td>`).join('')}
     <td>—</td>
   </tr>`;
 
   tbody += results.map((r, i) => {
     const c = r.cand;
-    const isOld = parseInt(c.season) < 1996;
+    const isOld = !isCareerMode && parseInt(c.season) < 1996;
+    const spanTag = isCareerMode && c.seasonStart
+      ? ` <span style="color:#aaa;font-size:.82em">${c.seasonStart}–${c.seasonEnd}</span>` : '';
     return `<tr>
       <td class="rank">${i+1}</td>
       <td>${esc(c.name)}${isOld ? ' <span class="era-tag">pre-96</span>' : ''}</td>
-      <td>${c.season}${c.team ? ' <span style="color:#aaa;font-size:.82em">'+c.team+'</span>' : ''}</td>
+      <td>${isCareerMode
+        ? `${c.seasonStart}–${c.seasonEnd}`
+        : c.season + (c.team ? ' <span style="color:#aaa;font-size:.82em">'+c.team+'</span>' : '')}</td>
       ${showCols.map(c2 => {
         const val = c[c2];
         const qval = query[c2];
@@ -445,11 +517,14 @@ function renderResults() {
   document.getElementById('results-tbody').innerHTML = tbody;
 
   const ooUsed = statCols.includes('oo_off') || statCols.includes('oo_def');
-  const nPre96 = results.filter(r => parseInt(r.cand.season) < 1996).length;
+  const nPre96 = !isCareerMode && results.filter(r => parseInt(r.cand.season) < 1996).length;
   document.getElementById('results-note').textContent =
-    `Similarity scored 0–100 (100 = identical profile). Weighted Euclidean distance on z-normalized per-36 stats.` +
-    (ooUsed ? ' On/off splits from pbpstats (post-1996 only) — may skew cross-era comparisons.' : '') +
-    (nPre96 ? ` ${nPre96} result(s) are pre-1996 (box stats only, no on/off).` : '');
+    isCareerMode
+      ? `Career comparison: each entry is a weighted average across all qualifying seasons (≥ min-minutes threshold). Similarity scored 0–100.`
+        + (ooUsed ? ' On/off available post-1996 only.' : '')
+      : `Similarity scored 0–100 (100 = identical profile). Weighted Euclidean distance on z-normalized per-36 stats.`
+        + (ooUsed ? ' On/off splits from pbpstats (post-1996 only) — may skew cross-era comparisons.' : '')
+        + (nPre96 ? ` ${nPre96} result(s) are pre-1996 (box stats only, no on/off).` : '');
 }
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
@@ -477,7 +552,7 @@ function esc(s) {
 document.getElementById('run-btn').addEventListener('click', () => {
   try {
     // If no player confirmed yet, try to resolve from whatever is typed
-    if (isNaN(parseInt(seasonSel.value))) {
+    if (seasonSel.value !== 'career' && isNaN(parseInt(seasonSel.value))) {
       const q = input.value.trim().toLowerCase();
       const matches = q.length >= 2
         ? Object.values(playerIndex).filter(p => p.name.toLowerCase().includes(q))
