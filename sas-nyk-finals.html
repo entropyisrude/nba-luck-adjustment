@@ -364,7 +364,6 @@ function computeTeamStats(stints, gameTotalSec, gameTotalPoss) {
 
 function computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, gameTotalPoss) {
   const onCourtSecFiltered = {}, onCourtSecTotal = {};
-
   const allStints = stintGids.flatMap(gid => DATA.stints[gid] || []);
   for (const s of allStints) {
     for (const pid of [...s.sas, ...s.nyk])
@@ -375,9 +374,18 @@ function computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, ga
       onCourtSecFiltered[pid] = (onCourtSecFiltered[pid] || 0) + s.sec;
   }
 
-  // Scale by time fraction only when box and stint games match exactly
-  const scaleByPoss = stintGids.length === boxGids.length &&
-    stintGids.every(id => boxGids.includes(id));
+  // When a filter is active: scale RS-only box stats by stint time proportion.
+  // When no filter: show full box totals (all games including Cup) unscaled.
+  const hasFilter = filteredStints.length < allStints.length;
+  const statGids = hasFilter ? stintGids : boxGids;
+
+  // Cup poss estimate for the unfiltered all3 poss display
+  const cupGids = boxGids.filter(gid => DATA.games.find(g => g.id === gid)?.cup);
+  let cupTotalPoss = 0;
+  for (const gid of cupGids) {
+    const c = computeCupTeamStats(gid);
+    cupTotalPoss += c.sas_off_poss + c.nyk_off_poss;
+  }
 
   const rows = [];
   const allPlayers = [...DATA.sas_players, ...DATA.nyk_players];
@@ -386,36 +394,39 @@ function computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, ga
     const pid = player.pid;
     const filtSec = onCourtSecFiltered[pid] || 0;
     const totSec  = onCourtSecTotal[pid] || 0;
-    if (scaleByPoss && totSec === 0) continue;
-    // Convert seconds to estimated possessions for display and per-100 scaling
-    const filtPoss = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss) : 0;
-    const totPoss  = gameTotalSec > 0 ? Math.round(totSec  / gameTotalSec * gameTotalPoss) : 0;
 
     let totalMin = 0, totalPts = 0, totalReb = 0, totalAst = 0, totalStl = 0,
         totalBlk = 0, totalTov = 0, totalFgm = 0, totalFga = 0,
         totalFg3m = 0, totalFg3a = 0, totalFtm = 0, totalFta = 0;
-
-    for (const gid of boxGids) {
-      const b = DATA.box[gid] && DATA.box[gid][pid];
+    for (const gid of statGids) {
+      const b = DATA.box[gid]?.[pid];
       if (!b) continue;
-      totalMin += b.min;
-      totalPts  += b.pts || 0;
-      totalReb  += b.reb || 0;
-      totalAst  += b.ast || 0;
-      totalStl  += b.stl || 0;
-      totalBlk  += b.blk || 0;
-      totalTov  += b.tov || 0;
-      totalFgm  += b.fgm || 0;
-      totalFga  += b.fga || 0;
-      totalFg3m += b.fg3m || 0;
-      totalFg3a += b.fg3a || 0;
-      totalFtm  += b.ftm || 0;
-      totalFta  += b.fta || 0;
+      totalMin  += b.min;
+      totalPts  += b.pts || 0;  totalReb  += b.reb || 0;
+      totalAst  += b.ast || 0;  totalStl  += b.stl || 0;
+      totalBlk  += b.blk || 0;  totalTov  += b.tov || 0;
+      totalFgm  += b.fgm || 0;  totalFga  += b.fga || 0;
+      totalFg3m += b.fg3m || 0; totalFg3a += b.fg3a || 0;
+      totalFtm  += b.ftm || 0;  totalFta  += b.fta || 0;
     }
-
     if (totalMin === 0) continue;
 
-    const scale = scaleByPoss && totSec > 0 ? filtSec / totSec : 1;
+    const scale = hasFilter && totSec > 0 ? filtSec / totSec : 1;
+
+    // RS stint-based poss estimate
+    let filtPoss = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss) : 0;
+    let totPoss  = gameTotalSec > 0 ? Math.round(totSec  / gameTotalSec * gameTotalPoss) : 0;
+    // Add Cup poss estimate when showing unfiltered all3 view
+    if (!hasFilter && cupTotalPoss > 0) {
+      for (const gid of cupGids) {
+        const b = DATA.box[gid]?.[pid];
+        if (b && b.min > 0) {
+          const cupPoss = Math.round(b.min / 48 * cupTotalPoss);
+          filtPoss += cupPoss;
+          totPoss  += cupPoss;
+        }
+      }
+    }
 
     rows.push({
       pid, name: player.name,
@@ -699,8 +710,12 @@ function renderPlayerTable(rows, ts) {
               : isP100 ? (r.filtPoss > 0 ? 100 / r.filtPoss : 0)
               : 1;
 
-    function s(v) { return v == null ? '—' : r1(v * div); }
-    function si(v) { return v == null ? '—' : r1(v * div); }
+    function s(v) {
+      if (v == null) return '—';
+      const val = v * div;
+      return (activeRate === 'totals') ? ri(val) : r1(val);
+    }
+    function si(v) { return s(v); }
 
     const minDisplay = isP36 ? '36' : r1(r.min);
     const fgPct = pct(r.fgm, r.fga);
