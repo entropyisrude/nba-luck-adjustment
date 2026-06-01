@@ -180,23 +180,23 @@
 // ─── Data + constants ───────────────────────────────────────────────────────
 
 const STAT_DIMS = [
-  { id:'scoring',    label:'Scoring',     stats:['pts','fta','fgp','ftp'],  note:'pts, FTA, FG%, FT%' },
-  { id:'playmaking', label:'Playmaking',  stats:['ast','tov'],              note:'ast, tov per 36' },
-  { id:'rebounding', label:'Rebounding',  stats:['or','dr'],                note:'oreb, dreb per 36' },
-  { id:'defense',    label:'Defense',     stats:['stl','blk'],              note:'stl, blk per 36' },
-  { id:'threepoint', label:'3-Point',     stats:['fg3a','fg3p'],            note:'3PA per 36, 3P%' },
-  { id:'oooff',      label:'Off. On/Off', stats:['oo_off'],                 note:'off impact, post-1996', optional:true },
-  { id:'oodef',      label:'Def. On/Off', stats:['oo_def'],                 note:'def impact, post-1996', optional:true },
+  { id:'scoring',    label:'Scoring',     stats:['pts','fta','fg2a','fg2p','ftp'],  note:'pts, FTA, 2PA, 2P%, FT%' },
+  { id:'playmaking', label:'Playmaking',  stats:['ast','tov'],                      note:'ast, tov per 36' },
+  { id:'rebounding', label:'Rebounding',  stats:['or','dr'],                        note:'oreb, dreb per 36' },
+  { id:'defense',    label:'Defense',     stats:['stl','blk'],                      note:'stl, blk per 36' },
+  { id:'threepoint', label:'3-Point',     stats:['fg3a','fg3p'],                    note:'3PA per 36, 3P%' },
+  { id:'oooff',      label:'Off. On/Off', stats:['oo_off'],                         note:'off impact, post-1996', optional:true },
+  { id:'oodef',      label:'Def. On/Off', stats:['oo_def'],                         note:'def impact, post-1996', optional:true },
 ];
 
 const COL_FMT = {
   pts:'Pts/36', ast:'Ast/36', or:'ORb/36', dr:'DRb/36',
   stl:'Stl/36', blk:'Blk/36', tov:'Tov/36', fta:'FTA/36',
-  fg3a:'3PA/36', fgp:'FG%', fg3p:'3P%', ftp:'FT%',
+  fg2a:'2PA/36', fg3a:'3PA/36', fg2p:'2P%', fg3p:'3P%', ftp:'FT%',
   oo:'On/Off', oo_off:'Off +/-', oo_def:'Def +/-',
 };
 
-const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fgp','fg3p','ftp','oo_off','oo_def'];
+const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def'];
 
 let allSeasons = [];
 let playerIndex = {};   // name → [{season, team, idx}]
@@ -315,7 +315,7 @@ seasonSel.addEventListener('change', () => {
 
 // ─── Career profiles ──────────────────────────────────────────────────────────
 
-const CAREER_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg3a','fgp','fg3p','ftp','oo_off','oo_def'];
+const CAREER_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def'];
 
 function buildCareerProfile(seasons) {
   let totalMin = 0, totalGames = 0;
@@ -466,7 +466,7 @@ function renderResults() {
   const isCareerMode = query.season === 'Career';
 
   // thead: show the display cols that are in statCols or always-show
-  const showCols = DISPLAY_COLS.filter(c => statCols.includes(c) || ['pts','ast','fgp'].includes(c));
+  const showCols = DISPLAY_COLS.filter(c => statCols.includes(c) || ['pts','ast','fg2p'].includes(c));
   document.getElementById('results-thead').innerHTML = `<tr>
     <th class="rank">#</th>
     <th>Player</th>
@@ -529,15 +529,17 @@ function renderResults() {
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
+const PCT_COLS = new Set(['fg2p','fg3p','ftp']);
+
 function fmtStat(col, val) {
   if (val == null) return '<span class="no-oo">—</span>';
-  if (['fgp','fg3p','ftp'].includes(col)) return (val*100).toFixed(1)+'%';
+  if (PCT_COLS.has(col)) return (val*100).toFixed(1)+'%';
   return val.toFixed(1);
 }
 
 function fmtDiff(col, diff) {
   if (diff == null) return '';
-  if (['fgp','fg3p','ftp'].includes(col)) return (diff*100).toFixed(1)+'%';
+  if (PCT_COLS.has(col)) return (diff*100).toFixed(1)+'%';
   return Math.abs(diff).toFixed(1);
 }
 
