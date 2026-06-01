@@ -385,7 +385,7 @@ function renderResults() {
 
   const section = document.getElementById('results-section');
   section.style.display = '';
-  section.scrollIntoView({ behavior:'smooth', block:'start' });
+  section.scrollIntoView({ behavior:'instant', block:'start' });
 
   document.getElementById('query-header').innerHTML =
     `<span style="font-size:1.05em">${esc(query.name)}</span>` +
@@ -489,17 +489,13 @@ document.getElementById('run-btn').addEventListener('click', () => {
       }
     }
     renderResults();
-    // Diagnose if results section is still hidden after renderResults
-    if (document.getElementById('results-section').style.display === 'none') {
-      showError('No results — seasonSel.value=' + JSON.stringify(seasonSel.value)
-        + ', playerIndex size=' + Object.keys(playerIndex).length);
-    }
   } catch(e) {
     showError('Error: ' + e.message);
     console.error(e);
   }
 });
 
+let _errTimer = null;
 function showError(msg) {
   let el = document.getElementById('search-error');
   if (!el) {
@@ -509,7 +505,8 @@ function showError(msg) {
     document.querySelector('.search-row').after(el);
   }
   el.textContent = msg;
-  setTimeout(() => { el.textContent = ''; }, 4000);
+  if (_errTimer) clearTimeout(_errTimer);
+  _errTimer = setTimeout(() => { el.textContent = ''; }, 4000);
 }
 
 function clearError() {
