@@ -204,7 +204,7 @@
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
 let DATA = null;
-let activeGame = 'both'; // 'g1' | 'g2' | 'g3' | 'both'
+let activeGame = 'all3'; // 'g1' | 'g2' | 'g3' | 'both' | 'all3'
 let activeRate = 'totals'; // 'totals' | 'per36' | 'per100'
 const filters = {}; // pid → 'on' | 'off' | null
 
@@ -228,14 +228,14 @@ function buildUI() {
   // Game tabs
   const tabsEl = document.getElementById('game-tabs');
   const both = document.createElement('button');
-  both.className = 'game-tab active'; both.dataset.game = 'both';
+  both.className = 'game-tab'; both.dataset.game = 'both';
   both.textContent = 'Both RS Games';
   both.addEventListener('click', () => setGame('both'));
   tabsEl.appendChild(both);
 
   if (DATA.games.some(g => g.cup)) {
     const all3 = document.createElement('button');
-    all3.className = 'game-tab'; all3.dataset.game = 'all3';
+    all3.className = 'game-tab active'; all3.dataset.game = 'all3';
     all3.textContent = 'All 3 Games';
     all3.addEventListener('click', () => setGame('all3'));
     tabsEl.appendChild(all3);
@@ -362,7 +362,7 @@ function computeTeamStats(stints, gameTotalSec, gameTotalPoss) {
            sas_ortg, sas_drtg, nyk_ortg, nyk_drtg };
 }
 
-function computePlayerStats(stintGids, boxGids, filteredStints) {
+function computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, gameTotalPoss) {
   const onCourtSecFiltered = {}, onCourtSecTotal = {};
 
   const allStints = stintGids.flatMap(gid => DATA.stints[gid] || []);
@@ -384,9 +384,12 @@ function computePlayerStats(stintGids, boxGids, filteredStints) {
 
   for (const player of allPlayers) {
     const pid = player.pid;
-    const filtPoss = onCourtSecFiltered[pid] || 0; // seconds (used as ratio)
-    const totPoss = onCourtSecTotal[pid] || 0;
-    if (scaleByPoss && totPoss === 0) continue;
+    const filtSec = onCourtSecFiltered[pid] || 0;
+    const totSec  = onCourtSecTotal[pid] || 0;
+    if (scaleByPoss && totSec === 0) continue;
+    // Convert seconds to estimated possessions for display and per-100 scaling
+    const filtPoss = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss) : 0;
+    const totPoss  = gameTotalSec > 0 ? Math.round(totSec  / gameTotalSec * gameTotalPoss) : 0;
 
     let totalMin = 0, totalPts = 0, totalReb = 0, totalAst = 0, totalStl = 0,
         totalBlk = 0, totalTov = 0, totalFgm = 0, totalFga = 0,
@@ -412,7 +415,7 @@ function computePlayerStats(stintGids, boxGids, filteredStints) {
 
     if (totalMin === 0) continue;
 
-    const scale = scaleByPoss && totPoss > 0 ? filtPoss / totPoss : 1;
+    const scale = scaleByPoss && totSec > 0 ? filtSec / totSec : 1;
 
     rows.push({
       pid, name: player.name,
@@ -598,7 +601,7 @@ function update() {
   }
 
   // Player stats
-  const playerRows = computePlayerStats(stintGids, boxGids, filteredStints);
+  const playerRows = computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, gameTotalPoss);
   renderPlayerTable(playerRows, rsTs);
 }
 
