@@ -413,15 +413,15 @@ function computePlayerStats(stintGids, boxGids, filteredStints, gameTotalSec, ga
 
     const scale = hasFilter && totSec > 0 ? filtSec / totSec : 1;
 
-    // RS stint-based poss estimate
-    let filtPoss = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss) : 0;
-    let totPoss  = gameTotalSec > 0 ? Math.round(totSec  / gameTotalSec * gameTotalPoss) : 0;
+    // RS stint-based poss estimate (divide by 2: total_poss is combined both teams)
+    let filtPoss = gameTotalSec > 0 ? Math.round(filtSec / gameTotalSec * gameTotalPoss / 2) : 0;
+    let totPoss  = gameTotalSec > 0 ? Math.round(totSec  / gameTotalSec * gameTotalPoss / 2) : 0;
     // Add Cup poss estimate when showing unfiltered all3 view
     if (!hasFilter && cupTotalPoss > 0) {
       for (const gid of cupGids) {
         const b = DATA.box[gid]?.[pid];
         if (b && b.min > 0) {
-          const cupPoss = Math.round(b.min / 48 * cupTotalPoss);
+          const cupPoss = Math.round(b.min / 48 * cupTotalPoss / 2);
           filtPoss += cupPoss;
           totPoss  += cupPoss;
         }
