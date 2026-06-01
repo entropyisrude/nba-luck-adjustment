@@ -440,6 +440,23 @@ function computePlayerStats(possGids, boxGids, filteredPoss) {
   return rows;
 }
 
+function computeCupTeamStats(gid) {
+  const box = DATA.box[gid] || {};
+  let sasFga=0, sasFta=0, sasOreb=0, sasTov=0, sasPts=0;
+  let nykFga=0, nykFta=0, nykOreb=0, nykTov=0, nykPts=0;
+  for (const b of Object.values(box)) {
+    if (b.team === 'SAS') {
+      sasFga+=b.fga; sasFta+=b.fta; sasOreb+=b.oreb||0; sasTov+=b.tov; sasPts+=b.pts;
+    } else {
+      nykFga+=b.fga; nykFta+=b.fta; nykOreb+=b.oreb||0; nykTov+=b.tov; nykPts+=b.pts;
+    }
+  }
+  const sasPoss = Math.round(sasFga + 0.44*sasFta - sasOreb + sasTov);
+  const nykPoss = Math.round(nykFga + 0.44*nykFta - nykOreb + nykTov);
+  return { sas_off_poss: sasPoss, sas_off_pts: sasPts,
+           nyk_off_poss: nykPoss, nyk_off_pts: nykPts };
+}
+
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
 function r1(v) { return v == null ? '—' : v.toFixed(1); }
@@ -469,7 +486,7 @@ function update() {
   const activeFilters = Object.entries(filters).filter(([,v]) => v).length;
   const isAll3 = activeGame === 'all3';
   let ctxText = isAll3
-    ? `${nFiltered} / ${nTotal} RS possessions` + (activeFilters > 0 ? ` (${activeFilters} filter${activeFilters>1?'s':''})` : '') + ' · team ratings from RS games only · individual stats are 3-game raw totals'
+    ? `${nFiltered} / ${nTotal} RS possessions` + (activeFilters > 0 ? ` (${activeFilters} filter${activeFilters>1?'s':''} applied)` : '') + ' + Cup Final (box est.) · combined 3-game ratings · individual stats are raw totals'
     : `${nFiltered} / ${nTotal} possessions` + (activeFilters > 0 ? ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)` : ' — no player filter active (showing all possessions)');
   document.getElementById('poss-context').textContent = ctxText;
 
@@ -478,30 +495,45 @@ function update() {
     return;
   }
 
-  // Team stats
-  const ts = computeTeamStats(filteredPoss);
+  // Team stats: RS from possession data; for all3, add Cup estimates
+  const rsTs = computeTeamStats(filteredPoss);
+  let sasPts = rsTs.sas_off_pts, sasP = rsTs.sas_off_poss;
+  let nykPts = rsTs.nyk_off_pts, nykP = rsTs.nyk_off_poss;
+
+  if (isAll3) {
+    for (const gid of boxGids) {
+      const g = DATA.games.find(gg => gg.id === gid);
+      if (!g || !g.cup) continue;
+      const c = computeCupTeamStats(gid);
+      sasPts += c.sas_off_pts; sasP += c.sas_off_poss;
+      nykPts += c.nyk_off_pts; nykP += c.nyk_off_poss;
+    }
+  }
+
+  const sasOrtg = sasP > 0 ? 100 * sasPts / sasP : null;
+  const nykOrtg = nykP > 0 ? 100 * nykPts / nykP : null;
 
   // SAS card
-  const sasNet = ts.sas_ortg != null && ts.sas_drtg != null ? ts.sas_ortg - ts.sas_drtg : null;
+  const sasNet = sasOrtg != null && nykOrtg != null ? sasOrtg - nykOrtg : null;
   document.getElementById('sas-net').textContent = sasNet != null ? (sasNet > 0 ? '+' : '') + sasNet.toFixed(1) : '—';
   document.getElementById('sas-net').className = 'big ' + (sasNet > 0 ? 'pos' : sasNet < 0 ? 'neg' : 'neu');
-  document.getElementById('sas-ortg').textContent = ts.sas_ortg != null ? ts.sas_ortg.toFixed(1) : '—';
-  document.getElementById('sas-drtg').textContent = ts.sas_drtg != null ? ts.sas_drtg.toFixed(1) : '—';
-  document.getElementById('sas-poss').textContent = ts.sas_off_poss;
+  document.getElementById('sas-ortg').textContent = sasOrtg != null ? sasOrtg.toFixed(1) : '—';
+  document.getElementById('sas-drtg').textContent = nykOrtg != null ? nykOrtg.toFixed(1) : '—';
+  document.getElementById('sas-poss').textContent = sasP;
   setSubLabel('sas', 'Net Rating');
 
   // NYK card
-  const nykNet = ts.nyk_ortg != null && ts.nyk_drtg != null ? ts.nyk_ortg - ts.nyk_drtg : null;
+  const nykNet = nykOrtg != null && sasOrtg != null ? nykOrtg - sasOrtg : null;
   document.getElementById('nyk-net').textContent = nykNet != null ? (nykNet > 0 ? '+' : '') + nykNet.toFixed(1) : '—';
   document.getElementById('nyk-net').className = 'big ' + (nykNet > 0 ? 'pos' : nykNet < 0 ? 'neg' : 'neu');
-  document.getElementById('nyk-ortg').textContent = ts.nyk_ortg != null ? ts.nyk_ortg.toFixed(1) : '—';
-  document.getElementById('nyk-drtg').textContent = ts.nyk_drtg != null ? ts.nyk_drtg.toFixed(1) : '—';
-  document.getElementById('nyk-poss').textContent = ts.nyk_off_poss;
+  document.getElementById('nyk-ortg').textContent = nykOrtg != null ? nykOrtg.toFixed(1) : '—';
+  document.getElementById('nyk-drtg').textContent = sasOrtg != null ? sasOrtg.toFixed(1) : '—';
+  document.getElementById('nyk-poss').textContent = nykP;
   setSubLabel('nyk', 'Net Rating');
 
   // Player stats
   const playerRows = computePlayerStats(possGids, boxGids, filteredPoss);
-  renderPlayerTable(playerRows, ts);
+  renderPlayerTable(playerRows, rsTs);
 }
 
 function setSubLabel(team, text) {
