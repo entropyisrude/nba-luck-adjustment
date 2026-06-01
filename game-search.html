@@ -1255,9 +1255,9 @@
           <td>${v(r,"draft_overall_pick") || ""}</td>
           <td>${v(r,"team_abbr") || ""}</td>
           <td>${v(r,"opp_team_abbr") || ""}</td>
-          <td>${fmt(v(r,"team_pts_actual"),0)}</td>
-          <td>${fmt(v(r,"opp_pts_actual"),0)}</td>
-          <td class="${cls(v(r,"score_margin"))}">${fmt(v(r,"score_margin"),0)}</td>
+          <td>${fmt(v(r,"team_pts_actual"),0) || '—'}</td>
+          <td>${fmt(v(r,"opp_pts_actual"),0) || '—'}</td>
+          <td class="${cls(v(r,"score_margin"))}">${fmt(v(r,"score_margin"),0) || '—'}</td>
           <td>${v(r,"win_loss") || ""}</td>
           <td>${fmt(v(r,"minutes"))}</td>
           <td>${fmt(displayVal(r,"pts",statMode), statMode === "totals" ? 0 : 1)}</td>

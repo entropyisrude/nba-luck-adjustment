@@ -198,7 +198,8 @@
             <th data-col="netPicks" style="text-align:right">Net Picks <span class="sort-arrow">↕</span></th>
             <th data-col="inCount" style="text-align:right">Picks In <span class="sort-arrow">↕</span></th>
             <th data-col="outCount" style="text-align:right">Picks Out <span class="sort-arrow">↕</span></th>
-            <th data-col="swapRights" style="text-align:right">Swap Rights <span class="sort-arrow">↕</span></th>
+            <th data-col="swapRights" style="text-align:right">Swaps In <span class="sort-arrow">↕</span></th>
+            <th data-col="swapsOut" style="text-align:right">Swaps Out <span class="sort-arrow">↕</span></th>
             <th data-col="top5" style="text-align:right">Top-5 Eligible <span class="sort-arrow">↕</span><br><span style="font-weight:400;font-size:.78em;opacity:.75">(1st Rd, from others)</span></th>
           </tr>
         </thead>
@@ -325,9 +326,10 @@ function computeStats(picks, team, round) {
   const netPicks = BASE_PICKS_PER_ROUND + inCount - outCount;
 
   const swapRights = incoming.filter(p => isSwap(p)).length;
+  const swapsOut   = outgoing.filter(p => isSwap(p)).length;
   const top5 = round === 1 ? incoming.filter(p => isTop5Eligible(p)).length : 0;
 
-  return { team, netPicks, inCount, outCount, swapRights, top5, incoming, outgoing };
+  return { team, netPicks, inCount, outCount, swapRights, swapsOut, top5, incoming, outgoing };
 }
 
 // ─── Summary table ──────────────────────────────────────────────────────────
@@ -366,6 +368,7 @@ function renderSummaryTable() {
       <td style="text-align:right;color:#1a7a3a;font-weight:600">${s.inCount}</td>
       <td style="text-align:right;color:#c0392b;font-weight:600">${s.outCount}</td>
       <td style="text-align:right">${s.swapRights}</td>
+      <td style="text-align:right;color:#c0392b">${s.swapsOut || '—'}</td>
       <td style="text-align:right;font-weight:700;color:${s.top5 > 0 ? '#8a4800' : '#aaa'}">${s.top5}</td>
     </tr>`;
   }).join('');
@@ -489,14 +492,14 @@ function renderDetail() {
           <tbody id="${tbodyId}"></tbody>
         </table>`;
       container.appendChild(div);
-      renderPicksRows(tbodyId, panel.picks, panel.showTop5 || false);
+      renderPicksRows(tbodyId, panel.picks, panel.showTop5 || false, panel.dir);
       return;
     }
     container.appendChild(div);
   });
 }
 
-function renderPicksRows(tbodyId, picks, showTop5) {
+function renderPicksRows(tbodyId, picks, showTop5, direction) {
   const tbody = document.getElementById(tbodyId);
   const rows = picks.map((p,i) => {
     const desc = formatDesc(p);
@@ -507,7 +510,7 @@ function renderPicksRows(tbodyId, picks, showTop5) {
       <td><span class="rd-badge">${p.round === 1 ? '1st' : '2nd'}</span></td>
       <td>${pickTypeBadge(p.pick_type)}</td>
       <td>${desc}${t5}${ext}</td>
-      <td>${protTag(p.protection)}</td>
+      <td>${(direction === 'outgoing' && isSwap(p)) ? '—' : protTag(p.protection)}</td>
     </tr>
     <tr class="expand-row" id="exp-${tbodyId}-${i}" style="display:none">
       <td colspan="5"><div class="full-desc">${escHtml(p.full_desc)}</div></td>
