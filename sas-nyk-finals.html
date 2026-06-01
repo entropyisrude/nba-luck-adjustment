@@ -583,14 +583,14 @@ function update() {
     const sasNet = pmResult.net, nykNet = -pmResult.net;
     document.getElementById('sas-net').textContent = (sasNet > 0 ? '+' : '') + sasNet.toFixed(1);
     document.getElementById('sas-net').className = 'big ' + (sasNet > 0 ? 'pos' : sasNet < 0 ? 'neg' : 'neu');
-    document.getElementById('sas-ortg').textContent = '—';
-    document.getElementById('sas-drtg').textContent = '—';
+    document.getElementById('sas-ortg').textContent = rsTs.sas_ortg != null ? rsTs.sas_ortg.toFixed(1) : '—';
+    document.getElementById('sas-drtg').textContent = rsTs.sas_drtg != null ? rsTs.sas_drtg.toFixed(1) : '—';
     document.getElementById('sas-poss').textContent = pmResult.poss;
     setSubLabel('sas', 'Net Rating');
     document.getElementById('nyk-net').textContent = (nykNet > 0 ? '+' : '') + nykNet.toFixed(1);
     document.getElementById('nyk-net').className = 'big ' + (nykNet > 0 ? 'pos' : nykNet < 0 ? 'neg' : 'neu');
-    document.getElementById('nyk-ortg').textContent = '—';
-    document.getElementById('nyk-drtg').textContent = '—';
+    document.getElementById('nyk-ortg').textContent = rsTs.nyk_ortg != null ? rsTs.nyk_ortg.toFixed(1) : '—';
+    document.getElementById('nyk-drtg').textContent = rsTs.nyk_drtg != null ? rsTs.nyk_drtg.toFixed(1) : '—';
     document.getElementById('nyk-poss').textContent = pmResult.poss;
     setSubLabel('nyk', 'Net Rating');
   } else {
