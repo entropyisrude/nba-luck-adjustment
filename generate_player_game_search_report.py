@@ -1393,9 +1393,9 @@ def generate_player_game_search_report() -> Path:
       maybePush(document.getElementById("opp").value !== "ALL", "opp_team_abbr");
       maybePush(document.getElementById("multi_team_mode").value !== "off", "team_abbr");
       maybePush(document.getElementById("multi_team_mode").value === "each_team" || document.getElementById("multi_team_mode").value === "both_teams_combined", "opp_team_abbr");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "team_pts_actual");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "opp_pts_actual");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "score_margin");
+      maybePush(true, "team_pts_actual");
+      maybePush(true, "opp_pts_actual");
+      maybePush(true, "score_margin");
       maybePush(document.getElementById("multi_team_mode").value !== "off", "win_loss");
       maybePush(document.getElementById("min_height_inches").value !== "" || document.getElementById("max_height_inches").value !== "", "listed_height");
       maybePush(document.getElementById("min_age").value !== "" || document.getElementById("max_age").value !== "", "age");
@@ -1516,9 +1516,9 @@ def generate_player_game_search_report() -> Path:
           <td>${{v(r,"draft_overall_pick") || ""}}</td>
           <td>${{v(r,"team_abbr") || ""}}</td>
           <td>${{v(r,"opp_team_abbr") || ""}}</td>
-          <td>${{fmt(v(r,"team_pts_actual"),0)}}</td>
-          <td>${{fmt(v(r,"opp_pts_actual"),0)}}</td>
-          <td class="${{cls(v(r,"score_margin"))}}">${{fmt(v(r,"score_margin"),0)}}</td>
+          <td>${{fmt(v(r,"team_pts_actual"),0) || '—'}}</td>
+          <td>${{fmt(v(r,"opp_pts_actual"),0) || '—'}}</td>
+          <td class="${{cls(v(r,"score_margin"))}}">${{fmt(v(r,"score_margin"),0) || '—'}}</td>
           <td>${{v(r,"win_loss") || ""}}</td>
           <td>${{fmt(v(r,"minutes"))}}</td>
           <td>${{fmt(displayVal(r,"pts",statMode), statMode === "totals" ? 0 : 1)}}</td>

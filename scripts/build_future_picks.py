@@ -332,6 +332,15 @@ def main():
     print(f"  {len(lines)} paragraphs extracted")
 
     picks = parse_picks(lines)
+
+    # Manual corrections: protection extracted from another team's pick within
+    # a multi-team description does not apply to this team's obligation.
+    for p in picks:
+        # NYK 2028 R1 outgoing swap: the "1-8" is PHI's protection, not NYK's
+        if (p['context_team'] == 'NYK' and p['year'] == 2028 and p['round'] == 1
+                and p['direction'] == 'outgoing' and p['pick_type'] == 'multi_swap'):
+            p['protection'] = None
+
     validate(picks)
 
     # Group by team for quick sanity check

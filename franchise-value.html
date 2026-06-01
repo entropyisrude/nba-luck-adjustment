@@ -492,14 +492,14 @@ function renderDetail() {
           <tbody id="${tbodyId}"></tbody>
         </table>`;
       container.appendChild(div);
-      renderPicksRows(tbodyId, panel.picks, panel.showTop5 || false, panel.dir);
+      renderPicksRows(tbodyId, panel.picks, panel.showTop5 || false);
       return;
     }
     container.appendChild(div);
   });
 }
 
-function renderPicksRows(tbodyId, picks, showTop5, direction) {
+function renderPicksRows(tbodyId, picks, showTop5) {
   const tbody = document.getElementById(tbodyId);
   const rows = picks.map((p,i) => {
     const desc = formatDesc(p);
@@ -510,7 +510,7 @@ function renderPicksRows(tbodyId, picks, showTop5, direction) {
       <td><span class="rd-badge">${p.round === 1 ? '1st' : '2nd'}</span></td>
       <td>${pickTypeBadge(p.pick_type)}</td>
       <td>${desc}${t5}${ext}</td>
-      <td>${(direction === 'outgoing' && isSwap(p)) ? '—' : protTag(p.protection)}</td>
+      <td>${protTag(p.protection)}</td>
     </tr>
     <tr class="expand-row" id="exp-${tbodyId}-${i}" style="display:none">
       <td colspan="5"><div class="full-desc">${escHtml(p.full_desc)}</div></td>

@@ -510,7 +510,19 @@ function computeBoxPMNet(stintGids, boxGids) {
   }
 
   if (!totalPossPerTeam) return null;
-  return { net: totalPM / totalPossPerTeam * 100, poss: Math.round(totalPossPerTeam * 2) };
+
+  // box PM is from the player's own team perspective (+ = their team winning).
+  // We always display net from SAS's perspective, so flip sign for NYK players.
+  let sasPerspective = true;
+  for (const pid of onPids) {
+    for (const gid of [...stintGids, ...boxGids]) {
+      const b = DATA.box[gid]?.[pid];
+      if (b) { sasPerspective = (b.team === 'SAS'); break; }
+    }
+    break; // determine from first ON player
+  }
+  const net = (totalPM / totalPossPerTeam * 100) * (sasPerspective ? 1 : -1);
+  return { net, poss: Math.round(totalPossPerTeam * 2) };
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
