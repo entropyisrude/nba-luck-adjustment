@@ -108,6 +108,10 @@
   <p class="timestamp">2025–26 Regular Season + NBA Cup Final &nbsp;|&nbsp; 3 Matchups &nbsp;|&nbsp; Play-by-play lineup analysis (RS games only)</p>
   <div class="hero-nav">
     <div class="hero-nav-row">
+      <span class="hero-nav-label">Home</span>
+      <a href="index.html">Home</a>
+    </div>
+    <div class="hero-nav-row">
       <span class="hero-nav-label">Regular&nbsp;Season</span>
       <a href="onoff-daily.html">+/- Games</a>
       <a href="onoff.html">+/- Stats</a>
@@ -229,6 +233,14 @@ function buildUI() {
   both.addEventListener('click', () => setGame('both'));
   tabsEl.appendChild(both);
 
+  if (DATA.games.some(g => g.cup)) {
+    const all3 = document.createElement('button');
+    all3.className = 'game-tab'; all3.dataset.game = 'all3';
+    all3.textContent = 'All 3 Games';
+    all3.addEventListener('click', () => setGame('all3'));
+    tabsEl.appendChild(all3);
+  }
+
   DATA.games.forEach((g, i) => {
     const btn = document.createElement('button');
     btn.className = 'game-tab'; btn.dataset.game = 'g' + (i+1);
@@ -300,14 +312,25 @@ function setGame(g) {
 
 // ─── Core computation ─────────────────────────────────────────────────────────
 
-function getGameIds() {
+function getPossGameIds() {
+  // Possession data only exists for RS games
+  if (activeGame === 'both' || activeGame === 'all3')
+    return DATA.games.filter(g => !g.cup).map(g => g.id);
+  const idx = parseInt(activeGame[1]) - 1;
+  const g = DATA.games[idx];
+  return g && !g.cup ? [g.id] : [];
+}
+
+function getBoxGameIds() {
+  // Box stats: 'all3' includes Cup; others match possession scope
+  if (activeGame === 'all3') return DATA.games.map(g => g.id);
   if (activeGame === 'both') return DATA.games.filter(g => !g.cup).map(g => g.id);
   const idx = parseInt(activeGame[1]) - 1;
   return [DATA.games[idx].id];
 }
 
 function getActiveCupGame() {
-  if (activeGame === 'both') return null;
+  if (activeGame === 'both' || activeGame === 'all3') return null;
   const idx = parseInt(activeGame[1]) - 1;
   const g = DATA.games[idx];
   return g && g.cup ? g : null;
@@ -343,27 +366,23 @@ function computeTeamStats(possessions) {
            sas_ortg, sas_drtg, nyk_ortg, nyk_drtg };
 }
 
-function computePlayerStats(gids, filteredPoss) {
-  // For each player, compute their on-court possessions in the filtered set
-  // and their total on-court possessions (any filter), then scale box stats
-  const onCourtFiltered = {}; // pid → count of filtered possessions they were on
-  const onCourtTotal = {};    // pid → count of total possessions they were on
+function computePlayerStats(possGids, boxGids, filteredPoss) {
+  const onCourtFiltered = {}, onCourtTotal = {};
 
-  // Total possessions (all, no filter) for this game selection
-  const allPoss = gids.flatMap(gid => DATA.poss[gid] || []);
-
-  for (const p of allPoss) {
-    for (const pid of [...p.sas, ...p.nyk]) {
+  const possPoss = possGids.flatMap(gid => DATA.poss[gid] || []);
+  for (const p of possPoss) {
+    for (const pid of [...p.sas, ...p.nyk])
       onCourtTotal[pid] = (onCourtTotal[pid] || 0) + 1;
-    }
   }
   for (const p of filteredPoss) {
-    for (const pid of [...p.sas, ...p.nyk]) {
+    for (const pid of [...p.sas, ...p.nyk])
       onCourtFiltered[pid] = (onCourtFiltered[pid] || 0) + 1;
-    }
   }
 
-  // Aggregate box stats across selected games, scaled by possession fraction
+  // Scale by possession fraction only when box and possession games match exactly
+  const scaleByPoss = possGids.length === boxGids.length &&
+    possGids.every(id => boxGids.includes(id));
+
   const rows = [];
   const allPlayers = [...DATA.sas_players, ...DATA.nyk_players];
 
@@ -371,14 +390,13 @@ function computePlayerStats(gids, filteredPoss) {
     const pid = player.pid;
     const filtPoss = onCourtFiltered[pid] || 0;
     const totPoss = onCourtTotal[pid] || 0;
-    if (totPoss === 0) continue; // didn't play in selected games
+    if (scaleByPoss && totPoss === 0) continue;
 
-    const scale = totPoss > 0 ? filtPoss / totPoss : 0;
     let totalMin = 0, totalPts = 0, totalReb = 0, totalAst = 0, totalStl = 0,
         totalBlk = 0, totalTov = 0, totalFgm = 0, totalFga = 0,
         totalFg3m = 0, totalFg3a = 0, totalFtm = 0, totalFta = 0;
 
-    for (const gid of gids) {
+    for (const gid of boxGids) {
       const b = DATA.box[gid] && DATA.box[gid][pid];
       if (!b) continue;
       totalMin += b.min;
@@ -398,14 +416,13 @@ function computePlayerStats(gids, filteredPoss) {
 
     if (totalMin === 0) continue;
 
-    // Scaled stats
-    const sMin = totalMin * scale;
+    const scale = scaleByPoss && totPoss > 0 ? filtPoss / totPoss : 1;
 
     rows.push({
       pid, name: player.name,
       team: DATA.sas_players.find(p => p.pid === pid) ? 'SAS' : 'NYK',
       filtPoss, totPoss, scale,
-      min: sMin,
+      min: totalMin * scale,
       pts:  totalPts  * scale, reb: totalReb * scale,
       ast:  totalAst  * scale, stl: totalStl * scale,
       blk:  totalBlk  * scale, tov: totalTov * scale,
@@ -441,17 +458,19 @@ function update() {
     return;
   }
 
-  const gids = getGameIds();
-  const allPoss = gids.flatMap(gid => DATA.poss[gid] || []);
+  const possGids = getPossGameIds();
+  const boxGids = getBoxGameIds();
+  const allPoss = possGids.flatMap(gid => DATA.poss[gid] || []);
   const filteredPoss = allPoss.filter(possMatchesFilter);
 
   // Context
   const nFiltered = filteredPoss.length;
   const nTotal = allPoss.length;
   const activeFilters = Object.entries(filters).filter(([,v]) => v).length;
-  let ctxText = `${nFiltered} / ${nTotal} possessions`;
-  if (activeFilters > 0) ctxText += ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)`;
-  else ctxText += ' — no player filter active (showing all possessions)';
+  const isAll3 = activeGame === 'all3';
+  let ctxText = isAll3
+    ? `${nFiltered} / ${nTotal} RS possessions` + (activeFilters > 0 ? ` (${activeFilters} filter${activeFilters>1?'s':''})` : '') + ' · team ratings from RS games only · individual stats are 3-game raw totals'
+    : `${nFiltered} / ${nTotal} possessions` + (activeFilters > 0 ? ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)` : ' — no player filter active (showing all possessions)');
   document.getElementById('poss-context').textContent = ctxText;
 
   if (nFiltered === 0) {
@@ -481,7 +500,7 @@ function update() {
   setSubLabel('nyk', 'Net Rating');
 
   // Player stats
-  const playerRows = computePlayerStats(gids, filteredPoss);
+  const playerRows = computePlayerStats(possGids, boxGids, filteredPoss);
   renderPlayerTable(playerRows, ts);
 }
 
