@@ -17,6 +17,10 @@ GAME_IDS = ['22500467', '22500868']
 SAS_ID   = 1610612759
 NYK_ID   = 1610612752
 
+# Cup Final box scores are manually sourced (no PBP/stints data exists for this game)
+CUP_GAME = {"id": "cup_2025_final", "date": "2025-12-16", "home": "NEU", "sas_pts": 113, "nyk_pts": 124, "cup": True, "label": "NBA Cup Final", "total_sec": 0, "total_poss": 0}
+CUP_BOX  = {"1628368": {"team": "SAS", "min": 37.0, "pts": 17, "reb": 4, "oreb": 1, "dreb": 3, "ast": 8, "stl": 2, "blk": 0, "tov": 3, "pf": 3, "fgm": 6, "fga": 16, "fg3m": 2, "fg3a": 7, "ftm": 3, "fta": 5, "pm": -11}, "1642264": {"team": "SAS", "min": 37.0, "pts": 18, "reb": 5, "oreb": 0, "dreb": 5, "ast": 12, "stl": 3, "blk": 0, "tov": 2, "pf": 2, "fgm": 7, "fga": 15, "fg3m": 1, "fg3a": 4, "ftm": 3, "fta": 4, "pm": -11}, "1641705": {"team": "SAS", "min": 25.0, "pts": 21, "reb": 8, "oreb": 2, "dreb": 6, "ast": 3, "stl": 1, "blk": 4, "tov": 2, "pf": 3, "fgm": 8, "fga": 18, "fg3m": 3, "fg3a": 9, "ftm": 2, "fta": 3, "pm": -18}, "1630170": {"team": "SAS", "min": 28.0, "pts": 9, "reb": 3, "oreb": 0, "dreb": 3, "ast": 2, "stl": 1, "blk": 0, "tov": 1, "pf": 2, "fgm": 3, "fga": 9, "fg3m": 1, "fg3a": 4, "ftm": 2, "fta": 2, "pm": -11}, "203084": {"team": "SAS", "min": 26.0, "pts": 9, "reb": 4, "oreb": 1, "dreb": 3, "ast": 2, "stl": 0, "blk": 0, "tov": 1, "pf": 2, "fgm": 3, "fga": 8, "fg3m": 2, "fg3a": 5, "ftm": 1, "fta": 1, "pm": -11}, "1642844": {"team": "SAS", "min": 21.0, "pts": 19, "reb": 2, "oreb": 1, "dreb": 1, "ast": 1, "stl": 0, "blk": 0, "tov": 1, "pf": 1, "fgm": 6, "fga": 12, "fg3m": 4, "fg3a": 9, "ftm": 3, "fta": 3, "pm": -11}, "1628436": {"team": "SAS", "min": 20.0, "pts": 10, "reb": 6, "oreb": 2, "dreb": 4, "ast": 1, "stl": 0, "blk": 1, "tov": 1, "pf": 2, "fgm": 5, "fga": 8, "fg3m": 0, "fg3a": 0, "ftm": 0, "fta": 0, "pm": -11}, "1630577": {"team": "SAS", "min": 14.0, "pts": 5, "reb": 2, "oreb": 1, "dreb": 1, "ast": 1, "stl": 1, "blk": 0, "tov": 0, "pf": 1, "fgm": 2, "fga": 5, "fg3m": 1, "fg3a": 3, "ftm": 0, "fta": 0, "pm": -11}, "1629640": {"team": "SAS", "min": 10.0, "pts": 3, "reb": 1, "oreb": 0, "dreb": 1, "ast": 0, "stl": 0, "blk": 0, "tov": 0, "pf": 1, "fgm": 1, "fga": 3, "fg3m": 1, "fg3a": 3, "ftm": 0, "fta": 0, "pm": -11}, "1629162": {"team": "SAS", "min": 9.0, "pts": 2, "reb": 1, "oreb": 0, "dreb": 1, "ast": 1, "stl": 0, "blk": 0, "tov": 0, "pf": 0, "fgm": 1, "fga": 3, "fg3m": 0, "fg3a": 1, "ftm": 0, "fta": 0, "pm": -11}, "1628384": {"team": "NYK", "min": 37.0, "pts": 28, "reb": 7, "oreb": 1, "dreb": 6, "ast": 3, "stl": 3, "blk": 1, "tov": 1, "pf": 2, "fgm": 10, "fga": 21, "fg3m": 4, "fg3a": 10, "ftm": 4, "fta": 5, "pm": 11}, "1628973": {"team": "NYK", "min": 37.0, "pts": 20, "reb": 4, "oreb": 0, "dreb": 4, "ast": 8, "stl": 1, "blk": 0, "tov": 3, "pf": 3, "fgm": 8, "fga": 18, "fg3m": 1, "fg3a": 4, "ftm": 3, "fta": 4, "pm": 11}, "1626157": {"team": "NYK", "min": 32.0, "pts": 19, "reb": 9, "oreb": 2, "dreb": 7, "ast": 2, "stl": 1, "blk": 1, "tov": 2, "pf": 3, "fgm": 7, "fga": 14, "fg3m": 3, "fg3a": 7, "ftm": 2, "fta": 2, "pm": 11}, "1628969": {"team": "NYK", "min": 34.0, "pts": 19, "reb": 5, "oreb": 1, "dreb": 4, "ast": 3, "stl": 2, "blk": 0, "tov": 1, "pf": 2, "fgm": 7, "fga": 16, "fg3m": 2, "fg3a": 7, "ftm": 3, "fta": 3, "pm": 11}, "1628404": {"team": "NYK", "min": 31.0, "pts": 8, "reb": 7, "oreb": 2, "dreb": 5, "ast": 2, "stl": 1, "blk": 0, "tov": 1, "pf": 2, "fgm": 4, "fga": 8, "fg3m": 0, "fg3a": 2, "ftm": 0, "fta": 0, "pm": 11}, "1629011": {"team": "NYK", "min": 22.0, "pts": 2, "reb": 15, "oreb": 7, "dreb": 8, "ast": 0, "stl": 1, "blk": 1, "tov": 2, "pf": 3, "fgm": 1, "fga": 3, "fg3m": 0, "fg3a": 0, "ftm": 0, "fta": 0, "pm": 11}, "203903": {"team": "NYK", "min": 24.0, "pts": 13, "reb": 2, "oreb": 0, "dreb": 2, "ast": 2, "stl": 0, "blk": 0, "tov": 1, "pf": 1, "fgm": 5, "fga": 12, "fg3m": 3, "fg3a": 9, "ftm": 0, "fta": 0, "pm": 11}, "1642278": {"team": "NYK", "min": 17.0, "pts": 12, "reb": 2, "oreb": 0, "dreb": 2, "ast": 4, "stl": 0, "blk": 0, "tov": 1, "pf": 0, "fgm": 4, "fga": 9, "fg3m": 2, "fg3a": 5, "ftm": 2, "fta": 2, "pm": 11}, "1627824": {"team": "NYK", "min": 10.0, "pts": 3, "reb": 2, "oreb": 0, "dreb": 2, "ast": 1, "stl": 0, "blk": 0, "tov": 0, "pf": 1, "fgm": 1, "fga": 3, "fg3m": 1, "fg3a": 3, "ftm": 0, "fta": 0, "pm": 11}, "1630540": {"team": "NYK", "min": 6.0, "pts": 0, "reb": 1, "oreb": 0, "dreb": 1, "ast": 1, "stl": 1, "blk": 0, "tov": 0, "pf": 1, "fgm": 0, "fga": 2, "fg3m": 0, "fg3a": 1, "ftm": 0, "fta": 0, "pm": 11}}
+
 def main():
     con = duckdb.connect(str(DB), read_only=True)
 
@@ -140,8 +144,12 @@ def main():
 
     con.close()
 
+    # RS games first (sorted by date), Cup Final appended last (tab order matches old JSON)
+    all_games = sorted(games, key=lambda g: g['date']) + [CUP_GAME]
+    box['cup_2025_final'] = CUP_BOX
+
     output = {
-        'games': games,
+        'games': all_games,
         'sas_players': sas_players,
         'nyk_players': nyk_players,
         'box': box,
