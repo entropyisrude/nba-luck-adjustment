@@ -48,7 +48,7 @@
 
   /* Weights panel */
   .weights-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 20px}
-  @media(max-width:700px){.weights-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:800px){.weights-grid{grid-template-columns:1fr 1fr}}
   .weight-row{display:flex;flex-direction:column;gap:3px}
   .weight-row label{font-size:.8em;color:#445;font-weight:600}
   .weight-row .w-val{font-size:.75em;color:#6680a0;text-align:right;margin-top:1px}
@@ -57,6 +57,7 @@
   .filter-row{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:10px;
     font-size:.85em;color:#445}
   .filter-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .checkbox-group{display:flex;gap:12px;background:#f0f5fb;padding:4px 12px;border-radius:8px}
 
   /* Results */
   #results-section{display:none}
@@ -68,11 +69,12 @@
     font-weight:600;white-space:nowrap}
   td{padding:8px 8px;border-bottom:1px solid #eef2f8;font-size:.87em;vertical-align:middle}
   tr:hover td{background:#f4f8ff}
+  tr.query-row td{background:#fff9e6;border-bottom:2px solid #f1c40f}
   .rank{width:28px;color:#aaa;font-weight:700;text-align:center}
   .sim-score{font-size:.82em;color:#1a7a3a;font-weight:700;white-space:nowrap}
-  .stat-diff{font-size:.78em;color:#6680a0}
-  .stat-diff.pos{color:#1a7a3a}
-  .stat-diff.neg{color:#c0392b}
+  .score-cell{font-size:.8em;white-space:nowrap}
+  .win{color:#1a7a3a;font-weight:700}
+  .loss{color:#c0392b;font-weight:700}
 
   #loading-msg{text-align:center;color:#6680a0;padding:30px}
 </style>
@@ -122,10 +124,13 @@
       <div class="weights-grid" id="weights-grid"></div>
 
       <div class="filter-row">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="type-reg" checked> Regular Season</label>
+          <label><input type="checkbox" id="type-playoff" checked> Playoffs</label>
+        </div>
         <label><input type="checkbox" id="excl-player" checked> Exclude other games by same player</label>
-        <label><input type="checkbox" id="same-era"> Same era only (±8 years)</label>
-        <span style="color:#aab">|</span>
-        <label>Results: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
+        <label><input type="checkbox" id="same-era"> Same era (±8 yrs)</label>
+        <label>Show: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
           <option value="10" selected>10</option>
           <option value="20">20</option>
           <option value="50">50</option>
@@ -152,12 +157,15 @@ let players = {}; // name -> pid
 let gamesByPlayer = {}; // pid -> [game_indices]
 
 const WEIGHT_DIMS = [
-  { id:'scoring', label:'Scoring', stats:['pts','fga'], val:1.0 },
+  { id:'scoring', label:'Scoring (PTS,FGA)', stats:['pts','fga'], val:1.0 },
   { id:'rebounding', label:'Rebounding', stats:['reb'], val:1.0 },
-  { id:'playmaking', label:'Playmaking', stats:['ast','tov'], val:1.0 },
-  { id:'defense', label:'Defense', stats:['stl','blk'], val:1.0 },
-  { id:'shooting', label:'Shooting Style', stats:['fg3a','fta'], val:1.0 },
-  { id:'efficiency', label:'Efficiency', stats:['ts_game'], val:1.0 },
+  { id:'playmaking', label:'Playmaking (AST,TOV)', stats:['ast','tov'], val:1.0 },
+  { id:'defense', label:'Defense (STL,BLK)', stats:['stl','blk'], val:1.0 },
+  { id:'shooting3', label:'3pt Shooting (3PA,3P%)', stats:['fg3a','fg3_pct'], val:1.0 },
+  { id:'shooting2', label:'2pt Shooting (2PA,2P%)', stats:['fg2a','fg2_pct'], val:1.0 },
+  { id:'shootingFT', label:'Free Throws (FTA,FT%)', stats:['fta','ft_pct'], val:1.0 },
+  { id:'efficiency', label:'TS% Efficiency', stats:['ts_game'], val:1.0 },
+  { id:'plusminus', label:'+/- & On/Off', stats:['plus_minus_actual','on_off_actual'], val:0.5 },
 ];
 
 function buildWeightsUI() {
@@ -212,10 +220,14 @@ playerInput.addEventListener('input', () => {
   });
 });
 
-// Indices based on script schema
+// Indices based on script schema:
+// ["name", "pid", "date", "season", "opp", "min", "pts", "reb", "ast", "stl", "blk", "tov", "fga", "fg3a", "fg2a", "fg3_pct", "fg2_pct", "fta", "ft_pct", "ts_game", "plus_minus_actual", "on_off_actual", "team_pts_actual", "opp_pts_actual", "win_loss", "game_id"]
 const G_IDX = {
   name: 0, pid: 1, date: 2, season: 3, opp: 4, min: 5,
-  pts: 6, reb: 7, ast: 8, stl: 9, blk: 10, tov: 11, fga: 12, fta: 13, fg3a: 14, ts_game: 15
+  pts: 6, reb: 7, ast: 8, stl: 9, blk: 10, tov: 11, fga: 12, fg3a: 13, fg2a: 14, 
+  fg3_pct: 15, fg2_pct: 16, fta: 17, ft_pct: 18, ts_game: 19, 
+  plus_minus_actual: 20, on_off_actual: 21,
+  t_pts: 22, o_pts: 23, wl: 24, gid: 25
 };
 
 function selectPlayer(name) {
@@ -226,7 +238,8 @@ function selectPlayer(name) {
   
   gameSelect.innerHTML = pGames.map(idx => {
     const g = data.games[idx];
-    return `<option value="${idx}">${g[G_IDX.date]} vs ${g[G_IDX.opp]} — ${g[G_IDX.pts]}p/${g[G_IDX.reb]}r/${g[G_IDX.ast]}a (${Math.round(g[G_IDX.min])}m)</option>`;
+    const type = g[G_IDX.gid].startsWith('004') ? ' (PO)' : '';
+    return `<option value="${idx}">${g[G_IDX.date]} vs ${g[G_IDX.opp]}${type} — ${g[G_IDX.pts]}p/${g[G_IDX.reb]}r/${g[G_IDX.ast]}a (${Math.round(g[G_IDX.min])}m)</option>`;
   }).join('');
   
   gameSelect.disabled = false;
@@ -241,6 +254,9 @@ function computeSimilarity() {
   const queryIdx = parseInt(gameSelect.value);
   const query = data.games[queryIdx];
   const weights = getWeights();
+  
+  const inclReg = document.getElementById('type-reg').checked;
+  const inclPO = document.getElementById('type-playoff').checked;
   const exclPlayer = document.getElementById('excl-player').checked;
   const sameEra = document.getElementById('same-era').checked;
   const nResults = parseInt(document.getElementById('n-results').value) || 10;
@@ -253,6 +269,12 @@ function computeSimilarity() {
 
   const results = data.games.map((cand, idx) => {
     if (idx === queryIdx) return null;
+    
+    // Type Filter
+    const isPO = cand[G_IDX.gid].startsWith('004');
+    if (isPO && !inclPO) return null;
+    if (!isPO && !inclReg) return null;
+    
     if (exclPlayer && cand[G_IDX.pid] === query[G_IDX.pid]) return null;
     if (sameEra && Math.abs(parseInt(cand[G_IDX.season]) - queryYear) > 8) return null;
     
@@ -291,37 +313,49 @@ function renderResults() {
     <th>Player</th>
     <th>Date</th>
     <th>Opp</th>
+    <th>Outcome</th>
     <th>MIN</th>
     <th>PTS</th>
     <th>REB</th>
     <th>AST</th>
-    <th>STL</th>
-    <th>BLK</th>
-    <th>TOV</th>
     <th>TS%</th>
+    <th>+/-</th>
+    <th>On/Off</th>
     <th>Similarity</th>
   </tr>`;
 
   const body = document.getElementById('results-tbody');
-  body.innerHTML = results.map((r, i) => {
-    const c = r.cand;
-    return `<tr>
-      <td class="rank">${i+1}</td>
+  
+  const formatRow = (c, i, sim) => {
+    const wlClass = c[G_IDX.wl] === 'W' ? 'win' : 'loss';
+    const rowClass = sim === 100 ? 'query-row' : '';
+    const rankText = sim === 100 ? '—' : (i + 1);
+    const tsPct = (c[G_IDX.ts_game] * 100).toFixed(1) + '%';
+    const pm = c[G_IDX.plus_minus_actual] > 0 ? '+' + c[G_IDX.plus_minus_actual] : c[G_IDX.plus_minus_actual];
+    const oo = c[G_IDX.on_off_actual] > 0 ? '+' + c[G_IDX.on_off_actual].toFixed(1) : c[G_IDX.on_off_actual].toFixed(1);
+    
+    return `<tr class="${rowClass}">
+      <td class="rank">${rankText}</td>
       <td style="font-weight:600">${c[G_IDX.name]}</td>
       <td class="muted">${c[G_IDX.date]}</td>
       <td>${c[G_IDX.opp]}</td>
+      <td class="score-cell"><span class="${wlClass}">${c[G_IDX.wl]}</span> ${c[G_IDX.t_pts]}-${c[G_IDX.o_pts]}</td>
       <td>${Math.round(c[G_IDX.min])}</td>
       <td>${c[G_IDX.pts]}</td>
       <td>${c[G_IDX.reb]}</td>
       <td>${c[G_IDX.ast]}</td>
-      <td>${c[G_IDX.stl]}</td>
-      <td>${c[G_IDX.blk]}</td>
-      <td>${c[G_IDX.tov]}</td>
-      <td>${(c[G_IDX.ts_game] * 100).toFixed(1)}%</td>
-      <td class="sim-score">${r.sim}</td>
+      <td>${tsPct}</td>
+      <td>${pm}</td>
+      <td>${oo}</td>
+      <td class="sim-score">${sim}</td>
     </tr>`;
-  }).join('');
+  };
+
+  // Show query first, then results
+  let html = formatRow(query, -1, 100);
+  html += results.map((r, i) => formatRow(r.cand, i, r.sim)).join('');
   
+  body.innerHTML = html;
   section.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
