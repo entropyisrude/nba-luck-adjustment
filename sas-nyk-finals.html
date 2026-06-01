@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAS vs NYK — Lineup Explorer</title>
+<style>
+  body{font-family:"Segoe UI",Arial,sans-serif;max-width:1200px;margin:0 auto;padding:20px;
+    background:linear-gradient(180deg,#eef5ff 0%,#f8fbff 30%,#f2f6fb 100%);color:#192231}
+  h1{color:#f8fbff;margin:0 0 6px;text-shadow:1px 2px 6px rgba(0,0,0,.7)}
+  h2{color:#192231;margin:22px 0 10px;font-size:1.05em;font-weight:700;text-transform:uppercase;
+    letter-spacing:.04em}
+  .hero-banner{background:linear-gradient(rgba(10,22,42,.62),rgba(10,22,42,.62)),
+    url('images/starks218.jpg') left center,url('images/rocket027.jpg') right center;
+    background-size:cover,50% auto,50% auto;background-repeat:no-repeat;
+    padding:50px 30px 22px;margin:-20px -20px 20px;border-radius:0 0 14px 14px;text-align:center}
+  .timestamp{color:rgba(255,255,255,.7);font-size:.82em;margin:4px 0 12px}
+  .hero-nav{display:flex;flex-direction:column;gap:6px;max-width:860px;margin:0 auto}
+  .hero-nav-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .hero-nav-label{color:rgba(255,255,255,.6);font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;min-width:72px;text-align:right}
+  .hero-nav a{color:#e8f4ff;text-decoration:none;border:1px solid rgba(255,255,255,.35);
+    border-radius:7px;padding:4px 9px;font-size:12px}
+  .hero-nav a:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6)}
+
+  .card{background:#fff;border-radius:12px;border:1px solid #d6e1ef;
+    box-shadow:0 3px 12px rgba(23,38,62,.06);padding:16px 18px;margin-bottom:16px}
+
+  /* Game tabs */
+  .game-tabs{display:flex;gap:6px;margin-bottom:14px}
+  .game-tab{padding:7px 16px;border-radius:8px;border:1px solid #c8d8ec;
+    background:#fff;color:#445;font-size:.88em;font-weight:600;cursor:pointer}
+  .game-tab.active{background:#0d2f53;color:#fff;border-color:#0d2f53}
+  .game-tab:hover:not(.active){background:#eef4fb}
+  .game-tab .score{font-weight:400;font-size:.82em;opacity:.8;margin-left:5px}
+
+  /* Rate selector */
+  .rate-row{display:flex;gap:6px;align-items:center;margin-bottom:14px;font-size:.85em;color:#445}
+  .rate-btn{padding:4px 12px;border-radius:6px;border:1px solid #c8d8ec;background:#fff;
+    color:#445;font-size:.82em;font-weight:600;cursor:pointer}
+  .rate-btn.active{background:#0d2f53;color:#fff;border-color:#0d2f53}
+
+  /* Filter grid */
+  .filter-panels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+  @media(max-width:700px){.filter-panels{grid-template-columns:1fr}}
+  .filter-panel{border-radius:10px;padding:12px 14px}
+  .filter-panel.sas{background:#fff3e8;border:1px solid #f0c88a}
+  .filter-panel.nyk{background:#e8f2ff;border:1px solid #8ab4e8}
+  .filter-panel h3{margin:0 0 10px;font-size:.9em;font-weight:700;text-transform:uppercase;
+    letter-spacing:.04em}
+  .filter-panel.sas h3{color:#6a3000}
+  .filter-panel.nyk h3{color:#003070}
+  .player-btns{display:flex;flex-direction:column;gap:4px}
+  .player-row{display:flex;align-items:center;gap:6px}
+  .player-name{flex:1;font-size:.85em;color:#192231;font-weight:500}
+  .tog-group{display:flex;gap:2px}
+  .tog{padding:3px 9px;border-radius:5px;border:1px solid #c8d8ec;background:#fff;
+    font-size:.75em;font-weight:700;cursor:pointer;color:#667}
+  .tog:hover{background:#f0f4fa}
+  .tog.on.active{background:#1a7a3a;color:#fff;border-color:#1a7a3a}
+  .tog.off.active{background:#c0392b;color:#fff;border-color:#c0392b}
+
+  .clear-btn{margin-top:8px;padding:4px 12px;border-radius:6px;border:1px solid #c8d8ec;
+    background:#fff;color:#667;font-size:.78em;cursor:pointer;font-weight:600}
+  .clear-btn:hover{background:#f0f4fa}
+
+  /* Stats tables */
+  table{width:100%;border-collapse:collapse;font-size:.88em}
+  th{background:#0d2f53;color:#e8f4ff;padding:8px 9px;text-align:right;font-weight:600;
+    font-size:.82em;white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:7px 9px;border-bottom:1px solid #eef2f8;text-align:right}
+  td:first-child{text-align:left;font-weight:600}
+  tr:hover td{background:#f4f8ff}
+  .sub{font-size:.75em;color:#6680a0;font-weight:400}
+  .pos{color:#1a7a3a;font-weight:700}
+  .neg{color:#c0392b;font-weight:700}
+  .neu{color:#555}
+
+  /* Team summary cards */
+  .team-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+  @media(max-width:600px){.team-summary{grid-template-columns:1fr}}
+  .team-card{border-radius:10px;padding:14px 16px}
+  .team-card.sas{background:#fff3e8;border:1px solid #f0c88a}
+  .team-card.nyk{background:#e8f2ff;border:1px solid #8ab4e8}
+  .team-card .label{font-size:.72em;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;margin-bottom:6px}
+  .team-card.sas .label{color:#6a3000}
+  .team-card.nyk .label{color:#003070}
+  .team-card .big{font-size:1.5em;font-weight:700;margin-bottom:2px}
+  .team-card .sub2{font-size:.8em;color:#667}
+  .rtg-row{display:flex;gap:14px;margin-top:8px;font-size:.82em}
+  .rtg-item{display:flex;flex-direction:column;align-items:center}
+  .rtg-item .rtg-val{font-size:1.25em;font-weight:700}
+  .rtg-item .rtg-lbl{font-size:.72em;color:#667;text-transform:uppercase;letter-spacing:.04em}
+
+  .poss-note{font-size:.8em;color:#8898af;margin-top:4px}
+  .inactive-note{color:#8898af;font-size:.88em;font-style:italic;padding:14px;text-align:center}
+  #loading-msg{text-align:center;color:#6680a0;padding:40px}
+  #app{display:none}
+  .section-note{font-size:.78em;color:#8898af;margin:-6px 0 12px;font-style:italic}
+</style>
+</head>
+<body>
+
+<div class="hero-banner">
+  <h1>SAS vs NYK — Lineup Explorer</h1>
+  <p class="timestamp">2025–26 Regular Season &nbsp;|&nbsp; 2 Matchups &nbsp;|&nbsp; Play-by-play lineup analysis</p>
+  <div class="hero-nav">
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Regular&nbsp;Season</span>
+      <a href="onoff-daily.html">+/- Games</a>
+      <a href="onoff.html">+/- Stats</a>
+      <a href="player-span-search.html">Player Span</a>
+      <a href="game-search.html">Game Search</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Front&nbsp;Office</span>
+      <a href="franchise-value.html">Franchise Value</a>
+      <a href="player-similarity.html">Similarity</a>
+      <a href="sas-nyk-finals.html" style="background:rgba(255,255,255,.15)">SAS–NYK</a>
+    </div>
+  </div>
+</div>
+
+<div id="loading-msg">Loading game data…</div>
+<div id="app">
+
+  <!-- Game selector -->
+  <div class="game-tabs" id="game-tabs"></div>
+
+  <div class="card">
+    <!-- Rate selector -->
+    <div class="rate-row">
+      <strong>Display:</strong>
+      <button class="rate-btn active" data-rate="totals">Totals</button>
+      <button class="rate-btn" data-rate="per36">Per 36 min</button>
+      <button class="rate-btn" data-rate="per100">Per 100 poss</button>
+    </div>
+
+    <!-- Player filters -->
+    <div class="filter-panels">
+      <div class="filter-panel sas">
+        <h3>🐴 San Antonio Spurs</h3>
+        <div class="player-btns" id="sas-btns"></div>
+        <button class="clear-btn" onclick="clearFilters('SAS')">Clear SAS</button>
+      </div>
+      <div class="filter-panel nyk">
+        <h3>🗽 New York Knicks</h3>
+        <div class="player-btns" id="nyk-btns"></div>
+        <button class="clear-btn" onclick="clearFilters('NYK')">Clear NYK</button>
+      </div>
+    </div>
+    <p class="section-note">Click ON (green) to require a player on court, OFF (red) to require them off court. Multiple selections require all conditions met simultaneously.</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+
+    <!-- Possession context -->
+    <div id="poss-context" class="poss-note" style="margin-bottom:10px;font-size:.88em;color:#445;font-weight:600"></div>
+
+    <!-- Team summary -->
+    <div class="team-summary">
+      <div class="team-card sas">
+        <div class="label">San Antonio Spurs</div>
+        <div id="sas-net" class="big">—</div>
+        <div class="sub2">Net Rating</div>
+        <div class="rtg-row">
+          <div class="rtg-item"><div id="sas-ortg" class="rtg-val">—</div><div class="rtg-lbl">OffRtg</div></div>
+          <div class="rtg-item"><div id="sas-drtg" class="rtg-val">—</div><div class="rtg-lbl">DefRtg</div></div>
+          <div class="rtg-item"><div id="sas-poss" class="rtg-val">—</div><div class="rtg-lbl">Poss</div></div>
+        </div>
+      </div>
+      <div class="team-card nyk">
+        <div class="label">New York Knicks</div>
+        <div id="nyk-net" class="big">—</div>
+        <div class="sub2">Net Rating</div>
+        <div class="rtg-row">
+          <div class="rtg-item"><div id="nyk-ortg" class="rtg-val">—</div><div class="rtg-lbl">OffRtg</div></div>
+          <div class="rtg-item"><div id="nyk-drtg" class="rtg-val">—</div><div class="rtg-lbl">DefRtg</div></div>
+          <div class="rtg-item"><div id="nyk-poss" class="rtg-val">—</div><div class="rtg-lbl">Poss</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Individual stats -->
+    <h2>Individual Stats <span style="font-weight:400;font-size:.8em;color:#8898af;text-transform:none;letter-spacing:0">(scaled to filtered possessions)</span></h2>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table id="player-stats-table">
+        <thead id="player-stats-head"></thead>
+        <tbody id="player-stats-body"></tbody>
+      </table>
+    </div>
+    <p class="section-note">Individual stats are game totals scaled by proportion of possessions in the filter window. Team ratings (above) are exact from play-by-play data.</p>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let DATA = null;
+let activeGame = 'both'; // 'g1' | 'g2' | 'both'
+let activeRate = 'totals'; // 'totals' | 'per36' | 'per100'
+const filters = {}; // pid → 'on' | 'off' | null
+
+// ─── Data loading ─────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const resp = await fetch('data/sas_nyk_finals.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    DATA = await resp.json();
+    buildUI();
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    update();
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'Error loading data: ' + e.message;
+  }
+}
+
+// ─── UI construction ──────────────────────────────────────────────────────────
+function buildUI() {
+  // Game tabs
+  const tabsEl = document.getElementById('game-tabs');
+  const both = document.createElement('button');
+  both.className = 'game-tab active'; both.dataset.game = 'both';
+  both.textContent = 'Both Games';
+  both.addEventListener('click', () => setGame('both'));
+  tabsEl.appendChild(both);
+
+  DATA.games.forEach((g, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'game-tab'; btn.dataset.game = 'g' + (i+1);
+    const home = g.home, away = home === 'SAS' ? 'NYK' : 'SAS';
+    const date = new Date(g.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    btn.innerHTML = `${home} vs ${away} <span class="score">${date}</span>`;
+    btn.addEventListener('click', () => setGame('g' + (i+1)));
+    tabsEl.appendChild(btn);
+  });
+
+  // Rate buttons
+  document.querySelectorAll('.rate-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeRate = btn.dataset.rate;
+      document.querySelectorAll('.rate-btn').forEach(b => b.classList.toggle('active', b === btn));
+      update();
+    });
+  });
+
+  // Player filter buttons
+  buildPlayerBtns('SAS', DATA.sas_players, 'sas-btns');
+  buildPlayerBtns('NYK', DATA.nyk_players, 'nyk-btns');
+}
+
+function buildPlayerBtns(team, players, containerId) {
+  const container = document.getElementById(containerId);
+  players.forEach(p => {
+    filters[p.pid] = null;
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <span class="player-name">${esc(p.name)}</span>
+      <div class="tog-group">
+        <button class="tog on" data-pid="${p.pid}" data-val="on">ON</button>
+        <button class="tog off" data-pid="${p.pid}" data-val="off">OFF</button>
+      </div>`;
+    row.querySelectorAll('.tog').forEach(tog => {
+      tog.addEventListener('click', () => toggleFilter(p.pid, tog.dataset.val, row));
+    });
+    container.appendChild(row);
+  });
+}
+
+function toggleFilter(pid, val, row) {
+  const current = filters[pid];
+  filters[pid] = current === val ? null : val;
+  row.querySelectorAll('.tog').forEach(tog => {
+    tog.classList.toggle('active', filters[pid] === tog.dataset.val);
+  });
+  update();
+}
+
+function clearFilters(team) {
+  const players = team === 'SAS' ? DATA.sas_players : DATA.nyk_players;
+  players.forEach(p => { filters[p.pid] = null; });
+  document.querySelectorAll('.tog').forEach(t => t.classList.remove('active'));
+  update();
+}
+
+function setGame(g) {
+  activeGame = g;
+  document.querySelectorAll('.game-tab').forEach(b => b.classList.toggle('active', b.dataset.game === g));
+  update();
+}
+
+// ─── Core computation ─────────────────────────────────────────────────────────
+
+function getGameIds() {
+  if (activeGame === 'both') return DATA.games.map(g => g.id);
+  const idx = parseInt(activeGame[1]) - 1;
+  return [DATA.games[idx].id];
+}
+
+function possMatchesFilter(p) {
+  // p.sas = array of pid strings on court for SAS
+  // p.nyk = array of pid strings on court for NYK
+  for (const [pid, state] of Object.entries(filters)) {
+    if (!state) continue;
+    const inSas = p.sas.includes(pid);
+    const inNyk = p.nyk.includes(pid);
+    const onCourt = inSas || inNyk;
+    if (state === 'on' && !onCourt) return false;
+    if (state === 'off' && onCourt) return false;
+  }
+  return true;
+}
+
+function computeTeamStats(possessions) {
+  let sas_off_poss = 0, sas_off_pts = 0;
+  let nyk_off_poss = 0, nyk_off_pts = 0;
+  for (const p of possessions) {
+    if (p.off === 'SAS') { sas_off_poss++; sas_off_pts += p.pts; }
+    else { nyk_off_poss++; nyk_off_pts += p.pts; }
+  }
+  const total_poss = sas_off_poss + nyk_off_poss;
+  const sas_ortg = sas_off_poss > 0 ? 100 * sas_off_pts / sas_off_poss : null;
+  const nyk_ortg = nyk_off_poss > 0 ? 100 * nyk_off_pts / nyk_off_poss : null;
+  const sas_drtg = nyk_ortg; // SAS defense = NYK offense
+  const nyk_drtg = sas_ortg; // NYK defense = SAS offense
+  return { sas_off_poss, sas_off_pts, nyk_off_poss, nyk_off_pts, total_poss,
+           sas_ortg, sas_drtg, nyk_ortg, nyk_drtg };
+}
+
+function computePlayerStats(gids, filteredPoss) {
+  // For each player, compute their on-court possessions in the filtered set
+  // and their total on-court possessions (any filter), then scale box stats
+  const onCourtFiltered = {}; // pid → count of filtered possessions they were on
+  const onCourtTotal = {};    // pid → count of total possessions they were on
+
+  // Total possessions (all, no filter) for this game selection
+  const allPoss = gids.flatMap(gid => DATA.poss[gid] || []);
+
+  for (const p of allPoss) {
+    for (const pid of [...p.sas, ...p.nyk]) {
+      onCourtTotal[pid] = (onCourtTotal[pid] || 0) + 1;
+    }
+  }
+  for (const p of filteredPoss) {
+    for (const pid of [...p.sas, ...p.nyk]) {
+      onCourtFiltered[pid] = (onCourtFiltered[pid] || 0) + 1;
+    }
+  }
+
+  // Aggregate box stats across selected games, scaled by possession fraction
+  const rows = [];
+  const allPlayers = [...DATA.sas_players, ...DATA.nyk_players];
+
+  for (const player of allPlayers) {
+    const pid = player.pid;
+    const filtPoss = onCourtFiltered[pid] || 0;
+    const totPoss = onCourtTotal[pid] || 0;
+    if (totPoss === 0) continue; // didn't play in selected games
+
+    const scale = totPoss > 0 ? filtPoss / totPoss : 0;
+    let totalMin = 0, totalPts = 0, totalReb = 0, totalAst = 0, totalStl = 0,
+        totalBlk = 0, totalTov = 0, totalFgm = 0, totalFga = 0,
+        totalFg3m = 0, totalFg3a = 0, totalFtm = 0, totalFta = 0;
+
+    for (const gid of gids) {
+      const b = DATA.box[gid] && DATA.box[gid][pid];
+      if (!b) continue;
+      totalMin += b.min;
+      totalPts  += b.pts || 0;
+      totalReb  += b.reb || 0;
+      totalAst  += b.ast || 0;
+      totalStl  += b.stl || 0;
+      totalBlk  += b.blk || 0;
+      totalTov  += b.tov || 0;
+      totalFgm  += b.fgm || 0;
+      totalFga  += b.fga || 0;
+      totalFg3m += b.fg3m || 0;
+      totalFg3a += b.fg3a || 0;
+      totalFtm  += b.ftm || 0;
+      totalFta  += b.fta || 0;
+    }
+
+    if (totalMin === 0) continue;
+
+    // Scaled stats
+    const sMin = totalMin * scale;
+
+    rows.push({
+      pid, name: player.name,
+      team: DATA.sas_players.find(p => p.pid === pid) ? 'SAS' : 'NYK',
+      filtPoss, totPoss, scale,
+      min: sMin,
+      pts:  totalPts  * scale, reb: totalReb * scale,
+      ast:  totalAst  * scale, stl: totalStl * scale,
+      blk:  totalBlk  * scale, tov: totalTov * scale,
+      fgm:  totalFgm  * scale, fga: totalFga * scale,
+      fg3m: totalFg3m * scale, fg3a: totalFg3a * scale,
+      ftm:  totalFtm  * scale, fta: totalFta * scale,
+      totalMin, totalPts,
+    });
+  }
+
+  rows.sort((a, b) => {
+    if (a.team !== b.team) return a.team === 'SAS' ? -1 : 1;
+    return b.totalPts - a.totalPts;
+  });
+  return rows;
+}
+
+// ─── Rendering ────────────────────────────────────────────────────────────────
+
+function r1(v) { return v == null ? '—' : v.toFixed(1); }
+function ri(v) { return v == null ? '—' : Math.round(v); }
+function pct(m, a) { return a > 0 ? (100 * m / a).toFixed(1) + '%' : '—'; }
+function rtg(v) {
+  if (v == null) return '—';
+  const s = v.toFixed(1);
+  return s;
+}
+
+function update() {
+  const gids = getGameIds();
+  const allPoss = gids.flatMap(gid => DATA.poss[gid] || []);
+  const filteredPoss = allPoss.filter(possMatchesFilter);
+
+  // Context
+  const nFiltered = filteredPoss.length;
+  const nTotal = allPoss.length;
+  const activeFilters = Object.entries(filters).filter(([,v]) => v).length;
+  let ctxText = `${nFiltered} / ${nTotal} possessions`;
+  if (activeFilters > 0) ctxText += ` match current filter (${activeFilters} player${activeFilters>1?'s':''} selected)`;
+  else ctxText += ' — no player filter active (showing all possessions)';
+  document.getElementById('poss-context').textContent = ctxText;
+
+  if (nFiltered === 0) {
+    showNoResults();
+    return;
+  }
+
+  // Team stats
+  const ts = computeTeamStats(filteredPoss);
+
+  // SAS card
+  const sasNet = ts.sas_ortg != null && ts.sas_drtg != null ? ts.sas_ortg - ts.sas_drtg : null;
+  document.getElementById('sas-net').textContent = sasNet != null ? (sasNet > 0 ? '+' : '') + sasNet.toFixed(1) : '—';
+  document.getElementById('sas-net').className = 'big ' + (sasNet > 0 ? 'pos' : sasNet < 0 ? 'neg' : 'neu');
+  document.getElementById('sas-ortg').textContent = ts.sas_ortg != null ? ts.sas_ortg.toFixed(1) : '—';
+  document.getElementById('sas-drtg').textContent = ts.sas_drtg != null ? ts.sas_drtg.toFixed(1) : '—';
+  document.getElementById('sas-poss').textContent = ts.sas_off_poss;
+
+  // NYK card
+  const nykNet = ts.nyk_ortg != null && ts.nyk_drtg != null ? ts.nyk_ortg - ts.nyk_drtg : null;
+  document.getElementById('nyk-net').textContent = nykNet != null ? (nykNet > 0 ? '+' : '') + nykNet.toFixed(1) : '—';
+  document.getElementById('nyk-net').className = 'big ' + (nykNet > 0 ? 'pos' : nykNet < 0 ? 'neg' : 'neu');
+  document.getElementById('nyk-ortg').textContent = ts.nyk_ortg != null ? ts.nyk_ortg.toFixed(1) : '—';
+  document.getElementById('nyk-drtg').textContent = ts.nyk_drtg != null ? ts.nyk_drtg.toFixed(1) : '—';
+  document.getElementById('nyk-poss').textContent = ts.nyk_off_poss;
+
+  // Player stats
+  const playerRows = computePlayerStats(gids, filteredPoss);
+  renderPlayerTable(playerRows, ts);
+}
+
+function showNoResults() {
+  document.getElementById('sas-net').textContent = '—';
+  document.getElementById('nyk-net').textContent = '—';
+  ['sas-ortg','sas-drtg','sas-poss','nyk-ortg','nyk-drtg','nyk-poss']
+    .forEach(id => { document.getElementById(id).textContent = '—'; });
+  document.getElementById('player-stats-body').innerHTML =
+    '<tr><td colspan="12" class="inactive-note">No possessions match current filter.</td></tr>';
+}
+
+function renderPlayerTable(rows, ts) {
+  const isP36  = activeRate === 'per36';
+  const isP100 = activeRate === 'per100';
+
+  document.getElementById('player-stats-head').innerHTML = `<tr>
+    <th>Player</th>
+    <th>Poss</th>
+    <th>${isP36 ? 'Min/36' : isP100 ? 'Min' : 'Min'}</th>
+    <th>${isP36 ? 'Pts/36' : isP100 ? 'Pts/100' : 'Pts'}</th>
+    <th>${isP36 ? 'Reb/36' : isP100 ? 'Reb/100' : 'Reb'}</th>
+    <th>${isP36 ? 'Ast/36' : isP100 ? 'Ast/100' : 'Ast'}</th>
+    <th>${isP36 ? 'Stl/36' : isP100 ? 'Stl/100' : 'Stl'}</th>
+    <th>${isP36 ? 'Blk/36' : isP100 ? 'Blk/100' : 'Blk'}</th>
+    <th>${isP36 ? 'Tov/36' : isP100 ? 'Tov/100' : 'Tov'}</th>
+    <th>FG%</th>
+    <th>3P%</th>
+    <th>FT%</th>
+  </tr>`;
+
+  let lastTeam = null;
+  const html = rows.map(r => {
+    const teamHeader = r.team !== lastTeam
+      ? `<tr style="background:${r.team==='SAS'?'#fff3e8':'#e8f2ff'};font-size:.78em;color:${r.team==='SAS'?'#6a3000':'#003070'};font-weight:700">
+           <td colspan="12" style="padding:5px 9px;text-transform:uppercase;letter-spacing:.05em">
+             ${r.team === 'SAS' ? '🐴 San Antonio Spurs' : '🗽 New York Knicks'}
+           </td></tr>`
+      : '';
+    lastTeam = r.team;
+
+    // Compute display values based on rate mode
+    const div = isP36 ? (r.min > 0 ? 36 / r.min : 0)
+              : isP100 ? (r.filtPoss > 0 ? 100 / r.filtPoss : 0)
+              : 1;
+
+    function s(v) { return v == null ? '—' : r1(v * div); }
+    function si(v) { return v == null ? '—' : r1(v * div); }
+
+    const minDisplay = isP36 ? '36' : r1(r.min);
+    const fgPct = pct(r.fgm, r.fga);
+    const fg3Pct = pct(r.fg3m, r.fg3a);
+    const ftPct = pct(r.ftm, r.fta);
+
+    const pctOnCourt = r.totPoss > 0 ? Math.round(100 * r.filtPoss / r.totPoss) : 0;
+
+    return `${teamHeader}<tr>
+      <td>${esc(r.name)} <span class="sub">(${pctOnCourt}%)</span></td>
+      <td>${r.filtPoss}</td>
+      <td>${minDisplay}</td>
+      <td>${s(r.pts)}</td>
+      <td>${s(r.reb)}</td>
+      <td>${s(r.ast)}</td>
+      <td>${s(r.stl)}</td>
+      <td>${s(r.blk)}</td>
+      <td>${s(r.tov)}</td>
+      <td>${fgPct}</td>
+      <td>${fg3Pct}</td>
+      <td>${ftPct}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('player-stats-body').innerHTML = html ||
+    '<tr><td colspan="12" class="inactive-note">No players with data.</td></tr>';
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+init();
+</script>
+</body>
+</html>
