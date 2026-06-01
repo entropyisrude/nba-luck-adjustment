@@ -84,8 +84,7 @@
   .stat-card .sub { font-size:.74em; color:#8898af; margin-top:4px; }
 
   /* Picks tables */
-  .picks-tables { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media(max-width:860px) { .picks-tables { grid-template-columns:1fr; } }
+  .picks-tables { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; align-items:start; }
   .picks-panel h3 { margin:0 0 8px; font-size:.95em; padding:6px 10px;
     border-radius:6px; display:inline-block; }
   .picks-panel.incoming h3 { background:#e0f5e9; color:#1a5c30; }
@@ -217,34 +216,7 @@
       <button class="tab-btn active" data-round="1">1st Round</button>
       <button class="tab-btn" data-round="2">2nd Round</button>
     </div>
-    <div class="picks-tables">
-      <div class="picks-panel incoming">
-        <h3>▲ Incoming Picks (Assets)</h3>
-        <table class="picks-table" id="incoming-table">
-          <thead><tr>
-            <th style="width:46px">Yr</th>
-            <th style="width:38px">Rd</th>
-            <th style="width:90px">Type</th>
-            <th>Description</th>
-            <th style="width:70px">Prot.</th>
-          </tr></thead>
-          <tbody id="incoming-tbody"></tbody>
-        </table>
-      </div>
-      <div class="picks-panel outgoing">
-        <h3>▼ Outgoing Picks (Obligations)</h3>
-        <table class="picks-table" id="outgoing-table">
-          <thead><tr>
-            <th style="width:46px">Yr</th>
-            <th style="width:38px">Rd</th>
-            <th style="width:90px">Type</th>
-            <th>Description</th>
-            <th style="width:70px">Prot.</th>
-          </tr></thead>
-          <tbody id="outgoing-tbody"></tbody>
-        </table>
-      </div>
-    </div>
+    <div class="picks-tables" id="picks-tables-container"></div>
   </section>
 
   <!-- Draft value chart -->
@@ -483,16 +455,45 @@ function renderDetail() {
     </div>` : ''}
   `;
 
-  renderPicksTable('incoming-tbody', stats.incoming, detailRound === 1);
-  renderPicksTable('outgoing-tbody', stats.outgoing, false);
+  const inOutright = stats.incoming.filter(p => p.pick_type !== 'swap');
+  const inSwap     = stats.incoming.filter(p => p.pick_type === 'swap');
+  const outOutright = stats.outgoing.filter(p => p.pick_type !== 'swap');
+  const outSwap     = stats.outgoing.filter(p => p.pick_type === 'swap');
+
+  const panels = [
+    { picks: inOutright,  dir: 'incoming', label: '▲ Incoming — Outright', showTop5: detailRound === 1 },
+    { picks: inSwap,      dir: 'incoming', label: '▲ Incoming — Swap Rights' },
+    { picks: outOutright, dir: 'outgoing', label: '▼ Outgoing — Outright' },
+    { picks: outSwap,     dir: 'outgoing', label: '▼ Outgoing — Swap' },
+  ];
+
+  const container = document.getElementById('picks-tables-container');
+  container.innerHTML = '';
+  panels.forEach((panel, pi) => {
+    const div = document.createElement('div');
+    div.className = `picks-panel ${panel.dir}`;
+    if (!panel.picks.length) {
+      div.innerHTML = `<h3>${panel.label}</h3><p style="color:#aaa;font-size:.83em;margin:4px 0 0 4px">None</p>`;
+    } else {
+      const tbodyId = `picks-tbody-${pi}`;
+      div.innerHTML = `<h3>${panel.label}</h3>
+        <table class="picks-table">
+          <thead><tr>
+            <th style="width:46px">Yr</th><th style="width:38px">Rd</th>
+            <th style="width:90px">Type</th><th>Description</th><th style="width:70px">Prot.</th>
+          </tr></thead>
+          <tbody id="${tbodyId}"></tbody>
+        </table>`;
+      container.appendChild(div);
+      renderPicksRows(tbodyId, panel.picks, panel.showTop5 || false);
+      return;
+    }
+    container.appendChild(div);
+  });
 }
 
-function renderPicksTable(tbodyId, picks, showTop5) {
+function renderPicksRows(tbodyId, picks, showTop5) {
   const tbody = document.getElementById(tbodyId);
-  if (!picks.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:#aaa;text-align:center;padding:14px">None</td></tr>';
-    return;
-  }
   const rows = picks.map((p,i) => {
     const desc = formatDesc(p);
     const t5 = showTop5 && isTop5Eligible(p) ? '<span class="top5-tag">Top-5 ✓</span>' : '';
@@ -509,11 +510,9 @@ function renderPicksTable(tbodyId, picks, showTop5) {
     </tr>`;
   }).join('');
   tbody.innerHTML = rows;
-
   tbody.querySelectorAll('.clickable-row').forEach(row => {
     row.addEventListener('click', () => {
-      const idx = row.dataset.idx;
-      const exp = document.getElementById(`exp-${tbodyId}-${idx}`);
+      const exp = document.getElementById(`exp-${tbodyId}-${row.dataset.idx}`);
       if (exp) exp.style.display = exp.style.display === 'none' ? '' : 'none';
     });
   });

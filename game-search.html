@@ -1132,9 +1132,9 @@
       maybePush(document.getElementById("opp").value !== "ALL", "opp_team_abbr");
       maybePush(document.getElementById("multi_team_mode").value !== "off", "team_abbr");
       maybePush(document.getElementById("multi_team_mode").value === "each_team" || document.getElementById("multi_team_mode").value === "both_teams_combined", "opp_team_abbr");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "team_pts_actual");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "opp_pts_actual");
-      maybePush(document.getElementById("multi_team_mode").value !== "off", "score_margin");
+      maybePush(true, "team_pts_actual");
+      maybePush(true, "opp_pts_actual");
+      maybePush(true, "score_margin");
       maybePush(document.getElementById("multi_team_mode").value !== "off", "win_loss");
       maybePush(document.getElementById("min_height_inches").value !== "" || document.getElementById("max_height_inches").value !== "", "listed_height");
       maybePush(document.getElementById("min_age").value !== "" || document.getElementById("max_age").value !== "", "age");
