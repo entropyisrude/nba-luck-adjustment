@@ -105,7 +105,7 @@
 
 <div class="hero-banner">
   <h1>SAS vs NYK — Lineup Explorer</h1>
-  <p class="timestamp">2025–26 Regular Season &nbsp;|&nbsp; 2 Matchups &nbsp;|&nbsp; Play-by-play lineup analysis</p>
+  <p class="timestamp">2025–26 Regular Season + NBA Cup Final &nbsp;|&nbsp; 3 Matchups &nbsp;|&nbsp; Play-by-play lineup analysis (RS games only)</p>
   <div class="hero-nav">
     <div class="hero-nav-row">
       <span class="hero-nav-label">Regular&nbsp;Season</span>
@@ -165,7 +165,7 @@
       <div class="team-card sas">
         <div class="label">San Antonio Spurs</div>
         <div id="sas-net" class="big">—</div>
-        <div class="sub2">Net Rating</div>
+        <div class="sub2" id="sas-sublabel">Net Rating</div>
         <div class="rtg-row">
           <div class="rtg-item"><div id="sas-ortg" class="rtg-val">—</div><div class="rtg-lbl">OffRtg</div></div>
           <div class="rtg-item"><div id="sas-drtg" class="rtg-val">—</div><div class="rtg-lbl">DefRtg</div></div>
@@ -175,7 +175,7 @@
       <div class="team-card nyk">
         <div class="label">New York Knicks</div>
         <div id="nyk-net" class="big">—</div>
-        <div class="sub2">Net Rating</div>
+        <div class="sub2" id="nyk-sublabel">Net Rating</div>
         <div class="rtg-row">
           <div class="rtg-item"><div id="nyk-ortg" class="rtg-val">—</div><div class="rtg-lbl">OffRtg</div></div>
           <div class="rtg-item"><div id="nyk-drtg" class="rtg-val">—</div><div class="rtg-lbl">DefRtg</div></div>
@@ -200,7 +200,7 @@
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
 let DATA = null;
-let activeGame = 'both'; // 'g1' | 'g2' | 'both'
+let activeGame = 'both'; // 'g1' | 'g2' | 'g3' | 'both'
 let activeRate = 'totals'; // 'totals' | 'per36' | 'per100'
 const filters = {}; // pid → 'on' | 'off' | null
 
@@ -225,16 +225,20 @@ function buildUI() {
   const tabsEl = document.getElementById('game-tabs');
   const both = document.createElement('button');
   both.className = 'game-tab active'; both.dataset.game = 'both';
-  both.textContent = 'Both Games';
+  both.textContent = 'Both RS Games';
   both.addEventListener('click', () => setGame('both'));
   tabsEl.appendChild(both);
 
   DATA.games.forEach((g, i) => {
     const btn = document.createElement('button');
     btn.className = 'game-tab'; btn.dataset.game = 'g' + (i+1);
-    const home = g.home, away = home === 'SAS' ? 'NYK' : 'SAS';
-    const date = new Date(g.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    btn.innerHTML = `${home} vs ${away} <span class="score">${date}</span>`;
+    if (g.cup) {
+      btn.innerHTML = `NBA Cup Final <span class="score">Dec 16</span>`;
+    } else {
+      const home = g.home, away = home === 'SAS' ? 'NYK' : 'SAS';
+      const date = new Date(g.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      btn.innerHTML = `${home} vs ${away} <span class="score">${date}</span>`;
+    }
     btn.addEventListener('click', () => setGame('g' + (i+1)));
     tabsEl.appendChild(btn);
   });
@@ -297,9 +301,16 @@ function setGame(g) {
 // ─── Core computation ─────────────────────────────────────────────────────────
 
 function getGameIds() {
-  if (activeGame === 'both') return DATA.games.map(g => g.id);
+  if (activeGame === 'both') return DATA.games.filter(g => !g.cup).map(g => g.id);
   const idx = parseInt(activeGame[1]) - 1;
   return [DATA.games[idx].id];
+}
+
+function getActiveCupGame() {
+  if (activeGame === 'both') return null;
+  const idx = parseInt(activeGame[1]) - 1;
+  const g = DATA.games[idx];
+  return g && g.cup ? g : null;
 }
 
 function possMatchesFilter(p) {
@@ -424,6 +435,12 @@ function rtg(v) {
 }
 
 function update() {
+  const cupGame = getActiveCupGame();
+  if (cupGame) {
+    updateCupView(cupGame);
+    return;
+  }
+
   const gids = getGameIds();
   const allPoss = gids.flatMap(gid => DATA.poss[gid] || []);
   const filteredPoss = allPoss.filter(possMatchesFilter);
@@ -452,6 +469,7 @@ function update() {
   document.getElementById('sas-ortg').textContent = ts.sas_ortg != null ? ts.sas_ortg.toFixed(1) : '—';
   document.getElementById('sas-drtg').textContent = ts.sas_drtg != null ? ts.sas_drtg.toFixed(1) : '—';
   document.getElementById('sas-poss').textContent = ts.sas_off_poss;
+  setSubLabel('sas', 'Net Rating');
 
   // NYK card
   const nykNet = ts.nyk_ortg != null && ts.nyk_drtg != null ? ts.nyk_ortg - ts.nyk_drtg : null;
@@ -460,10 +478,62 @@ function update() {
   document.getElementById('nyk-ortg').textContent = ts.nyk_ortg != null ? ts.nyk_ortg.toFixed(1) : '—';
   document.getElementById('nyk-drtg').textContent = ts.nyk_drtg != null ? ts.nyk_drtg.toFixed(1) : '—';
   document.getElementById('nyk-poss').textContent = ts.nyk_off_poss;
+  setSubLabel('nyk', 'Net Rating');
 
   // Player stats
   const playerRows = computePlayerStats(gids, filteredPoss);
   renderPlayerTable(playerRows, ts);
+}
+
+function setSubLabel(team, text) {
+  const el = document.getElementById(team + '-sublabel');
+  if (el) el.textContent = text;
+}
+
+function updateCupView(g) {
+  document.getElementById('poss-context').textContent =
+    'NBA Cup Final · T-Mobile Arena, Las Vegas · No lineup possession data · showing full box score totals';
+
+  const sasWon = g.sas_pts > g.nyk_pts;
+  document.getElementById('sas-net').textContent = g.sas_pts;
+  document.getElementById('sas-net').className = 'big ' + (sasWon ? 'pos' : 'neg');
+  document.getElementById('sas-ortg').textContent = '—';
+  document.getElementById('sas-drtg').textContent = '—';
+  document.getElementById('sas-poss').textContent = '—';
+  setSubLabel('sas', 'Final Score');
+
+  document.getElementById('nyk-net').textContent = g.nyk_pts;
+  document.getElementById('nyk-net').className = 'big ' + (!sasWon ? 'pos' : 'neg');
+  document.getElementById('nyk-ortg').textContent = '—';
+  document.getElementById('nyk-drtg').textContent = '—';
+  document.getElementById('nyk-poss').textContent = '—';
+  setSubLabel('nyk', 'Final Score');
+
+  // Build rows from box data directly (no possession scaling)
+  const boxData = DATA.box[g.id] || {};
+  const rows = [];
+  const allPlayers = [...DATA.sas_players, ...DATA.nyk_players];
+  for (const player of allPlayers) {
+    const pid = player.pid;
+    const b = boxData[pid];
+    if (!b || b.min === 0) continue;
+    const team = DATA.sas_players.find(p => p.pid === pid) ? 'SAS' : 'NYK';
+    // Estimate on-court possessions (≈ min/48 × 200 total poss) for per-100 display
+    const estPoss = Math.round(b.min / 48 * 200);
+    rows.push({
+      pid, name: player.name, team,
+      filtPoss: estPoss, totPoss: estPoss, scale: 1,
+      min: b.min, pts: b.pts, reb: b.reb, ast: b.ast, stl: b.stl,
+      blk: b.blk, tov: b.tov, fgm: b.fgm, fga: b.fga,
+      fg3m: b.fg3m, fg3a: b.fg3a, ftm: b.ftm, fta: b.fta,
+      totalMin: b.min, totalPts: b.pts,
+    });
+  }
+  rows.sort((a, b) => {
+    if (a.team !== b.team) return a.team === 'SAS' ? -1 : 1;
+    return b.totalPts - a.totalPts;
+  });
+  renderPlayerTable(rows, null);
 }
 
 function showNoResults() {

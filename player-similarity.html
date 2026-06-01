@@ -384,7 +384,7 @@ function renderResults() {
   const { query, results, statCols } = out;
 
   const section = document.getElementById('results-section');
-  section.style.display = '';
+  section.style.display = 'block';
   section.scrollIntoView({ behavior:'instant', block:'start' });
 
   document.getElementById('query-header').innerHTML =
