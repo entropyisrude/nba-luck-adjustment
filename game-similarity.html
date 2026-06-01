@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Similarity Machine — NBA Stats</title>
+<style>
+  body{font-family:"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:20px;
+    background:linear-gradient(180deg,#eef5ff 0%,#f8fbff 30%,#f2f6fb 100%);color:#192231}
+  h1{color:#f8fbff;margin:0 0 6px;text-shadow:1px 2px 6px rgba(0,0,0,.7)}
+  h2{color:#192231;margin:28px 0 10px;font-size:1.1em}
+  .hero-banner{background:radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+    padding:50px 30px 22px;margin:-20px -20px 20px;border-radius:0 0 14px 14px;text-align:center}
+  .timestamp{color:rgba(255,255,255,.7);font-size:.82em;margin:4px 0 12px}
+  .hero-nav{display:flex;flex-direction:column;gap:6px;max-width:860px;margin:0 auto}
+  .hero-nav-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .hero-nav-label{color:rgba(255,255,255,.6);font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;min-width:72px;text-align:right}
+  .hero-nav a{color:#e8f4ff;text-decoration:none;border:1px solid rgba(255,255,255,.35);
+    border-radius:7px;padding:4px 9px;font-size:12px}
+  .hero-nav a:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6)}
+
+  .card{background:#fff;border-radius:12px;border:1px solid #d6e1ef;
+    box-shadow:0 3px 12px rgba(23,38,62,.06);padding:18px 20px;margin-bottom:18px}
+
+  /* Search bar */
+  .search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+  .search-row label{font-size:.82em;color:#6680a0;font-weight:600;text-transform:uppercase;
+    letter-spacing:.05em;display:block;margin-bottom:4px}
+  .search-row input,.search-row select{
+    padding:8px 12px;border:1px solid #c8d8ec;border-radius:8px;font-size:.95em;
+    background:#fff;color:#192231;outline:none}
+  .search-row input:focus,.search-row select:focus{border-color:#3a7bd5}
+  #player-input{min-width:220px;flex:1}
+  #game-select{min-width:300px;flex:1.5}
+  #run-btn{padding:9px 22px;background:#0d2f53;color:#fff;border:none;border-radius:8px;
+    font-size:.95em;font-weight:600;cursor:pointer;white-space:nowrap}
+  #run-btn:hover{background:#17407a}
+  #run-btn:disabled{background:#aaa;cursor:default}
+
+  /* Autocomplete dropdown */
+  .autocomplete-wrap{position:relative;flex:1;min-width:220px}
+  #ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;
+    border:1px solid #c8d8ec;border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;
+    z-index:100;box-shadow:0 6px 18px rgba(23,38,62,.12);display:none}
+  .ac-item{padding:8px 12px;cursor:pointer;font-size:.9em;border-bottom:1px solid #f0f4fa}
+  .ac-item:hover,.ac-item.selected{background:#e8f2ff}
+
+  /* Weights panel */
+  .weights-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 20px}
+  @media(max-width:700px){.weights-grid{grid-template-columns:1fr 1fr}}
+  .weight-row{display:flex;flex-direction:column;gap:3px}
+  .weight-row label{font-size:.8em;color:#445;font-weight:600}
+  .weight-row .w-val{font-size:.75em;color:#6680a0;text-align:right;margin-top:1px}
+  .weight-row input[type=range]{width:100%;accent-color:#0d2f53}
+
+  .filter-row{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-top:10px;
+    font-size:.85em;color:#445}
+  .filter-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+
+  /* Results */
+  #results-section{display:none}
+  .query-header{background:#0d2f53;color:#f0f6ff;padding:12px 16px;border-radius:8px 8px 0 0;
+    font-weight:700;font-size:1em}
+  .query-header .qs{font-size:.83em;opacity:.75;margin-left:8px;font-weight:400}
+  table{width:100%;border-collapse:collapse}
+  th{background:#152d52;color:#e8f4ff;padding:9px 8px;text-align:left;font-size:.83em;
+    font-weight:600;white-space:nowrap}
+  td{padding:8px 8px;border-bottom:1px solid #eef2f8;font-size:.87em;vertical-align:middle}
+  tr:hover td{background:#f4f8ff}
+  .rank{width:28px;color:#aaa;font-weight:700;text-align:center}
+  .sim-score{font-size:.82em;color:#1a7a3a;font-weight:700;white-space:nowrap}
+  .stat-diff{font-size:.78em;color:#6680a0}
+  .stat-diff.pos{color:#1a7a3a}
+  .stat-diff.neg{color:#c0392b}
+
+  #loading-msg{text-align:center;color:#6680a0;padding:30px}
+</style>
+</head>
+<body>
+
+<div class="hero-banner">
+  <h1>Game Similarity Machine</h1>
+  <p class="timestamp">1979-80 through 2025-26 &nbsp;|&nbsp; 350,000+ individual game lines</p>
+  <div class="hero-nav">
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Home</span>
+      <a href="index.html">Home</a>
+    </div>
+    <div class="hero-nav-row">
+      <span class="hero-nav-label">Tools</span>
+      <a href="player-similarity.html">Player Similarity</a>
+      <a href="game-similarity.html" style="background:rgba(255,255,255,.15)">Game Similarity</a>
+      <a href="game-search.html">Game Search</a>
+    </div>
+  </div>
+</div>
+
+<div id="loading-msg">Loading game database (this may take a few seconds)...</div>
+
+<div id="app" style="display:none">
+
+  <section>
+    <div class="card">
+      <div class="search-row">
+        <div class="autocomplete-wrap">
+          <label>Step 1: Pick Player</label>
+          <input id="player-input" type="text" placeholder="e.g. Michael Jordan" autocomplete="off">
+          <div id="ac-dropdown"></div>
+        </div>
+        <div style="flex:1.5">
+          <label>Step 2: Pick Game</label>
+          <select id="game-select" disabled><option value="">— pick player first —</option></select>
+        </div>
+        <div style="padding-bottom:1px">
+          <label>&nbsp;</label>
+          <button id="run-btn" disabled>Find Similar Games</button>
+        </div>
+      </div>
+
+      <h2 style="margin:14px 0 10px;font-size:.9em;color:#445;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Stat Weights</h2>
+      <div class="weights-grid" id="weights-grid"></div>
+
+      <div class="filter-row">
+        <label><input type="checkbox" id="excl-player" checked> Exclude other games by same player</label>
+        <label><input type="checkbox" id="same-era"> Same era only (±8 years)</label>
+        <span style="color:#aab">|</span>
+        <label>Results: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select></label>
+      </div>
+    </div>
+  </section>
+
+  <section id="results-section">
+    <div class="query-header" id="query-header"></div>
+    <div class="card" style="padding:0;overflow:hidden;border-radius:0 0 12px 12px;border-top:none">
+      <table id="results-table">
+        <thead id="results-thead"></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+let data = null; // {sim_stats, means, stds, games}
+let players = {}; // name -> pid
+let gamesByPlayer = {}; // pid -> [game_indices]
+
+const WEIGHT_DIMS = [
+  { id:'scoring', label:'Scoring', stats:['pts','fga'], val:1.0 },
+  { id:'rebounding', label:'Rebounding', stats:['reb'], val:1.0 },
+  { id:'playmaking', label:'Playmaking', stats:['ast','tov'], val:1.0 },
+  { id:'defense', label:'Defense', stats:['stl','blk'], val:1.0 },
+  { id:'shooting', label:'Shooting Style', stats:['fg3a','fta'], val:1.0 },
+  { id:'efficiency', label:'Efficiency', stats:['ts_game'], val:1.0 },
+];
+
+function buildWeightsUI() {
+  const grid = document.getElementById('weights-grid');
+  grid.innerHTML = WEIGHT_DIMS.map(d => `
+    <div class="weight-row">
+      <label>${d.label}</label>
+      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${d.val}">
+      <div class="w-val" id="wv-${d.id}">${d.val.toFixed(1)}</div>
+    </div>`).join('');
+  
+  WEIGHT_DIMS.forEach(d => {
+    const inp = document.getElementById('w-' + d.id);
+    inp.addEventListener('input', () => {
+      document.getElementById('wv-'+d.id).textContent = parseFloat(inp.value).toFixed(1);
+    });
+  });
+}
+
+function getWeights() {
+  const w = {};
+  WEIGHT_DIMS.forEach(d => {
+    const v = parseFloat(document.getElementById('w-' + d.id).value);
+    d.stats.forEach(s => w[s] = v);
+  });
+  return w;
+}
+
+// ─── Search ────────────────────────────────────────────────────────────
+
+const playerInput = document.getElementById('player-input');
+const acDropdown = document.getElementById('ac-dropdown');
+const gameSelect = document.getElementById('game-select');
+const runBtn = document.getElementById('run-btn');
+
+playerInput.addEventListener('input', () => {
+  const q = playerInput.value.trim().toLowerCase();
+  if (q.length < 2) { acDropdown.style.display = 'none'; return; }
+  
+  const matches = Object.keys(players)
+    .filter(name => name.toLowerCase().includes(q))
+    .sort((a, b) => a.toLowerCase().indexOf(q) - b.toLowerCase().indexOf(q))
+    .slice(0, 15);
+
+  if (!matches.length) { acDropdown.style.display = 'none'; return; }
+  
+  acDropdown.innerHTML = matches.map(name => `<div class="ac-item" data-name="${name}">${name}</div>`).join('');
+  acDropdown.style.display = 'block';
+  
+  acDropdown.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('mousedown', () => selectPlayer(el.dataset.name));
+  });
+});
+
+// Indices based on script schema
+const G_IDX = {
+  name: 0, pid: 1, date: 2, season: 3, opp: 4, min: 5,
+  pts: 6, reb: 7, ast: 8, stl: 9, blk: 10, tov: 11, fga: 12, fta: 13, fg3a: 14, ts_game: 15
+};
+
+function selectPlayer(name) {
+  playerInput.value = name;
+  acDropdown.style.display = 'none';
+  const pid = players[name];
+  const pGames = gamesByPlayer[pid].sort((a,b) => data.games[b][G_IDX.date].localeCompare(data.games[a][G_IDX.date]));
+  
+  gameSelect.innerHTML = pGames.map(idx => {
+    const g = data.games[idx];
+    return `<option value="${idx}">${g[G_IDX.date]} vs ${g[G_IDX.opp]} — ${g[G_IDX.pts]}p/${g[G_IDX.reb]}r/${g[G_IDX.ast]}a (${Math.round(g[G_IDX.min])}m)</option>`;
+  }).join('');
+  
+  gameSelect.disabled = false;
+  runBtn.disabled = false;
+}
+
+runBtn.addEventListener('click', renderResults);
+
+// ─── Similarity ──────────────────────────────────────────────────────────────
+
+function computeSimilarity() {
+  const queryIdx = parseInt(gameSelect.value);
+  const query = data.games[queryIdx];
+  const weights = getWeights();
+  const exclPlayer = document.getElementById('excl-player').checked;
+  const sameEra = document.getElementById('same-era').checked;
+  const nResults = parseInt(document.getElementById('n-results').value) || 10;
+  
+  const queryYear = parseInt(query[G_IDX.season]);
+  const stats = data.sim_stats;
+  
+  // Normalized query vector
+  const queryZ = stats.map((s, i) => (query[G_IDX[s]] - data.means[i]) / data.stds[i]);
+
+  const results = data.games.map((cand, idx) => {
+    if (idx === queryIdx) return null;
+    if (exclPlayer && cand[G_IDX.pid] === query[G_IDX.pid]) return null;
+    if (sameEra && Math.abs(parseInt(cand[G_IDX.season]) - queryYear) > 8) return null;
+    
+    let sumSq = 0;
+    let nUsed = 0;
+    
+    stats.forEach((s, i) => {
+      const w = weights[s] || 0;
+      if (w === 0) return;
+      const cz = (cand[G_IDX[s]] - data.means[i]) / data.stds[i];
+      sumSq += w * (queryZ[i] - cz) ** 2;
+      nUsed += w;
+    });
+    
+    const dist = Math.sqrt(sumSq / nUsed);
+    const sim = Math.round(100 * Math.exp(-dist * 0.5));
+    return { cand, sim, dist };
+  }).filter(Boolean);
+
+  results.sort((a, b) => a.dist - b.dist);
+  return { query, results: results.slice(0, nResults) };
+}
+
+function renderResults() {
+  const { query, results } = computeSimilarity();
+  const section = document.getElementById('results-section');
+  section.style.display = 'block';
+  
+  document.getElementById('query-header').innerHTML = 
+    `Query: ${query[G_IDX.name]} (${query[G_IDX.date]} vs ${query[G_IDX.opp]}) &nbsp;|&nbsp; ` +
+    `${query[G_IDX.pts]} PTS, ${query[G_IDX.reb]} REB, ${query[G_IDX.ast]} AST, ${Math.round(query[G_IDX.min])} MIN`;
+
+  const head = document.getElementById('results-thead');
+  head.innerHTML = `<tr>
+    <th class="rank">#</th>
+    <th>Player</th>
+    <th>Date</th>
+    <th>Opp</th>
+    <th>MIN</th>
+    <th>PTS</th>
+    <th>REB</th>
+    <th>AST</th>
+    <th>STL</th>
+    <th>BLK</th>
+    <th>TOV</th>
+    <th>TS%</th>
+    <th>Similarity</th>
+  </tr>`;
+
+  const body = document.getElementById('results-tbody');
+  body.innerHTML = results.map((r, i) => {
+    const c = r.cand;
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td style="font-weight:600">${c[G_IDX.name]}</td>
+      <td class="muted">${c[G_IDX.date]}</td>
+      <td>${c[G_IDX.opp]}</td>
+      <td>${Math.round(c[G_IDX.min])}</td>
+      <td>${c[G_IDX.pts]}</td>
+      <td>${c[G_IDX.reb]}</td>
+      <td>${c[G_IDX.ast]}</td>
+      <td>${c[G_IDX.stl]}</td>
+      <td>${c[G_IDX.blk]}</td>
+      <td>${c[G_IDX.tov]}</td>
+      <td>${(c[G_IDX.ts_game] * 100).toFixed(1)}%</td>
+      <td class="sim-score">${r.sim}</td>
+    </tr>`;
+  }).join('');
+  
+  section.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const resp = await fetch('data/game_similarity_index.json');
+    data = await resp.json();
+    
+    // Index players and their games
+    data.games.forEach((g, i) => {
+      const name = g[G_IDX.name];
+      const pid = g[G_IDX.pid];
+      if (!players[name]) players[name] = pid;
+      if (!gamesByPlayer[pid]) gamesByPlayer[pid] = [];
+      gamesByPlayer[pid].push(i);
+    });
+    
+    buildWeightsUI();
+    document.getElementById('loading-msg').style.display = 'none';
+    document.getElementById('app').style.display = '';
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'Error loading data: ' + e.message;
+    console.error(e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
