@@ -262,16 +262,18 @@ const TEAM_NAMES = {
 
 // Draft slot value chart (indexed 1–60). Based on historical career production.
 // Pick #1 = 100 (reference). Values are approximate and editable.
+// Source: The Sports Appeal — "Finding the Value of NBA Draft Picks"
+// https://www.thesportsappeal.com/post-history/finding-the-value-of-nba-draft-picks
 const PICK_VALUE = [
-  0,  // idx 0 unused
+  0,    // idx 0 unused
   // 1st round
-  100,83,72,63,56, 51,46,42,38,35,
-   32,29,26,24,22, 20,18,17,15,14,
-   13,12,11,10, 9,  8, 8, 7, 6, 5,
+  1000,684,336,276,234, 205,170,155,135,121,
+   107, 94, 86, 82, 71,  66, 59, 52, 48, 44,
+    41, 35, 31, 28, 25,  22, 19, 17, 15, 13,
   // 2nd round
-   5, 4, 4, 4, 3,  3, 3, 3, 2, 2,
-   2, 2, 2, 2, 2,  1, 1, 1, 1, 1,
-   1, 1, 1, 0, 0,  0, 0, 0, 0, 0,
+    12, 10,  9,  8,  7,   6,  5,  4,  3,  3,
+     2,  2,  2,  1,  1,   1,  1,  1,  0,  0,
+     0,  0,  0,  0,  0,   0,  0,  0,  0,  0,
 ];
 
 const ALL_TEAMS = Object.keys(TEAM_NAMES).sort();
