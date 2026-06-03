@@ -440,7 +440,7 @@ function computeSimilarity() {
   }).filter(Boolean);
 
   scored.sort((a, b) => a.dist - b.dist);
-  return { query, results: scored.slice(0, nResults), statCols };
+  return { query, results: scored.slice(0, nResults), statCols, stds };
 }
 
 // ─── Render results ──────────────────────────────────────────────────────────
@@ -448,7 +448,7 @@ function computeSimilarity() {
 function renderResults() {
   const out = computeSimilarity();
   if (!out) return;
-  const { query, results, statCols } = out;
+  const { query, results, statCols, stds } = out;
 
   const section = document.getElementById('results-section');
   section.style.display = 'block';
@@ -498,9 +498,10 @@ function renderResults() {
       ${showCols.map(c2 => {
         const val = c[c2];
         const qval = query[c2];
-        const diff = (val != null && qval != null) ? val - qval : null;
-        const cls = diff == null ? '' : (diff > 0.05 ? ' pos' : diff < -0.05 ? ' neg' : '');
-        const diffStr = diff == null ? '' : ` <span class="stat-diff${cls}">${diff>0?'+':''}${fmtDiff(c2,diff)}</span>`;
+        const rawDiff = (val != null && qval != null) ? val - qval : null;
+        const zDiff = (rawDiff != null && stds[c2]) ? rawDiff / stds[c2] : null;
+        const cls = zDiff == null ? '' : (zDiff > 0.25 ? ' pos' : zDiff < -0.25 ? ' neg' : '');
+        const diffStr = zDiff == null ? '' : ` <span class="stat-diff${cls}">${zDiff>0?'+':''}${zDiff.toFixed(2)}σ</span>`;
         return `<td>${fmtStat(c2, val)}${diffStr}</td>`;
       }).join('')}
       <td>
