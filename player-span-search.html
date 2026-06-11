@@ -215,6 +215,12 @@
             <option value="per100">Per 100 poss</option>
           </select>
         </label>
+        <label>Aggregation
+          <select id="aggregation_mode">
+            <option value="full_span">Full Span</option>
+            <option value="season_by_season">Season by Season</option>
+          </select>
+        </label>
         <label>Impact/Games filter basis
           <select id="span_filter_basis">
             <option value="span">Whole selected span</option>
@@ -499,6 +505,7 @@
           <thead>
             <tr>
               <th class="sortable" data-key="player_name"><div class="th-wrap"><span>Player</span></div></th>
+              <th class="sortable" data-key="season"><div class="th-wrap"><span>Season</span></div></th>
               <th class="sortable" data-key="listed_height"><div class="th-wrap"><span>Ht</span></div></th>
               <th class="sortable" data-key="age"><div class="th-wrap"><span>Age</span></div></th>
               <th class="sortable" data-key="career_year"><div class="th-wrap"><span>Yr</span></div></th>
@@ -728,7 +735,7 @@
         return el ? el.closest("label") : null;
       };
       const groups = [
-        ["Scope", ["season_start","season_end","team","opp","player","stat_mode","span_filter_basis","date_from","date_to"]],
+        ["Scope", ["season_start","season_end","team","opp","player","stat_mode","aggregation_mode","span_filter_basis","date_from","date_to"]],
         ["Bio", ["min_height_inches","max_height_inches","min_age","max_age","min_career_year","max_career_year","min_draft_year","max_draft_year","min_draft_overall_pick","max_draft_overall_pick"]],
         ["Volume / Scoring", ["min_games","max_games","min_minutes","max_minutes","min_pts","max_pts","min_reb","max_reb","min_oreb","max_oreb","min_dreb","max_dreb","min_ast","max_ast","min_fg2a","max_fg2a","min_fg2_pct","max_fg2_pct","min_fg3a","max_fg3a","min_fg3_pct","max_fg3_pct","min_ft_pct","max_ft_pct","split1_key","split2_key"]],
         ["Impact", ["min_pm","max_pm","min_adj_pm","max_adj_pm","min_onoff_raw","max_onoff_raw","min_onoff_adj","max_onoff_adj"]],
@@ -952,14 +959,17 @@
         const key = `${v(r, "game_id")}|${v(r, "team_abbr")}`;
         teamGameMinutes.set(key, (teamGameMinutes.get(key) || 0) + Number(v(r, "minutes") || 0));
       }
+      const isSbs = document.getElementById("aggregation_mode").value === "season_by_season";
       const grouped = new Map();
       for (const r of baseFilteredRows()) {
         const playerId = v(r, "player_id");
-        const key = String(playerId);
+        const rowSeason = v(r, "season");
+        const key = isSbs ? `${playerId}|${rowSeason}` : String(playerId);
         if (!grouped.has(key)) {
           grouped.set(key, {
             player_id: playerId,
             player_name: v(r, "player_name"),
+            season: isSbs ? String(rowSeason || "") : null,
             listed_height: v(r, "listed_height"),
             height_inches: v(r, "height_inches"),
             age: v(r, "age"),
@@ -1428,7 +1438,7 @@
       const mult = state.dir === "asc" ? 1 : -1;
       return rows.slice().sort((a, b) => {
         const key = state.key;
-        if (["player_name", "listed_height"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
+        if (["player_name", "listed_height", "season"].includes(key)) return mult * String(a[key] || "").localeCompare(String(b[key] || ""));
         if (CUSTOM_KEYS.includes(key)) return mult * ((Number(computeExpr(a, key)) || 0) - (Number(computeExpr(b, key)) || 0));
         if (DISPLAY_TOGGLE_KEYS.includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
         if (["games", "minutes", "on_off_actual", "on_off_adjusted"].includes(key)) return mult * ((Number(basisDisplayValue(a, key)) || 0) - (Number(basisDisplayValue(b, key)) || 0));
@@ -1485,8 +1495,9 @@
 
     function applyColumnOrder() {
       const headerRow = document.querySelector("#search-table thead tr");
-      const desired = ["player_name"].concat(activeColumnKeys());
-      const hiddenKeys = [];
+      const sbsMode = document.getElementById("aggregation_mode").value === "season_by_season";
+      const desired = (sbsMode ? ["player_name", "season"] : ["player_name"]).concat(activeColumnKeys());
+      const hiddenKeys = sbsMode ? [] : ["season"];
       const orderedKeys = desired.concat(BASE_HEADER_KEYS.filter(key => !desired.includes(key) && !hiddenKeys.includes(key)));
       headerRow.replaceChildren(...orderedKeys.map(key => BASE_HEADER_BY_KEY[key].cloneNode(true)));
       updateCustomHeaders();
@@ -1503,7 +1514,8 @@
       const mode = document.getElementById("stat_mode").value;
       const basis = spanFilterBasis();
       const shown = (row, key) => modeValue(row, key, displayModes[key] || "match");
-      document.getElementById("row_count").textContent = `${rows.length.toLocaleString()} players${rows.length > 1000 ? ' (showing first 1,000)' : ''}`;
+      const aggMode = document.getElementById("aggregation_mode").value;
+      document.getElementById("row_count").textContent = `${rows.length.toLocaleString()} ${aggMode === "season_by_season" ? "player-seasons" : "players"}${rows.length > 1000 ? ' (showing first 1,000)' : ''}`;
       document.getElementById("mode_note").textContent =
         mode === "pergame" ? "counting stats shown per game over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
         : (mode === "per36" ? "counting stats shown per 36 minutes over the selected span; hustle counts, rim-assist counts, and Rim DFGA are prorated across the selected span and converted by mode, while rim signatures and rim DFG% fields stay season-level"
@@ -1513,6 +1525,7 @@
       tbody.innerHTML = rows.slice(0, 1000).map(r => `
         <tr>
           <td data-key="player_name">${r.player_name || ""}</td>
+          <td data-key="season">${r.season || ""}</td>
           <td data-key="listed_height">${r.listed_height || ""}</td>
           <td data-key="age">${r.age || ""}</td>
           <td data-key="career_year">${r.career_year || ""}</td>
@@ -1587,6 +1600,7 @@
       document.getElementById('team').value = 'ALL';
       document.getElementById('opp').value = 'ALL';
       document.getElementById('stat_mode').value = 'totals';
+      document.getElementById('aggregation_mode').value = 'full_span';
       document.getElementById('span_filter_basis').value = 'span';
       DISPLAY_TOGGLE_KEYS.forEach(key => displayModes[key] = "match");
       document.querySelectorAll(".mode-chip").forEach(btn => btn.textContent = "Match");
