@@ -800,12 +800,17 @@
     async function ensureSelectedSeasonsLoaded() {
       const source = document.getElementById("source").value;
       const seasons = selectedSeasons();
-      for (let idx = 0; idx < seasons.length; idx++) {
-        const season = seasons[idx];
+      const needed = seasons.filter(s =>
+        (source !== "po" && RS_DATA_FILES[s] && !RS_LOADED.has(s)) ||
+        (source !== "rs" && PO_DATA_FILES[s] && !PO_LOADED.has(s))
+      );
+      let done = 0;
+      for (const season of seasons) {
         const needRs = source !== "po" && RS_DATA_FILES[season] && !RS_LOADED.has(season);
         const needPo = source !== "rs" && PO_DATA_FILES[season] && !PO_LOADED.has(season);
         if (!needRs && !needPo) continue;
-        document.getElementById("row_count").textContent = `Loading season data (${idx + 1}/${seasons.length}): ${season}...`;
+        done++;
+        document.getElementById("row_count").textContent = `Loading ${season}... (${done} of ${needed.length})`;
         if (needRs) await loadChunkInto(season, RS_CHUNK_BASE, RS_DATA_FILES, RS_ROWS, RS_LOADED);
         if (needPo) await loadChunkInto(season, PO_CHUNK_BASE, PO_DATA_FILES, PO_ROWS, PO_LOADED);
       }
@@ -1406,19 +1411,6 @@
     }
 
     async function runSearch() {
-      const source = document.getElementById("source").value;
-      const seasons = selectedSeasons();
-      let toLoad = 0;
-      seasons.forEach(s => {
-        if (source !== "po" && RS_DATA_FILES[s] && !RS_LOADED.has(s)) toLoad++;
-        if (source !== "rs" && PO_DATA_FILES[s] && !PO_LOADED.has(s)) toLoad++;
-      });
-      const loadLimit = source === "both" ? 10 : 30;
-      if (toLoad > loadLimit) {
-        document.getElementById("row_count").textContent = `Search too broad for in-browser loading. Narrow the season range first (${toLoad} chunks to load).`;
-        document.getElementById("mode_note").textContent = "";
-        return;
-      }
       document.getElementById("row_count").textContent = "Loading season data...";
       try {
         await ensureSelectedSeasonsLoaded();
