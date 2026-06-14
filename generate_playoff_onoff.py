@@ -172,13 +172,17 @@ def get_player_names(player_ids: set, stints: pd.DataFrame) -> dict:
     # Fallback to regular season on/off for any remaining players
     missing = player_ids - set(player_names.keys())
     if missing:
-        regular_path = DATA_DIR / "adjusted_onoff.csv"
-        if regular_path.exists():
-            df = pd.read_csv(regular_path, dtype={"player_id": int})
+        for fallback_path in [DATA_DIR / "player_boxscore_stats.csv", DATA_DIR / "adjusted_onoff.csv"]:
+            if not fallback_path.exists() or not missing:
+                continue
+            df = pd.read_csv(fallback_path, dtype={"player_id": int}, low_memory=False)
+            if "player_id" not in df.columns or "player_name" not in df.columns:
+                continue
             for _, row in df.drop_duplicates(subset=["player_id"]).iterrows():
                 pid = int(row["player_id"])
                 if pid in missing:
                     player_names[pid] = row.get("player_name", f"Player {pid}")
+                    missing.discard(pid)
 
     # Fill remaining with placeholder
     for pid in player_ids:

@@ -608,6 +608,7 @@ def generate() -> None:
         handled_kaggle_keys: set[tuple[str, str]] = set()
 
         real_rows_used = 0
+        partial_rows_used = 0
         fake_rows_used = 0
         start_year = _season_start(season)
         fake_date = f"{start_year + 1}-06-15"
@@ -640,6 +641,7 @@ def generate() -> None:
             game_rows = season_kaggle.get(kaggle_key, [])
 
             use_real = bool(game_rows) and len(game_rows) >= pbpstats_n - 1
+            use_partial = bool(game_rows) and not use_real
 
             if use_real:
                 handled_kaggle_keys.add(kaggle_key)
@@ -665,8 +667,92 @@ def generate() -> None:
 
                 chunk_rows.extend(game_rows)
 
+            elif use_partial:
+                # Kaggle has some games but not all (e.g. later rounds not yet in Kaggle).
+                # Use real rows for available games + synthetic rows for the missing games.
+                handled_kaggle_keys.add(kaggle_key)
+                partial_rows_used += 1
+                n_real = len(game_rows)
+                n_total = pbpstats_n
+                n_missing = n_total - n_real
+                pbp_minutes = _f(pr.get("Minutes"))
+
+                for row in game_rows:
+                    game_min = _f(row[IDX_MINUTES])
+                    # Use total pbpstats minutes as denominator so fractions sum to <1,
+                    # leaving room for the synthetic rows to account for the rest.
+                    min_frac = (game_min / pbp_minutes) if pbp_minutes > 0 else (1.0 / n_total)
+                    game_pm = _f(row[IDX_PM_ACTUAL])
+
+                    row[IDX_ON_POSS] = on_poss_total * min_frac
+                    row[IDX_OFF_POSS] = off_poss_total * min_frac
+                    on_off_game = game_pm - pbpstats_off_diff / n_total
+                    row[IDX_ON_OFF_ACTUAL] = on_off_game
+                    row[IDX_ON_OFF_ADJ] = on_off_game
+                    row[IDX_PM_ADJ] = game_pm
+                    row[IDX_TEAM_ABBR] = team_abbr
+                    if not row[4]:
+                        row[4] = player_name
+
+                chunk_rows.extend(game_rows)
+
+                if n_missing > 0:
+                    def _sc(rows: list[list], idx: int) -> float:
+                        return sum(_f(r[idx]) for r in rows)
+
+                    pts_rem  = max(_f(pr.get("Points"))       - _sc(game_rows, 11), 0.0)
+                    reb_rem  = max(_f(pr.get("Rebounds"))     - _sc(game_rows, 12), 0.0)
+                    oreb_rem = max(_f(pr.get("OffRebounds"))  - _sc(game_rows, 13), 0.0)
+                    dreb_rem = max(_f(pr.get("DefRebounds"))  - _sc(game_rows, 14), 0.0)
+                    ast_rem  = max(_f(pr.get("Assists"))      - _sc(game_rows, 15), 0.0)
+                    stl_rem  = max(_f(pr.get("Steals"))       - _sc(game_rows, 16), 0.0)
+                    blk_rem  = max(_f(pr.get("Blocks"))       - _sc(game_rows, 17), 0.0)
+                    tov_rem  = max(_f(pr.get("Turnovers"))    - _sc(game_rows, 18), 0.0)
+                    pf_rem   = max(_f(pr.get("Fouls"))        - _sc(game_rows, 19), 0.0)
+                    fg2m_rem = max(_f(pr.get("FG2M"))         - _sc(game_rows, 22), 0.0)
+                    fg2a_rem = max(_f(pr.get("FG2A"))         - _sc(game_rows, 23), 0.0)
+                    fg3m_rem = max(_f(pr.get("FG3M"))         - _sc(game_rows, 25), 0.0)
+                    fg3a_rem = max(_f(pr.get("FG3A"))         - _sc(game_rows, 26), 0.0)
+                    ftm_rem  = max(_f(pr.get("FtPoints"))     - _sc(game_rows, 28), 0.0)
+                    fta_rem  = max(_f(pr.get("FTA"))          - _sc(game_rows, 29), 0.0)
+                    min_rem  = max(pbp_minutes                - _sc(game_rows, IDX_MINUTES), 0.0)
+                    pm_rem   = player_pm                      - _sc(game_rows, IDX_PM_ACTUAL)
+                    fgm_rem  = fg2m_rem + fg3m_rem
+                    fga_rem  = fg2a_rem + fg3a_rem
+
+                    min_frac_rem = (min_rem / pbp_minutes) if pbp_minutes > 0 else (n_missing / n_total)
+                    on_poss_rem  = on_poss_total * min_frac_rem
+                    off_poss_rem = off_poss_total * min_frac_rem
+
+                    bio = bio_map.get(player_id_int, {})
+                    rim = rim_map.get((season, player_id_int), {})
+                    rim_dfga_total = rim.get("rim_dfga")
+
+                    for i in range(n_missing):
+                        chunk_rows.append(
+                            _make_fake_row(
+                                season=season,
+                                fake_date=fake_date,
+                                fake_game_id=f"pbp_{_season_slug(season)}_{player_id_str}_{n_real + i + 1}",
+                                player_id=player_id_int,
+                                player_name=player_name,
+                                team_abbr=team_abbr,
+                                n=n_missing,
+                                pts=pts_rem, reb=reb_rem, oreb=oreb_rem, dreb=dreb_rem,
+                                ast=ast_rem, stl=stl_rem, blk=blk_rem, tov=tov_rem, pf=pf_rem,
+                                fgm=fgm_rem, fga=fga_rem, fg2m=fg2m_rem, fg2a=fg2a_rem,
+                                fg3m=fg3m_rem, fg3a=fg3a_rem, ftm=ftm_rem, fta=fta_rem,
+                                minutes=min_rem,
+                                bio=bio, rim=rim, rim_dfga_total=rim_dfga_total,
+                                on_poss_row=on_poss_rem / n_missing,
+                                off_poss_row=off_poss_rem / n_missing,
+                                pm_row=pm_rem / n_missing,
+                                on_off_row=pm_rem / n_missing - pbpstats_off_diff / n_total,
+                            )
+                        )
+
             else:
-                # Kaggle has fewer games than pbpstats expects — use synthetic rows
+                # No Kaggle data at all — use synthetic rows for the full season
                 if kaggle_key in season_kaggle:
                     handled_kaggle_keys.add(kaggle_key)
                 fake_rows_used += 1
@@ -732,10 +818,10 @@ def generate() -> None:
             f"{json.dumps(chunk_rows, ensure_ascii=False, separators=(',', ':'))};\n"
         )
         (CHUNK_DIR / f"{slug}.js").write_text(chunk_js, encoding="utf-8")
-        total_pbp = real_rows_used + fake_rows_used
+        total_pbp = real_rows_used + partial_rows_used + fake_rows_used
         print(
             f"  {season}: {total_pbp + kaggle_only} player-teams, {len(chunk_rows)} rows"
-            f" (real:{real_rows_used} fake:{fake_rows_used} kaggle-only:{kaggle_only})"
+            f" (real:{real_rows_used} partial:{partial_rows_used} fake:{fake_rows_used} kaggle-only:{kaggle_only})"
         )
 
     if cache_updated:
