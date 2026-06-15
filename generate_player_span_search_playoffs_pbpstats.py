@@ -626,7 +626,8 @@ def generate() -> None:
             player_name = str(pr.get("Name") or "")
 
             player_pm = _f(pr.get("PlusMinus"))
-            team_pm = _f(team.get("PlusMinus"))
+            team_pm_raw = team.get("PlusMinus")        # keep None distinct from 0
+            team_pm = _f(team_pm_raw)
             on_off_poss = _f(pr.get("OffPoss"))
             on_def_poss = _f(pr.get("DefPoss"))
             team_off_poss = _f(team.get("OffPoss"))
@@ -635,8 +636,9 @@ def generate() -> None:
             on_poss_total = (on_off_poss + on_def_poss) / 2.0
             off_poss_total = max((team_off_poss + team_def_poss) / 2.0 - on_poss_total, 0.0)
             pbpstats_off_diff = team_pm - player_pm
-            # Per-100-possessions on/off: (PM/on_poss - off_diff/off_poss) × 100
-            if on_poss_total > 0 and off_poss_total > 0:
+            # Per-100-possessions on/off: (PM/on_poss - off_diff/off_poss) × 100.
+            # Requires team PlusMinus to be available; skip if it's missing.
+            if on_poss_total > 0 and off_poss_total > 0 and team_pm_raw is not None:
                 on_off_per100 = 100.0 * player_pm / on_poss_total - 100.0 * pbpstats_off_diff / off_poss_total
             else:
                 on_off_per100 = 0.0
