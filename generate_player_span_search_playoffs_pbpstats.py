@@ -635,6 +635,11 @@ def generate() -> None:
             on_poss_total = (on_off_poss + on_def_poss) / 2.0
             off_poss_total = max((team_off_poss + team_def_poss) / 2.0 - on_poss_total, 0.0)
             pbpstats_off_diff = team_pm - player_pm
+            # Per-100-possessions on/off: (PM/on_poss - off_diff/off_poss) × 100
+            if on_poss_total > 0 and off_poss_total > 0:
+                on_off_per100 = 100.0 * player_pm / on_poss_total - 100.0 * pbpstats_off_diff / off_poss_total
+            else:
+                on_off_per100 = 0.0
 
             # Match by (player_id, pbpstats team_id) — bypasses abbreviation mismatches
             kaggle_key = (player_id_str, pbp_team_id)
@@ -656,9 +661,8 @@ def generate() -> None:
 
                     row[IDX_ON_POSS] = on_poss_total * min_frac
                     row[IDX_OFF_POSS] = off_poss_total * min_frac
-                    on_off_game = game_pm - pbpstats_off_diff / n
-                    row[IDX_ON_OFF_ACTUAL] = on_off_game
-                    row[IDX_ON_OFF_ADJ] = on_off_game
+                    row[IDX_ON_OFF_ACTUAL] = on_off_per100
+                    row[IDX_ON_OFF_ADJ] = on_off_per100
                     row[IDX_PM_ADJ] = game_pm
                     # Use pbpstats abbreviation and name (authoritative)
                     row[IDX_TEAM_ABBR] = team_abbr
@@ -686,9 +690,8 @@ def generate() -> None:
 
                     row[IDX_ON_POSS] = on_poss_total * min_frac
                     row[IDX_OFF_POSS] = off_poss_total * min_frac
-                    on_off_game = game_pm - pbpstats_off_diff / n_total
-                    row[IDX_ON_OFF_ACTUAL] = on_off_game
-                    row[IDX_ON_OFF_ADJ] = on_off_game
+                    row[IDX_ON_OFF_ACTUAL] = on_off_per100
+                    row[IDX_ON_OFF_ADJ] = on_off_per100
                     row[IDX_PM_ADJ] = game_pm
                     row[IDX_TEAM_ABBR] = team_abbr
                     if not row[4]:
@@ -747,7 +750,7 @@ def generate() -> None:
                                 on_poss_row=on_poss_rem / n_missing,
                                 off_poss_row=off_poss_rem / n_missing,
                                 pm_row=pm_rem / n_missing,
-                                on_off_row=pm_rem / n_missing - pbpstats_off_diff / n_total,
+                                on_off_row=on_off_per100,
                             )
                         )
 
@@ -799,7 +802,7 @@ def generate() -> None:
                             on_poss_row=on_poss_total / n,
                             off_poss_row=off_poss_total / n,
                             pm_row=player_pm / n,
-                            on_off_row=(2.0 * player_pm - team_pm) / n,
+                            on_off_row=on_off_per100,
                         )
                     )
 
