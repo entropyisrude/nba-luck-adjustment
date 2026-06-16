@@ -630,16 +630,29 @@ def generate() -> None:
             team_pm = _f(team_pm_raw)
             on_off_poss = _f(pr.get("OffPoss"))
             on_def_poss = _f(pr.get("DefPoss"))
+            on_opp_pts  = _f(pr.get("OpponentPoints")) # pts allowed when player on court
             team_off_poss = _f(team.get("OffPoss"))
             team_def_poss = _f(team.get("DefPoss"))
+            team_pts    = _f(team.get("Points"))
+            team_opp_pts = _f(team.get("OpponentPoints"))
 
             on_poss_total = (on_off_poss + on_def_poss) / 2.0
             off_poss_total = max((team_off_poss + team_def_poss) / 2.0 - on_poss_total, 0.0)
             pbpstats_off_diff = team_pm - player_pm
-            # Per-100-possessions on/off: (PM/on_poss - off_diff/off_poss) × 100.
-            # Requires team PlusMinus to be available; skip if it's missing.
-            if on_poss_total > 0 and off_poss_total > 0 and team_pm_raw is not None:
-                on_off_per100 = 100.0 * player_pm / on_poss_total - 100.0 * pbpstats_off_diff / off_poss_total
+
+            # On/off net rating: (on_OffRtg − on_DefRtg) − (off_OffRtg − off_DefRtg).
+            # Use separate OffPoss and DefPoss denominators (not averaged) so the
+            # offensive/defensive splits are correct.  Falls back to 0 if data missing.
+            on_scored  = player_pm + on_opp_pts          # team pts scored when on court
+            off_OffPoss = max(team_off_poss - on_off_poss, 0.0)
+            off_DefPoss = max(team_def_poss - on_def_poss, 0.0)
+            off_scored  = max(team_pts - on_scored, 0.0)
+            off_allowed = max(team_opp_pts - on_opp_pts, 0.0)
+            if (on_off_poss > 0 and on_def_poss > 0 and
+                    off_OffPoss > 0 and off_DefPoss > 0 and team_pts > 0):
+                on_net_rtg  = 100.0 * on_scored / on_off_poss - 100.0 * on_opp_pts / on_def_poss
+                off_net_rtg = 100.0 * off_scored / off_OffPoss - 100.0 * off_allowed / off_DefPoss
+                on_off_per100 = on_net_rtg - off_net_rtg
             else:
                 on_off_per100 = 0.0
 
