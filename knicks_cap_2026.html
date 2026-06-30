@@ -161,6 +161,26 @@ table.ht tr:last-child td { border-bottom: none; }
 .added-move .rm { background: none; border: none; color: var(--txt3); cursor: pointer; font-size: 13px; }
 .added-move .rm:hover { color: var(--red); }
 
+/* ── Trade Simulator ── */
+.trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.trade-col { background: #fff; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.trade-col-head { background: var(--bg3); padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--txt2); border-bottom: 1px solid var(--border); }
+.trade-col-head .mono { font-size: 12px; color: var(--txt); }
+.trade-player-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid #eaeef2; cursor: pointer; font-size: 11px; transition: background .1s; }
+.trade-player-row:last-child { border-bottom: none; }
+.trade-player-row:hover { background: #deeaf8; }
+.trade-player-row.selected { background: rgba(26,127,55,.07); }
+.tpr-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tpr-sal { font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--txt2); flex-shrink: 0; }
+.tpr-rm { background: none; border: none; cursor: pointer; color: var(--txt3); font-size: 13px; flex-shrink: 0; padding: 0; }
+.tpr-rm:hover { color: var(--red); }
+.trade-search { padding: 6px 8px; border-bottom: 1px solid #eaeef2; }
+.trade-search input { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 11px; background: var(--bg2); outline: none; }
+.trade-search input:focus { border-color: var(--blue); }
+.trade-scroll { max-height: 220px; overflow-y: auto; }
+.trade-divider { padding: 4px 10px; background: var(--bg3); font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--txt3); letter-spacing: .4px; border-bottom: 1px solid #eaeef2; }
+.tag-trade { background: rgba(2,132,199,.1); color: #0369a1; border: 1px solid rgba(2,132,199,.25); }
+
 /* ── CBA Rules ── */
 .rules-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
 .rules-sec { border-bottom: 1px solid #eaeef2; }
@@ -334,6 +354,71 @@ footer a { color: var(--txt3); }
       </div>
       <div id="simResult"></div>
       <div id="addedMoves"></div>
+    </div>
+  </div>
+
+  <!-- Trade Simulator -->
+  <div class="sim-panel">
+    <div class="sim-head" style="background:#0a5c36;">
+      <h2>Trade Simulator</h2>
+      <p>Model a trade's salary cap impact. Click Knicks players (left) to send; click the other team's players (right) to receive.</p>
+    </div>
+    <div class="sim-body">
+      <div class="sf" style="max-width:260px;margin-bottom:10px;">
+        <label>Trade Partner</label>
+        <select id="tradeTeamSel" onchange="onTradeTeamChange()">
+          <option value="">— Select opposing team —</option>
+          <option value="ATL">Atlanta Hawks</option>
+          <option value="BKN">Brooklyn Nets</option>
+          <option value="BOS">Boston Celtics</option>
+          <option value="CHA">Charlotte Hornets</option>
+          <option value="CHI">Chicago Bulls</option>
+          <option value="CLE">Cleveland Cavaliers</option>
+          <option value="DAL">Dallas Mavericks</option>
+          <option value="DEN">Denver Nuggets</option>
+          <option value="DET">Detroit Pistons</option>
+          <option value="GSW">Golden State Warriors</option>
+          <option value="HOU">Houston Rockets</option>
+          <option value="IND">Indiana Pacers</option>
+          <option value="LAC">Los Angeles Clippers</option>
+          <option value="LAL">Los Angeles Lakers</option>
+          <option value="MEM">Memphis Grizzlies</option>
+          <option value="MIA">Miami Heat</option>
+          <option value="MIL">Milwaukee Bucks</option>
+          <option value="MIN">Minnesota Timberwolves</option>
+          <option value="NOP">New Orleans Pelicans</option>
+          <option value="OKC">Oklahoma City Thunder</option>
+          <option value="ORL">Orlando Magic</option>
+          <option value="PHI">Philadelphia 76ers</option>
+          <option value="PHX">Phoenix Suns</option>
+          <option value="POR">Portland Trail Blazers</option>
+          <option value="SAC">Sacramento Kings</option>
+          <option value="SAS">San Antonio Spurs</option>
+          <option value="TOR">Toronto Raptors</option>
+          <option value="UTA">Utah Jazz</option>
+          <option value="WAS">Washington Wizards</option>
+        </select>
+      </div>
+      <div class="trade-cols">
+        <div class="trade-col">
+          <div class="trade-col-head">
+            <span>Knicks Send</span>
+            <span class="mono" id="tradeSendTot">$0</span>
+          </div>
+          <div id="tradeSendPool"></div>
+        </div>
+        <div class="trade-col">
+          <div class="trade-col-head">
+            <span>Knicks Receive</span>
+            <span class="mono" id="tradeRecTot">$0</span>
+          </div>
+          <div class="trade-search">
+            <input type="text" id="tradeSearch" placeholder="Filter by name…" oninput="renderTradeReceivePool()">
+          </div>
+          <div id="tradeRecPool"></div>
+        </div>
+      </div>
+      <div id="tradeResult"></div>
     </div>
   </div>
 
@@ -1500,7 +1585,7 @@ function renderAddedMoves() {
       <button class="rm" onclick="removeSimMove(${i})">✕</button>
       <strong style="flex:1;font-size:12px">${m.name}</strong>
       <span class="mono" style="font-size:11px">${fmt(m.salary)}</span>
-      <span class="tag tag-sim">${m.typeLabel}</span>
+      <span class="tag ${m.typeLabel === 'Trade' ? 'tag-trade' : 'tag-sim'}">${m.typeLabel}</span>
     </div>`).join('');
 }
 
@@ -1527,6 +1612,465 @@ function toggleRule(btn) {
   content.classList.toggle('open');
 }
 
+// ─── LEAGUE SALARIES 2026-27 (HoopsHype, all 29 non-NYK teams) ───────────────
+const leagueSalaries = {
+  ATL:{name:'Atlanta Hawks',players:[
+    {n:'Jalen Johnson',s:30_000_000},{n:'Dyson Daniels',s:25_000_000},
+    {n:'CJ McCollum',s:21_000_000},{n:'Onyeka Okongwu',s:16_120_000},
+    {n:'Nick Alexander-Walker',s:14_403_710},{n:'Corey Kispert',s:13_975_000},
+    {n:'Zaccharie Risacher',s:13_826_040},{n:'Buddy Hield',s:9_658_536},
+    {n:'Kobe Flemings',s:7_350_404},{n:'Zuby Ejiofor',s:3_454_216},
+    {n:'Asa Newell',s:3_399_480},{n:'Mouhamed Gueye',s:2_406_205},
+  ]},
+  BKN:{name:'Brooklyn Nets',players:[
+    {n:'Michael Porter Jr.',s:40_806_150},{n:'Nicolas Claxton',s:23_320_738},
+    {n:'Terance Mann',s:15_500_000},{n:"Day'Ron Sharpe",s:10_000_000},
+    {n:'Mikel Brown Jr.',s:8_789_117},{n:'Egor Demin',s:7_233_720},
+    {n:'Noah Clowney',s:5_413_661},{n:'Josh Minott',s:4_500_000},
+    {n:'Nolan Traore',s:4_002_000},{n:'Drake Powell',s:3_540_600},
+    {n:'Ben Saraf',s:3_028_560},{n:'Joshua Jefferson',s:2_970_250},
+    {n:'Danny Wolf',s:2_941_440},{n:'Malachi Smith',s:2_150_917},
+  ]},
+  BOS:{name:'Boston Celtics',players:[
+    {n:'Jayson Tatum',s:58_456_566},{n:'Jaylen Brown',s:57_078_728},
+    {n:'Derrick White',s:30_348_000},{n:'Sam Hauser',s:10_848_215},
+    {n:'Payton Pritchard',s:7_767_857},{n:'Chris Cenac Jr.',s:2_988_815},
+    {n:'Hugo Gonzalez',s:2_923_560},{n:'Dalano Banton',s:2_801_346},
+    {n:'Luka Garza',s:2_801_346},{n:'Ron Harper Jr.',s:2_760_000},
+    {n:'Baylor Scheierman',s:2_744_040},{n:'Neemias Queta',s:2_667_944},
+    {n:'Jordan Walsh',s:2_406_205},
+  ]},
+  CHA:{name:'Charlotte Hornets',players:[
+    {n:'LaMelo Ball',s:40_770_520},{n:'Miles Bridges',s:22_826_087},
+    {n:'Coby White',s:22_693_333},{n:'Brandon Miller',s:15_104_121},
+    {n:'Josh Green',s:14_679_012},{n:'Grant Williams',s:14_265_750},
+    {n:'Kon Knueppel',s:10_516_560},{n:'Tidjane Salaun',s:8_237_880},
+    {n:'Tre Mann',s:8_000_000},{n:'Hannes Steinbach',s:5_228_377},
+    {n:'Cole Anderson',s:4_258_523},{n:'Pat Connaughton',s:3_815_861},
+    {n:'Liam McNeeley',s:2_902_080},{n:'Moussa Diabate',s:2_461_462},
+    {n:'Sion James',s:2_411_090},{n:'Ryan Kalkbrenner',s:2_411_090},
+  ]},
+  CHI:{name:'Chicago Bulls',players:[
+    {n:'Josh Giddey',s:25_000_000},{n:'Patrick Williams',s:18_000_000},
+    {n:'Isaac Okoro',s:11_814_814},{n:'Caleb Wilson',s:10_686_190},
+    {n:'Jalen Smith',s:9_428_571},{n:'Tre Jones',s:8_000_000},
+    {n:'Rob Dillingham',s:6_889_320},{n:'Matas Buzelis',s:5_715_360},
+    {n:'Noa Essengue',s:5_701_200},{n:'Dailyn Swain',s:4_966_676},
+    {n:'Mouhamadou Gueye',s:2_411_090},{n:'Leonard Miller',s:2_406_205},
+  ]},
+  CLE:{name:'Cleveland Cavaliers',players:[
+    {n:'Donovan Mitchell',s:50_105_628},{n:'Evan Mobley',s:50_105_628},
+    {n:'Jarrett Allen',s:28_000_000},{n:'Max Strus',s:16_660_836},
+    {n:'Dennis Schroeder',s:14_809_200},{n:'Sam Merrill',s:9_160_715},
+    {n:'Jaylon Tyson',s:3_658_560},{n:'Thomas Bryant',s:3_287_176},
+    {n:"Nae'Qwan Tomlin",s:2_411_090},{n:'Craig Porter Jr.',s:2_406_205},
+    {n:'Tyrese Proctor',s:2_150_917},
+  ]},
+  DAL:{name:'Dallas Mavericks',players:[
+    {n:'Kyrie Irving',s:39_491_282},{n:'PJ Washington',s:19_813_044},
+    {n:'Klay Thompson',s:17_460_317},{n:'Daniel Gafford',s:17_263_584},
+    {n:'Cooper Flagg',s:14_517_480},{n:'Caleb Martin',s:10_001_494},
+    {n:'Naji Marshall',s:9_428_571},{n:'Max Christie',s:8_285_714},
+    {n:'Dereck Lively',s:7_238_897},{n:'Maxi Kleber',s:6_756_457},
+    {n:'AJ Johnson',s:3_237_120},{n:'Sergio De Larrea',s:3_183_041},
+    {n:'JaVale McGee',s:2_208_856},{n:'Ryan Nembhard',s:2_150_917},
+  ]},
+  DEN:{name:'Denver Nuggets',players:[
+    {n:'Nikola Jokic',s:59_033_114},{n:'Jamal Murray',s:50_105_628},
+    {n:'Aaron Gordon',s:31_978_037},{n:'Cameron Johnson',s:23_062_500},
+    {n:'Christian Braun',s:21_551_726},{n:'Jonas Valanciunas',s:10_000_000},
+    {n:'Zeke Nnaji',s:7_466_667},{n:'Peyton Watson',s:6_534_714},
+    {n:'Julian Strawther',s:4_826_838},{n:'DaRon Holmes',s:3_372_120},
+  ]},
+  DET:{name:'Detroit Pistons',players:[
+    {n:'Cade Cunningham',s:50_105_628},{n:'Duncan Robinson',s:15_992_957},
+    {n:'Isaiah Stewart',s:15_000_000},{n:'Caris LeVert',s:14_809_200},
+    {n:'Ausar Thompson',s:11_118_130},{n:'Ron Holland',s:9_069_600},
+    {n:'Jalen Duren',s:8_966_189},{n:'Kevin Huerter',s:8_280_000},
+    {n:'Paul Reed',s:5_602_689},{n:'Marcus Sasser',s:5_198_462},
+    {n:'Ebuka Okorie',s:4_482_326},{n:'Daniss Jenkins',s:4_000_000},
+    {n:'Tolu Smith',s:2_411_090},{n:'Chaz Lanier',s:2_150_917},
+  ]},
+  GSW:{name:'Golden State Warriors',players:[
+    {n:'Stephen Curry',s:62_587_158},{n:'Jimmy Butler',s:56_832_773},
+    {n:'Kristaps Porzingis',s:20_000_000},{n:'Moses Moody',s:12_500_000},
+    {n:'Al Horford',s:7_000_000},{n:'Yaxel Lendeborg',s:6_097_724},
+    {n:'Brandin Podziemski',s:5_679_458},{n:'Gui Santos',s:4_629_630},
+    {n:"De'Anthony Melton",s:3_451_779},{n:'Will Richard',s:2_150_917},
+  ]},
+  HOU:{name:'Houston Rockets',players:[
+    {n:'Kevin Durant',s:43_902_439},{n:'Alperen Sengun',s:35_642_202},
+    {n:'Fred VanVleet',s:25_000_000},{n:'Jabari Smith Jr.',s:23_643_411},
+    {n:'Dorian Finney-Smith',s:13_335_000},{n:'Steven Adams',s:13_000_000},
+    {n:'Amen Thompson',s:12_258_119},{n:'Reed Sheppard',s:11_108_880},
+    {n:'Tari Eason',s:8_014_181},{n:'Clint Capela',s:7_035_000},
+    {n:'JD Davison',s:2_584_539},
+  ]},
+  IND:{name:'Indiana Pacers',players:[
+    {n:'Pascal Siakam',s:48_924_624},{n:'Tyrese Haliburton',s:48_924_624},
+    {n:'Ivica Zubac',s:19_550_160},{n:'Andrew Nembhard',s:19_550_160},
+    {n:'Obi Toppin',s:15_000_000},{n:'Aaron Nesmith',s:11_000_000},
+    {n:'TJ McConnell',s:11_000_000},{n:'Jarace Walker',s:8_478_396},
+    {n:'Ben Sheppard',s:5_031_668},{n:'Micah Potter',s:2_801_346},
+    {n:'Jay Huff',s:2_667_944},{n:'Quenton Jackson',s:2_584_539},
+    {n:'Johnny Furphy',s:2_296_271},{n:'Kam Jones',s:2_150_917},
+  ]},
+  LAC:{name:'Los Angeles Clippers',players:[
+    {n:'Kawhi Leonard',s:50_300_000},{n:'Darius Garland',s:42_166_510},
+    {n:'Bennedict Mathurin',s:12_256_222},{n:'Damian Jones',s:10_476_190},
+    {n:'Keaton Wagler',s:9_677_030},{n:'Brook Lopez',s:9_187_500},
+    {n:'Isaiah Jackson',s:7_000_000},{n:'Kris Dunn',s:5_684_800},
+    {n:'Yannick Niederhauser',s:2_880_960},{n:'Cam Christie',s:2_296_271},
+  ]},
+  LAL:{name:'Los Angeles Lakers',players:[
+    {n:'Luka Doncic',s:51_033_600},{n:'Austin Reaves',s:41_250_000},
+    {n:'Jarred Vanderbilt',s:12_428_571},{n:'Deandre Ayton',s:8_104_000},
+    {n:'Jake LaRavia',s:6_000_000},{n:'Dalton Knecht',s:4_201_080},
+    {n:'Cameron Carr',s:3_316_196},{n:'Nick Smith Jr.',s:2_497_812},
+    {n:'Bronny James',s:2_296_271},{n:'Adou Thiero',s:2_150_917},
+  ]},
+  MEM:{name:'Memphis Grizzlies',players:[
+    {n:'Ja Morant',s:42_166_510},{n:'Kentavious Caldwell-Pope',s:21_621_500},
+    {n:'Santiago Aldama',s:17_007_043},{n:'Brandon Clarke',s:12_500_000},
+    {n:'Cameron Boozer',s:11_852_575},{n:'Ty Jerome',s:9_220_050},
+    {n:'Taylor Hendricks',s:7_805_900},{n:'Zach Edey',s:6_332_760},
+    {n:'Cedric Coward',s:6_001_080},{n:'Wen Clayton',s:4_190_520},
+    {n:'Taj Gibson',s:3_800_000},{n:'Karim Lopez',s:3_747_669},
+    {n:'Cole Anthony',s:3_700_000},{n:'Scotty Pippen Jr.',s:2_461_462},
+    {n:'Cam Spencer',s:2_411_090},{n:'GG Jackson',s:2_406_205},
+    {n:'Jaylen Wells',s:2_296_271},
+  ]},
+  MIA:{name:'Miami Heat',players:[
+    {n:'Bam Adebayo',s:51_935_268},{n:'Tyler Herro',s:33_000_000},
+    {n:'Andrew Wiggins',s:30_169_644},{n:'Nikola Jovic',s:16_200_000},
+    {n:'Davion Mitchell',s:12_400_000},{n:'Jaime Jaquez Jr.',s:5_939_141},
+    {n:"Kel'el Ware",s:4_654_920},{n:'Kobe Jakucionis',s:3_841_680},
+    {n:'Dru Smith',s:2_584_539},{n:'Pelle Larsson',s:2_296_271},
+    {n:'Myron Gardner',s:2_150_917},
+  ]},
+  MIL:{name:'Milwaukee Bucks',players:[
+    {n:'Giannis Antetokounmpo',s:58_456_566},{n:'Myles Turner',s:26_584_164},
+    {n:'Damian Lillard',s:22_516_603},{n:'Kyle Kuzma',s:20_490_152},
+    {n:'Bobby Portis Jr.',s:14_521_414},{n:'AJ Green',s:10_044_644},
+    {n:'Brayden Burries',s:6_418_833},{n:'Nate Ament',s:5_503_265},
+    {n:'Kevin Porter Jr.',s:5_390_700},{n:'Ryan Rollins',s:4_000_000},
+    {n:'Taurean Prince',s:3_881_960},{n:'Gary Harris',s:3_815_861},
+    {n:'Jericho Sims',s:2_801_346},{n:'Pete Nance',s:2_497_812},
+  ]},
+  MIN:{name:'Minnesota Timberwolves',players:[
+    {n:'Anthony Edwards',s:48_924_624},{n:'Rudy Gobert',s:36_500_000},
+    {n:'Julius Randle',s:33_333_334},{n:'Jaden McDaniels',s:25_750_001},
+    {n:'Naz Reid',s:23_275_862},{n:'Ayo Dosunmu',s:18_672_640},
+    {n:'Donte DiVincenzo',s:12_535_000},{n:'Joan Beringer',s:4_411_200},
+    {n:'Jaylen Clark',s:3_066_667},{n:'Terrence Shannon',s:2_801_640},
+  ]},
+  NOP:{name:'New Orleans Pelicans',players:[
+    {n:'Zion Williamson',s:42_166_510},{n:'Jordan Poole',s:34_044_642},
+    {n:'Dejounte Murray',s:32_785_071},{n:'Trey Murphy III',s:27_000_000},
+    {n:'Herb Jones',s:14_898_786},{n:'Jeremiah Fears',s:7_896_240},
+    {n:'Jordan Hawkins',s:7_021_740},{n:'Saddiq Bey',s:6_557_080},
+    {n:'Derik Queen',s:5_416_080},{n:'Yves Missi',s:3_512_760},
+    {n:'Bryce McGowens',s:2_584_539},{n:'Karlo Matkovic',s:2_296_271},
+    {n:'Micah Peavy',s:2_150_917},
+  ]},
+  OKC:{name:'Oklahoma City Thunder',players:[
+    {n:'Chet Holmgren',s:41_250_000},{n:'Jalen Williams',s:41_250_000},
+    {n:'Shai Gilgeous-Alexander',s:40_806_150},{n:'Isaiah Hartenstein',s:23_153_333},
+    {n:'Alex Caruso',s:19_550_160},{n:'Luguentz Dort',s:17_222_222},
+    {n:'Isaiah Joe',s:11_323_006},{n:'Aaron Wiggins',s:9_028_038},
+    {n:'Jaylin Williams',s:7_774_648},{n:'Cason Wallace',s:7_421_121},
+    {n:'Aday Mara',s:5_793_005},{n:'Nikola Topic',s:5_429_760},
+    {n:'Thomas Sorber',s:4_887_720},{n:'Bennett Stirtz',s:4_718_419},
+    {n:'Jared McCain',s:4_422_600},{n:'Ajay Mitchell',s:2_850_000},
+  ]},
+  ORL:{name:'Orlando Magic',players:[
+    {n:'Franz Wagner',s:41_754_636},{n:'Paolo Banchero',s:41_250_000},
+    {n:'Desmond Bane',s:39_446_090},{n:'Jalen Suggs',s:32_400_000},
+    {n:'Wendell Carter Jr.',s:18_102_000},{n:'Anthony Black',s:10_105_996},
+    {n:'Jonathan Isaac',s:8_000_000},{n:'Goga Bitadze',s:7_608_696},
+    {n:'Tristan da Silva',s:3_991_200},{n:'Jase Richardson',s:3_132_360},
+    {n:'Jamal Cain',s:2_584_539},{n:'Noah Penda',s:2_150_917},
+  ]},
+  PHI:{name:'Philadelphia 76ers',players:[
+    {n:'Joel Embiid',s:59_539_018},{n:'Paul George',s:54_126_380},
+    {n:'Tyrese Maxey',s:40_770_520},{n:'VJ Edgecombe',s:11_663_880},
+    {n:'Lester Philon',s:3_597_998},{n:'Dominick Barlow',s:3_415_000},
+    {n:'Dalen Terry',s:2_584_539},{n:'Jabari Walker',s:2_584_539},
+    {n:'Justin Edwards',s:2_411_090},{n:'Adem Bona',s:2_296_271},
+    {n:'Johni Broome',s:2_150_917},
+  ]},
+  PHX:{name:'Phoenix Suns',players:[
+    {n:'Devin Booker',s:57_078_728},{n:'Jalen Green',s:36_000_000},
+    {n:'Dillon Brooks',s:20_992_727},{n:'Bradley Beal',s:19_383_010},
+    {n:'Grayson Allen',s:18_125_000},{n:'Mark Williams',s:11_653_333},
+    {n:"Royce O'Neale",s:10_875_000},{n:'Collin Gillespie',s:10_714_286},
+    {n:'Khaman Maluach',s:6_316_680},{n:'Jordan Goodwin',s:5_826_667},
+    {n:'Nassir Little',s:3_107_143},{n:'Haywood Highsmith',s:3_018_158},
+    {n:'Koa Peat',s:2_927_486},{n:'Ryan Dunn',s:2_784_240},
+    {n:'Jamaree Bouyea',s:2_584_539},{n:'Oso Ighodaro',s:2_296_271},
+    {n:'Rasheer Fleming',s:2_150_917},
+  ]},
+  POR:{name:'Portland Trail Blazers',players:[
+    {n:'Jrue Holiday',s:34_800_000},{n:'Jerami Grant',s:34_206_898},
+    {n:'Shaedon Sharpe',s:20_089_287},{n:'Toumani Camara',s:18_080_358},
+    {n:'Scoot Henderson',s:13_585_465},{n:'Deni Avdija',s:13_125_000},
+    {n:'Donovan Clingan',s:7_519_920},{n:'Kris Murray',s:5_315_004},
+    {n:'Hansen Yang',s:4_643_520},{n:'Vit Krejci',s:2_667_944},
+    {n:'Sidy Cissoko',s:2_497_812},
+  ]},
+  SAC:{name:'Sacramento Kings',players:[
+    {n:'Zach LaVine',s:48_970_000},{n:'Domantas Sabonis',s:45_470_000},
+    {n:'DeMar DeRozan',s:25_740_000},{n:'De\'Aaron Hunter',s:24_910_000},
+    {n:'Keegan Murray',s:24_140_000},{n:'Malik Monk',s:20_190_000},
+    {n:'Trey Lyles',s:8_000_000},{n:'Keon Ellis',s:5_160_000},
+    {n:'Alex Clifford',s:3_260_000},
+  ]},
+  SAS:{name:'San Antonio Spurs',players:[
+    {n:"De'Aaron Fox",s:51_033_600},{n:'Devin Vassell',s:27_500_000},
+    {n:'Keldon Johnson',s:18_000_000},{n:'Victor Wembanyama',s:16_868_013},
+    {n:'Julian Champagnie',s:13_800_000},{n:'Dylan Harper',s:12_989_040},
+    {n:'Luke Kornet',s:10_450_000},{n:'Stephon Castle',s:10_015_920},
+    {n:'Harrison Barnes',s:8_000_000},{n:'Carter Bryant',s:5_145_360},
+    {n:'Jamaree Quaintance',s:3_903_742},{n:'Tarris Reed Jr.',s:3_077_670},
+  ]},
+  TOR:{name:'Toronto Raptors',players:[
+    {n:'Scottie Barnes',s:41_754_636},{n:'Brandon Ingram',s:40_000_000},
+    {n:'Immanuel Quickley',s:32_500_000},{n:'RJ Barrett',s:29_616_071},
+    {n:'Jakob Poeltl',s:19_500_000},{n:'Gradey Dick',s:7_131_251},
+    {n:'Collin Murray-Boyles',s:6_649_560},{n:'Allen Graves',s:4_066_729},
+    {n:"Ja'Kobe Walter",s:3_811_800},{n:'Trayce Jackson-Davis',s:2_406_205},
+    {n:'Jamison Battle',s:2_296_271},{n:'Jamal Shead',s:2_296_271},
+  ]},
+  UTA:{name:'Utah Jazz',players:[
+    {n:'Jaren Jackson Jr.',s:49_000_000},{n:'Lauri Markkanen',s:46_113_154},
+    {n:'Darryn Peterson',s:13_198_464},{n:'Jusuf Nurkic',s:11_000_000},
+    {n:'Ace Bailey',s:9_522_960},{n:'Walker Kessler',s:7_064_703},
+    {n:'Keyonte George',s:6_563_608},{n:'John Konchar',s:6_165_000},
+    {n:'Cody Williams',s:6_015_600},{n:'Brice Sensabaugh',s:4_861_695},
+    {n:'Sviatoslav Mykhailiuk',s:3_850_000},{n:'Kyle Filipowski',s:3_000_000},
+    {n:'Isaiah Collier',s:2_763_960},
+  ]},
+  WAS:{name:'Washington Wizards',players:[
+    {n:'Anthony Davis',s:58_456_566},{n:'Trae Young',s:49_500_000},
+    {n:'AJ Dybantsa',s:14_751_510},{n:'Alex Sarr',s:12_370_680},
+    {n:'Bilal Coulibaly',s:9_240_116},{n:'Tre Johnson',s:8_649_600},
+    {n:'Jaden Hardy',s:6_000_000},{n:"D'Angelo Russell",s:5_969_250},
+    {n:'Cameron Whitmore',s:5_458_643},{n:'Carlton Carrington',s:4_900_560},
+    {n:'Will Riley',s:3_688_320},{n:'Kyshawn George',s:3_108_000},
+    {n:'Tristan Vukcevic',s:3_000_000},{n:'Julian Champagnie',s:2_667_944},
+    {n:'Jamir Watkins',s:2_150_917},
+  ]},
+};
+
+// ─── TRADE SIMULATOR STATE ────────────────────────────────────────────────────
+let tradeSend    = new Set();  // Set of Knicks player IDs to send
+let tradeReceive = [];         // Array of { n, s } to receive
+let tradeCounter = 0;
+
+function onTradeTeamChange() {
+  tradeReceive = [];
+  const s = document.getElementById('tradeSearch');
+  if (s) s.value = '';
+  renderTradeSendPool();
+  renderTradeReceivePool();
+  renderTradeResult();
+}
+
+function tradeSendTotal() {
+  return [...tradeSend].reduce((sum, id) => {
+    const p = allPlayers.find(x => x.id === id);
+    return sum + (p ? p.salary : 0);
+  }, 0);
+}
+
+function tradeRecTotal() {
+  return tradeReceive.reduce((sum, p) => sum + p.s, 0);
+}
+
+function toggleTradeSend(id) {
+  if (tradeSend.has(id)) tradeSend.delete(id);
+  else tradeSend.add(id);
+  renderTradeSendPool();
+  renderTradeResult();
+}
+
+function addTradeReceive(player) {
+  tradeReceive.push({ n: player.n, s: player.s });
+  renderTradeReceivePool();
+  renderTradeResult();
+}
+
+function removeTradeReceive(idx) {
+  tradeReceive.splice(idx, 1);
+  renderTradeReceivePool();
+  renderTradeResult();
+}
+
+function renderTradeSendPool() {
+  const el = document.getElementById('tradeSendPool');
+  if (!el) return;
+  const filled = rosterSlots.filter(Boolean);
+  let html = '';
+  filled.forEach(id => {
+    const p = allPlayers.find(x => x.id === id);
+    if (!p) return;
+    const sel = tradeSend.has(id);
+    html += `<div class="trade-player-row${sel ? ' selected' : ''}" onclick="toggleTradeSend('${id}')">
+      <span class="tpr-name">${p.name}</span>
+      <span class="tpr-sal">${fmt(p.salary)}</span>
+      <span style="font-size:12px;color:${sel ? 'var(--green)' : '#ccc'}">${sel ? '✓' : '+'}</span>
+    </div>`;
+  });
+  if (!html) html = '<div style="padding:8px 10px;font-size:11px;color:var(--txt3);font-style:italic;">No players on projected roster</div>';
+  el.innerHTML = html;
+  document.getElementById('tradeSendTot').textContent = fmt(tradeSendTotal());
+}
+
+function renderTradeReceivePool() {
+  const el = document.getElementById('tradeRecPool');
+  if (!el) return;
+  const teamKey = document.getElementById('tradeTeamSel').value;
+  const search  = (document.getElementById('tradeSearch')?.value || '').toLowerCase();
+  const selNames = new Set(tradeReceive.map(p => p.n));
+  let html = '';
+
+  // Selected players at top
+  if (tradeReceive.length > 0) {
+    html += '<div class="trade-divider">In Trade Package</div>';
+    tradeReceive.forEach((p, i) => {
+      html += `<div class="trade-player-row selected">
+        <span class="tpr-name">${p.n}</span>
+        <span class="tpr-sal">${fmt(p.s)}</span>
+        <button class="tpr-rm" onclick="removeTradeReceive(${i})">×</button>
+      </div>`;
+    });
+  }
+
+  // Available players from chosen team
+  if (teamKey && leagueSalaries[teamKey]) {
+    const avail = leagueSalaries[teamKey].players.filter(p =>
+      !selNames.has(p.n) && (!search || p.n.toLowerCase().includes(search))
+    );
+    if (avail.length) {
+      html += '<div class="trade-divider">Available</div><div class="trade-scroll">';
+      avail.forEach(p => {
+        html += `<div class="trade-player-row" onclick='addTradeReceive(${JSON.stringify(p)})'>
+          <span class="tpr-name">${p.n}</span>
+          <span class="tpr-sal">${fmt(p.s)}</span>
+          <span style="font-size:11px;color:#ccc">+</span>
+        </div>`;
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="padding:8px 10px;font-size:11px;color:var(--txt3);font-style:italic;">No matches</div>';
+    }
+  } else if (!teamKey) {
+    html += '<div style="padding:8px 10px;font-size:11px;color:var(--txt3);font-style:italic;">Select a team above to browse their roster</div>';
+  }
+
+  el.innerHTML = html;
+  document.getElementById('tradeRecTot').textContent = fmt(tradeRecTotal());
+}
+
+function renderTradeResult() {
+  const el = document.getElementById('tradeResult');
+  if (!el) return;
+  if (tradeSend.size === 0 && tradeReceive.length === 0) { el.innerHTML = ''; return; }
+
+  const sendTot = tradeSendTotal();
+  const recTot  = tradeRecTotal();
+  const active  = calcActive();
+  const net     = recTot - sendTot;
+  const newAct  = active - sendTot + recTot;
+
+  // Matching limit: first-apron teams → 110% + $100K; luxury-tax teams → 125% + $100K
+  const overFirstApron = active >= T.firstApron;
+  const pct     = overFirstApron ? 1.10 : 1.25;
+  const maxRec  = Math.round(sendTot * pct) + 100_000;
+  const matchOk = sendTot === 0 || recTot <= maxRec;
+  const status  = matchOk ? 'ok' : 'err';
+
+  const netStr  = net >= 0 ? `+${fmt(net)}` : `−${fmt(Math.abs(net))}`;
+  const apronLbl = newAct > T.secondApron ? 'over 2nd apron' : newAct > T.firstApron ? 'over 1st apron' : newAct > T.tax ? 'over lux tax' : 'under lux tax';
+  const actColor = newAct > T.secondApron ? 'var(--red)' : newAct > T.firstApron ? 'var(--owarn)' : newAct > T.tax ? 'var(--yellow)' : 'var(--green)';
+
+  const sendNames = [...tradeSend].map(id => allPlayers.find(x => x.id === id)?.name || id);
+  const recNames  = tradeReceive.map(p => p.n);
+
+  let html = `<div class="sim-result ${status}" style="margin-bottom:8px;">
+    <h3>${matchOk ? '✓ Salary match valid' : '✗ Salary match fails'} · ${overFirstApron ? '110%' : '125%'} rule${overFirstApron ? ' (1st-apron team — no aggregation)' : ''}</h3>
+    <ul>
+      <li>Send: <strong>${sendNames.join(', ') || '—'}</strong> → <span class="mono">${fmt(sendTot)}</span></li>
+      <li>Receive: <strong>${recNames.join(', ') || '—'}</strong> → <span class="mono">${fmt(recTot)}</span></li>
+      ${sendTot > 0 ? `<li>Max incoming allowed: <span class="mono">${fmt(maxRec)}</span> (${Math.round(pct*100)}% of outgoing + $100K)</li>` : ''}
+      <li>Net cap change: <span class="mono">${netStr}</span></li>
+      <li>New active total: <span class="mono" style="color:${actColor}">${fmt(newAct)}</span> — ${apronLbl}</li>
+    </ul>
+    ${overFirstApron ? '<p style="font-size:10px;margin-top:4px;color:var(--txt3);">⚠ First-apron teams cannot aggregate salaries — each contract leg must individually satisfy the 110% rule.</p>' : ''}
+  </div>`;
+
+  if (matchOk) {
+    html += `<button class="sim-btn" style="background:var(--green)" onclick="applyTrade()">Apply Trade to Roster</button>
+             <button class="sim-btn-clr" onclick="clearTrade()" style="margin-left:5px;">Clear</button>`;
+  } else {
+    html += `<button class="sim-btn-clr" onclick="clearTrade()">Clear</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function applyTrade() {
+  // Remove sent Knicks players from roster slots
+  tradeSend.forEach(id => {
+    const ri = rosterSlots.indexOf(id);
+    if (ri !== -1) rosterSlots[ri] = null;
+    // If it's a sim player, remove from allPlayers and simMoves too
+    const p = allPlayers.find(x => x.id === id);
+    if (p && p.group === 'sim') {
+      const pi = allPlayers.findIndex(x => x.id === id);
+      if (pi !== -1) allPlayers.splice(pi, 1);
+      const mi = simMoves.findIndex(m => m.id === id);
+      if (mi !== -1) {
+        if (simMoves[mi].typeLabel === 'TMLE') tmleUsed = false;
+        simMoves.splice(mi, 1);
+      }
+    }
+  });
+
+  // Add received players onto roster
+  const teamKey = document.getElementById('tradeTeamSel').value;
+  const teamName = (teamKey && leagueSalaries[teamKey]) ? leagueSalaries[teamKey].name : teamKey;
+  tradeReceive.forEach(p => {
+    const emptySlot = rosterSlots.indexOf(null);
+    if (emptySlot === -1) return;
+    const simId = `trade-${++tradeCounter}`;
+    allPlayers.push({ id:simId, name:p.n, pos:'—', salary:p.s, group:'sim', tag:'trade', bird:'none', note:`Via trade · ${teamName}` });
+    rosterSlots[emptySlot] = simId;
+    simMoves.push({ id:simId, name:p.n, salary:p.s, typeLabel:'Trade' });
+  });
+
+  tradeSend.clear();
+  tradeReceive = [];
+  document.getElementById('tradeTeamSel').value = '';
+  const s = document.getElementById('tradeSearch');
+  if (s) s.value = '';
+
+  renderTradeSendPool();
+  renderTradeReceivePool();
+  renderTradeResult();
+  renderAddedMoves();
+  renderAll();
+}
+
+function clearTrade() {
+  tradeSend.clear();
+  tradeReceive = [];
+  const s = document.getElementById('tradeSearch');
+  if (s) s.value = '';
+  renderTradeSendPool();
+  renderTradeReceivePool();
+  renderTradeResult();
+}
+
 // ─── MASTER RENDER ────────────────────────────────────────────────────────────
 function renderAll() {
   renderRoster();
@@ -1536,6 +2080,7 @@ function renderAll() {
   renderExceptions();
   renderRestrictions();
   renderHolds();
+  renderTradeSendPool();
 }
 
 // ─── INIT: pre-load 11 players onto projected roster ─────────────────────────
