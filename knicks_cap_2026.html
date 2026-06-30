@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NY Knicks · 2026–27 Salary Cap Tracker</title>
+<style>
+:root {
+  --blue: #006BB6; --orange: #F58426;
+  --bg: #ffffff; --bg2: #f6f8fa; --bg3: #eef0f2; --bg4: #e2e5e9;
+  --border: #d0d7de; --txt: #1a1d23; --txt2: #57606a; --txt3: #8c959f;
+  --green: #1a7f37; --yellow: #9a6700; --owarn: #bc4c00; --red: #cf222e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--txt); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; font-size: 13px; line-height: 1.5; }
+
+header { background: #003FA5; border-bottom: 3px solid var(--orange); padding: 14px 24px; }
+header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+header h1 span { color: var(--orange); }
+header p.sub { font-size: 11px; color: #a8c4e8; margin-top: 2px; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 12px 14px 40px; }
+
+/* ── Cap Meter ── */
+.meter-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; }
+.meter-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--txt3); margin-bottom: 8px; }
+.meter-bar-outer { position: relative; height: 22px; background: var(--bg3); border-radius: 3px; overflow: visible; margin-bottom: 28px; }
+.meter-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px 0 0 3px; transition: width .3s, background .2s; }
+.meter-line { position: absolute; top: -3px; width: 2px; height: 28px; }
+.meter-line span { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap; font-weight: 600; }
+.meter-current { position: absolute; bottom: 3px; right: 6px; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.meter-foot { display: flex; justify-content: space-between; font-size: 10px; color: var(--txt3); }
+
+/* ── Status Cards ── */
+.cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 12px; }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(3,1fr); } }
+@media (max-width: 600px) { .cards { grid-template-columns: repeat(2,1fr); } }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; }
+.card .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--txt3); margin-bottom: 2px; }
+.card .val { font-size: 18px; font-weight: 700; font-family: "SF Mono", Consolas, monospace; letter-spacing: -.5px; }
+.card .sub { font-size: 11px; color: var(--txt2); margin-top: 1px; }
+.c-green  { color: var(--green); }
+.c-yellow { color: var(--yellow); }
+.c-orange { color: var(--owarn); }
+.c-red    { color: var(--red); }
+
+/* ── Workspace: 3 columns ── */
+.workspace { display: grid; grid-template-columns: 285px 1fr 250px; gap: 12px; margin-bottom: 12px; align-items: start; }
+@media (max-width: 1000px) { .workspace { grid-template-columns: 280px 1fr; } }
+@media (max-width: 700px)  { .workspace { grid-template-columns: 1fr; } }
+
+/* ── Shared panel ── */
+.panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.panel-head { background: var(--bg3); border-bottom: 1px solid var(--border); padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; }
+.panel-head h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--txt2); }
+
+/* ── Projected Roster ── */
+.roster-slot { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-bottom: 1px solid #eaeef2; min-height: 42px; transition: background .1s; }
+.roster-slot:last-child { border-bottom: none; }
+.roster-slot.drag-over { background: #deeaf8; }
+.slot-num { font-size: 10px; color: var(--txt3); width: 16px; flex-shrink: 0; text-align: right; }
+.slot-empty { flex: 1; font-size: 11px; color: #b8c4cf; font-style: italic; border: 1.5px dashed #d0d7de; border-radius: 3px; padding: 4px 7px; }
+.slot-filled { flex: 1; display: flex; align-items: center; gap: 5px; cursor: grab; }
+.slot-filled:active { cursor: grabbing; }
+.slot-name { font-size: 12px; font-weight: 600; }
+.slot-meta { font-size: 10px; color: var(--txt3); margin-left: 2px; }
+.slot-salary { font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--txt2); white-space: nowrap; }
+.slot-rm { background: none; border: none; cursor: pointer; color: #c8d0d8; font-size: 13px; padding: 0 1px; line-height: 1; flex-shrink: 0; }
+.slot-rm:hover { color: var(--red); }
+.roster-footer { padding: 7px 11px; display: flex; justify-content: space-between; align-items: center; background: var(--bg3); border-top: 1px solid var(--border); }
+.roster-footer .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--txt3); }
+.roster-footer .total { font-family: "SF Mono", Consolas, monospace; font-size: 13px; font-weight: 700; }
+
+/* ── Player Pool ── */
+.pool-tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 10px; overflow-x: auto; }
+.pool-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--txt2); cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.pool-tab:hover { color: var(--txt); }
+.pool-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.pool-drop-zone { padding: 9px 10px; min-height: 80px; }
+.pool-drop-zone.drag-over { background: #deeaf8; }
+.pool-group { margin-bottom: 9px; }
+.pool-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--txt3); margin-bottom: 5px; }
+.pool-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+.player-card { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 6px 9px; cursor: grab; user-select: none; transition: box-shadow .1s, border-color .1s; min-width: 120px; max-width: 190px; }
+.player-card:hover { border-color: var(--blue); box-shadow: 0 1px 3px rgba(0,107,182,.12); }
+.player-card.dragging { opacity: .35; cursor: grabbing; }
+.player-card.on-roster { opacity: .28; cursor: default; pointer-events: none; }
+.pc-name { font-size: 11px; font-weight: 700; }
+.pc-row  { display: flex; align-items: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+.pc-salary { font-family: "SF Mono", Consolas, monospace; font-size: 10px; color: var(--txt2); }
+.pc-note { font-size: 10px; color: var(--txt3); margin-top: 1px; }
+.pool-empty-msg { font-size: 11px; color: var(--txt3); font-style: italic; }
+
+/* ── Right column ── */
+.right-col { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Exceptions ── */
+.exc-row { padding: 7px 11px; border-bottom: 1px solid #eaeef2; display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.exc-row:last-child { border-bottom: none; }
+.exc-name { font-size: 11px; font-weight: 600; }
+.exc-detail { font-size: 10px; color: var(--txt2); margin-top: 1px; }
+.exc-amt { font-family: "SF Mono", Consolas, monospace; font-size: 12px; font-weight: 700; color: var(--green); white-space: nowrap; }
+.exc-na   { color: var(--txt3); text-decoration: line-through; }
+
+/* ── Restrictions ── */
+.restrict-list { padding: 7px 11px; }
+.ri { display: flex; align-items: flex-start; gap: 6px; padding: 4px 0; border-bottom: 1px solid #eaeef2; }
+.ri:last-child { border-bottom: none; }
+.ri-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.dot-ok   { background: var(--green); }
+.dot-warn { background: var(--yellow); }
+.dot-block{ background: var(--red); }
+.ri-text { font-size: 11px; line-height: 1.4; }
+
+/* ── Cap Holds ── */
+.holds-toggle-row { padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.holds-toggle-row:hover { background: rgba(0,0,0,.03); }
+.holds-expand { color: var(--txt3); transition: transform .2s; font-size: 11px; }
+.holds-expand.open { transform: rotate(180deg); }
+.holds-body { display: none; }
+.holds-body.open { display: block; }
+.holds-summary-line { padding: 2px 11px 7px; font-size: 10px; color: var(--txt2); }
+table.ht { width: 100%; border-collapse: collapse; }
+table.ht th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--txt3); padding: 4px 9px; border-bottom: 1px solid var(--border); background: var(--bg3); }
+table.ht td { padding: 5px 9px; border-bottom: 1px solid #eaeef2; font-size: 11px; vertical-align: middle; }
+table.ht tr:last-child td { border-bottom: none; }
+.holds-foot { padding: 5px 11px; display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; background: var(--bg3); border-top: 1px solid var(--border); }
+
+/* ── Tags ── */
+.tag { display: inline-block; padding: 1px 5px; border-radius: 9px; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.tag-signed  { background: rgba(26,127,55,.1);   color: #1a7f37; border: 1px solid rgba(26,127,55,.25); }
+.tag-pending { background: rgba(154,103,0,.1);   color: #9a6700; border: 1px solid rgba(154,103,0,.25); }
+.tag-est     { background: rgba(0,107,182,.1);   color: #006BB6; border: 1px solid rgba(0,107,182,.2); }
+.tag-ufa     { background: rgba(140,149,159,.12); color: #57606a; border: 1px solid rgba(140,149,159,.3); }
+.tag-rfa     { background: rgba(188,76,0,.1);    color: #bc4c00; border: 1px solid rgba(188,76,0,.25); }
+.tag-draft   { background: rgba(26,127,55,.07);  color: #2e8a46; border: 1px solid rgba(26,127,55,.2); }
+.tag-sim     { background: rgba(107,33,168,.1);  color: #6b21a8; border: 1px solid rgba(107,33,168,.25); }
+
+/* ── Simulator ── */
+.sim-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+.sim-head { padding: 9px 13px; background: #003FA5; }
+.sim-head h2 { font-size: 13px; font-weight: 700; color: #fff; }
+.sim-head p { font-size: 11px; color: #a8c4e8; margin-top: 1px; }
+.sim-body { padding: 12px 14px; }
+.sim-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 9px; margin-bottom: 10px; }
+.sf label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--txt3); margin-bottom: 3px; }
+.sf input, .sf select { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 4px; color: var(--txt); padding: 5px 8px; font-size: 12px; outline: none; }
+.sf input:focus, .sf select:focus { border-color: var(--blue); }
+.sim-btn { background: var(--blue); color: #fff; border: none; border-radius: 4px; padding: 6px 16px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.sim-btn:hover { background: #0056a0; }
+.sim-btn-clr { background: #fff; color: var(--txt2); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; margin-left: 5px; }
+.sim-btn-clr:hover { color: var(--txt); }
+.sim-result { border-radius: 4px; padding: 9px 12px; margin-bottom: 9px; }
+.sim-result.ok   { background: rgba(26,127,55,.07);  border: 1px solid rgba(26,127,55,.25); }
+.sim-result.warn { background: rgba(154,103,0,.07);  border: 1px solid rgba(154,103,0,.25); }
+.sim-result.err  { background: rgba(207,34,46,.07);  border: 1px solid rgba(207,34,46,.25); }
+.sim-result h3 { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.sim-result ul { padding-left: 15px; }
+.sim-result ul li { font-size: 11px; margin-bottom: 2px; }
+.added-move { display: flex; align-items: center; gap: 7px; padding: 4px 8px; background: #fff; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; }
+.added-move .rm { background: none; border: none; color: var(--txt3); cursor: pointer; font-size: 13px; }
+.added-move .rm:hover { color: var(--red); }
+
+/* ── CBA Rules ── */
+.rules-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+.rules-sec { border-bottom: 1px solid #eaeef2; }
+.rules-sec:last-child { border-bottom: none; }
+.rules-btn { width: 100%; text-align: left; background: none; border: none; color: var(--txt); padding: 9px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.rules-btn:hover { background: rgba(0,0,0,.025); }
+.rarrow { color: var(--txt3); transition: transform .18s; font-size: 11px; }
+.rarrow.open { transform: rotate(180deg); }
+.rules-content { display: none; padding: 2px 14px 11px; }
+.rules-content.open { display: block; }
+.rules-content p { font-size: 12px; color: var(--txt2); margin-bottom: 5px; }
+.rules-content ul { padding-left: 15px; }
+.rules-content ul li { font-size: 12px; color: var(--txt2); margin-bottom: 3px; }
+.rules-content ul li strong { color: var(--txt); }
+.rules-sub { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--txt3); margin: 8px 0 3px; }
+
+footer { text-align: center; padding: 16px; font-size: 11px; color: var(--txt3); border-top: 1px solid var(--border); }
+footer a { color: var(--txt3); }
+.mono { font-family: "SF Mono", Consolas, monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>New York <span>Knicks</span> · 2026–27 Salary Cap Tracker</h1>
+  <p class="sub">Drag players onto the projected roster · Interactive CBA simulator · Data as of June 30, 2026 · Sources: Spotrac, Salary Swish, Third Apron, HoopsHype</p>
+</header>
+
+<div class="container">
+
+  <div class="meter-wrap">
+    <div class="meter-title">Cap Position — Projected Roster Salary (drag players in/out to update)</div>
+    <div class="meter-bar-outer" id="meterOuter">
+      <div class="meter-fill" id="meterFill"></div>
+      <div class="meter-current" id="meterLabel"></div>
+    </div>
+    <div class="meter-foot"><span>$150M</span><span>$170M</span><span>$190M</span><span>$210M</span><span>$230M+</span></div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="lbl">Projected Roster Total</div>
+      <div class="val" id="cTotal">—</div>
+      <div class="sub" id="cTotalSub">roster only</div>
+    </div>
+    <div class="card">
+      <div class="lbl">vs Luxury Tax ($200.5M)</div>
+      <div class="val" id="cTax">—</div>
+      <div class="sub" id="cTaxSub"></div>
+    </div>
+    <div class="card">
+      <div class="lbl">vs 1st Apron ($209.1M)</div>
+      <div class="val" id="cAp1">—</div>
+      <div class="sub" id="cAp1Sub"></div>
+    </div>
+    <div class="card">
+      <div class="lbl">vs 2nd Apron ($221.7M)</div>
+      <div class="val" id="cAp2">—</div>
+      <div class="sub" id="cAp2Sub"></div>
+    </div>
+    <div class="card">
+      <div class="lbl">Max TMLE Allowed</div>
+      <div class="val" id="cTMLE">—</div>
+      <div class="sub" id="cTMLESub"></div>
+    </div>
+  </div>
+
+  <!-- ── Workspace: Roster | Pool | Analysis ── -->
+  <div class="workspace">
+
+    <!-- LEFT: Projected Roster -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Projected Roster</h2>
+        <span id="eligBadge" style="font-size:11px;font-weight:600;"></span>
+      </div>
+      <div id="rosterSlots"></div>
+      <div class="roster-footer" id="emptySlotLine" style="display:none;border-bottom:1px solid var(--border);"></div>
+      <div class="roster-footer">
+        <span class="lbl">Roster Salary</span>
+        <span class="total mono" id="rosterTotal">$0</span>
+      </div>
+    </div>
+
+    <!-- CENTER: Player Pool -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Player Pool — drag onto roster</h2>
+        <span style="font-size:10px;color:var(--txt3);">Dimmed = on roster</span>
+      </div>
+      <div class="pool-tabs">
+        <button class="pool-tab active" onclick="setTab('all',this)">All</button>
+        <button class="pool-tab" onclick="setTab('signed',this)">Signed</button>
+        <button class="pool-tab" onclick="setTab('pending',this)">Pending</button>
+        <button class="pool-tab" onclick="setTab('draft',this)">Draft</button>
+        <button class="pool-tab" onclick="setTab('fa',this)">Free Agents</button>
+      </div>
+      <div class="pool-drop-zone" id="poolDropZone">
+        <div id="poolContent"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Analysis -->
+    <div class="right-col">
+
+      <div class="panel">
+        <div class="panel-head"><h2>Exceptions Available</h2></div>
+        <div id="exceptionsPanel"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Current Restrictions</h2></div>
+        <div class="restrict-list" id="restrictList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="holds-toggle-row" onclick="toggleHoldsPanel()">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2);">Cap Holds</div>
+            <div style="font-size:10px;color:var(--txt3);">Excluded by default — expand to add</div>
+          </div>
+          <span class="holds-expand" id="holdsArrow">▼</span>
+        </div>
+        <div class="holds-body" id="holdsBody">
+          <div class="holds-summary-line" id="holdsSummary"></div>
+          <table class="ht">
+            <thead><tr><th></th><th>Player</th><th style="text-align:right">Hold</th><th>Type</th></tr></thead>
+            <tbody id="holdsTbody"></tbody>
+          </table>
+          <div class="holds-foot">
+            <span>Active holds total</span>
+            <span class="mono" id="holdsTotal">$0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /workspace -->
+
+  <!-- Simulator -->
+  <div class="sim-panel">
+    <div class="sim-head">
+      <h2>Move Simulator</h2>
+      <p>Test any signing or trade for CBA compliance. Simulated moves are added on top of the projected roster total.</p>
+    </div>
+    <div class="sim-body">
+      <div class="sim-form">
+        <div class="sf">
+          <label>Player Name</label>
+          <input type="text" id="simName" placeholder="e.g. Nick Richards" list="playerNames" autocomplete="off">
+        </div>
+        <div class="sf">
+          <label>Rule / Exception</label>
+          <select id="simType" onchange="autoFillSalary()">
+            <option value="bird">Bird Rights re-sign (own player, 3+ seasons)</option>
+            <option value="earlybird">Early Bird re-sign (own player, 2 seasons)</option>
+            <option value="nobird">Non-Bird re-sign (own player, &lt;2 seasons)</option>
+            <option value="tmle">Taxpayer Mid-Level Exception (TMLE)</option>
+            <option value="minimum">Veteran Minimum</option>
+            <option value="trade_in">Incoming trade salary</option>
+          </select>
+        </div>
+        <div class="sf">
+          <label>Year 1 Salary ($)</label>
+          <input type="number" id="simSalary" placeholder="e.g. 6000000" min="0">
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <button class="sim-btn" onclick="simulate()">Simulate Move</button>
+        <button class="sim-btn-clr" onclick="clearSim()">Clear Simulated Moves</button>
+      </div>
+      <div id="simResult"></div>
+      <div id="addedMoves"></div>
+    </div>
+  </div>
+
+  <!-- CBA Rules -->
+  <div class="rules-panel">
+    <div class="panel-head"><h2>CBA Rules Reference</h2></div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Luxury Tax Line ($200.47M) <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <ul>
+          <li><strong>No Bi-Annual Exception (BAE)</strong> — not available to taxpaying teams.</li>
+          <li><strong>No Non-Taxpayer MLE</strong> — must use the smaller Taxpayer MLE instead.</li>
+          <li><strong>Trade matching:</strong> can receive up to 125% + $100K of outgoing salary.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">First Apron ($209.06M) <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <ul>
+          <li><strong>No salary aggregation in trades</strong> — cannot combine multiple players' salaries to match a higher-salaried player.</li>
+          <li><strong>Tighter trade matching:</strong> max incoming = 110% of outgoing (not 125% + $100K).</li>
+          <li><strong>Cannot receive via sign-and-trade.</strong></li>
+          <li><strong>Bird Rights re-signings still allowed</strong> regardless of apron status.</li>
+          <li><strong>TMLE still available</strong> as long as the signing stays under the second apron.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Second Apron ($221.74M) <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <p>All first apron restrictions, plus:</p>
+        <ul>
+          <li><strong>No Taxpayer MLE</strong> — no mid-level exception of any kind.</li>
+          <li><strong>No cash in trades.</strong></li>
+          <li><strong>No buyout signings</strong> after the Feb. 1 trade deadline.</li>
+          <li><strong>First-round picks frozen:</strong> picks 7+ years out may only be traded to a restricted set of teams and cannot be packaged.</li>
+          <li><strong>Repeat offender:</strong> 3 of 5 seasons over the second apron → first-round pick moves to the end of round one.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Bird Rights &amp; Free Agent Re-Signings <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <ul>
+          <li><strong>Full Bird Rights</strong> (3+ seasons, no trade out of team): re-sign for up to max salary, 4–5 year deal, 8% annual raises. Team can exceed the salary cap.</li>
+          <li><strong>Early Bird Rights</strong> (2 complete seasons): max 175% of league minimum or 105% of prior salary, whichever is greater. Max 3 years, 5% raises.</li>
+          <li><strong>Non-Bird Rights</strong> (&lt;2 seasons): limited to cap space available, or 120% of last salary as a restricted exception.</li>
+          <li><strong>Landry Shamet's 4yr/$24M</strong> uses Bird Rights — yr1 ≈ $5,357,143 with ~8% annual raises.</li>
+          <li><strong>RFA:</strong> tendering a Qualifying Offer (QO) retains matching rights. Not tendering (as with Hukporti on June 29) makes the player an unrestricted free agent; the cap hold remains until formally renounced.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Taxpayer Mid-Level Exception (TMLE) <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <ul>
+          <li><strong>Amount:</strong> ≈ $6,066,000 in year 1 (2026–27 estimate).</li>
+          <li><strong>Max length:</strong> 2 years · <strong>Annual raises:</strong> up to 5%.</li>
+          <li><strong>One-time use</strong> per offseason. Cannot be used if the signing would push the team over the second apron.</li>
+          <li><strong>Knicks status:</strong> TMLE has not yet been used this offseason.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Trade Exceptions (Dalen Terry · Guerschon Yabusele) <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <ul>
+          <li>Arise when a team sends out more salary than it receives. Usable within one year to absorb incoming trade salary without matching.</li>
+          <li><strong>Dalen Terry TPE:</strong> $899,118 — expires Feb 5, 2027.</li>
+          <li><strong>Guerschon Yabusele TPE:</strong> $100,882 — expires Feb 5, 2027.</li>
+          <li>Cannot be combined with other salary.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rules-sec">
+      <button class="rules-btn" onclick="toggleRule(this)">Cap Holds Explained <span class="rarrow">▼</span></button>
+      <div class="rules-content">
+        <p>Cap holds count against the team's salary cap until:</p>
+        <ul>
+          <li><strong>The player signs</strong> — hold replaced by actual salary.</li>
+          <li><strong>The team renounces rights</strong> — hold removed, player becomes unrestricted UFA with no Knicks matching rights.</li>
+          <li>For RFAs, not tendering a QO (as with Hukporti) immediately removes the restriction but the cap hold persists until formally renounced.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  Sources: <a href="#">Spotrac</a> · <a href="#">Salary Swish</a> · <a href="#">Third Apron</a> · <a href="#">HoopsHype</a> ·
+  All figures are estimates pending official CBA certification of 2026–27 thresholds. Last updated June 30, 2026.
+</footer>
+
+<datalist id="playerNames">
+  <option value="A.J. Lawson">
+  <option value="Aaron Gordon">
+  <option value="Aaron Holiday">
+  <option value="Aaron Nesmith">
+  <option value="Aaron Wiggins">
+  <option value="Ace Bailey">
+  <option value="Adem Bona">
+  <option value="Adou Thiero">
+  <option value="AJ Green">
+  <option value="AJ Johnson">
+  <option value="Ajay Mitchell">
+  <option value="Al Horford">
+  <option value="Alex Caruso">
+  <option value="Alex Sarr">
+  <option value="Alijah Martin">
+  <option value="Alondes Williams">
+  <option value="Alperen Sengun">
+  <option value="Amari Williams">
+  <option value="Amen Thompson">
+  <option value="Amir Coffey">
+  <option value="Andre Drummond">
+  <option value="Andre Jackson Jr.">
+  <option value="Andrew Nembhard">
+  <option value="Andrew Wiggins">
+  <option value="Anfernee Simons">
+  <option value="Anthony Black">
+  <option value="Anthony Davis">
+  <option value="Anthony Edwards">
+  <option value="Anthony Gill">
+  <option value="Antonio Reeves">
+  <option value="Ariel Hukporti">
+  <option value="Asa Newell">
+  <option value="Ausar Thompson">
+  <option value="Austin Reaves">
+  <option value="Ayo Dosunmu">
+  <option value="Bam Adebayo">
+  <option value="Baylor Scheierman">
+  <option value="Ben Sheppard">
+  <option value="Bennedict Mathurin">
+  <option value="Bilal Coulibaly">
+  <option value="Bismack Biyombo">
+  <option value="Blake Hinson">
+  <option value="Blake Wesley">
+  <option value="Bobby Portis">
+  <option value="Bobi Klintman">
+  <option value="Bogdan Bogdanovic">
+  <option value="Bones Hyland">
+  <option value="Bradley Beal">
+  <option value="Branden Carlson">
+  <option value="Brandin Podziemski">
+  <option value="Brandon Clarke">
+  <option value="Brandon Ingram">
+  <option value="Brandon Miller">
+  <option value="Brandon Williams">
+  <option value="Brice Sensabaugh">
+  <option value="Bronny James">
+  <option value="Brook Lopez">
+  <option value="Brooks Barnhizer">
+  <option value="Bruce Brown">
+  <option value="Bryce McGowens">
+  <option value="Bub Carrington">
+  <option value="Buddy Boeheim">
+  <option value="Buddy Hield">
+  <option value="Cade Cunningham">
+  <option value="Caleb Houstan">
+  <option value="Caleb Love">
+  <option value="Caleb Martin">
+  <option value="Cam Christie">
+  <option value="Cam Spencer">
+  <option value="Cam Thomas">
+  <option value="Cam Whitmore">
+  <option value="Cameron Johnson">
+  <option value="Cameron Payne">
+  <option value="Caris LeVert">
+  <option value="Carter Bryant">
+  <option value="Cason Wallace">
+  <option value="Cedric Coward">
+  <option value="Charles Bassey">
+  <option value="Chaz Lanier">
+  <option value="Chet Holmgren">
+  <option value="Chris Manon">
+  <option value="Christian Braun">
+  <option value="Christian Koloko">
+  <option value="Chucky Hepburn">
+  <option value="CJ McCollum">
+  <option value="Clint Capela">
+  <option value="Coby White">
+  <option value="Cody Williams">
+  <option value="Cole Anthony">
+  <option value="Collin Gillespie">
+  <option value="Collin Murray-Boyles">
+  <option value="Collin Sexton">
+  <option value="Cooper Flagg">
+  <option value="Corey Kispert">
+  <option value="Craig Porter Jr.">
+  <option value="Curtis Jones">
+  <option value="D'Angelo Russell">
+  <option value="Daeqwon Plowden">
+  <option value="Dalano Banton">
+  <option value="Dalen Terry">
+  <option value="Dalton Knecht">
+  <option value="Daniel Gafford">
+  <option value="Daniss Jenkins">
+  <option value="Danny Wolf">
+  <option value="Dario Saric">
+  <option value="Darius Garland">
+  <option value="DaRon Holmes II">
+  <option value="David Jones Garcia">
+  <option value="Davion Mitchell">
+  <option value="Day'Ron Sharpe">
+  <option value="De'Aaron Fox">
+  <option value="De'Andre Hunter">
+  <option value="De'Anthony Melton">
+  <option value="Dean Wade">
+  <option value="Deandre Ayton">
+  <option value="DeAndre Jordan">
+  <option value="DeMar DeRozan">
+  <option value="Deni Avdija">
+  <option value="Dennis Schroder">
+  <option value="Dereck Lively II">
+  <option value="Derik Queen">
+  <option value="Derrick Jones Jr.">
+  <option value="Derrick White">
+  <option value="Desmond Bane">
+  <option value="Devin Booker">
+  <option value="Devin Carter">
+  <option value="Devin Vassell">
+  <option value="Dillon Brooks">
+  <option value="Dillon Jones">
+  <option value="Domantas Sabonis">
+  <option value="Dominick Barlow">
+  <option value="Donovan Clingan">
+  <option value="Donovan Mitchell">
+  <option value="Donte DiVincenzo">
+  <option value="Dorian Finney-Smith">
+  <option value="Doug McDermott">
+  <option value="Drake Powell">
+  <option value="Draymond Green">
+  <option value="Drew Eubanks">
+  <option value="Drew Timme">
+  <option value="Dru Smith">
+  <option value="Duncan Robinson">
+  <option value="Dwight Powell">
+  <option value="Dylan Cardwell">
+  <option value="Dylan Harper">
+  <option value="Dyson Daniels">
+  <option value="E.J. Liddell">
+  <option value="Egor Demin">
+  <option value="Elijah Harkless">
+  <option value="Emanuel Miller">
+  <option value="Enrique Freeman">
+  <option value="Ethan Thompson">
+  <option value="Evan Mobley">
+  <option value="Franz Wagner">
+  <option value="Gabe Vincent">
+  <option value="Garrett Temple">
+  <option value="Gary Harris">
+  <option value="Gary Payton II">
+  <option value="Gary Trent Jr.">
+  <option value="GG Jackson">
+  <option value="Giannis Antetokounmpo">
+  <option value="Goga Bitadze">
+  <option value="Gradey Dick">
+  <option value="Grant Williams">
+  <option value="Grayson Allen">
+  <option value="Guerschon Yabusele">
+  <option value="Gui Santos">
+  <option value="Harrison Barnes">
+  <option value="Harrison Ingram">
+  <option value="Herbert Jones">
+  <option value="Hugo Gonzalez">
+  <option value="Hunter Dickinson">
+  <option value="Hunter Tyson">
+  <option value="Immanuel Quickley">
+  <option value="Isaac Jones">
+  <option value="Isaac Okoro">
+  <option value="Isaiah Collier">
+  <option value="Isaiah Crawford">
+  <option value="Isaiah Hartenstein">
+  <option value="Isaiah Jackson">
+  <option value="Isaiah Joe">
+  <option value="Isaiah Livers">
+  <option value="Isaiah Stevens">
+  <option value="Isaiah Stewart">
+  <option value="Ivica Zubac">
+  <option value="Ja Morant">
+  <option value="Ja'Kobe Walter">
+  <option value="Jabari Smith Jr.">
+  <option value="Jabari Walker">
+  <option value="Jack Kayil">
+  <option value="Jaden Hardy">
+  <option value="Jaden Ivey">
+  <option value="Jaden McDaniels">
+  <option value="Jae'Sean Tate">
+  <option value="Jahmai Mashack">
+  <option value="Jahmir Young">
+  <option value="Jaime Jaquez Jr.">
+  <option value="Jake LaRavia">
+  <option value="Jakob Poeltl">
+  <option value="Jalen Brunson">
+  <option value="Jalen Duren">
+  <option value="Jalen Green">
+  <option value="Jalen Johnson">
+  <option value="Jalen Pickett">
+  <option value="Jalen Smith">
+  <option value="Jalen Suggs">
+  <option value="Jalen Williams">
+  <option value="Jalen Wilson">
+  <option value="Jamal Cain">
+  <option value="Jamal Murray">
+  <option value="Jamal Shead">
+  <option value="Jamaree Bouyea">
+  <option value="James Harden">
+  <option value="Jamir Watkins">
+  <option value="Jamison Battle">
+  <option value="Jarace Walker">
+  <option value="Jared McCain">
+  <option value="Jaren Jackson Jr.">
+  <option value="Jarred Vanderbilt">
+  <option value="Jarrett Allen">
+  <option value="Jase Richardson">
+  <option value="Javon Small">
+  <option value="Javonte Cooke">
+  <option value="Javonte Green">
+  <option value="Jaxson Hayes">
+  <option value="Jay Huff">
+  <option value="Jaylen Brown">
+  <option value="Jaylen Clark">
+  <option value="Jaylen Wells">
+  <option value="Jaylin Williams">
+  <option value="Jaylon Tyson">
+  <option value="JD Davison">
+  <option value="Jeff Green">
+  <option value="Jerami Grant">
+  <option value="Jeremiah Fears">
+  <option value="Jeremy Sochan">
+  <option value="Jericho Sims">
+  <option value="Jett Howard">
+  <option value="Jevon Carter">
+  <option value="Jimmy Butler III">
+  <option value="Joan Beringer">
+  <option value="Jock Landale">
+  <option value="Joe Ingles">
+  <option value="Joel Embiid">
+  <option value="John Collins">
+  <option value="John Konchar">
+  <option value="Johni Broome">
+  <option value="Johnny Furphy">
+  <option value="Jonas Valanciunas">
+  <option value="Jonathan Isaac">
+  <option value="Jonathan Kuminga">
+  <option value="Jonathan Mogbo">
+  <option value="Jordan Clarkson">
+  <option value="Jordan Goodwin">
+  <option value="Jordan Hawkins">
+  <option value="Jordan McLaughlin">
+  <option value="Jordan Miller">
+  <option value="Jordan Poole">
+  <option value="Jordan Walsh">
+  <option value="Jose Alvarado">
+  <option value="Josh Giddey">
+  <option value="Josh Green">
+  <option value="Josh Hart">
+  <option value="Josh Okogie">
+  <option value="Jrue Holiday">
+  <option value="Julian Champagnie">
+  <option value="Julian Phillips">
+  <option value="Julian Strawther">
+  <option value="Julius Randle">
+  <option value="Justin Champagnie">
+  <option value="Justin Edwards">
+  <option value="Jusuf Nurkic">
+  <option value="Kadary Richmond">
+  <option value="Kam Jones">
+  <option value="Karl-Anthony Towns">
+  <option value="Karlo Matkovic">
+  <option value="Kasparas Jakucionis">
+  <option value="Kawhi Leonard">
+  <option value="Keaton Wallace">
+  <option value="Keegan Murray">
+  <option value="Kel'el Ware">
+  <option value="Keldon Johnson">
+  <option value="Kelly Olynyk">
+  <option value="Kelly Oubre Jr.">
+  <option value="Kenrich Williams">
+  <option value="Kentavious Caldwell-Pope">
+  <option value="Keon Ellis">
+  <option value="Keshad Johnson">
+  <option value="Keshon Gilbert">
+  <option value="Kevin Durant">
+  <option value="Kevin Huerter">
+  <option value="Kevin Love">
+  <option value="Kevin McCullar Jr.">
+  <option value="Kevin Porter Jr.">
+  <option value="Kevon Looney">
+  <option value="Keyonte George">
+  <option value="Khaman Maluach">
+  <option value="Khris Middleton">
+  <option value="KJ Simpson">
+  <option value="Klay Thompson">
+  <option value="Kobe Brown">
+  <option value="Kobe Bufkin">
+  <option value="Kobe Sanders">
+  <option value="Koby Brea">
+  <option value="Kon Knueppel">
+  <option value="Kris Dunn">
+  <option value="Kris Murray">
+  <option value="Kristaps Porzingis">
+  <option value="Kyle Anderson">
+  <option value="Kyle Filipowski">
+  <option value="Kyle Kuzma">
+  <option value="Kyle Lowry">
+  <option value="Kyshawn George">
+  <option value="L.J. Cryer">
+  <option value="Lachlan Olbrich">
+  <option value="LaMelo Ball">
+  <option value="Landry Shamet">
+  <option value="Larry Nance Jr.">
+  <option value="Lauri Markkanen">
+  <option value="Lawson Lovering">
+  <option value="LeBron James">
+  <option value="Leonard Miller">
+  <option value="Liam McNeeley">
+  <option value="Lindy Waters III">
+  <option value="Luguentz Dort">
+  <option value="Luka Doncic">
+  <option value="Luka Garza">
+  <option value="Luke Kennard">
+  <option value="Luke Kornet">
+  <option value="Malaki Branham">
+  <option value="Malevy Leons">
+  <option value="Malik Monk">
+  <option value="Marcus Sasser">
+  <option value="Marcus Smart">
+  <option value="MarJon Beauchamp">
+  <option value="Mark Williams">
+  <option value="Marvin Bagley III">
+  <option value="Mason Plumlee">
+  <option value="Matas Buzelis">
+  <option value="Matisse Thybulle">
+  <option value="Max Christie">
+  <option value="Max Shulga">
+  <option value="Maxi Kleber">
+  <option value="Maxime Raynaud">
+  <option value="Micah Peavy">
+  <option value="Micah Potter">
+  <option value="Michael Porter Jr.">
+  <option value="Mikal Bridges">
+  <option value="Mike Conley">
+  <option value="Miles Bridges">
+  <option value="Miles Kelly">
+  <option value="Miles McBride">
+  <option value="Mitchell Robinson">
+  <option value="Mohamed Diawara">
+  <option value="Moritz Wagner">
+  <option value="Moses Moody">
+  <option value="Mouhamed Gueye">
+  <option value="Moussa Cisse">
+  <option value="Moussa Diabate">
+  <option value="Myles Turner">
+  <option value="Myron Gardner">
+  <option value="Nae'Qwan Tomlin">
+  <option value="Naji Marshall">
+  <option value="Naz Reid">
+  <option value="Neemias Queta">
+  <option value="Nic Claxton">
+  <option value="Nick Richards">
+  <option value="Nick Smith Jr.">
+  <option value="Nickeil Alexander-Walker">
+  <option value="Nicolas Batum">
+  <option value="Nikola Jokic">
+  <option value="Nikola Jovic">
+  <option value="Nikola Topic">
+  <option value="Nikola Vucevic">
+  <option value="Nique Clifford">
+  <option value="Noa Essengue">
+  <option value="Noah Clowney">
+  <option value="Noah Penda">
+  <option value="Nolan Traore">
+  <option value="Norman Powell">
+  <option value="Obi Toppin">
+  <option value="Ochai Agbaji">
+  <option value="OG Anunoby">
+  <option value="Olivier-Maxence Prosper">
+  <option value="Onyeka Okongwu">
+  <option value="Oscar Tshiebwe">
+  <option value="Oso Ighodaro">
+  <option value="Ousmane Dieng">
+  <option value="P.J. Washington">
+  <option value="Pacome Dadiet">
+  <option value="Paolo Banchero">
+  <option value="Pascal Siakam">
+  <option value="Pat Connaughton">
+  <option value="Pat Spencer">
+  <option value="Patrick Williams">
+  <option value="Paul George">
+  <option value="Paul Reed">
+  <option value="Payton Pritchard">
+  <option value="Pelle Larsson">
+  <option value="Pete Nance">
+  <option value="Peyton Watson">
+  <option value="PJ Hall">
+  <option value="Precious Achiuwa">
+  <option value="Quentin Grimes">
+  <option value="Quenton Jackson">
+  <option value="Quinten Post">
+  <option value="Rasheer Fleming">
+  <option value="Rayan Rupert">
+  <option value="RayJ Dennis">
+  <option value="Reed Sheppard">
+  <option value="Riley Minix">
+  <option value="RJ Barrett">
+  <option value="Rob Dillingham">
+  <option value="Robert Williams III">
+  <option value="Rocco Zikarsky">
+  <option value="Ron Harper Jr.">
+  <option value="Ronald Holland II">
+  <option value="Royce O'Neale">
+  <option value="Rudy Gobert">
+  <option value="Rui Hachimura">
+  <option value="Russell Westbrook">
+  <option value="Ryan Dunn">
+  <option value="Ryan Kalkbrenner">
+  <option value="Ryan Nembhard">
+  <option value="Ryan Rollins">
+  <option value="Saddiq Bey">
+  <option value="Sam Hauser">
+  <option value="Sam Merrill">
+  <option value="Sandro Mamukelashvili">
+  <option value="Santi Aldama">
+  <option value="Scoot Henderson">
+  <option value="Scottie Barnes">
+  <option value="Scotty Pippen Jr.">
+  <option value="Seth Curry">
+  <option value="Shaedon Sharpe">
+  <option value="Shai Gilgeous-Alexander">
+  <option value="Sharife Cooper">
+  <option value="Sidy Cissoko">
+  <option value="Simone Fontecchio">
+  <option value="Sion James">
+  <option value="Skal Labissiere">
+  <option value="Spencer Jones">
+  <option value="Stanley Umude">
+  <option value="Stephen Curry">
+  <option value="Stephon Castle">
+  <option value="Steven Adams">
+  <option value="Svi Mykhailiuk">
+  <option value="T.J. McConnell">
+  <option value="Taelon Peter">
+  <option value="Tari Eason">
+  <option value="Taurean Prince">
+  <option value="Taylor Hendricks">
+  <option value="Terance Mann">
+  <option value="Terrence Shannon Jr.">
+  <option value="Thanasis Antetokounmpo">
+  <option value="Thomas Bryant">
+  <option value="Tidjane Salaun">
+  <option value="Tim Hardaway Jr.">
+  <option value="Tobias Harris">
+  <option value="Tolu Smith">
+  <option value="Tosan Evbuomwan">
+  <option value="Toumani Camara">
+  <option value="Trae Young">
+  <option value="Trayce Jackson-Davis">
+  <option value="Tre Johnson">
+  <option value="Tre Jones">
+  <option value="Tre Mann">
+  <option value="Trendon Watford">
+  <option value="Trevor Keels">
+  <option value="Trey Alexander">
+  <option value="Trey Jemison III">
+  <option value="Trey Murphy III">
+  <option value="Tristan da Silva">
+  <option value="Tristan Enaruna">
+  <option value="Tristan Vukcevic">
+  <option value="Ty Jerome">
+  <option value="Tyler Herro">
+  <option value="Tyler Kolek">
+  <option value="Tyler Nickel">
+  <option value="Tyrese Martin">
+  <option value="Tyrese Maxey">
+  <option value="Tyrese Proctor">
+  <option value="Tyson Etienne">
+  <option value="TyTy Washington Jr.">
+  <option value="Tyus Jones">
+  <option value="Victor Wembanyama">
+  <option value="Vince Williams Jr.">
+  <option value="Vit Krejci">
+  <option value="VJ Edgecombe">
+  <option value="Vladislav Goldin">
+  <option value="Walker Kessler">
+  <option value="Walter Clayton Jr.">
+  <option value="Wendell Carter Jr.">
+  <option value="Wendell Moore Jr.">
+  <option value="Will Richard">
+  <option value="Will Riley">
+  <option value="Xavier Tillman">
+  <option value="Yang Hansen">
+  <option value="Yanic Konan Niederhauser">
+  <option value="Yuki Kawamura">
+  <option value="Yves Missi">
+  <option value="Zaccharie Risacher">
+  <option value="Zach Collins">
+  <option value="Zach Edey">
+  <option value="Zach LaVine">
+  <option value="Zeke Nnaji">
+  <option value="Ziaire Williams">
+  <option value="Zion Williamson">
+</datalist>
+
+<script>
+// ─── THRESHOLDS ───────────────────────────────────────────────────────────────
+const T = {
+  cap:         165_472_000,
+  tax:         200_474_000,
+  firstApron:  209_063_000,
+  secondApron: 221_737_000,
+  TMLE:          6_066_000,
+  vetMin:        1_173_000,  // league min / empty-slot charge rate
+  vetMinSig:     2_450_001,  // veteran minimum for signings (2+ yrs experience)
+  terryTPE:        899_118,
+  yabuseleTPE:     100_882,
+};
+
+// ─── ALL PLAYERS ──────────────────────────────────────────────────────────────
+// group: 'signed' | 'pending' | 'draft'
+// tag:   'signed' | 'pending' | 'est' | 'draft'
+const allPlayers = [
+  { id:'r1', name:'Karl-Anthony Towns', pos:'C/PF',  salary:57_078_728, group:'signed',  tag:'signed',  bird:'full',  note:'Max ext · 2026–30' },
+  { id:'r2', name:'OG Anunoby',         pos:'SF',    salary:42_500_000, group:'signed',  tag:'signed',  bird:'full',  note:'Extension · 2026–31' },
+  { id:'r3', name:'Jalen Brunson',      pos:'PG',    salary:37_739_521, group:'signed',  tag:'signed',  bird:'full',  note:'2026–28' },
+  { id:'r4', name:'Mikal Bridges',      pos:'SG/SF', salary:33_482_145, group:'signed',  tag:'signed',  bird:'full',  note:'2026–29' },
+  { id:'r5', name:'Josh Hart',          pos:'SF',    salary:20_923_760, group:'signed',  tag:'signed',  bird:'full',  note:'2026–27' },
+  { id:'r6', name:'Miles McBride',      pos:'PG/SG', salary: 3_956_523, group:'signed',  tag:'signed',  bird:'early', note:'2026–28' },
+  { id:'r7', name:'Pacome Dadiet',      pos:'SF',    salary: 2_983_680, group:'signed',  tag:'signed',  bird:'none',  note:'Rookie yr 2 · 2026–28' },
+  { id:'r8', name:'Tyler Kolek',        pos:'PG',    salary: 2_296_271, group:'signed',  tag:'signed',  bird:'none',  note:'Rookie yr 2 · 2026–27' },
+  { id:'p1', name:'Jose Alvarado',      pos:'PG',    salary: 4_500_000, group:'pending', tag:'est',     bird:'full',  note:'Declined $4.5M PO · 3yr (est.)' },
+  { id:'p2', name:'Mohamed Diawara',    pos:'C/PF',  salary: 2_185_633, group:'pending', tag:'est',     bird:'early', note:'RFA re-signed · 3yr (est.)' },
+  { id:'p3', name:'Landry Shamet',      pos:'SG',    salary: 5_357_143, group:'pending', tag:'pending', bird:'full',  note:'4yr/$24M Bird Rights · agreed June 29' },
+  { id:'d1', name:'Jack Kayil',         pos:'PG',    salary: 1_373_000, group:'draft',   tag:'draft',   bird:'none',  note:'39th pick · unsigned' },
+  { id:'d2', name:'Tyler Nickel',       pos:'SG/SF', salary: 1_373_000, group:'draft',   tag:'draft',   bird:'none',  note:'47th pick · unsigned' },
+  { id:'fa1', name:'Ariel Hukporti',   pos:'C',     salary: 2_450_001, group:'fa',      tag:'ufa',     bird:'none',  note:'UFA · QO not tendered · vet min' },
+];
+
+const KNICKS_BIRD = new Set([
+  'karl-anthony towns','og anunoby','jalen brunson','mikal bridges','josh hart',
+  'miles mcbride','pacome dadiet','tyler kolek','jose alvarado','mohamed diawara',
+  'landry shamet','mitchell robinson','jordan clarkson','jeremy sochan',
+  'p.j. tucker','kevin mccullar jr.','dillon jones','trey jemison','ariel hukporti',
+]);
+
+// ─── CAP HOLDS ───────────────────────────────────────────────────────────────
+let holds = [
+  { id:'h1', name:'Mitchell Robinson',  hold:24_613_637, faType:'UFA', active:false, note:'Drawing interest from Lakers, Nets at ~NMLE or above', noteRed:false },
+  { id:'h2', name:'Ariel Hukporti',     hold: 2_650_000, faType:'UFA', active:false, note:'QO NOT tendered June 29 — UFA — hold remains until renounced', noteRed:true  },
+  { id:'h3', name:'Jordan Clarkson',    hold: 2_450_000, faType:'UFA', active:false, note:'Possible return', noteRed:false },
+  { id:'h4', name:'Jeremy Sochan',      hold: 2_450_000, faType:'UFA', active:false, note:'', noteRed:false },
+  { id:'h5', name:'P.J. Tucker',        hold: 2_450_000, faType:'UFA', active:false, note:'', noteRed:false },
+  { id:'h6', name:'Kevin McCullar Jr.', hold: 2_185_633, faType:'RFA', active:false, note:'QO tendered', noteRed:false },
+  { id:'h7', name:'Dillon Jones',       hold: 2_185_633, faType:'RFA', active:false, note:'QO tendered', noteRed:false },
+  { id:'h8', name:'Trey Jemison',       hold: 2_185_633, faType:'RFA', active:false, note:'QO tendered', noteRed:false },
+];
+
+// ─── ROSTER STATE ─────────────────────────────────────────────────────────────
+const ROSTER_SIZE = 15;
+let rosterSlots = Array(ROSTER_SIZE).fill(null);
+
+let simMoves = [];
+let tmleUsed = false;
+let activeTab = 'all';
+let simCounter = 0;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt  = n => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString();
+const fmtM = n => (n < 0 ? '-$' : '$') + (Math.abs(n) / 1_000_000).toFixed(1) + 'M';
+
+function calcRoster()     { return rosterSlots.reduce((s,id) => s + (id ? (allPlayers.find(x=>x.id===id)?.salary||0) : 0), 0); }
+function calcHolds()      { return holds.filter(h=>h.active).reduce((s,h)=>s+h.hold,0); }
+function calcSim()        { return 0; } // sim players are now on the roster; salary flows through calcRoster()
+function rosterCount()    { return rosterSlots.filter(Boolean).length; }
+function isOnRoster(id)   { return rosterSlots.includes(id); }
+function calcEmptySlots() { return Math.max(0, 14 - rosterCount()) * T.vetMin; }
+function calcActive()     { return calcRoster() + calcEmptySlots() + calcSim(); }
+
+function tagLabel(tag) {
+  return { signed:'Signed', pending:'Agreed', est:'Est.', ufa:'UFA', rfa:'RFA', draft:'Draft', sim:'Sim' }[tag] || tag;
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────────────────────
+let draggingId   = null;
+let draggingFrom = null;
+
+function onCardDragStart(e, id, from) {
+  draggingId   = id;
+  draggingFrom = from;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => document.getElementById('card-'+id)?.classList.add('dragging'), 0);
+}
+
+function onCardDragEnd(e, id) {
+  document.getElementById('card-'+id)?.classList.remove('dragging');
+}
+
+function onSlotDragOver(e, i) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.roster-slot').forEach(s => s.classList.remove('drag-over'));
+  document.getElementById('slot-'+i)?.classList.add('drag-over');
+}
+
+function onSlotDragLeave() {
+  document.querySelectorAll('.roster-slot').forEach(s => s.classList.remove('drag-over'));
+}
+
+function onSlotDrop(e, i) {
+  e.preventDefault();
+  document.querySelectorAll('.roster-slot').forEach(s => s.classList.remove('drag-over'));
+  if (draggingId === null) return;
+
+  const displaced = rosterSlots[i];
+  if (typeof draggingFrom === 'number') {
+    rosterSlots[draggingFrom] = displaced; // swap
+  }
+  rosterSlots[i] = draggingId;
+  draggingId = null; draggingFrom = null;
+  renderAll();
+}
+
+function onPoolDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.getElementById('poolDropZone').classList.add('drag-over');
+}
+function onPoolDragLeave() {
+  document.getElementById('poolDropZone').classList.remove('drag-over');
+}
+function onPoolDrop(e) {
+  e.preventDefault();
+  document.getElementById('poolDropZone').classList.remove('drag-over');
+  if (draggingId === null || draggingFrom === 'pool') { draggingId = null; return; }
+  if (typeof draggingFrom === 'number') rosterSlots[draggingFrom] = null;
+  draggingId = null; draggingFrom = null;
+  renderAll();
+}
+
+function removeFromRoster(i) { rosterSlots[i] = null; renderAll(); }
+
+// ─── RENDER: ROSTER ───────────────────────────────────────────────────────────
+function renderRoster() {
+  let html = '';
+  for (let i = 0; i < ROSTER_SIZE; i++) {
+    const id = rosterSlots[i];
+    const p  = id ? allPlayers.find(x => x.id === id) : null;
+    html += `<div class="roster-slot" id="slot-${i}"
+      ondragover="onSlotDragOver(event,${i})" ondragleave="onSlotDragLeave()"
+      ondrop="onSlotDrop(event,${i})">
+      <span class="slot-num">${i+1}</span>`;
+
+    if (p) {
+      html += `<div class="slot-filled" draggable="true"
+        ondragstart="onCardDragStart(event,'${p.id}',${i})"
+        ondragend="onCardDragEnd(event,'${p.id}')">
+        <div style="flex:1;min-width:0;">
+          <span class="slot-name">${p.name}</span>
+          <span class="slot-meta">${p.pos}</span>
+          <span class="tag tag-${p.tag}" style="margin-left:4px;">${tagLabel(p.tag)}</span>
+        </div>
+        <span class="slot-salary">${fmt(p.salary)}</span>
+      </div>
+      <button class="slot-rm" onclick="removeFromRoster(${i})">×</button>`;
+    } else {
+      html += `<div class="slot-empty">drag player here</div>`;
+    }
+    html += `</div>`;
+  }
+  document.getElementById('rosterSlots').innerHTML = html;
+
+  const count  = rosterCount();
+  const emptyC = calcEmptySlots();
+  document.getElementById('rosterTotal').textContent = fmt(calcRoster());
+  const emptyEl = document.getElementById('emptySlotLine');
+  if (emptyEl) {
+    const empSlots = 14 - count;
+    emptyEl.style.display = emptyC > 0 ? '' : 'none';
+    emptyEl.innerHTML = empSlots > 0
+      ? `<span class="lbl">${empSlots} empty slot charge${empSlots>1?'s':''} × ${fmt(T.vetMin)}</span><span class="total mono" style="font-size:11px;color:var(--owarn)">+${fmt(emptyC)}</span>`
+      : '';
+  }
+
+  let eText, eColor;
+  if (count >= 14)      { eText = `${count}/15`; eColor = 'var(--green)'; }
+  else if (count >= 8)  { eText = `${count}/15 — need ${14-count} more`; eColor = 'var(--yellow)'; }
+  else                  { eText = `${count}/15 — min 8 to play`; eColor = 'var(--red)'; }
+  const badge = document.getElementById('eligBadge');
+  badge.textContent = eText; badge.style.color = eColor;
+}
+
+// ─── RENDER: POOL ─────────────────────────────────────────────────────────────
+function setTab(tab, btn) {
+  activeTab = tab;
+  document.querySelectorAll('.pool-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderPool();
+}
+
+function renderPool() {
+  const groups = [
+    { key:'signed',  label:'Under Contract (confirmed)' },
+    { key:'pending', label:'Pending / Recently Agreed' },
+    { key:'draft',   label:'2026 Draft Picks (unsigned)' },
+    { key:'fa',      label:'Free Agents' },
+  ];
+
+  let html = '';
+  const vis = activeTab === 'all' ? groups : groups.filter(g => g.key === activeTab);
+  for (const g of vis) {
+    const players = allPlayers.filter(p => p.group === g.key);
+    if (!players.length) continue;
+    html += `<div class="pool-group"><div class="pool-group-label">${g.label}</div><div class="pool-cards">`;
+    for (const p of players) {
+      const onR = isOnRoster(p.id);
+      html += `<div class="player-card ${onR ? 'on-roster' : ''}" id="card-${p.id}"
+        ${!onR ? `draggable="true" ondragstart="onCardDragStart(event,'${p.id}','pool')" ondragend="onCardDragEnd(event,'${p.id}')"` : ''}>
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-row">
+          <span class="tag tag-${p.tag}">${tagLabel(p.tag)}</span>
+          <span class="pc-salary">${fmt(p.salary)}</span>
+          <span style="font-size:10px;color:var(--txt3)">${p.pos}</span>
+        </div>
+        ${p.note ? `<div class="pc-note">${p.note}</div>` : ''}
+        ${onR ? `<div class="pc-note" style="color:var(--blue)">↑ on roster</div>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+    if (g.key === 'fa') {
+      html += `<div class="pool-empty-msg" style="margin-top:6px">Other FAs in <strong>Cap Holds</strong> panel · Use simulator to model any signing.</div>`;
+    }
+  }
+  if (!html) html = `<div class="pool-empty-msg">No players in this category.</div>`;
+
+  const zone = document.getElementById('poolDropZone');
+  zone.innerHTML = `<div id="poolContent">${html}</div>`;
+  zone.ondragover = onPoolDragOver;
+  zone.ondragleave = onPoolDragLeave;
+  zone.ondrop = onPoolDrop;
+}
+
+// ─── RENDER: HOLDS ────────────────────────────────────────────────────────────
+function toggleHoldsPanel() {
+  const body = document.getElementById('holdsBody');
+  const arrow = document.getElementById('holdsArrow');
+  const open = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+  renderHolds();
+}
+
+function renderHolds() {
+  const tbody = document.getElementById('holdsTbody');
+  let rows = '';
+  holds.forEach(h => {
+    const tagClass = h.faType === 'RFA' ? 'tag-rfa' : 'tag-ufa';
+    rows += `<tr>
+      <td><input type="checkbox" ${h.active?'checked':''} onchange="toggleHold('${h.id}',this.checked)" style="accent-color:var(--blue);cursor:pointer;"></td>
+      <td><strong>${h.name}</strong>${h.note ? `<div style="font-size:10px;color:${h.noteRed?'var(--red)':'var(--txt3)'};">${h.note}</div>` : ''}</td>
+      <td style="text-align:right" class="mono" style="font-size:11px">${fmt(h.hold)}</td>
+      <td><span class="tag ${tagClass}">${h.faType}</span></td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows;
+  const activeCount = holds.filter(h=>h.active).length;
+  const activeTotal = calcHolds();
+  document.getElementById('holdsTotal').textContent = fmt(activeTotal);
+  document.getElementById('holdsSummary').textContent = activeCount
+    ? `${activeCount} hold${activeCount>1?'s':''} checked — adding ${fmt(activeTotal)} to total`
+    : 'Check a player to include their cap hold.';
+}
+
+function toggleHold(id, checked) {
+  const h = holds.find(x => x.id === id);
+  if (h) { h.active = checked; renderAll(); }
+}
+
+// ─── RENDER: METER & CARDS ────────────────────────────────────────────────────
+function renderMeter() {
+  const grand = calcActive() + calcHolds();
+  const active = calcActive();
+  const LO = 150_000_000, HI = 235_000_000, R = HI - LO;
+  const pct = v => Math.max(0, Math.min(100, (v-LO)/R*100));
+
+  const fill = document.getElementById('meterFill');
+  fill.style.width = pct(grand) + '%';
+  fill.style.background = grand > T.secondApron ? '#cf222e'
+    : grand > T.firstApron  ? '#bc4c00'
+    : grand > T.tax         ? '#9a6700'
+    : grand > T.cap         ? '#006BB6'
+    : '#1a7f37';
+  document.getElementById('meterLabel').textContent = fmtM(grand);
+
+  const outer = document.getElementById('meterOuter');
+  outer.querySelectorAll('.meter-line').forEach(e => e.remove());
+  [
+    { val:T.cap,         color:'#1a7f37', label:'Cap' },
+    { val:T.tax,         color:'#9a6700', label:'Tax' },
+    { val:T.firstApron,  color:'#bc4c00', label:'1st' },
+    { val:T.secondApron, color:'#cf222e', label:'2nd' },
+  ].forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'meter-line';
+    d.style.cssText = `left:${pct(l.val)}%;background:${l.color};`;
+    d.innerHTML = `<span style="color:${l.color}">${l.label}</span>`;
+    outer.appendChild(d);
+  });
+}
+
+function renderCards() {
+  const active = calcActive();
+  const grand  = active + calcHolds();
+
+  document.getElementById('cTotal').textContent = fmtM(grand);
+  const emptyC = calcEmptySlots();
+  document.getElementById('cTotalSub').textContent = calcHolds()
+    ? `roster + holds${emptyC ? ' + slot charges' : ''}`
+    : emptyC
+      ? `${rosterCount()}/15 filled + ${fmtM(emptyC)} slot charges`
+      : `${rosterCount()} of 15 roster spots filled`;
+
+  const setCard = (vi, si, diff, overTxt, underTxt) => {
+    const el = document.getElementById(vi);
+    el.textContent = (diff>=0?'+':'') + fmtM(diff);
+    el.className = 'val ' + (diff > 0 ? 'c-red' : diff > -5_000_000 ? 'c-orange' : 'c-green');
+    document.getElementById(si).textContent = diff > 0 ? overTxt : underTxt;
+  };
+  setCard('cTax', 'cTaxSub', active - T.tax,         'OVER luxury tax',   'under luxury tax');
+  setCard('cAp1', 'cAp1Sub', active - T.firstApron,  'OVER 1st apron',    'under 1st apron');
+  setCard('cAp2', 'cAp2Sub', active - T.secondApron, 'OVER 2nd apron ⚠',  fmtM(T.secondApron - active) + ' of room');
+
+  // Max TMLE card — signing fills one empty slot, so net impact is (salary - 1 slot charge)
+  const emptySlotCount = Math.max(0, 14 - rosterCount());
+  const tmleBase = emptySlotCount > 0 ? active - T.vetMin : active;
+  const maxTMLE = tmleUsed ? 0 : Math.max(0, Math.min(T.TMLE, T.secondApron - tmleBase));
+  const tmleEl = document.getElementById('cTMLE');
+  if (tmleEl) {
+    tmleEl.textContent = tmleUsed ? 'Used' : fmtM(maxTMLE);
+    tmleEl.className = 'val ' + (tmleUsed || maxTMLE === 0 ? 'c-red' : maxTMLE >= T.TMLE ? 'c-green' : 'c-yellow');
+    document.getElementById('cTMLESub').textContent = tmleUsed
+      ? 'TMLE already used this offseason'
+      : maxTMLE === 0 ? 'Over 2nd apron — no TMLE'
+      : maxTMLE < T.TMLE ? `${fmt(T.TMLE - maxTMLE)} cut by 2nd apron`
+      : 'full TMLE available';
+  }
+}
+
+// ─── RENDER: EXCEPTIONS & RESTRICTIONS ───────────────────────────────────────
+function renderExceptions() {
+  const active = calcActive();
+  const over2nd = active > T.secondApron;
+  document.getElementById('exceptionsPanel').innerHTML = `
+    <div class="exc-row">
+      <div>
+        <div class="exc-name">Taxpayer MLE (TMLE)</div>
+        <div class="exc-detail">Max ${fmt(T.TMLE)} yr1 · 2yr max · 5% raises · one-time use</div>
+        ${tmleUsed  ? '<div class="exc-detail" style="color:var(--red)">⚠ Used this offseason</div>' : ''}
+        ${over2nd   ? '<div class="exc-detail" style="color:var(--red)">⚠ Not available — over second apron</div>' : ''}
+      </div>
+      <div class="exc-amt ${tmleUsed||over2nd ? 'exc-na' : ''}">${fmt(T.TMLE)}</div>
+    </div>
+    <div class="exc-row">
+      <div><div class="exc-name">Trade Exception — Dalen Terry</div><div class="exc-detail">Expires Feb 5, 2027</div></div>
+      <div class="exc-amt">${fmt(T.terryTPE)}</div>
+    </div>
+    <div class="exc-row">
+      <div><div class="exc-name">Trade Exception — Yabusele</div><div class="exc-detail">Expires Feb 5, 2027</div></div>
+      <div class="exc-amt">${fmt(T.yabuseleTPE)}</div>
+    </div>
+    <div class="exc-row" style="opacity:.4">
+      <div><div class="exc-name">Non-Taxpayer MLE</div><div class="exc-detail">Not available — taxpayer team</div></div>
+      <div class="exc-amt exc-na">N/A</div>
+    </div>
+    <div class="exc-row" style="opacity:.4">
+      <div><div class="exc-name">Bi-Annual Exception (BAE)</div><div class="exc-detail">Not available — taxpayer team</div></div>
+      <div class="exc-amt exc-na">N/A</div>
+    </div>`;
+}
+
+function renderRestrictions() {
+  const active = calcActive();
+  const overTax = active > T.tax;
+  const over1st = active > T.firstApron;
+  const over2nd = active > T.secondApron;
+  const robTotal = active + 24_613_637;
+
+  const items = [
+    {
+      dot: over2nd ? 'dot-block' : over1st ? 'dot-block' : overTax ? 'dot-warn' : 'dot-ok',
+      text: over2nd
+        ? `<strong>Over second apron by ${fmtM(active-T.secondApron)}</strong> — no MLE, no cash in trades, no buyout signings, picks frozen.`
+        : over1st
+        ? `<strong>Over first apron by ${fmtM(active-T.firstApron)}</strong> — no S&T receiving, no aggregation, trade matching ≤110%.`
+        : overTax
+        ? `<strong>Over luxury tax by ${fmtM(active-T.tax)}</strong> — no BAE, must use TMLE.`
+        : 'Under luxury tax — all standard exceptions available.'
+    },
+    {
+      dot: tmleUsed ? 'dot-block' : over2nd ? 'dot-block' : 'dot-ok',
+      text: tmleUsed ? '<strong>TMLE used</strong> this offseason.'
+        : over2nd ? '<strong>No MLE available</strong> — second apron teams have no MLE.'
+        : `<strong>TMLE available:</strong> ${fmt(T.TMLE)} · max 2yr · one use.`
+    },
+    {
+      dot: over1st ? 'dot-block' : 'dot-ok',
+      text: over1st
+        ? '<strong>No salary aggregation in trades.</strong> Cannot receive via sign-and-trade.'
+        : 'Trade aggregation and S&T receiving permitted.'
+    },
+    {
+      dot: 'dot-ok',
+      text: '<strong>Bird Rights re-signings always permitted</strong> regardless of apron level.'
+    },
+    {
+      dot: robTotal > T.secondApron ? 'dot-warn' : 'dot-ok',
+      text: `<strong>Robinson re-sign:</strong> adding his cap hold (~${fmtM(24_613_637)}) would put active payroll at ~${fmtM(robTotal)} — ${robTotal > T.secondApron ? `<span style="color:var(--red)">over the second apron by ${fmtM(robTotal-T.secondApron)}</span>` : 'under the second apron'}.`
+    },
+  ];
+
+  document.getElementById('restrictList').innerHTML = items.map(i =>
+    `<div class="ri"><div class="ri-dot ${i.dot}"></div><div class="ri-text">${i.text}</div></div>`
+  ).join('');
+}
+
+// ─── SIMULATOR ────────────────────────────────────────────────────────────────
+function autoFillSalary() {
+  const type = document.getElementById('simType').value;
+  const sal  = document.getElementById('simSalary');
+  if (type === 'tmle')         sal.value = T.TMLE;
+  else if (type === 'minimum') sal.value = T.vetMinSig;
+  else                         sal.value = '';
+}
+
+function simulate() {
+  const name   = document.getElementById('simName').value.trim();
+  const salary = parseFloat(document.getElementById('simSalary').value) || 0;
+  const type   = document.getElementById('simType').value;
+  const result = document.getElementById('simResult');
+
+  if (!name || salary <= 0) {
+    result.innerHTML = `<div class="sim-result warn"><h3>Enter a player name and salary.</h3></div>`;
+    return;
+  }
+
+  const active    = calcActive();
+  // Signing fills one empty slot — net cap impact is (salary - slot charge) if slots remain
+  const hasEmptySlot = rosterCount() < 14;
+  const netSalary = hasEmptySlot ? salary - T.vetMin : salary;
+  const newActive = active + netSalary;
+  const errors = [], warnings = [], info = [];
+  const isKnick = KNICKS_BIRD.has(name.toLowerCase());
+  const typeLabels = { bird:'Bird Rights', earlybird:'Early Bird', nobird:'Non-Bird', tmle:'TMLE', minimum:'Vet Min', trade_in:'Trade (In)' };
+
+  if (type === 'tmle') {
+    if (tmleUsed)          errors.push('TMLE already used this offseason.');
+    if (salary > T.TMLE)   errors.push(`TMLE max yr1 = ${fmt(T.TMLE)}. Entry exceeds by ${fmt(salary - T.TMLE)}.`);
+    if (newActive > T.secondApron) errors.push(`Signing would push to ${fmtM(newActive)}, over the second apron.`);
+    if (hasEmptySlot) info.push(`Empty slot offset: net cap impact = ${fmt(salary)} − ${fmt(T.vetMin)} slot charge = ${fmt(netSalary)}.`);
+    info.push('TMLE: max 2-year deal · 5% annual raises · one-time use per offseason.');
+  }
+  if (type === 'bird') {
+    if (!isKnick) warnings.push(`"${name}" is not in the known Knicks Bird Rights list. Verify 3+ seasons with team.`);
+    if (newActive > T.secondApron)
+      warnings.push(`Would push payroll to ${fmtM(newActive)}, over the second apron by ${fmtM(newActive-T.secondApron)}.`);
+    info.push('Bird Rights: no cap limit · max 5yr · 8% annual raises.');
+  }
+  if (type === 'earlybird') {
+    if (!isKnick) warnings.push('Early Bird Rights apply only to players with exactly 2 seasons with the team.');
+    const maxEB = Math.max(T.vetMin * 1.75, salary * 1.05);
+    if (salary > maxEB) errors.push(`Early Bird max ≈ ${fmt(maxEB)}. Verify prior-year salary.`);
+    info.push('Early Bird: max 3yr · 5% raises.');
+  }
+  if (type === 'trade_in') {
+    if (active > T.secondApron) errors.push('Second apron teams cannot receive cash in trades.');
+    else if (active > T.firstApron) warnings.push('First apron: no salary aggregation allowed in incoming trades.');
+    info.push(`TPEs available: Terry ${fmt(T.terryTPE)}, Yabusele ${fmt(T.yabuseleTPE)}.`);
+  }
+  if (type !== 'bird' && newActive > T.secondApron)
+    errors.push(`Would push payroll to ${fmtM(newActive)}, over the second apron.`);
+
+  const ok  = errors.length === 0;
+  const cls = ok ? (warnings.length ? 'warn' : 'ok') : 'err';
+  const icon = ok ? (warnings.length ? '⚠️' : '✅') : '🚫';
+  const head = ok ? (warnings.length ? 'Permitted with Warnings' : 'CBA-Compliant') : 'Not Permitted';
+
+  // Compute max allowed salary when the move is blocked
+  let maxAllowed = null;
+  if (!ok) {
+    // Headroom to 2nd apron accounting for the empty-slot offset
+    const apronRoom = hasEmptySlot ? T.secondApron - active + T.vetMin : T.secondApron - active;
+    if (type === 'tmle' && !tmleUsed) {
+      maxAllowed = Math.max(0, Math.min(T.TMLE, apronRoom));
+    } else if (type === 'minimum') {
+      maxAllowed = T.vetMinSig;
+    } else if (type === 'bird' || type === 'earlybird' || type === 'nobird') {
+      maxAllowed = Math.max(0, apronRoom);
+    }
+    // Only offer if it's meaningfully less than what was entered (so salary is the blocker)
+    if (maxAllowed !== null && (maxAllowed <= 0 || maxAllowed >= salary)) maxAllowed = null;
+  }
+
+  let html = `<div class="sim-result ${cls}"><h3>${icon} ${head}</h3>`;
+  if (errors.length)   html += `<div class="rules-sub" style="margin:5px 0 2px">Violations:</div><ul>${errors.map(e=>`<li style="color:var(--red)">${e}</li>`).join('')}</ul>`;
+  if (warnings.length) html += `<div class="rules-sub" style="margin:5px 0 2px">Warnings:</div><ul>${warnings.map(w=>`<li style="color:var(--yellow)">${w}</li>`).join('')}</ul>`;
+  if (info.length)     html += `<div class="rules-sub" style="margin:5px 0 2px">Rule Details:</div><ul>${info.map(i=>`<li style="color:var(--txt2)">${i}</li>`).join('')}</ul>`;
+  if (maxAllowed !== null) {
+    html += `<div style="margin-top:8px;padding:8px 10px;background:rgba(0,107,182,.06);border:1px solid rgba(0,107,182,.2);border-radius:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:11px;">Max allowed: <strong class="mono">${fmt(maxAllowed)}</strong></span>
+      <button class="sim-btn" style="padding:4px 12px;font-size:11px;" onclick="addAtMax(${maxAllowed})">Add ${name} at ${fmt(maxAllowed)}</button>
+    </div>`;
+  }
+  html += `<div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(0,0,0,.08);display:flex;gap:12px;flex-wrap:wrap;font-size:11px;">
+    <span>New total: <strong>${fmtM(newActive)}</strong></span>
+    <span>vs 1st: <strong style="color:${newActive>T.firstApron?'var(--red)':'var(--green)'}">${newActive>T.firstApron?'+':''}${fmtM(newActive-T.firstApron)}</strong></span>
+    <span>vs 2nd: <strong style="color:${newActive>T.secondApron?'var(--red)':'var(--green)'}">${newActive>T.secondApron?'+':''}${fmtM(newActive-T.secondApron)}</strong></span>
+  </div></div>`;
+  result.innerHTML = html;
+
+  if (ok) {
+    const emptySlot = rosterSlots.indexOf(null);
+    if (emptySlot === -1) {
+      result.innerHTML += `<div class="sim-result warn" style="margin-top:6px"><h3>Roster full (15/15) — remove a player first.</h3></div>`;
+      return;
+    }
+    if (type === 'tmle') tmleUsed = true;
+    const simId = `sim-${++simCounter}`;
+    allPlayers.push({ id:simId, name, pos:'—', salary, group:'sim', tag:'sim', bird:'none', note:typeLabels[type] });
+    rosterSlots[emptySlot] = simId;
+    simMoves.push({ id:simId, name, salary, typeLabel:typeLabels[type] });
+    document.getElementById('simName').value = '';
+    document.getElementById('simSalary').value = '';
+    renderAddedMoves();
+    renderAll();
+  }
+}
+
+function addAtMax(maxSalary) {
+  document.getElementById('simSalary').value = maxSalary;
+  simulate();
+}
+
+function removeSimPlayer(simId) {
+  const pi = allPlayers.findIndex(p => p.id === simId);
+  if (pi !== -1) allPlayers.splice(pi, 1);
+  const ri = rosterSlots.indexOf(simId);
+  if (ri !== -1) rosterSlots[ri] = null;
+}
+
+function renderAddedMoves() {
+  const wrap = document.getElementById('addedMoves');
+  if (!simMoves.length) { wrap.innerHTML = ''; return; }
+  const net = simMoves.reduce((s,m) => s + m.salary, 0);
+  wrap.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);margin:9px 0 5px">Simulated Moves (+${fmt(net)} salary)</div>`
+    + simMoves.map((m,i) => `
+    <div class="added-move">
+      <button class="rm" onclick="removeSimMove(${i})">✕</button>
+      <strong style="flex:1;font-size:12px">${m.name}</strong>
+      <span class="mono" style="font-size:11px">${fmt(m.salary)}</span>
+      <span class="tag tag-sim">${m.typeLabel}</span>
+    </div>`).join('');
+}
+
+function removeSimMove(i) {
+  const move = simMoves[i];
+  if (!move) return;
+  if (move.typeLabel === 'TMLE') tmleUsed = false;
+  removeSimPlayer(move.id);
+  simMoves.splice(i, 1);
+  renderAddedMoves(); renderAll();
+  document.getElementById('simResult').innerHTML = '';
+}
+function clearSim() {
+  simMoves.forEach(m => removeSimPlayer(m.id));
+  simMoves = []; tmleUsed = false;
+  renderAddedMoves(); renderAll();
+  document.getElementById('simResult').innerHTML = '';
+}
+
+function toggleRule(btn) {
+  const arrow   = btn.querySelector('.rarrow');
+  const content = btn.nextElementSibling;
+  arrow.classList.toggle('open');
+  content.classList.toggle('open');
+}
+
+// ─── MASTER RENDER ────────────────────────────────────────────────────────────
+function renderAll() {
+  renderRoster();
+  renderPool();
+  renderMeter();
+  renderCards();
+  renderExceptions();
+  renderRestrictions();
+  renderHolds();
+}
+
+// ─── INIT: pre-load 11 players onto projected roster ─────────────────────────
+['r1','r2','r3','r4','r5','r6','r7','r8','p1','p2','p3'].forEach((id, i) => {
+  rosterSlots[i] = id;
+});
+
+renderAll();
+</script>
+</body>
+</html>
