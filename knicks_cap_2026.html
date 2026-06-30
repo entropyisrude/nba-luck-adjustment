@@ -181,6 +181,7 @@ table.ht tr:last-child td { border-bottom: none; }
 .trade-divider { padding: 4px 10px; background: var(--bg3); font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--txt3); letter-spacing: .4px; border-bottom: 1px solid #eaeef2; }
 .tag-trade { background: rgba(2,132,199,.1); color: #0369a1; border: 1px solid rgba(2,132,199,.25); }
 .dev-badge { display: inline-block; margin-left: 6px; padding: 2px 6px; border: 1px solid rgba(255,255,255,.55); border-radius: 9px; font-size: 9px; font-weight: 700; text-transform: uppercase; vertical-align: 1px; }
+.trade-development-message { padding: 18px 14px; text-align: center; color: var(--txt2); font-size: 12px; }
 
 /* ── CBA Rules ── */
 .rules-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
@@ -362,65 +363,9 @@ footer a { color: var(--txt3); }
   <div class="sim-panel">
     <div class="sim-head" style="background:#0a5c36;">
       <h2>Trade Simulator <span class="dev-badge">Under development</span></h2>
-      <p>This tool is still under development. Results may be incomplete. Click Knicks players (left) to send; click the other team's players (right) to receive.</p>
+      <p>The trade simulator is not currently available.</p>
     </div>
-    <div class="sim-body">
-      <div class="sf" style="max-width:260px;margin-bottom:10px;">
-        <label>Trade Partner</label>
-        <select id="tradeTeamSel" onchange="onTradeTeamChange()">
-          <option value="">— Select opposing team —</option>
-          <option value="ATL">Atlanta Hawks</option>
-          <option value="BKN">Brooklyn Nets</option>
-          <option value="BOS">Boston Celtics</option>
-          <option value="CHA">Charlotte Hornets</option>
-          <option value="CHI">Chicago Bulls</option>
-          <option value="CLE">Cleveland Cavaliers</option>
-          <option value="DAL">Dallas Mavericks</option>
-          <option value="DEN">Denver Nuggets</option>
-          <option value="DET">Detroit Pistons</option>
-          <option value="GSW">Golden State Warriors</option>
-          <option value="HOU">Houston Rockets</option>
-          <option value="IND">Indiana Pacers</option>
-          <option value="LAC">Los Angeles Clippers</option>
-          <option value="LAL">Los Angeles Lakers</option>
-          <option value="MEM">Memphis Grizzlies</option>
-          <option value="MIA">Miami Heat</option>
-          <option value="MIL">Milwaukee Bucks</option>
-          <option value="MIN">Minnesota Timberwolves</option>
-          <option value="NOP">New Orleans Pelicans</option>
-          <option value="OKC">Oklahoma City Thunder</option>
-          <option value="ORL">Orlando Magic</option>
-          <option value="PHI">Philadelphia 76ers</option>
-          <option value="PHX">Phoenix Suns</option>
-          <option value="POR">Portland Trail Blazers</option>
-          <option value="SAC">Sacramento Kings</option>
-          <option value="SAS">San Antonio Spurs</option>
-          <option value="TOR">Toronto Raptors</option>
-          <option value="UTA">Utah Jazz</option>
-          <option value="WAS">Washington Wizards</option>
-        </select>
-      </div>
-      <div class="trade-cols">
-        <div class="trade-col">
-          <div class="trade-col-head">
-            <span>Knicks Send</span>
-            <span class="mono" id="tradeSendTot">$0</span>
-          </div>
-          <div id="tradeSendPool"></div>
-        </div>
-        <div class="trade-col">
-          <div class="trade-col-head">
-            <span>Knicks Receive</span>
-            <span class="mono" id="tradeRecTot">$0</span>
-          </div>
-          <div class="trade-search">
-            <input type="text" id="tradeSearch" placeholder="Filter by name…" oninput="renderTradeReceivePool()">
-          </div>
-          <div id="tradeRecPool"></div>
-        </div>
-      </div>
-      <div id="tradeResult"></div>
-    </div>
+    <div class="trade-development-message">This feature is under development and has been temporarily disabled.</div>
   </div>
 
   <!-- CBA Rules -->
@@ -2081,7 +2026,6 @@ function renderAll() {
   renderExceptions();
   renderRestrictions();
   renderHolds();
-  renderTradeSendPool();
 }
 
 // ─── INIT: pre-load 11 players onto projected roster ─────────────────────────
