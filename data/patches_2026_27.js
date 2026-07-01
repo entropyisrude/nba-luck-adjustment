@@ -22,10 +22,15 @@
     // ── ADD ENTRIES BELOW — newest at top ────────────────────────────────────
 
     // 2026-07-01
-    // Ariel Hukporti (C, 24) signed with PHI — was NYK restricted FA (Early Bird, $2.45M hold)
-    // ⚠ cap_hit TBD — update with confirmed AAV once known
-    { op:'sign',    team:'PHI', player:'Ariel Hukporti', position:'C',  age:24, cap_hit:4000000, contract_type:'UFA' },
-    { op:'release', team:'NYK', player:'Ariel Hukporti' },  // removes NYK cap hold
+    // Mitchell Robinson 3yr/$47.4M with BOS (player option yr 3) — Spotrac not yet updated
+    { op:'sign',    team:'BOS', player:'Mitchell Robinson', position:'C',  age:28, cap_hit:15800000, contract_type:'UFA' },
+    { op:'release', team:'NYK', player:'Mitchell Robinson' },  // remove Bird-rights cap hold from NYK
+
+    // Moritz Wagner signed 2yr/$19M with BKN — stale ORL pending entry; BKN sidebar already has him
+    { op:'release', team:'ORL', player:'Moritz Wagner' },
+
+    // Ariel Hukporti signed with PHI ($3.4M) — now in PHI Spotrac pending; remove NYK cap hold
+    { op:'release', team:'NYK', player:'Ariel Hukporti' },
 
     // Kawhi Leonard traded to TOR — Spotrac still lists him on LAC; remove duplicate
     { op:'release', team:'LAC', player:'Kawhi Leonard' },
@@ -33,8 +38,6 @@
     // James Harden declined player option with CLE — show as FA cap hold
     // Replace with op:'sign' once new deal is confirmed
     { op:'hold',    team:'CLE', player:'James Harden', position:'SG', age:36, cap_hit:42300000, contract_type:'UFA' },
-
-    // Marcus Smart (HOU), Thomas Bryant (CLE), Olivier Sarr (CLE) — now in Spotrac, no patch needed
 
   ];
 
