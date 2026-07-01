@@ -1,0 +1,1466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NBA 2026-27 Cap & Trade</title>
+<style>
+/* ── shared ── */
+:root{
+  --blue:#006BB6;--orange:#F58426;
+  --bg:#ffffff;--bg2:#f6f8fa;--bg3:#eef0f2;--bg4:#e2e5e9;
+  --border:#d0d7de;--txt:#1a1d23;--txt2:#57606a;--txt3:#8c959f;
+  --green:#1a7f37;--yellow:#9a6700;--owarn:#bc4c00;--red:#cf222e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg2);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;font-size:13px;line-height:1.5}
+button,select,input{font:inherit}
+header{background:#003FA5;border-bottom:3px solid var(--orange);padding:14px 24px}
+header .brand{font-size:20px;font-weight:800;color:#fff}
+header .sub{font-size:11px;color:#a8c4e8;margin-top:2px}
+.top-nav{display:flex;align-items:center;gap:4px;background:#fff;border-bottom:1px solid var(--border);padding:0 22px}
+.top-nav button{border:0;background:none;padding:12px 14px;font-size:13px;font-weight:700;color:var(--txt2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.top-nav button:hover{color:var(--txt)}
+.top-nav button.active{color:var(--blue);border-color:var(--blue)}
+main{max-width:1500px;margin:0 auto;padding:12px 14px 40px}
+.view{display:none}.view.active{display:block}
+
+/* ── team controls ── */
+.team-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}
+.field{display:grid;gap:4px;color:var(--txt3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.field select{min-width:220px;padding:7px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;font-size:13px;outline:none}
+.field select:focus{border-color:var(--blue)}
+
+/* ── cap meter ── */
+.meter-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:10px}
+.meter-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);margin-bottom:8px}
+.meter-bar-outer{position:relative;height:22px;background:var(--bg3);border-radius:3px;overflow:visible;margin-bottom:28px}
+.meter-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px 0 0 3px;transition:width .3s,background .2s}
+.meter-line{position:absolute;top:-3px;width:2px;height:28px}
+.meter-line span{position:absolute;top:30px;left:50%;transform:translateX(-50%);font-size:10px;white-space:nowrap;font-weight:600}
+.meter-current{position:absolute;bottom:3px;right:6px;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.meter-foot{display:flex;justify-content:space-between;font-size:10px;color:var(--txt3)}
+
+/* ── status cards ── */
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 12px}
+.card .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin-bottom:2px}
+.card .val{font-size:18px;font-weight:700;font-family:"SF Mono",Consolas,monospace;letter-spacing:-.5px}
+.card .sub{font-size:11px;color:var(--txt2);margin-top:1px}
+.c-green{color:var(--green)}.c-yellow{color:var(--yellow)}.c-orange{color:var(--owarn)}.c-red{color:var(--red)}
+
+/* ── workspace ── */
+.workspace{display:grid;grid-template-columns:285px 1fr 250px;gap:12px;margin-bottom:12px;align-items:start}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.panel-head{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 11px;display:flex;align-items:center;justify-content:space-between}
+.panel-head h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2)}
+
+/* ── roster slots ── */
+.roster-slot{display:flex;align-items:center;gap:6px;padding:5px 9px;border-bottom:1px solid #eaeef2;min-height:42px;transition:background .1s}
+.roster-slot:last-child{border-bottom:none}
+.roster-slot.drag-over{background:#deeaf8}
+.slot-num{font-size:10px;color:var(--txt3);width:16px;flex-shrink:0;text-align:right}
+.slot-empty{flex:1;font-size:11px;color:#b8c4cf;font-style:italic;border:1.5px dashed #d0d7de;border-radius:3px;padding:4px 7px}
+.slot-filled{flex:1;display:flex;align-items:center;gap:5px;cursor:grab}
+.slot-filled:active{cursor:grabbing}
+.slot-name{font-size:12px;font-weight:600}
+.slot-meta{font-size:10px;color:var(--txt3);margin-left:2px}
+.slot-salary{font-family:"SF Mono",Consolas,monospace;font-size:11px;color:var(--txt2);white-space:nowrap}
+.slot-rm{background:none;border:none;cursor:pointer;color:#c8d0d8;font-size:13px;padding:0 1px;line-height:1;flex-shrink:0}
+.slot-rm:hover{color:var(--red)}
+.roster-footer{padding:7px 11px;display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-top:1px solid var(--border)}
+.roster-footer .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3)}
+.roster-footer .total{font-family:"SF Mono",Consolas,monospace;font-size:13px;font-weight:700}
+
+/* ── player pool ── */
+.pool-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 10px;overflow-x:auto}
+.pool-tab{background:none;border:none;border-bottom:2px solid transparent;padding:7px 10px;font-size:11px;font-weight:600;color:var(--txt2);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+.pool-tab:hover{color:var(--txt)}
+.pool-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.pool-drop-zone{padding:9px 10px;min-height:80px}
+.pool-drop-zone.drag-over{background:#deeaf8}
+.pool-section-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);padding:8px 10px 4px;border-top:1px solid var(--bg3)}
+.pool-section-head:first-child{border-top:none;padding-top:6px}
+.pool-cards-grid{display:flex;flex-wrap:wrap;gap:6px}
+.player-card{background:#fff;border:1px solid var(--border);border-radius:4px;padding:6px 9px;cursor:grab;user-select:none;transition:box-shadow .1s,border-color .1s;min-width:120px;max-width:190px}
+.player-card:hover{border-color:var(--blue);box-shadow:0 1px 3px rgba(0,107,182,.12)}
+.player-card.dragging{opacity:.35;cursor:grabbing}
+.player-card.on-roster{opacity:.28;cursor:default;pointer-events:none}
+.player-card.tm-blocked{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(207,34,46,.18)!important;}
+.player-card.tm-blocked .pc-salary{color:var(--red);}
+.pc-name{font-size:11px;font-weight:700}
+.pc-row{display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:wrap}
+.pc-salary{font-family:"SF Mono",Consolas,monospace;font-size:10px;color:var(--txt2)}
+.pc-note{font-size:10px;color:var(--txt3);margin-top:1px}
+
+/* ── right column ── */
+.right-col{display:flex;flex-direction:column;gap:10px}
+.exc-row{padding:7px 11px;border-bottom:1px solid #eaeef2;display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.exc-row:last-child{border-bottom:none}
+.exc-name{font-size:11px;font-weight:600}
+.exc-detail{font-size:10px;color:var(--txt2);margin-top:1px}
+.exc-amt{font-family:"SF Mono",Consolas,monospace;font-size:12px;font-weight:700;color:var(--green);white-space:nowrap}
+.restrict-list{padding:7px 11px}
+.ri{display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:1px solid #eaeef2}
+.ri:last-child{border-bottom:none}
+.ri-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.dot-ok{background:var(--green)}.dot-warn{background:var(--yellow)}.dot-block{background:var(--red)}
+.ri-text{font-size:11px;line-height:1.4}
+table.ht{width:100%;border-collapse:collapse}
+table.ht th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);padding:4px 9px;border-bottom:1px solid var(--border);background:var(--bg3);position:sticky;top:0}
+table.ht td{padding:5px 9px;border-bottom:1px solid #eaeef2;font-size:11px;vertical-align:middle}
+table.ht tr:last-child td{border-bottom:none}
+.holds-foot{padding:5px 11px;display:flex;justify-content:space-between;font-size:11px;font-weight:700;background:var(--bg3);border-top:1px solid var(--border)}
+
+/* ── tags ── */
+.tag{display:inline-block;padding:1px 5px;border-radius:9px;font-size:9px;font-weight:700;white-space:nowrap}
+.tag-signed{background:rgba(26,127,55,.1);color:#1a7f37;border:1px solid rgba(26,127,55,.25)}
+.tag-pending{background:rgba(154,103,0,.1);color:#9a6700;border:1px solid rgba(154,103,0,.25)}
+.tag-ufa{background:rgba(140,149,159,.12);color:#57606a;border:1px solid rgba(140,149,159,.3)}
+.tag-rfa{background:rgba(188,76,0,.1);color:#bc4c00;border:1px solid rgba(188,76,0,.25)}
+.tag-hold{background:rgba(140,149,159,.08);color:#57606a;border:1px solid rgba(140,149,159,.2)}
+.tag-draft{background:rgba(46,138,70,.07);color:#2e8a46;border:1px solid rgba(46,138,70,.2)}
+.tag-sim{background:rgba(107,33,168,.1);color:#6b21a8;border:1px solid rgba(107,33,168,.25)}
+/* ── Move Simulator ── */
+.sim-panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:12px}
+.sim-head{padding:9px 13px;background:#003FA5}
+.sim-head h2{font-size:13px;font-weight:700;color:#fff}
+.sim-head p{font-size:11px;color:#a8c4e8;margin-top:1px}
+.sim-body{padding:12px 14px}
+.sim-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:9px;margin-bottom:10px}
+.sf label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);margin-bottom:3px}
+.sf input,.sf select{width:100%;background:#fff;border:1px solid var(--border);border-radius:4px;color:var(--txt);padding:5px 8px;font-size:12px;outline:none}
+.sf input:focus,.sf select:focus{border-color:var(--blue)}
+.sim-btn{background:var(--blue);color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer}
+.sim-btn:hover{background:#0056a0}
+.sim-btn-clr{background:#fff;color:var(--txt2);border:1px solid var(--border);border-radius:4px;padding:6px 12px;font-size:12px;cursor:pointer;margin-left:5px}
+.sim-btn-clr:hover{color:var(--txt)}
+.sim-result{border-radius:4px;padding:9px 12px;margin-bottom:9px}
+.sim-result.ok{background:rgba(26,127,55,.07);border:1px solid rgba(26,127,55,.25)}
+.sim-result.warn{background:rgba(154,103,0,.07);border:1px solid rgba(154,103,0,.25)}
+.sim-result.err{background:rgba(207,34,46,.07);border:1px solid rgba(207,34,46,.25)}
+.sim-result h3{font-size:12px;font-weight:700;margin-bottom:5px}
+.sim-result ul{padding-left:15px}
+.sim-result ul li{font-size:11px;margin-bottom:2px}
+.added-move{display:flex;align-items:center;gap:7px;padding:4px 8px;background:#fff;border:1px solid var(--border);border-radius:4px;margin-bottom:4px}
+.added-move .rm{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px}
+.added-move .rm:hover{color:var(--red)}
+.mono{font-family:"SF Mono",Consolas,monospace}
+.fa-salary-input{width:94px;padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-size:10px;font-family:"SF Mono",Consolas,monospace;color:var(--txt);background:#fff}
+.fa-salary-input:focus{border-color:var(--blue);outline:none}
+.fa-add-btn{background:var(--blue);color:#fff;border:none;border-radius:3px;padding:2px 6px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.fa-add-btn:hover{background:#0058a3}
+
+/* ── Trade machine ── */
+.trade-controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+.trade-teams{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team-work{min-width:0}
+.pool-tm{max-height:310px;overflow:auto}
+.pool-tm-all{max-height:480px;overflow:auto}
+.package{min-height:76px;display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#fbfcfd;border:2px dashed #c6ced6;margin:8px;border-radius:5px;align-content:flex-start}
+.package.over{border-color:var(--blue);background:#deeaf8}
+.package-hint{width:100%;padding:10px 0;color:var(--txt3);text-align:center;font-size:11px}
+.tm-card-pkg{cursor:pointer !important}
+.tm-card-pkg:hover{border-color:#e05252 !important;box-shadow:0 1px 3px rgba(200,50,50,.15) !important}
+.tm-rm{float:right;color:var(--txt3);font-size:9px;line-height:1;margin-left:4px}
+.tm-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.tm-head h2{font-size:13px;margin:0;font-weight:700}
+.tm-head b{font:700 12px "SF Mono",Consolas,monospace}
+.tm-subhead{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:11px;color:var(--txt2)}
+.sat{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;padding:8px;border-top:1px solid var(--border);background:var(--bg2)}
+.action{border:0;border-radius:4px;background:#2c556f;color:#fff;padding:7px 10px;font-weight:700;cursor:pointer}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.result{background:#f2f8f3;border-left:4px solid var(--green);padding:9px 10px;border-radius:4px}
+.result.fail{background:#fff1ef;border-color:var(--red)}
+.result.neutral{background:#f5f6f7;border-color:#8b949e}
+.result h3{margin:0 0 4px;font-size:12px}
+.result p{margin:2px 0;font-size:11px}
+.fail-reason{color:var(--red);font-weight:700;font-size:11px;margin-top:5px;padding-top:5px;border-top:1px solid rgba(200,50,50,.25)}
+.trade-verdict{text-align:center;font-size:28px;font-weight:900;letter-spacing:3px;padding:11px 0;border-radius:5px;margin-bottom:8px;grid-column:1/-1}
+.verdict-pass{color:var(--green);background:#f0faf2;border:2px solid var(--green)}
+.verdict-fail{color:var(--red);background:#fff1ef;border:2px solid var(--red)}
+.verdict-neutral{color:var(--txt3);background:var(--bg2);border:2px solid var(--border);font-size:18px;font-weight:700}
+.tm-empty{padding:13px;color:var(--txt3);font-size:11px}
+.mt-toggle-btn{padding:5px 13px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--txt2);font-size:11px;font-weight:700;cursor:pointer;margin-left:auto;white-space:nowrap;align-self:flex-end}
+.mt-toggle-btn.active{background:#1a4a6b;color:#fff;border-color:#1a4a6b}
+#mtGrid{display:flex;flex-direction:column;gap:8px}
+.mt-selectors{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.mt-sel-slot{display:flex;align-items:center;gap:5px;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;min-width:0}
+.mt-sel-add{justify-content:center;border-style:dashed}
+.mt-sel-empty{border-style:dashed;opacity:.3}
+.mt-team-select{flex:1;font-size:11px;font-weight:700;background:transparent;border:none;cursor:pointer;min-width:0}
+.mt-roster-row{display:grid;gap:8px}
+.mt-roster-panel{background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.mt-roster-head{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.mt-roster-name{font-size:11px;font-weight:700;flex:1}
+.mt-pool{overflow-y:auto;max-height:220px;border-bottom:1px solid var(--border)}
+.mt-receiving-row{display:grid;gap:6px}
+.mt-rx-panel{background:var(--bg);border:2px dashed var(--border);border-radius:5px;overflow:hidden}
+.mt-rx-head{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(0,107,182,.04);border-bottom:1px solid var(--border)}
+.mt-dropzone{min-height:80px}
+.mt-dropzone.over{background:rgba(0,107,182,.08);outline:2px solid var(--blue);outline-offset:-2px}
+.mt-drop-hint{text-align:center;padding:14px 6px;color:var(--txt3);font-size:10px;line-height:1.7}
+.mt-chip{font-size:9px;font-weight:700;border-radius:3px;padding:1px 5px;white-space:nowrap}
+.mt-chip-out{background:rgba(200,50,50,.1);color:var(--red)}
+.mt-chip-in{background:rgba(40,167,69,.1);color:var(--green)}
+.mt-card{min-width:100px!important;max-width:155px!important}
+.mt-card .pc-name{font-size:10px!important}
+.mt-card .pc-salary{font-size:9px!important}
+.mt-card .pc-note{font-size:9px!important}
+.mt-card .tag{font-size:8px!important;padding:1px 4px!important}
+.mt-send-btns{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
+.mt-send-btn{background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-size:8px;padding:1px 6px;cursor:pointer;color:var(--txt2);font-weight:700;white-space:nowrap}
+.mt-send-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mt-sat-active{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:rgba(255,193,7,.08);border-bottom:1px solid var(--border);font-size:10px}
+.mt-add-team-btn{background:none;border:none;color:var(--txt2);font-size:11px;cursor:pointer;padding:2px 6px}
+.mt-add-team-btn:hover{color:var(--accent)}
+#mtResults{margin-top:8px}
+
+@media(max-width:1000px){.workspace{grid-template-columns:280px 1fr}}
+@media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}.trade-teams,.results{grid-template-columns:1fr}.sat{grid-template-columns:1fr}}
+@media(max-width:700px){.workspace{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">NBA 2026–27 Cap &amp; Trade</div>
+  <div class="sub" id="source"></div>
+</header>
+<nav class="top-nav">
+  <button id="teamTab" class="active" onclick="setView('team')">Team Pages</button>
+  <button id="tradeTab" onclick="setView('trade')">Trade Machine</button>
+</nav>
+
+<main>
+
+<!-- ── TEAM VIEW ── -->
+<section id="teamView" class="view active">
+  <div class="team-controls">
+    <label class="field">Team
+      <select id="pageTeam" onchange="changePageTeam()"></select>
+    </label>
+  </div>
+
+  <!-- cap meter -->
+  <div id="teamMeter"></div>
+
+  <!-- status cards -->
+  <div id="teamCards" class="cards"></div>
+
+  <!-- workspace -->
+  <div class="workspace">
+
+    <!-- LEFT: projected roster -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="rosterTitle">Projected Roster</h2>
+        <span id="rosterCount" style="font-size:11px;font-weight:600;"></span>
+      </div>
+      <div id="pageSlots"></div>
+      <div id="emptyChargesLine" style="display:none"></div>
+      <div class="roster-footer">
+        <span class="lbl">Roster Salary</span>
+        <span class="total mono" id="pageRosterTotal">$0</span>
+      </div>
+    </div>
+
+    <!-- CENTER: player pool -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Player Pool — drag onto roster</h2>
+        <span style="font-size:10px;color:var(--txt3)">Dimmed = on roster</span>
+      </div>
+      <div class="pool-tabs">
+        <button class="pool-tab active" onclick="setPoolTab('all',this)">All</button>
+        <button class="pool-tab" onclick="setPoolTab('active',this)">Active</button>
+        <button class="pool-tab" onclick="setPoolTab('fa',this)">Free Agents</button>
+        <button class="pool-tab" onclick="setPoolTab('draft',this)">Draft</button>
+      </div>
+      <div class="pool-drop-zone" id="pagePool"
+           ondragover="poolDragOver(event)"
+           ondragleave="poolDragLeave(event)"
+           ondrop="poolDrop(event)">
+      </div>
+    </div>
+
+    <!-- RIGHT: analysis -->
+    <div class="right-col">
+      <div class="panel">
+        <div class="panel-head"><h2>Exceptions Available</h2></div>
+        <div id="exceptionsPanel"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Current Restrictions</h2></div>
+        <div class="restrict-list" id="restrictList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Cap Holds</h2>
+          <span id="holdCount" style="font-size:10px;color:var(--txt3)"></span>
+        </div>
+        <div style="max-height:220px;overflow:auto">
+          <table class="ht">
+            <thead><tr><th>Player</th><th>Rights</th><th style="text-align:right">Hold</th></tr></thead>
+            <tbody id="holdBody"></tbody>
+          </table>
+        </div>
+        <div class="holds-foot">
+          <span>Total holds</span>
+          <span class="mono" id="holdsTotal">—</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /workspace -->
+
+  <!-- Move Simulator -->
+  <div class="sim-panel">
+    <div class="sim-head">
+      <h2>Move Simulator</h2>
+      <p>Test any signing for CBA compliance. Moves that pass are added to the projected roster total.</p>
+    </div>
+    <div class="sim-body">
+      <div class="sim-form">
+        <div class="sf"><label>Player Name</label>
+          <input type="text" id="simName" placeholder="e.g. Nick Richards" list="playerNames" autocomplete="off">
+          <datalist id="playerNames"></datalist>
+        </div>
+        <div class="sf"><label>Rule / Exception</label>
+          <select id="simType" onchange="autoFillSalary()">
+            <option value="bird">Bird Rights re-sign (3+ seasons)</option>
+            <option value="earlybird">Early Bird re-sign (2 seasons)</option>
+            <option value="nobird">Non-Bird re-sign (&lt;2 seasons)</option>
+            <option value="tmle">Taxpayer Mid-Level (TMLE)</option>
+            <option value="minimum">Veteran Minimum</option>
+            <option value="trade_in">Incoming trade salary</option>
+          </select>
+        </div>
+        <div class="sf"><label>Year 1 Salary ($)</label>
+          <input type="text" inputmode="numeric" id="simSalary" placeholder="e.g. 6,000,000" oninput="fmtSalInput(this)">
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <button class="sim-btn" onclick="simulate()">Simulate Move</button>
+        <button class="sim-btn-clr" onclick="clearSim()">Clear All</button>
+      </div>
+      <div id="simResult"></div>
+      <div id="addedMoves"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TRADE MACHINE ── -->
+<section id="tradeView" class="view">
+  <div class="trade-controls">
+    <label class="field">Primary team
+      <select id="homeTeam" onchange="changeTradeTeam('home')"></select>
+    </label>
+    <label class="field">Trade partner
+      <select id="awayTeam" onchange="changeTradeTeam('away')"></select>
+    </label>
+    <button id="mtToggle" class="mt-toggle-btn" onclick="toggleMt()">3+ Team Trade</button>
+  </div>
+  <div id="twoTeamContainer">
+    <div class="trade-teams">
+      <section class="panel team-work">
+        <div class="tm-head"><h2 id="homeTitle"></h2><b id="homeOut">$0</b></div>
+        <div class="tm-subhead"><span>Available roster</span><span>Drag or click players</span></div>
+        <div id="homePool" class="pool-tm"></div>
+        <div class="tm-subhead"><span>Outgoing package</span><span>Click to remove</span></div>
+        <div id="homePackage" class="package" data-side="home"></div>
+        <div class="tm-subhead" id="satSubhead" style="display:none"><span>Sign &amp; Trade — Bird rights FAs</span><span>Edit salary · click to add</span></div>
+        <div id="satFaSection"></div>
+      </section>
+      <section class="panel team-work">
+        <div class="tm-head"><h2 id="awayTitle"></h2><b id="awayOut">$0</b></div>
+        <div class="tm-subhead" id="awayPoolSubhead"><span>Available roster</span><span>Drag or click players</span></div>
+        <div id="awayPool" class="pool-tm"></div>
+        <div class="tm-subhead" id="awayPackageSubhead"><span>Outgoing package</span><span>Click to remove</span></div>
+        <div id="awayPackage" class="package" data-side="away"></div>
+      </section>
+    </div>
+    <div id="tradeResults" class="results"></div>
+  </div>
+  <div id="mtView" style="display:none;margin-top:0">
+    <div id="mtGrid" class="mt-grid"></div>
+    <div id="mtResults"></div>
+  </div>
+</section>
+
+</main>
+
+<script src="data/nba_cap_data_2026_27.js"></script>
+<script src="data/patches_2026_27.js"></script>
+<script>
+// ── constants ──────────────────────────────────────────────────────────────────
+const CAP=165_472_000,TAX=200_474_000,FIRST=209_063_000,SECOND=221_737_000,MIN=1_373_000,ALLOW=250_000,ROSTER_MIN=14;
+
+// ── snapshot data ──────────────────────────────────────────────────────────────
+const snapshot=window.NBA_CAP_SNAPSHOT,teams=snapshot?.teams||{},keys=Object.keys(teams).sort();
+const pendingOwner=new Map();
+Object.entries(teams).forEach(([key,t])=>(t.pending_transactions||[]).forEach(p=>pendingOwner.set(p.player,key)));
+// Known prior salaries for BYC accuracy; others estimated from cap hold
+const priorSalary={'Mitchell Robinson':12_954_546};
+function getPriorSalary(name,teamKey){
+  if(priorSalary[name])return priorSalary[name];
+  const hold=(teams[teamKey]?.cap_holds||[]).find(x=>x.player===name&&x.cap_hit);
+  return hold?Math.round(hold.cap_hit/1.75):null; // Bird cap holds ≈ 150–200% of prior salary
+}
+
+// ── utilities ─────────────────────────────────────────────────────────────────
+const fmt=n=>(n<0?'-$':'$')+Math.abs(Math.round(n||0)).toLocaleString();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function firstRoundPicks(t){
+  return (t.cap_holds||[]).filter(p=>
+    p.cap_hit&&/1st Round Pick/.test(p.rights||'')&&(p.age||99)<=25
+  );
+}
+function roster(t){
+  const active=(t.active_roster||[]).filter(p=>!pendingOwner.has(p.player)||pendingOwner.get(p.player)===t.abbreviation);
+  return [...active,...(t.pending_transactions||[]),...firstRoundPicks(t)].filter((p,i,a)=>p.cap_hit&&a.findIndex(x=>x.player===p.player)===i).sort((a,b)=>b.cap_hit-a.cap_hit);
+}
+// Trade roster: signed/pending players + named draft picks (with cap holds)
+function tradeRoster(t,teamKey){
+  const base=roster(t);
+  const seen=new Set(base.map(p=>p.player));
+  const allHolds=t.cap_holds||[];
+  const namedDrafts=allHolds.filter(isDraft).filter(p=>!seen.has(p.player));
+  const overrideDrafts=(TEAM_DRAFT_OVERRIDES[teamKey]||[]).filter(p=>!seen.has(p.player)&&!namedDrafts.some(d=>d.player===p.player));
+  const picks=[...namedDrafts,...overrideDrafts].map(p=>({...p,cap_hit:p.cap_hit||MIN}));
+  return [...base,...picks];
+}
+function projectedActive(t){
+  const movedOut=(t.active_roster||[]).filter(p=>pendingOwner.has(p.player)&&pendingOwner.get(p.player)!==t.abbreviation).reduce((n,p)=>n+(p.cap_hit||0),0);
+  const pickTotal=firstRoundPicks(t).reduce((n,p)=>n+(p.cap_hit||0),0);
+  return(t.totals?.active_roster||0)-movedOut+(t.pending_transactions||[]).reduce((n,p)=>n+(p.cap_hit||0),0)+pickTotal;
+}
+function opts(value,exclude){
+  return keys.filter(k=>k!==exclude).map(k=>`<option value="${k}"${k===value?' selected':''}>${esc(teams[k].name)}</option>`).join('');
+}
+function awayOpts(value,exclude){
+  return`<option value="ALL"${value==='ALL'?' selected':''}>★ All Teams — eligible finder</option>`+opts(value,exclude);
+}
+
+// All-Teams eligible pool (built dynamically when ak==='ALL')
+const _allPool=new Map();
+function buildAllTeamsPool(hk,h){
+  const out=total('home');
+  _allPool.clear();
+  if(!out)return[];
+  const alreadyIn=total('away'),alreadyCount=state.away.length;
+  const picked=new Set(state.away.map(playerKey));
+  keys.filter(k=>k!==hk).forEach(k=>{
+    tradeRoster(teams[k],k).forEach(p=>{
+      const pk=playerKey(p);
+      if(picked.has(pk))return;
+      const e=evaluate(h,'home',out,alreadyIn+p.cap_hit,alreadyCount+1);
+      if(e.ok)_allPool.set(pk,{...p,_team:k});
+    });
+  });
+  return[..._allPool.values()].sort((a,b)=>b.cap_hit-a.cap_hit);
+}
+function tradeCardAll(p){
+  const tag=isDraft(p)
+    ?(/1st/.test(p.rights||'')?{cls:'tag-draft',lbl:'1st Rd'}:{cls:'tag-draft',lbl:'2nd Rd'})
+    :p.category==='pending_transaction'?{cls:'tag-pending',lbl:'Pending'}:{cls:'tag-signed',lbl:'Signed'};
+  const key=playerKey(p);
+  return`<div class="player-card" onclick="addPlayer('away','${encodeURIComponent(key)}')" title="${esc(teams[p._team]?.name||p._team)} · Click to add">
+    <div class="pc-name">${esc(p.player)}</div>
+    <div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${tag.cls}">${tag.lbl}</span></div>
+    <div class="pc-note">${esc(p.position||'—')} · <strong>${esc(p._team)}</strong></div></div>`;
+}
+
+// ── view navigation ───────────────────────────────────────────────────────────
+function setView(view){
+  document.getElementById('teamView').classList.toggle('active',view==='team');
+  document.getElementById('tradeView').classList.toggle('active',view==='trade');
+  document.getElementById('teamTab').classList.toggle('active',view==='team');
+  document.getElementById('tradeTab').classList.toggle('active',view==='trade');
+  const u=new URL(location.href);u.searchParams.set('view',view);history.replaceState(null,'',u);
+}
+
+// ── team page state ───────────────────────────────────────────────────────────
+const pageRosters=new Map();
+const pageOverrides=new Map(); // teamKey+'|'+player → custom salary (for FA/cap-hold players)
+let pageDrag=null;
+let activePoolTab='all';
+
+// Current-cycle picks only: named picks must be young (≤25) to exclude stashed 2007-era rights (Koponen age 38, Milutinov age 32)
+const isDraft=p=>/Round Pick/.test(p.rights||'')&&(p.age||99)<=25;
+function parseSal(v){return parseInt(String(v).replace(/[^0-9]/g,''),10)||0;}
+function fmtSalInput(el){const raw=el.value.replace(/[^0-9]/g,'');el.value=raw?Number(raw).toLocaleString('en-US'):'';}
+function fmtSalVal(n){return n?Number(n).toLocaleString('en-US'):'';}
+
+function getEffectiveSalary(teamKey,p){
+  const ov=pageOverrides.get(teamKey+'|'+p.player);
+  return(ov&&ov>0)?ov:(p.cap_hit||MIN); // 2nd-round picks have null cap_hit → default to rookie min
+}
+function setFaOverride(el){
+  const k=document.getElementById('pageTeam').value;
+  const player=decodeURIComponent(el.dataset.playerEnc);
+  const val=parseSal(el.value);
+  if(val>0) pageOverrides.set(k+'|'+player,val);
+  else pageOverrides.delete(k+'|'+player);
+  renderTeam();
+}
+
+function changePageTeam(){
+  activePoolTab='all';
+  document.querySelectorAll('.pool-tab').forEach((b,i)=>b.classList.toggle('active',i===0));
+  pageSimMoves=[];pageSimTmleUsed=false;
+  const sr=document.getElementById('simResult'),am=document.getElementById('addedMoves');
+  if(sr)sr.innerHTML='';if(am)am.innerHTML='';
+  renderTeam();
+  const u=new URL(location.href);u.searchParams.set('team',document.getElementById('pageTeam').value);history.replaceState(null,'',u);
+}
+function setPoolTab(tab,btn){
+  activePoolTab=tab;
+  document.querySelectorAll('.pool-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTeamPool();
+}
+
+function pageKey(p){return p.player+'|'+p.cap_hit+'|'+p.category}
+// 2026 draft picks not yet in the Spotrac snapshot — hardcoded per team
+const TEAM_DRAFT_OVERRIDES={
+  NYK:[
+    {player:'Jack Kayil',  category:'cap_hold',position:'PG',   age:20,contract_type:null,cap_hit:1_373_000,rights:'2nd Round Pick',_note:'39th pick · unsigned'},
+    {player:'Tyler Nickel',category:'cap_hold',position:'SG/SF',age:21,contract_type:null,cap_hit:1_373_000,rights:'2nd Round Pick',_note:'47th pick · unsigned'},
+  ],
+};
+
+function pageCandidates(t,teamKey){
+  const base=roster(t);
+  const seen=new Set(base.map(p=>p.player));
+  const allHolds=t.cap_holds||[];
+  // FA/RFA player holds (have a position, not a draft slot)
+  const faHolds=allHolds.filter(p=>p.cap_hit&&p.position&&!seen.has(p.player)&&!isDraft(p)&&!/^Incomplete Roster/.test(p.player));
+  // Named draft picks (young, by rights field) — exclude any already in base via firstRoundPicks
+  const namedDrafts=allHolds.filter(isDraft).filter(p=>!seen.has(p.player));
+  // Team-specific hardcoded draft picks (not yet in snapshot)
+  const overrideDrafts=(TEAM_DRAFT_OVERRIDES[teamKey]||[]).filter(p=>!seen.has(p.player)&&!namedDrafts.some(d=>d.player===p.player));
+  // Generic "Round X, Pick #Y" placeholders are excluded entirely — they are always superseded by named picks or overrides
+  return [...base,...faHolds,...namedDrafts,...overrideDrafts];
+}
+function pageSlots(teamKey){
+  if(!pageRosters.has(teamKey)){
+    const initial=roster(teams[teamKey]).slice(0,15).map(pageKey);
+    pageRosters.set(teamKey,[...initial,...Array(15-initial.length).fill(null)]);
+  }
+  return pageRosters.get(teamKey);
+}
+function pagePlayer(teamKey,key){
+  if(key.startsWith('__sim_'))return pageSimPlayers.get(key)||null;
+  return pageCandidates(teams[teamKey],teamKey).find(p=>pageKey(p)===key);
+}
+
+function addPagePlayer(encoded){
+  const k=document.getElementById('pageTeam').value,key=decodeURIComponent(encoded),slots=pageSlots(k);
+  if(slots.includes(key))return;
+  const i=slots.indexOf(null);
+  if(i>=0){slots[i]=key;renderTeam();}
+}
+function removePageSlot(i){
+  const k=document.getElementById('pageTeam').value;
+  pageSlots(k)[i]=null;
+  renderTeam();
+}
+function startPageDrag(e,encoded,from){
+  pageDrag={key:decodeURIComponent(encoded),from};
+  e.dataTransfer.effectAllowed='move';
+}
+function pageDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function pageDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+function dropPagePlayer(e,i){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(!pageDrag)return;
+  const k=document.getElementById('pageTeam').value,slots=pageSlots(k),old=slots[i];
+  if(Number.isInteger(pageDrag.from))slots[pageDrag.from]=old;
+  slots[i]=pageDrag.key;pageDrag=null;renderTeam();
+}
+function poolDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function poolDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+function poolDrop(e){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(!pageDrag)return;
+  const k=document.getElementById('pageTeam').value,slots=pageSlots(k);
+  if(Number.isInteger(pageDrag.from)){slots[pageDrag.from]=null;pageDrag=null;renderTeam();}
+}
+
+// ── team page render ──────────────────────────────────────────────────────────
+function playerTag(p){
+  if(p.category==='sim') return{cls:'tag-sim',lbl:p.contract_type||'Sim'};
+  // isDraft = named young picks (rights field); generic "Round X, Pick #Y" entries also get draft tag
+  if(isDraft(p)||/^Round \d/.test(p.player)){
+    const is1st=/1st|Round 1/.test(p.rights||'')||/^Round 1/.test(p.player);
+    return is1st?{cls:'tag-draft',lbl:'1st Rd'}:{cls:'tag-draft',lbl:'2nd Rd'};
+  }
+  if(p.category==='cap_hold') return p.rights?.includes('RFA')?{cls:'tag-rfa',lbl:'RFA'}:{cls:'tag-hold',lbl:p.rights||'Hold'};
+  if(p.category==='active_roster') return{cls:'tag-signed',lbl:'Signed'};
+  if(p.contract_type==='FA') return{cls:'tag-ufa',lbl:'UFA'};
+  return{cls:'tag-pending',lbl:'Pending'};
+}
+
+function renderTeam(){
+  const k=document.getElementById('pageTeam').value,t=teams[k];
+  const slots=pageSlots(k),candidates=pageCandidates(t,k);
+  const used=new Set(slots.filter(Boolean));
+  const players=slots.map(x=>x?pagePlayer(k,x):null);
+  const count=players.filter(Boolean).length;
+  const rosterTotal=players.reduce((n,p)=>n+(p?getEffectiveSalary(k,p):0),0);
+  const charges=Math.max(0,ROSTER_MIN-count)*MIN;
+  const projected=rosterTotal+charges;
+
+  // cap meter
+  const mMin=150_000_000,mMax=235_000_000;
+  const pct=Math.min(100,Math.max(0,(projected-mMin)/(mMax-mMin)*100));
+  const fillColor=projected>SECOND?'#cf222e':projected>FIRST?'#bc4c00':projected>TAX?'#9a6700':'#006BB6';
+  const lines=[
+    {v:CAP,  label:'Cap $165.5M', color:'#1a7f37'},
+    {v:TAX,  label:'Tax $200.5M', color:'#9a6700'},
+    {v:FIRST,label:'1st $209.1M', color:'#bc4c00'},
+    {v:SECOND,label:'2nd $221.7M',color:'#cf222e'},
+  ];
+  document.getElementById('teamMeter').innerHTML=`<div class="meter-wrap">
+    <div class="meter-title">Projected Salary — drag players in/out to update</div>
+    <div class="meter-bar-outer">
+      <div class="meter-fill" style="width:${pct.toFixed(1)}%;background:${fillColor}"></div>
+      ${lines.map(l=>{const lp=((l.v-mMin)/(mMax-mMin)*100).toFixed(1);return`<div class="meter-line" style="left:${lp}%;background:${l.color}"><span style="color:${l.color}">${l.label}</span></div>`;}).join('')}
+      <div class="meter-current">${fmt(projected)}</div>
+    </div>
+    <div class="meter-foot"><span>$150M</span><span>$170M</span><span>$190M</span><span>$210M</span><span>$230M+</span></div>
+  </div>`;
+
+  // status cards
+  const diff=v=>projected-v;
+  const cardVal=(d)=>d>0?`<span class="c-red">+${fmt(d)} over</span>`:`<span class="c-green">${fmt(-d)} room</span>`;
+
+  // Max 1-player add: room to nearest apron above + one freed incomplete roster charge (MIN)
+  // Only shown for the closest threshold the team hasn't yet crossed; never shown if over 2nd apron
+  const nearestApron=projected<FIRST?FIRST:SECOND;
+  const maxAdd=projected<SECOND?Math.max(0,nearestApron-projected+MIN):null;
+  const maxAddLine=maxAdd
+    ?`<div class="sub" style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Max add <strong>${fmt(maxAdd)}</strong></div>`
+    :'';
+  // Which cards show maxAdd?
+  const maxIn2nd  = maxAdd && projected>=FIRST;           // between aprons → 2nd apron card only
+  const maxIn1st  = maxAdd && projected<FIRST;            // below 1st apron → 1st apron card
+  const maxInTax  = maxAdd && projected<TAX;              // also below tax → tax card too
+  const maxInCap  = maxAdd && projected<=CAP;             // also has cap space → cap space card too
+
+  document.getElementById('teamCards').innerHTML=`
+    <div class="card"><div class="lbl">Projected Total</div><div class="val mono" style="font-size:15px">${fmt(projected)}</div><div class="sub">${count} players${charges?', '+fmt(charges)+' charges':''}</div></div>
+    <div class="card"><div class="lbl">vs Luxury Tax ($200.5M)</div><div class="val">${cardVal(diff(TAX))}</div><div class="sub">${diff(TAX)>0?'Luxury taxpayer':'Under tax line'}</div>${maxInTax?maxAddLine:''}</div>
+    <div class="card"><div class="lbl">vs 1st Apron ($209.1M)</div><div class="val">${cardVal(diff(FIRST))}</div><div class="sub">${diff(FIRST)>0?'Over 1st apron':''}</div>${maxIn1st?maxAddLine:''}</div>
+    <div class="card"><div class="lbl">vs 2nd Apron ($221.7M)</div><div class="val">${cardVal(diff(SECOND))}</div><div class="sub">${diff(SECOND)>0?'Over 2nd apron':''}</div>${maxIn2nd?maxAddLine:''}</div>
+    <div class="card"><div class="lbl">Cap Space</div><div class="val">${projected<=CAP?`<span class="c-green">${fmt(CAP-projected)}</span>`:`<span class="c-red">None</span>`}</div><div class="sub">${projected<=CAP?'available':'over the cap'}</div>${maxInCap?maxAddLine:''}</div>`;
+
+  // roster slots
+  document.getElementById('rosterTitle').textContent=t.name+' · Projected Roster';
+  document.getElementById('rosterCount').textContent=count+' / 15';
+  document.getElementById('pageRosterTotal').textContent=fmt(rosterTotal);
+  document.getElementById('pageSlots').innerHTML=slots.map((key,i)=>{
+    const p=key?pagePlayer(k,key):null;
+    if(p){
+      const{cls,lbl}=playerTag(p);
+      return`<div class="roster-slot" ondragover="pageDragOver(event)" ondragleave="pageDragLeave(event)" ondrop="dropPagePlayer(event,${i})">
+        <span class="slot-num">${i+1}</span>
+        <div class="slot-filled" draggable="true" ondragstart="startPageDrag(event,'${encodeURIComponent(key)}',${i})">
+          <span class="slot-name">${esc(p.player)}</span>
+          <span class="slot-meta">${esc(p.position||'')}</span>
+          <span class="tag ${cls}">${lbl}</span>
+        </div>
+        <span class="slot-salary">${fmt(getEffectiveSalary(k,p))}</span>
+        <button class="slot-rm" onclick="removePageSlot(${i})" title="Remove">×</button>
+      </div>`;
+    }
+    return`<div class="roster-slot" ondragover="pageDragOver(event)" ondragleave="pageDragLeave(event)" ondrop="dropPagePlayer(event,${i})">
+      <span class="slot-num">${i+1}</span>
+      <span class="slot-empty">Empty slot</span>
+    </div>`;
+  }).join('');
+
+  // empty charges line
+  const ecl=document.getElementById('emptyChargesLine');
+  if(charges>0){
+    ecl.style.display='flex';
+    ecl.className='roster-footer';
+    ecl.style.borderBottom='1px solid var(--border)';
+    ecl.innerHTML=`<span class="lbl" style="color:var(--owarn)">Incomplete roster (${ROSTER_MIN-count} slots × $1.37M)</span><span class="total mono" style="color:var(--owarn)">${fmt(charges)}</span>`;
+  } else {ecl.style.display='none';}
+
+  renderTeamPool(candidates,used);
+  renderTeamAnalysis(t,projected);
+}
+
+function poolCard(k,p,used){
+  const key=pageKey(p),isUsed=used.has(key);
+  const{cls,lbl}=playerTag(p);
+  const needsInput=p.category==='cap_hold'; // covers both FA holds and draft picks
+  const salaryVal=pageOverrides.get(k+'|'+p.player)||(p.cap_hit||MIN);
+  return`<div class="player-card ${isUsed?'on-roster':''}"
+    draggable="${!isUsed}"
+    ondragstart="startPageDrag(event,'${encodeURIComponent(key)}',null)"
+    onclick="${isUsed||needsInput?'':'addPagePlayer(\''+encodeURIComponent(key)+'\')'}">
+    <div class="pc-name">${esc(p.player)}</div>
+    ${needsInput
+      ?`<div class="pc-row">
+          <input class="fa-salary-input" type="text" inputmode="numeric"
+            data-player-enc="${encodeURIComponent(p.player)}"
+            value="${fmtSalVal(salaryVal)}"
+            oninput="fmtSalInput(this)"
+            onchange="setFaOverride(this)"
+            onclick="event.stopPropagation()"
+            ondragstart="event.stopPropagation()"
+            title="Enter new contract AAV">
+          <span class="tag ${cls}">${lbl}</span>
+        </div>
+        <div class="pc-row" style="margin-top:3px;justify-content:space-between">
+          <span class="pc-note" style="margin:0">${esc(p.position||'')}${p.rights&&!isDraft(p)?' · '+esc(p.rights):''}</span>
+          ${!isUsed?`<button class="fa-add-btn" onclick="event.stopPropagation();addPagePlayer('${encodeURIComponent(key)}')" title="Add to roster">+ Add</button>`:''}
+        </div>`
+      :`<div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${cls}">${lbl}</span></div>
+        <div class="pc-note">${esc(p.position||'')}${p.contract_type?' · '+esc(p.contract_type):''}</div>`}
+  </div>`;
+}
+function poolSection(label,items,k,used){
+  if(!items.length) return '';
+  return`<div class="pool-section-head">${label} <span style="font-weight:400;opacity:.7">(${items.length})</span></div>`+
+    `<div class="pool-cards-grid" style="padding:0 6px 8px">${items.map(p=>poolCard(k,p,used)).join('')}</div>`;
+}
+function renderTeamPool(candidates,used){
+  const k=document.getElementById('pageTeam').value,t=teams[k];
+  if(!candidates){candidates=pageCandidates(t,k);used=new Set(pageSlots(k).filter(Boolean));}
+  const active=candidates.filter(p=>p.category==='active_roster');
+  const fa=candidates.filter(p=>p.category==='pending_transaction'||(p.category==='cap_hold'&&!isDraft(p)));
+  const draft=candidates.filter(isDraft);
+  let html='';
+  if(activePoolTab==='active') html=active.length?`<div class="pool-cards-grid" style="padding:8px 6px">${active.map(p=>poolCard(k,p,used)).join('')}</div>`:'';
+  else if(activePoolTab==='fa') html=fa.length?`<div class="pool-cards-grid" style="padding:8px 6px">${fa.map(p=>poolCard(k,p,used)).join('')}</div>`:'';
+  else if(activePoolTab==='draft') html=draft.length?`<div class="pool-cards-grid" style="padding:8px 6px">${draft.map(p=>poolCard(k,p,used)).join('')}</div>`:'';
+  else{ // 'all' — show sections with headers
+    html=poolSection('Active Roster',active,k,used)+poolSection('Free Agents & Pending',fa,k,used)+poolSection('Draft',draft,k,used);
+  }
+  document.getElementById('pagePool').innerHTML=html||'<div style="padding:10px;font-size:11px;color:var(--txt3);font-style:italic">No players in this category</div>';
+}
+
+function renderTeamAnalysis(t,projected){
+  // exceptions
+  const excs=t.exceptions||[];
+  document.getElementById('exceptionsPanel').innerHTML=excs.length
+    ?excs.map(x=>`<div class="exc-row"><div><div class="exc-name">${esc(x.type||'Exception')}</div><div class="exc-detail">Expires ${esc(x.expires||'—')}</div></div><span class="exc-amt">${fmt(x.available)}</span></div>`).join('')
+    :'<div class="exc-row"><span style="font-size:11px;color:var(--txt3);font-style:italic">No exceptions on file</span></div>';
+
+  // restrictions
+  const ri=[];
+  if(projected>SECOND){
+    ri.push({d:'dot-block',t:'Over 2nd apron — no TMLE, no cash in trades, no post-deadline buyouts'});
+    ri.push({d:'dot-block',t:'No salary aggregation in trades; hard match required'});
+    ri.push({d:'dot-block',t:'Cannot receive via sign-and-trade'});
+  } else if(projected>FIRST){
+    ri.push({d:'dot-warn',t:'Over 1st apron — no salary aggregation in trades'});
+    ri.push({d:'dot-warn',t:'Trade match limit: incoming ≤ 110% of outgoing + $100K'});
+    ri.push({d:'dot-warn',t:'Cannot receive via sign-and-trade'});
+    ri.push({d:'dot-ok',t:'TMLE still available (if signing stays under 2nd apron)'});
+  } else if(projected>TAX){
+    ri.push({d:'dot-warn',t:'Luxury taxpayer — no BAE, no Non-Taxpayer MLE'});
+    ri.push({d:'dot-ok',t:'Trade matching: incoming ≤ 125% + $100K'});
+    ri.push({d:'dot-ok',t:'Taxpayer MLE (~$6.1M) available'});
+  } else if(projected<=CAP){
+    ri.push({d:'dot-ok',t:'Under salary cap — can use cap space to sign free agents'});
+    ri.push({d:'dot-ok',t:'Non-Taxpayer MLE and BAE available'});
+  } else {
+    ri.push({d:'dot-ok',t:'Over cap, under luxury tax — Non-Taxpayer MLE (~$12.4M) and BAE available'});
+    ri.push({d:'dot-ok',t:'Trade matching: incoming ≤ 125% + $100K'});
+  }
+  document.getElementById('restrictList').innerHTML=ri.map(r=>`<div class="ri"><div class="ri-dot ${r.d}"></div><div class="ri-text">${r.t}</div></div>`).join('');
+
+  // cap holds
+  const holds=(t.cap_holds||[]).filter(h=>h.cap_hit);
+  document.getElementById('holdCount').textContent=holds.length+' holds';
+  const total=holds.reduce((n,h)=>n+(h.cap_hit||0),0);
+  document.getElementById('holdBody').innerHTML=holds.length
+    ?holds.map(h=>`<tr><td>${esc(h.player)}</td><td>${esc(h.rights||'—')}</td><td style="text-align:right" class="mono">${fmt(h.cap_hit)}</td></tr>`).join('')
+    :'<tr><td colspan="3" style="padding:8px;color:var(--txt3);font-style:italic">No cap holds</td></tr>';
+  document.getElementById('holdsTotal').textContent=total?fmt(total):'—';
+}
+
+// ── Move Simulator ────────────────────────────────────────────────────────────
+const pageSimPlayers=new Map(); // simKey → fake player object
+let pageSimMoves=[];
+let pageSimTmleUsed=false;
+let simCounter=0;
+const fmtM=n=>(n<0?'-$':'$')+(Math.abs(n)/1_000_000).toFixed(1)+'M';
+
+function pageCalcRosterTotal(k){
+  return pageSlots(k).reduce((n,key)=>{const p=key?pagePlayer(k,key):null;return n+(p?getEffectiveSalary(k,p):0);},0);
+}
+function pageCalcRosterCount(k){return pageSlots(k).filter(Boolean).length;}
+function pageCalcEmptySlots(k){return Math.max(0,12-pageCalcRosterCount(k))*MIN;}
+function pageCalcActive(k){return pageCalcRosterTotal(k)+pageCalcEmptySlots(k);}
+function pageCalcFinalReserve(n){return Math.max(0,14-Math.max(12,n))*MIN;}
+function pageCalcAvailableTmle(k){
+  if(pageSimTmleUsed)return 0;
+  const cnt=pageCalcRosterCount(k),replaced=cnt<12?MIN:0;
+  return Math.max(0,Math.min(6_066_000,SECOND-(pageCalcActive(k)-replaced+pageCalcFinalReserve(cnt+1))));
+}
+
+function autoFillSalary(){
+  const type=document.getElementById('simType').value,sal=document.getElementById('simSalary');
+  if(type==='tmle')sal.value=fmtSalVal(6_066_000);
+  else if(type==='minimum')sal.value=fmtSalVal(2_450_001);
+  else sal.value='';
+}
+
+function simulate(){
+  const k=document.getElementById('pageTeam').value,t=teams[k];
+  const name=document.getElementById('simName').value.trim();
+  const salary=parseSal(document.getElementById('simSalary').value);
+  const type=document.getElementById('simType').value;
+  const result=document.getElementById('simResult');
+  if(!name||salary<=0){result.innerHTML=`<div class="sim-result warn"><h3>Enter a player name and salary.</h3></div>`;return;}
+  const typeLabels={bird:'Bird Rights',earlybird:'Early Bird',nobird:'Non-Bird',tmle:'TMLE',minimum:'Vet Min',trade_in:'Trade (In)'};
+  const active=pageCalcActive(k),count=pageCalcRosterCount(k);
+  const hasEmpty=count<12,netSalary=hasEmpty?salary-MIN:salary;
+  const newActive=active+netSalary,postCount=count+1;
+  const finalReserve=pageCalcFinalReserve(postCount),rosterCompliant=newActive+finalReserve;
+  const errors=[],warnings=[],info=[];
+  const birdHold=(t.cap_holds||[]).find(h=>h.player.toLowerCase()===name.toLowerCase()&&/Bird/i.test(h.rights||''));
+  if(type==='tmle'){
+    const avail=pageCalcAvailableTmle(k);
+    if(pageSimTmleUsed)errors.push('TMLE already used this offseason.');
+    else if(salary>avail)errors.push(`Available TMLE = ${fmt(avail)} (preserving 14-player roster). Over by ${fmt(salary-avail)}.`);
+    if(rosterCompliant>SECOND)errors.push(`With 14-player reserve, payroll = ${fmtM(rosterCompliant)}, over the second apron.`);
+    if(hasEmpty)info.push(`Empty slot offset: net cap impact = ${fmt(salary)} − ${fmt(MIN)} = ${fmt(netSalary)}.`);
+    if(finalReserve>0)info.push(`14-player roster reserve: ${fmt(finalReserve)}.`);
+    info.push('TMLE: max 2-year deal · 5% raises · one-time use.');
+  } else if(type==='bird'){
+    if(!birdHold)warnings.push(`"${name}" not found in ${t.name} Bird Rights cap holds. Verify 3+ seasons with team.`);
+    if(newActive>SECOND)warnings.push(`Would push payroll to ${fmtM(newActive)}, over 2nd apron by ${fmtM(newActive-SECOND)}.`);
+    info.push('Bird Rights: no cap limit · up to max salary · 8% annual raises.');
+  } else if(type==='earlybird'){
+    if(!birdHold)warnings.push(`"${name}" not found in ${t.name} Early Bird cap holds. Verify 2 seasons with team.`);
+    info.push('Early Bird: max 3yr · 5% raises · up to 175% of league min or 105% of prior salary.');
+  } else if(type==='trade_in'){
+    errors.push('Use the Trade Machine tab. Incoming salary requires matching the outgoing contracts.');
+  }
+  const ok=errors.length===0;
+  const cls=ok?(warnings.length?'warn':'ok'):'err';
+  const icon=ok?(warnings.length?'⚠️':'✅'):'🚫';
+  const head=ok?(warnings.length?'Permitted with Warnings':'CBA-Compliant'):'Not Permitted';
+  const avail=(!ok&&type==='tmle'&&!pageSimTmleUsed)?pageCalcAvailableTmle(k):null;
+  let html=`<div class="sim-result ${cls}"><h3>${icon} ${head}</h3>`;
+  if(errors.length)html+=`<ul>${errors.map(e=>`<li style="color:var(--red)">${e}</li>`).join('')}</ul>`;
+  if(warnings.length)html+=`<ul>${warnings.map(w=>`<li style="color:var(--yellow)">${w}</li>`).join('')}</ul>`;
+  if(info.length)html+=`<ul>${info.map(i=>`<li style="color:var(--txt2)">${i}</li>`).join('')}</ul>`;
+  if(avail&&avail>0&&avail<salary)html+=`<div style="margin-top:8px;padding:8px 10px;background:rgba(0,107,182,.06);border:1px solid rgba(0,107,182,.2);border-radius:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:11px">Max allowed: <strong class="mono">${fmt(avail)}</strong></span><button class="sim-btn" style="padding:4px 12px;font-size:11px" onclick="addAtMax(${avail})">Add ${esc(name)} at ${fmt(avail)}</button></div>`;
+  html+=`<div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(0,0,0,.08);display:flex;gap:12px;flex-wrap:wrap;font-size:11px"><span>New total: <strong>${fmtM(newActive)}</strong></span><span>vs 1st apron: <strong style="color:${newActive>FIRST?'var(--red)':'var(--green)'}">${fmtM(newActive-FIRST)}</strong></span><span>vs 2nd apron: <strong style="color:${newActive>SECOND?'var(--red)':'var(--green)'}">${fmtM(newActive-SECOND)}</strong></span></div></div>`;
+  result.innerHTML=html;
+  if(ok){
+    const slots=pageSlots(k),emptyIdx=slots.indexOf(null);
+    if(emptyIdx===-1){result.innerHTML+=`<div class="sim-result warn" style="margin-top:6px"><h3>Roster full (15/15) — remove a player first.</h3></div>`;return;}
+    if(type==='tmle')pageSimTmleUsed=true;
+    const simId=`__sim_${++simCounter}`;
+    pageSimPlayers.set(simId,{player:name,cap_hit:salary,category:'sim',position:'—',contract_type:typeLabels[type]});
+    slots[emptyIdx]=simId;
+    pageSimMoves.push({id:simId,name,salary,typeLabel:typeLabels[type]});
+    document.getElementById('simName').value='';
+    document.getElementById('simSalary').value='';
+    renderAddedMoves();renderTeam();
+  }
+}
+function addAtMax(maxSalary){document.getElementById('simSalary').value=fmtSalVal(maxSalary);simulate();}
+function removeSimPlayer(simId){
+  pageSimPlayers.delete(simId);
+  const k=document.getElementById('pageTeam').value,slots=pageSlots(k),i=slots.indexOf(simId);
+  if(i!==-1)slots[i]=null;
+}
+function removeSimMove(i){
+  const move=pageSimMoves[i];if(!move)return;
+  if(move.typeLabel==='TMLE')pageSimTmleUsed=false;
+  removeSimPlayer(move.id);pageSimMoves.splice(i,1);
+  renderAddedMoves();renderTeam();document.getElementById('simResult').innerHTML='';
+}
+function clearSim(){
+  pageSimMoves.forEach(m=>removeSimPlayer(m.id));pageSimMoves=[];pageSimTmleUsed=false;
+  renderAddedMoves();renderTeam();document.getElementById('simResult').innerHTML='';
+}
+function renderAddedMoves(){
+  const wrap=document.getElementById('addedMoves');
+  if(!pageSimMoves.length){wrap.innerHTML='';return;}
+  const net=pageSimMoves.reduce((s,m)=>s+m.salary,0);
+  wrap.innerHTML=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);margin:9px 0 5px">Simulated Moves (+${fmt(net)} salary)</div>`
+    +pageSimMoves.map((m,i)=>`<div class="added-move"><button class="rm" onclick="removeSimMove(${i})">✕</button><strong style="flex:1;font-size:12px">${esc(m.name)}</strong><span class="mono" style="font-size:11px">${fmt(m.salary)}</span><span class="tag tag-sim">${m.typeLabel}</span></div>`).join('');
+}
+
+// ── trade machine ─────────────────────────────────────────────────────────────
+const state={home:[],away:[],sat:null,eligible:[]};
+let _blockedKeys=new Set(); // away pool keys whose salary is too large for home to receive
+
+function changeTradeTeam(side){
+  state[side]=[];
+  if(side==='home'){
+    state.sat=null;
+    const h=document.getElementById('homeTeam').value,a=document.getElementById('awayTeam').value;
+    document.getElementById('awayTeam').innerHTML=awayOpts(a===h?(h==='BOS'?'NYK':'BOS'):a,h);
+  }
+  renderTrade();
+}
+function playerKey(p){return p.player+'|'+p.cap_hit}
+
+function tradeCard(p,side,isPackage){
+  const tag=isDraft(p)
+    ?(/1st/.test(p.rights||'')?{cls:'tag-draft',lbl:'1st Rd'}:{cls:'tag-draft',lbl:'2nd Rd'})
+    :p.category==='pending_transaction'?{cls:'tag-pending',lbl:'Pending'}:{cls:'tag-signed',lbl:'Signed'};
+  const key=playerKey(p);
+  if(isPackage){
+    return`<div class="player-card tm-card-pkg" onclick="removePlayer('${side}','${encodeURIComponent(key)}')" title="Click to remove">
+      <div class="pc-name">${esc(p.player)}<span class="tm-rm">✕</span></div>
+      <div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${tag.cls}">${tag.lbl}</span></div>
+      <div class="pc-note">${esc(p.position||'—')}${p._team?` · <strong>${esc(p._team)}</strong>`:''}</div></div>`;
+  }
+  const blocked=side==='away'&&_blockedKeys.has(key);
+  return`<div class="player-card${blocked?' tm-blocked':''}" draggable="true" data-side="${side}" data-key="${esc(key)}"
+    onclick="addPlayer('${side}','${encodeURIComponent(key)}')" title="${blocked?'Salary too large — would exceed matching limit':'Click or drag to add'}">
+    <div class="pc-name">${esc(p.player)}</div>
+    <div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${tag.cls}">${tag.lbl}</span></div>
+    <div class="pc-note">${esc(p.position||'—')}</div></div>`;
+}
+function sourceRows(side,t,teamKey){
+  const picked=new Set(state[side].map(playerKey));
+  const avail=tradeRoster(t,teamKey).filter(p=>!picked.has(playerKey(p)));
+  return avail.length
+    ?`<div class="pool-cards-grid" style="padding:8px 6px">${avail.map(p=>tradeCard(p,side,false)).join('')}</div>`
+    :`<div class="tm-empty" style="padding:10px 12px">No available players</div>`;
+}
+function packageRows(side){
+  const cards=state[side].map(p=>tradeCard(p,side,true)).join('');
+  const satCard=side==='home'&&state.sat
+    ?`<div class="player-card tm-card-pkg" onclick="removeSat()" title="Click to remove">
+        <div class="pc-name">${esc(state.sat.player)}<span class="tm-rm">✕</span></div>
+        <div class="pc-row"><span class="pc-salary">${fmt(state.sat.matching)}</span><span class="tag tag-pending">${state.sat.byc?'BYC':'S&amp;T'}</span></div>
+        <div class="pc-note">${state.sat.byc?'BYC matching':'Full matching'}</div></div>`:'';
+  return(cards+satCard)||`<div class="package-hint">Drag or click players to add</div>`;
+}
+function addPlayer(side,key){
+  const decoded=decodeURIComponent(key);
+  if(side==='away'&&document.getElementById('awayTeam').value==='ALL'){
+    const p=_allPool.get(decoded);
+    if(p&&!state.away.some(x=>playerKey(x)===decoded))state.away.push(p);
+  }else{
+    const tk=document.getElementById(side+'Team').value,t=teams[tk];
+    const p=tradeRoster(t,tk).find(x=>playerKey(x)===decoded);
+    if(p&&!state[side].some(x=>playerKey(x)===decoded))state[side].push(p);
+  }
+  renderTrade();
+}
+function removePlayer(side,key){
+  state[side]=state[side].filter(p=>playerKey(p)!==decodeURIComponent(key));
+  renderTrade();
+}
+function total(side){
+  return state[side].reduce((n,p)=>n+p.cap_hit,0)+(side==='home'&&state.sat?state.sat.matching:0);
+}
+function addSignAndTrade(name,salary){
+  if(!name||!salary)return;
+  const hk=document.getElementById('homeTeam').value;
+  const prior=getPriorSalary(name,hk);
+  const t=teams[hk],active=t.totals?.active_roster||0;
+  const nonBird=prior?Math.max(prior*1.2,2_450_001*1.2):null;
+  const byc=!!prior&&active+salary>CAP&&salary>nonBird;
+  const matching=byc?Math.max(prior,salary*.5):salary;
+  state.sat={player:name,salary,prior,byc,matching};
+  renderTrade();
+}
+function satAddByInput(btn){
+  const name=btn.dataset.player;
+  const salary=parseSal(document.getElementById(btn.dataset.input).value);
+  addSignAndTrade(name,salary);
+}
+function removeSat(){state.sat=null;renderTrade();}
+
+function renderSatFas(h,hk){
+  const holds=(h.cap_holds||[]).filter(x=>x.rights&&/Bird/i.test(x.rights)&&x.position);
+  const sub=document.getElementById('satSubhead');
+  if(!holds.length){sub.style.display='none';return'';}
+  sub.style.display='';
+  return`<div class="pool-cards-grid" style="padding:8px 6px">`+holds.map((p,i)=>{
+    const isFull=/^Bird$/i.test(p.rights);
+    const tag=isFull?{cls:'tag-signed',lbl:'Bird'}:{cls:'tag-pending',lbl:'Early Bird'};
+    const inputId=`sat-sal-${i}`;
+    const isActive=state.sat?.player===p.player;
+    const defaultSal=isActive?state.sat.salary:(getPriorSalary(p.player,hk)||MIN);
+    const bycNote=isActive&&state.sat.byc?` · BYC → ${fmt(state.sat.matching)}`:'';
+    return`<div class="player-card${isActive?' on-roster':''}">
+      <div class="pc-name">${esc(p.player)}</div>
+      <div class="pc-row">
+        <input id="${inputId}" class="fa-salary-input" type="text" inputmode="numeric"
+          value="${fmtSalVal(defaultSal)}" oninput="fmtSalInput(this)" onclick="event.stopPropagation()" ondragstart="event.stopPropagation()"
+          title="Year-1 S&T salary" ${isActive?'disabled':''}>
+        <span class="tag ${tag.cls}">${tag.lbl}</span>
+      </div>
+      <div class="pc-row" style="margin-top:3px;justify-content:space-between">
+        <span class="pc-note" style="margin:0">${esc(p.position||'—')}${bycNote}</span>
+        ${isActive
+          ?`<button class="fa-add-btn" style="background:var(--red)" onclick="removeSat()">✕ Remove</button>`
+          :`<button class="fa-add-btn" data-player="${esc(p.player)}" data-input="${inputId}" onclick="event.stopPropagation();satAddByInput(this)">+ S&amp;T</button>`}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function expandedMax(out){const add=7_500_000*(CAP/136_021_000);return Math.max(Math.min(out*2+ALLOW,out+add),out*1.25+ALLOW)}
+function evaluate(team,side,outgoing,incoming,incomingCount){
+  const active=projectedActive(team)||roster(team).reduce((n,p)=>n+p.cap_hit,0);
+  const rosterOutgoing=state[side].reduce((n,p)=>n+p.cap_hit,0);
+  const after=active-rosterOutgoing,projected=after+incoming;
+  const count=roster(team).length-state[side].length+incomingCount;
+  const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
+  function routeFor(out,playerCount){
+    const room=after<CAP&&projected<=CAP+ALLOW;
+    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
+    const aggregate=playerCount>1&&projected<=SECOND&&strict;
+    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
+    return room?'Cap room':playerCount<=1&&strict?'Standard matching':aggregate?'Aggregated matching':expanded?'Expanded exception':null;
+  }
+  let route=routeFor(outgoing,state[side].length+(side==='home'&&state.sat?1:0));
+  let hard=route==='Aggregated matching'?SECOND:route==='Expanded exception'?FIRST:null;
+  if(side==='home'&&state.sat&&route&&!routeFor(rosterOutgoing,state[side].length))hard=SECOND;
+  const ok=!!route&&(!hard||final<=hard);
+  let reason='';
+  if(!ok){
+    if(!route){
+      if(projected>SECOND){
+        reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}). Teams over the 2nd apron cannot take back more salary than they send out — no matching route available.`;
+      }else if(projected>FIRST){
+        // Over 1st apron: incoming must be ≤ outgoing; no expanded exception, no buffer
+        reason=`Projected payroll ${fmt(projected)} is over the 1st apron (${fmt(FIRST)}). No salary buffer allowed — incoming must not exceed outgoing. Receiving ${fmt(incoming)} vs sending ${fmt(outgoing)}, over by ${fmt(incoming-outgoing)}.`;
+      }else if(projected>TAX){
+        const stdLimit=outgoing+ALLOW;
+        const expLimit=outgoing>0?expandedMax(outgoing):0;
+        const bestLimit=Math.max(stdLimit,expLimit);
+        const which=expLimit>stdLimit?`expanded exception (≈200% of outgoing)`:`taxpayer standard matching (outgoing + $250K)`;
+        reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`;
+      }else{
+        const stdLimit=outgoing+ALLOW;
+        const expLimit=outgoing>0?expandedMax(outgoing):0;
+        const bestLimit=Math.max(stdLimit,expLimit);
+        const which=expLimit>stdLimit?`expanded exception (≈200% of outgoing)`:`standard matching (outgoing + $250K)`;
+        reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`;
+      }
+    }else if(hard&&final>hard){
+      const apronName=hard===SECOND?'2nd apron hard cap':'1st apron hard cap';
+      reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds the ${apronName} (${fmt(hard)}) by ${fmt(final-hard)}.`;
+    }
+  }
+  return{ok,active,projected,final,reserve,route,hard,reason};
+}
+function renderTrade(){
+  const hk=document.getElementById('homeTeam').value,ak=document.getElementById('awayTeam').value;
+  const h=teams[hk],isAll=ak==='ALL';
+
+  // Home side — always the same
+  document.getElementById('homeTitle').textContent=h.name;
+  document.getElementById('homePool').innerHTML=sourceRows('home',h,hk);
+  document.getElementById('homePackage').innerHTML=packageRows('home');
+  const ho=total('home'),ao=total('away');
+  document.getElementById('homeOut').textContent=fmt(ho);
+
+  // Sign & Trade FA bubble section
+  document.getElementById('satFaSection').innerHTML=renderSatFas(h,hk);
+
+  // Away side
+  if(isAll){
+    document.getElementById('awayTitle').textContent='All Teams';
+    document.getElementById('awayOut').textContent=fmt(ao);
+    document.getElementById('awayPoolSubhead').innerHTML='<span>Eligible from any team — click to add</span><span style="color:var(--txt3)">'+(ho?'':'Add outgoing first')+'</span>';
+    document.getElementById('awayPackageSubhead').innerHTML='<span>Incoming package</span><span>Click to remove</span>';
+    const eligibles=buildAllTeamsPool(hk,h);
+    document.getElementById('awayPool').className='pool-tm-all';
+    document.getElementById('awayPool').innerHTML=eligibles.length
+      ?`<div class="pool-cards-grid" style="padding:8px 6px">${eligibles.map(p=>tradeCardAll(p)).join('')}</div>`
+      :`<div class="tm-empty" style="padding:12px;font-size:11px">${ho?'No salary-eligible players found.':'Add an outgoing player to see eligible returns.'}</div>`;
+    document.getElementById('awayPackage').innerHTML=packageRows('away');
+
+    // Only evaluate home in ALL mode
+    const empty=ho===0&&ao===0;
+    const he=evaluate(h,'home',ho,ao,state.away.length);
+    const verdict=empty?`<div class="trade-verdict verdict-neutral">NOT TESTED</div>`
+      :`<div class="trade-verdict ${he.ok?'verdict-pass':'verdict-fail'}">${he.ok?'PASS':'FAIL'}</div>`;
+    const homeBox=empty
+      ?`<div class="result neutral"><h3>${esc(h.name)}</h3><p>Build both sides of a proposed trade.</p></div>`
+      :`<div class="result ${he.ok?'':'fail'}"><h3>${esc(h.name)}: ${he.ok?'✓ PASS':'✗ FAIL'}</h3>`+
+        `<p>${he.route||'No salary route'} | Projected ${fmt(he.projected)}</p>`+
+        (he.reserve?`<p>14-player reserve ${fmt(he.reserve)} | Adjusted ${fmt(he.final)}</p>`:'')+
+        (!he.ok&&he.reason?`<p class="fail-reason">${he.reason}</p>`:'')+`</div>`;
+    document.getElementById('tradeResults').innerHTML=verdict+homeBox;
+  }else{
+    const a=teams[ak];
+    document.getElementById('awayTitle').textContent=a.name;
+    document.getElementById('awayOut').textContent=fmt(ao);
+    document.getElementById('awayPoolSubhead').innerHTML='<span>Available roster</span><span>Drag or click players</span>';
+    document.getElementById('awayPackageSubhead').innerHTML='<span>Outgoing package</span><span>Click to remove</span>';
+    document.getElementById('awayPool').className='pool-tm';
+    // Flag away pool players whose salary is too large for home to receive
+    if(ho>0){
+      const picked=new Set(state.away.map(playerKey));
+      const awayAvail=tradeRoster(a,ak).filter(p=>!picked.has(playerKey(p)));
+      _blockedKeys=new Set(awayAvail.filter(p=>
+        !evaluate(h,'home',ho,ao+p.cap_hit,state.away.length+1).ok
+      ).map(playerKey));
+    }else{
+      _blockedKeys=new Set();
+    }
+    document.getElementById('awayPool').innerHTML=sourceRows('away',a,ak);
+    document.getElementById('awayPackage').innerHTML=packageRows('away');
+
+    const empty=ho===0&&ao===0;
+    const he=evaluate(h,'home',ho,ao,state.away.length);
+    const ae=evaluate(a,'away',ao,ho,state.home.length+(state.sat?1:0));
+    const allOk=he.ok&&ae.ok;
+    function box(t,e){
+      if(empty)return`<div class="result neutral"><h3>${esc(t.name)}</h3><p>Build both sides of a proposed trade.</p></div>`;
+      return`<div class="result ${e.ok?'':'fail'}"><h3>${esc(t.name)}: ${e.ok?'✓ PASS':'✗ FAIL'}</h3>`+
+        `<p>${e.route||'No salary matching route'} | Projected ${fmt(e.projected)}</p>`+
+        (e.reserve?`<p>14-player reserve ${fmt(e.reserve)} | Adjusted ${fmt(e.final)}</p>`:'')+
+        (!e.ok&&e.reason?`<p class="fail-reason">${e.reason}</p>`:'')+`</div>`;
+    }
+    const verdict=empty?`<div class="trade-verdict verdict-neutral">NOT TESTED</div>`
+      :`<div class="trade-verdict ${allOk?'verdict-pass':'verdict-fail'}">${allOk?'PASS':'FAIL'}</div>`;
+    document.getElementById('tradeResults').innerHTML=verdict+box(h,he)+box(a,ae);
+  }
+  bindDrag();
+}
+function bindDrag(){
+  document.querySelectorAll('#homePool [draggable=true],#awayPool [draggable=true]').forEach(x=>{
+    x.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',JSON.stringify({side:x.dataset.side,key:x.dataset.key})));
+  });
+  document.querySelectorAll('.package').forEach(z=>{
+    z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over')});
+    z.addEventListener('dragleave',()=>z.classList.remove('over'));
+    z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('over');const d=JSON.parse(e.dataTransfer.getData('text/plain'));if(d.side===z.dataset.side)addPlayer(d.side,encodeURIComponent(d.key))});
+  });
+}
+
+// ── multi-team trade ─────────────────────────────────────────────────────────
+// State: incoming[] = players each team receives; sat = S&T player being signed out
+let mtTeams=[]; // [{key, incoming:[{...p, _from: teamKey}], sat: null|{...,satTo}}]
+
+function toggleMt(){
+  const on=document.getElementById('mtView').style.display!=='none';
+  document.getElementById('twoTeamContainer').style.display=on?'':'none';
+  document.getElementById('mtView').style.display=on?'none':'';
+  document.getElementById('mtToggle').classList.toggle('active',!on);
+  document.querySelectorAll('.trade-controls .field').forEach(el=>el.style.display=on?'':'none');
+  if(!on&&!mtTeams.length){
+    const hk=document.getElementById('homeTeam').value;
+    const ak=document.getElementById('awayTeam').value;
+    const defAway=(ak==='ALL'||ak===hk)?(hk==='BOS'?'NYK':'BOS'):ak;
+    const rest=keys.filter(k=>k!==hk&&k!==defAway);
+    // Always open with all 4 teams pre-populated
+    mtTeams=[
+      {key:hk,      incoming:[],sat:null},
+      {key:defAway, incoming:[],sat:null},
+      {key:rest[0], incoming:[],sat:null},
+      {key:rest[1], incoming:[],sat:null},
+    ];
+  }
+  if(!on)renderMt();
+}
+function mtSend(fromIdx,enc,toKey){
+  const key=decodeURIComponent(enc);
+  const fromTm=mtTeams[fromIdx];
+  const toIdx=mtTeams.findIndex(t=>t.key===toKey);
+  if(toIdx<0||toIdx===fromIdx)return;
+  // A player can only go to one team — remove from any other incoming first
+  mtTeams.forEach(ot=>{ot.incoming=ot.incoming.filter(p=>!(playerKey(p)===key&&p._from===fromTm.key));});
+  const p=tradeRoster(teams[fromTm.key],fromTm.key).find(x=>playerKey(x)===key);
+  if(p)mtTeams[toIdx].incoming.push({...p,_from:fromTm.key});
+  renderMt();
+}
+function mtReturnPlayer(toIdx,fromKey,enc){
+  mtTeams[toIdx].incoming=mtTeams[toIdx].incoming.filter(
+    p=>!(playerKey(p)===decodeURIComponent(enc)&&p._from===fromKey)
+  );
+  renderMt();
+}
+function mtChangeSide(idx,newKey){
+  const oldKey=mtTeams[idx].key;
+  mtTeams[idx]={key:newKey,incoming:[],sat:null};
+  // Remove players that came from the old team out of other teams' incoming
+  mtTeams.forEach((tm,i)=>{if(i!==idx)tm.incoming=tm.incoming.filter(p=>p._from!==oldKey);});
+  renderMt();
+}
+function mtAddTeam(){
+  if(mtTeams.length>=4)return;
+  const used=new Set(mtTeams.map(t=>t.key));
+  const k=keys.find(k=>!used.has(k));
+  if(k)mtTeams.push({key:k,incoming:[],sat:null});
+  renderMt();
+}
+function mtDropTeam(idx){
+  if(mtTeams.length<=2)return;
+  const dropKey=mtTeams[idx].key;
+  mtTeams.splice(idx,1);
+  mtTeams.forEach(tm=>{tm.incoming=tm.incoming.filter(p=>p._from!==dropKey);});
+  renderMt();
+}
+function mtSatAdd(btn){
+  const idx=Number(btn.dataset.idx),name=btn.dataset.player;
+  const salary=parseSal(document.getElementById(btn.dataset.input).value);
+  if(!name||!salary)return;
+  const tm=mtTeams[idx];
+  const prior=getPriorSalary(name,tm.key);
+  const t=teams[tm.key],active=t.totals?.active_roster||0;
+  const nonBird=prior?Math.max(prior*1.2,2_450_001*1.2):null;
+  const byc=!!prior&&active+salary>CAP&&salary>nonBird;
+  const matching=byc?Math.max(prior,salary*.5):salary;
+  tm.sat={player:name,salary,prior,byc,matching,satTo:null};
+  renderMt();
+}
+function mtRemoveSat(idx){mtTeams[idx].sat=null;renderMt();}
+function mtSetSatTo(idx,dest){if(mtTeams[idx].sat){mtTeams[idx].sat.satTo=dest||null;renderMt();}}
+function mtDragOver(e){e.preventDefault();e.currentTarget.classList.add('over');}
+function mtDragLeave(e){e.currentTarget.classList.remove('over');}
+function mtDropZone(e,toIdx){
+  e.preventDefault();e.currentTarget.classList.remove('over');
+  try{const d=JSON.parse(e.dataTransfer.getData('text/plain'));mtSend(d.fromIdx,d.enc,mtTeams[toIdx].key);}catch(_){}
+}
+
+function evaluateDirect(team,rosterOut,rosterOutCount,playerCount,outgoing,incoming,incomingCount){
+  const active=projectedActive(team)||roster(team).reduce((n,p)=>n+p.cap_hit,0);
+  const after=active-rosterOut,projected=after+incoming;
+  const count=roster(team).length-rosterOutCount+incomingCount;
+  const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
+  function routeFor(out,pc){
+    const room=after<CAP&&projected<=CAP+ALLOW;
+    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
+    const aggregate=pc>1&&projected<=SECOND&&strict;
+    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
+    return room?'Cap room':pc<=1&&strict?'Standard matching':aggregate?'Aggregated matching':expanded?'Expanded exception':null;
+  }
+  let route=routeFor(outgoing,playerCount);
+  let hard=route==='Aggregated matching'?SECOND:route==='Expanded exception'?FIRST:null;
+  const ok=!!route&&(!hard||final<=hard);
+  let reason='';
+  if(!ok){
+    if(!route){
+      if(projected>SECOND){reason=`Team would be over the 2nd apron (${fmt(SECOND)}) — no salary matching route available`;}
+      else if(projected>FIRST){reason=`Over 1st apron — strict salary matching limit of ${fmt(outgoing)} (incoming must ≤ outgoing). Incoming ${fmt(incoming)} over by ${fmt(incoming-outgoing)}`;}
+      else if(projected>TAX){const std=outgoing+ALLOW,exp=outgoing>0?expandedMax(outgoing):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception limit':'Taxpayer standard matching limit'} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}`;}
+      else{const std=outgoing+ALLOW,exp=outgoing>0?expandedMax(outgoing):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception limit':'Standard matching limit'} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}`;}
+    }else if(hard&&final>hard){
+      reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds ${hard===SECOND?'2nd':'1st'} apron hard cap (${fmt(hard)}) by ${fmt(final-hard)}`;
+    }
+  }
+  return{ok,active,projected,final,reserve,route,hard,reason};
+}
+function evaluateMt(idx){
+  const tm=mtTeams[idx];
+  // Outgoing = players this team sent to others (found in other teams' incoming)
+  const outPlayers=mtTeams.flatMap((ot,i)=>i===idx?[]:ot.incoming.filter(p=>p._from===tm.key));
+  const rosterOut=outPlayers.reduce((n,p)=>n+p.cap_hit,0);
+  const rosterOutCount=outPlayers.length;
+  const satOut=tm.sat?tm.sat.matching:0;
+  const playerCount=rosterOutCount+(tm.sat?1:0);
+  const outgoing=rosterOut+satOut;
+  // Incoming = what this team receives
+  const inTotal=tm.incoming.reduce((n,p)=>n+p.cap_hit,0);
+  const inCount=tm.incoming.length;
+  // S&T received from other teams
+  const satIn=mtTeams.reduce((n,ot,i)=>(i!==idx&&ot.sat&&ot.sat.satTo===tm.key)?n+ot.sat.matching:n,0);
+  const satInCount=mtTeams.filter((ot,i)=>i!==idx&&ot.sat&&ot.sat.satTo===tm.key).length;
+  return evaluateDirect(teams[tm.key],rosterOut,rosterOutCount,playerCount,outgoing,inTotal+satIn,inCount+satInCount);
+}
+function mtCardTag(p){
+  if(isDraft(p))return/1st/.test(p.rights||'')?{cls:'tag-draft',lbl:'1st Rd'}:{cls:'tag-draft',lbl:'2nd Rd'};
+  return p.category==='pending_transaction'?{cls:'tag-pending',lbl:'Pending'}:{cls:'tag-signed',lbl:'Signed'};
+}
+function mtPoolHtml(tm,idx){
+  // Only show players not already sent somewhere
+  const tradedAway=new Set(mtTeams.flatMap((ot,i)=>i===idx?[]:ot.incoming.filter(p=>p._from===tm.key).map(playerKey)));
+  const avail=tradeRoster(teams[tm.key],tm.key).filter(p=>!tradedAway.has(playerKey(p)));
+  if(!avail.length)return`<div class="tm-empty" style="font-size:10px;padding:8px">All players assigned</div>`;
+  const others=mtTeams.filter((_,i)=>i!==idx);
+  return`<div class="pool-cards-grid" style="padding:5px 4px">`+avail.map(p=>{
+    const{cls,lbl}=mtCardTag(p);
+    const enc=encodeURIComponent(playerKey(p));
+    const sendBtns=others.map(o=>`<button class="mt-send-btn" onclick="event.stopPropagation();mtSend(${idx},'${enc}','${o.key}')" title="Send to ${esc(teams[o.key].name)}">→ ${o.key}</button>`).join('');
+    return`<div class="player-card mt-card" draggable="true"
+      ondragstart="event.dataTransfer.setData('text/plain',JSON.stringify({fromIdx:${idx},enc:'${enc}'}))">
+      <div class="pc-name">${esc(p.player)}</div>
+      <div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${cls}">${lbl}</span></div>
+      <div class="pc-note">${esc(p.position||'—')}</div>
+      <div class="mt-send-btns">${sendBtns}</div></div>`;
+  }).join('')+'</div>';
+}
+function mtDropzoneHtml(tm,idx){
+  const cards=tm.incoming.map(p=>{
+    const{cls,lbl}=mtCardTag(p);
+    const enc=encodeURIComponent(playerKey(p));
+    const fromName=teams[p._from]?.name||p._from;
+    return`<div class="player-card mt-card tm-card-pkg" onclick="mtReturnPlayer(${idx},'${p._from}','${enc}')" title="Click to return">
+      <div class="pc-name">${esc(p.player)}<span class="tm-rm">✕</span></div>
+      <div class="pc-row"><span class="pc-salary">${fmt(p.cap_hit)}</span><span class="tag ${cls}">${lbl}</span></div>
+      <div class="pc-note">${esc(p.position||'—')} · from ${esc(fromName)}</div></div>`;
+  }).join('');
+  const satRx=mtTeams.flatMap((ot,i)=>{
+    if(i===idx||!ot.sat||ot.sat.satTo!==tm.key)return[];
+    return[`<div class="player-card mt-card" style="cursor:default;opacity:.85">
+      <div class="pc-name">${esc(ot.sat.player)} S&amp;T</div>
+      <div class="pc-row"><span class="pc-salary">${fmt(ot.sat.matching)}</span><span class="tag tag-pending">S&amp;T</span></div>
+      <div class="pc-note">from ${esc(teams[ot.key]?.name||ot.key)}</div></div>`];
+  }).join('');
+  const hint=(!cards&&!satRx)?`<div class="mt-drop-hint">Drop players here<br><span style="font-size:9px">or use → buttons on roster cards</span></div>`:'';
+  return`<div class="mt-dropzone" ondragover="mtDragOver(event)" ondragleave="mtDragLeave(event)" ondrop="mtDropZone(event,${idx})">
+    <div class="pool-cards-grid" style="padding:4px">${cards}${satRx}</div>${hint}</div>`;
+}
+function mtSatSectionHtml(tm,idx){
+  if(tm.sat){
+    const others=mtTeams.filter((_,i)=>i!==idx);
+    const destSel=others.length?`<select style="font-size:9px;background:#fff;border:1px solid var(--border);border-radius:3px;padding:1px 3px;flex:1" onchange="mtSetSatTo(${idx},this.value)">
+      <option value="">— goes to —</option>
+      ${others.map(o=>`<option value="${o.key}"${tm.sat.satTo===o.key?' selected':''}>${esc(teams[o.key].name)}</option>`).join('')}
+    </select>`:'';
+    return`<div class="mt-sat-active">
+      <span style="font-weight:700;font-size:10px">${esc(tm.sat.player)} S&amp;T ${fmt(tm.sat.matching)}${tm.sat.byc?' (BYC)':''}</span>
+      ${destSel}
+      <button onclick="mtRemoveSat(${idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px;flex-shrink:0">✕</button>
+    </div>`;
+  }
+  const holds=(teams[tm.key].cap_holds||[]).filter(x=>x.rights&&/Bird/i.test(x.rights)&&x.position);
+  if(!holds.length)return'';
+  const shStyle='font-size:9px;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;background:var(--bg2);color:var(--txt3);border-bottom:1px solid var(--border)';
+  return`<div style="${shStyle}">Sign &amp; Trade FAs</div><div class="pool-cards-grid" style="padding:4px">`+holds.map((p,i)=>{
+    const isFull=/^Bird$/i.test(p.rights);
+    const inputId=`mt-sat-${idx}-${i}`;
+    return`<div class="player-card mt-card">
+      <div class="pc-name">${esc(p.player)}</div>
+      <div class="pc-row">
+        <input id="${inputId}" class="fa-salary-input" style="width:72px;font-size:9px" type="text" inputmode="numeric"
+          value="${fmtSalVal(getPriorSalary(p.player,tm.key)||MIN)}" oninput="fmtSalInput(this)" onclick="event.stopPropagation()" ondragstart="event.stopPropagation()">
+        <span class="tag ${isFull?'tag-signed':'tag-pending'}">${isFull?'Bird':'E.Bird'}</span>
+      </div>
+      <div class="pc-row" style="margin-top:3px;justify-content:flex-end">
+        <button class="fa-add-btn" style="font-size:9px;padding:2px 7px" data-idx="${idx}" data-player="${esc(p.player)}"
+          data-input="${inputId}" onclick="event.stopPropagation();mtSatAdd(this)">+ S&amp;T</button>
+      </div></div>`;
+  }).join('')+'</div>';
+}
+function renderMt(){
+  const nTeams=mtTeams.length;
+  const anyBuilt=mtTeams.some(tm=>tm.incoming.length||tm.sat||mtTeams.some(ot=>ot.incoming.some(p=>p._from===tm.key)));
+  const evals=mtTeams.map((_,i)=>evaluateMt(i));
+  const allOk=anyBuilt&&evals.every(e=>e.ok);
+
+  function calcOut(idx){
+    const tm=mtTeams[idx];
+    return mtTeams.reduce((n,ot,i)=>i===idx?n:n+ot.incoming.filter(p=>p._from===tm.key).reduce((s,p)=>s+p.cap_hit,0),0)+(tm.sat?tm.sat.matching:0);
+  }
+  function calcIn(idx){
+    const tm=mtTeams[idx];
+    return tm.incoming.reduce((n,p)=>n+p.cap_hit,0)+mtTeams.reduce((n,ot,i)=>(i!==idx&&ot.sat&&ot.sat.satTo===tm.key)?n+ot.sat.matching:n,0);
+  }
+
+  // ── Row 1: 4 team selector slots (always visible) ──
+  const selRow=[0,1,2,3].map(i=>{
+    if(i<nTeams){
+      const tm=mtTeams[i],e=evals[i];
+      const fc=!anyBuilt?'var(--txt3)':e.ok?'var(--green)':'var(--red)';
+      return`<div class="mt-sel-slot">
+        <select class="mt-team-select" onchange="mtChangeSide(${i},this.value)">
+          ${keys.map(k=>`<option value="${k}"${k===tm.key?' selected':''}>${esc(teams[k].name)}</option>`).join('')}
+        </select>
+        ${anyBuilt?`<span style="font-weight:900;font-size:11px;color:${fc};flex-shrink:0">${e.ok?'✓':'✗'}</span>`:''}
+      </div>`;
+    }else if(i===nTeams&&nTeams<4){
+      return`<div class="mt-sel-slot mt-sel-add"><button class="mt-add-team-btn" onclick="mtAddTeam()">＋ Add Team</button></div>`;
+    }
+    return`<div class="mt-sel-slot mt-sel-empty"></div>`;
+  }).join('');
+
+  // ── Roster panel builder ──
+  function rosterPanel(idx){
+    if(idx>=nTeams)return'';
+    const tm=mtTeams[idx],out=calcOut(idx);
+    return`<div class="mt-roster-panel">
+      <div class="mt-roster-head">
+        <span class="mt-roster-name">${esc(teams[tm.key].name)}</span>
+        ${out?`<span class="mt-chip mt-chip-out">sending ${fmt(out)}</span>`:'<span style="font-size:9px;color:var(--txt3)">click → or drag players below</span>'}
+      </div>
+      <div class="mt-pool">${mtPoolHtml(tm,idx)}</div>
+      ${mtSatSectionHtml(tm,idx)}
+    </div>`;
+  }
+
+  // ── Row 2: top two team rosters ──
+  const topRosters=`<div class="mt-roster-row" style="grid-template-columns:1fr 1fr">${rosterPanel(0)}${rosterPanel(1)}</div>`;
+
+  // ── Row 3: receiving boxes (all active teams, side by side) ──
+  const rxRow=`<div class="mt-receiving-row" style="grid-template-columns:repeat(${nTeams},1fr)">`
+    +mtTeams.map((tm,idx)=>{
+      const e=evals[idx],itot=calcIn(idx);
+      const fc=!anyBuilt?'var(--txt3)':e.ok?'var(--green)':'var(--red)';
+      return`<div class="mt-rx-panel">
+        <div class="mt-rx-head">
+          <span style="font-size:10px;font-weight:700">${tm.key} receiving</span>
+          ${itot?`<span class="mt-chip mt-chip-in">${fmt(itot)}</span>`:''}
+        </div>
+        ${mtDropzoneHtml(tm,idx)}
+        <div style="padding:4px 7px;font-size:10px;font-weight:700;color:${fc}">
+          ${anyBuilt?(e.ok?'✓ PASS':'✗ FAIL'):'—'}
+          ${anyBuilt&&!e.ok&&e.reason?`<div class="fail-reason" style="font-weight:400;margin-top:1px">${e.reason}</div>`:''}
+          ${anyBuilt&&e.route?`<div style="color:var(--txt3);font-size:9px;font-weight:400">${e.route} · ${fmt(e.projected)}</div>`:''}
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+
+  // ── Row 4: bottom team rosters (teams 2 and 3 if active) ──
+  const bottomRosters=nTeams>=3
+    ?`<div class="mt-roster-row" style="grid-template-columns:${nTeams>=4?'1fr 1fr':'1fr'}">${rosterPanel(2)}${nTeams>=4?rosterPanel(3):''}</div>`
+    :'';
+
+  document.getElementById('mtGrid').innerHTML=
+    `<div class="mt-selectors">${selRow}</div>`+topRosters+rxRow+bottomRosters;
+
+  const verdict=!anyBuilt
+    ?`<div class="trade-verdict verdict-neutral" style="grid-column:unset">NOT TESTED</div>`
+    :`<div class="trade-verdict ${allOk?'verdict-pass':'verdict-fail'}" style="grid-column:unset">${allOk?'PASS':'FAIL'}</div>`;
+  document.getElementById('mtResults').innerHTML=verdict;
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+const q=new URLSearchParams(location.search);
+const page=teams[q.get('team')]?q.get('team'):'NYK';
+const home=teams[q.get('home')]?q.get('home'):'NYK';
+const away=teams[q.get('away')]&&q.get('away')!==home?q.get('away'):'BOS';
+
+document.getElementById('pageTeam').innerHTML=opts(page);
+document.getElementById('homeTeam').innerHTML=opts(home);
+document.getElementById('awayTeam').innerHTML=awayOpts(away,home);
+document.getElementById('source').textContent=snapshot
+  ?`Spotrac snapshot ${new Date(snapshot.fetched_at).toLocaleString()} · Local working model`
+  :'Snapshot unavailable';
+
+// Populate player name autocomplete from all teams in snapshot
+(function(){
+  const names=new Set();
+  Object.values(teams).forEach(t=>{
+    (t.active_roster||[]).forEach(p=>names.add(p.player));
+    (t.pending_transactions||[]).forEach(p=>names.add(p.player));
+    (t.cap_holds||[]).forEach(p=>{
+      if(p.player&&!/^Round \d|^Incomplete/.test(p.player))names.add(p.player);
+    });
+  });
+  // Also add hardcoded overrides from all teams
+  Object.values(TEAM_DRAFT_OVERRIDES).forEach(arr=>arr.forEach(p=>names.add(p.player)));
+  const dl=document.getElementById('playerNames');
+  [...names].sort().forEach(n=>{const o=document.createElement('option');o.value=n;dl.appendChild(o);});
+})();
+
+renderTeam();
+renderTrade();
+setView(q.get('view')==='trade'?'trade':'team');
+</script>
+</body>
+</html>
