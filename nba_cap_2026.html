@@ -1010,42 +1010,48 @@ function renderSatFas(h,hk){
   }).join('')+'</div>';
 }
 function expandedMax(out){const add=7_500_000*(CAP/136_021_000);return Math.max(Math.min(out*2+ALLOW,out+add),out*1.25+ALLOW)}
+function teamTpe(t){return(t.exceptions||[]).filter(e=>/^trade/i.test(e.type||'')&&(e.available||0)>0).reduce((n,e)=>n+(e.available||0),0);}
 function evaluate(team,side,outgoing,incoming,incomingCount){
   const active=projectedActive(team)||roster(team).reduce((n,p)=>n+p.cap_hit,0);
   const rosterOutgoing=state[side].reduce((n,p)=>n+p.cap_hit,0);
   const after=active-rosterOutgoing,projected=after+incoming;
   const count=roster(team).length-state[side].length+incomingCount;
   const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
+  const tpe=teamTpe(team);
   function routeFor(out,playerCount){
+    const canTpe=tpe>0&&projected<=SECOND;
+    const eff=canTpe?out+tpe:out;
     const room=after<CAP&&projected<=CAP+ALLOW;
-    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
+    const strict=projected>FIRST?incoming<=eff:incoming<=eff+ALLOW;
     const aggregate=playerCount>1&&projected<=SECOND&&strict;
-    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
-    return room?'Cap room':playerCount<=1&&strict?'Standard matching':aggregate?'Aggregated matching':expanded?'Expanded exception':null;
+    const expanded=eff>0&&projected<=FIRST&&incoming<=expandedMax(eff);
+    const sfx=canTpe&&eff>out?' (+ TPE)':'';
+    if(room)return'Cap room';
+    if(canTpe&&out===0&&incoming<=tpe)return'Trade exception';
+    if(playerCount<=1&&strict)return'Standard matching'+sfx;
+    if(aggregate)return'Aggregated matching'+sfx;
+    if(expanded)return'Expanded exception'+sfx;
+    return null;
   }
   let route=routeFor(outgoing,state[side].length+(side==='home'&&state.sat?1:0));
-  let hard=route==='Aggregated matching'?SECOND:route==='Expanded exception'?FIRST:null;
+  let hard=route?.includes('Aggregated')?SECOND:route?.includes('Expanded')?FIRST:null;
   if(side==='home'&&state.sat&&route&&!routeFor(rosterOutgoing,state[side].length))hard=SECOND;
   const ok=!!route&&(!hard||final<=hard);
   let reason='';
   if(!ok){
+    const canTpe=tpe>0&&projected<=SECOND;
+    const eff=canTpe?outgoing+tpe:outgoing;
     if(!route){
       if(projected>SECOND){
-        reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}). Teams over the 2nd apron cannot take back more salary than they send out — no matching route available.`;
+        reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}). Teams over the 2nd apron cannot take back more salary than they send out — no matching route available.`+(tpe?` (${fmt(tpe)} TPE unavailable while over 2nd apron.)`:'');
       }else if(projected>FIRST){
-        // Over 1st apron: incoming must be ≤ outgoing; no expanded exception, no buffer
-        reason=`Projected payroll ${fmt(projected)} is over the 1st apron (${fmt(FIRST)}). No salary buffer allowed — incoming must not exceed outgoing. Receiving ${fmt(incoming)} vs sending ${fmt(outgoing)}, over by ${fmt(incoming-outgoing)}.`;
-      }else if(projected>TAX){
-        const stdLimit=outgoing+ALLOW;
-        const expLimit=outgoing>0?expandedMax(outgoing):0;
-        const bestLimit=Math.max(stdLimit,expLimit);
-        const which=expLimit>stdLimit?`expanded exception (≈200% of outgoing)`:`taxpayer standard matching (outgoing + $250K)`;
-        reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`;
+        reason=`Projected payroll ${fmt(projected)} is over the 1st apron (${fmt(FIRST)}). No salary buffer allowed — incoming must not exceed outgoing${canTpe?` + TPE (${fmt(eff)} combined)`:' ('+fmt(outgoing)+')'}. Over by ${fmt(incoming-eff)}.`;
       }else{
-        const stdLimit=outgoing+ALLOW;
-        const expLimit=outgoing>0?expandedMax(outgoing):0;
+        const stdLimit=eff+ALLOW;
+        const expLimit=eff>0?expandedMax(eff):0;
         const bestLimit=Math.max(stdLimit,expLimit);
-        const which=expLimit>stdLimit?`expanded exception (≈200% of outgoing)`:`standard matching (outgoing + $250K)`;
+        const src=canTpe?`outgoing + ${fmt(tpe)} TPE`:'outgoing';
+        const which=expLimit>stdLimit?`expanded exception (≈200% of ${src})`:(projected>TAX?`taxpayer `:'')+'standard matching ('+src+' + $250K)';
         reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`;
       }
     }else if(hard&&final>hard){
@@ -1053,7 +1059,7 @@ function evaluate(team,side,outgoing,incoming,incomingCount){
       reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds the ${apronName} (${fmt(hard)}) by ${fmt(final-hard)}.`;
     }
   }
-  return{ok,active,projected,final,reserve,route,hard,reason};
+  return{ok,active,projected,final,reserve,route,hard,reason,tpe};
 }
 function renderTrade(){
   const hk=document.getElementById('homeTeam').value,ak=document.getElementById('awayTeam').value;
@@ -1119,10 +1125,11 @@ function renderTrade(){
     const ae=evaluate(a,'away',ao,ho,state.home.length+(state.sat?1:0));
     const allOk=he.ok&&ae.ok;
     function box(t,e){
-      if(empty)return`<div class="result neutral"><h3>${esc(t.name)}</h3><p>Build both sides of a proposed trade.</p></div>`;
+      if(empty)return`<div class="result neutral"><h3>${esc(t.name)}</h3><p>Build both sides of a proposed trade.</p>${e.tpe?`<p style="font-size:11px;opacity:.7">Trade exception available: ${fmt(e.tpe)}</p>`:''}</div>`;
       return`<div class="result ${e.ok?'':'fail'}"><h3>${esc(t.name)}: ${e.ok?'✓ PASS':'✗ FAIL'}</h3>`+
         `<p>${e.route||'No salary matching route'} | Projected ${fmt(e.projected)}</p>`+
         (e.reserve?`<p>14-player reserve ${fmt(e.reserve)} | Adjusted ${fmt(e.final)}</p>`:'')+
+        (e.tpe&&!e.route?.includes('Trade exception')?`<p style="font-size:11px;opacity:.7">Trade exception available: ${fmt(e.tpe)}</p>`:'')+
         (!e.ok&&e.reason?`<p class="fail-reason">${e.reason}</p>`:'')+`</div>`;
     }
     const verdict=empty?`<div class="trade-verdict verdict-neutral">NOT TESTED</div>`
@@ -1232,25 +1239,35 @@ function evaluateDirect(team,rosterOut,rosterOutCount,playerCount,outgoing,incom
   const after=active-rosterOut,projected=after+incoming;
   const count=roster(team).length-rosterOutCount+incomingCount;
   const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
+  const tpe=teamTpe(team);
   function routeFor(out,pc){
+    const canTpe=tpe>0&&projected<=SECOND;
+    const eff=canTpe?out+tpe:out;
     const room=after<CAP&&projected<=CAP+ALLOW;
-    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
+    const strict=projected>FIRST?incoming<=eff:incoming<=eff+ALLOW;
     const aggregate=pc>1&&projected<=SECOND&&strict;
-    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
-    return room?'Cap room':pc<=1&&strict?'Standard matching':aggregate?'Aggregated matching':expanded?'Expanded exception':null;
+    const expanded=eff>0&&projected<=FIRST&&incoming<=expandedMax(eff);
+    const sfx=canTpe&&eff>out?' (+ TPE)':'';
+    if(room)return'Cap room';
+    if(canTpe&&out===0&&incoming<=tpe)return'Trade exception';
+    if(pc<=1&&strict)return'Standard matching'+sfx;
+    if(aggregate)return'Aggregated matching'+sfx;
+    if(expanded)return'Expanded exception'+sfx;
+    return null;
   }
   let route=routeFor(outgoing,playerCount);
-  let hard=route==='Aggregated matching'?SECOND:route==='Expanded exception'?FIRST:null;
+  let hard=route?.includes('Aggregated')?SECOND:route?.includes('Expanded')?FIRST:null;
   const ok=!!route&&(!hard||final<=hard);
   let reason='';
   if(!ok){
+    const canTpe=tpe>0&&projected<=SECOND;
+    const eff=canTpe?outgoing+tpe:outgoing;
     if(!route){
-      if(projected>SECOND){reason=`Team would be over the 2nd apron (${fmt(SECOND)}) — no salary matching route available`;}
-      else if(projected>FIRST){reason=`Over 1st apron — strict salary matching limit of ${fmt(outgoing)} (incoming must ≤ outgoing). Incoming ${fmt(incoming)} over by ${fmt(incoming-outgoing)}`;}
-      else if(projected>TAX){const std=outgoing+ALLOW,exp=outgoing>0?expandedMax(outgoing):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception limit':'Taxpayer standard matching limit'} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}`;}
-      else{const std=outgoing+ALLOW,exp=outgoing>0?expandedMax(outgoing):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception limit':'Standard matching limit'} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}`;}
+      if(projected>SECOND){reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}) — no matching route available.`+(tpe?` (${fmt(tpe)} TPE unavailable while over 2nd apron.)`:'');}
+      else if(projected>FIRST){reason=`Over 1st apron — incoming must not exceed outgoing${canTpe?` + TPE (${fmt(eff)} combined)`:''}. Receiving ${fmt(incoming)}, over by ${fmt(incoming-eff)}.`;}
+      else{const std=eff+ALLOW,exp=eff>0?expandedMax(eff):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception':'Standard matching'} limit${canTpe?' (incl. TPE)':''} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}.`;}
     }else if(hard&&final>hard){
-      reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds ${hard===SECOND?'2nd':'1st'} apron hard cap (${fmt(hard)}) by ${fmt(final-hard)}`;
+      reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds ${hard===SECOND?'2nd':'1st'} apron hard cap (${fmt(hard)}) by ${fmt(final-hard)}.`;
     }
   }
   return{ok,active,projected,final,reserve,route,hard,reason};
