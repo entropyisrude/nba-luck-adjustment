@@ -22,22 +22,18 @@
     // ── ADD ENTRIES BELOW — newest at top ────────────────────────────────────
 
     // 2026-07-01
-    // Mitchell Robinson 3yr/$47.4M with BOS (player option yr 3) — Spotrac not yet updated
-    { op:'sign',    team:'BOS', player:'Mitchell Robinson', position:'C',  age:28, cap_hit:15800000, contract_type:'UFA' },
-    { op:'release', team:'NYK', player:'Mitchell Robinson' },  // remove Bird-rights cap hold from NYK
+    // Mitchell Robinson signed 3yr/$47.4M with BOS — now in BOS pending in Spotrac ($15,044,000)
+    // Spotrac still shows him as a cap hold on NYK; remove the duplicate
+    { op:'release', team:'NYK', player:'Mitchell Robinson' },
 
-    // Moritz Wagner signed 2yr/$19M with BKN — stale ORL pending entry; BKN sidebar already has him
+    // Moritz Wagner signed 2yr/$19M with BKN — already in BKN pending; remove stale ORL pending entry
     { op:'release', team:'ORL', player:'Moritz Wagner' },
 
     // Ariel Hukporti signed with PHI ($3.4M) — now in PHI Spotrac pending; remove NYK cap hold
     { op:'release', team:'NYK', player:'Ariel Hukporti' },
 
-    // Kawhi Leonard traded to TOR — Spotrac still lists him on LAC; remove duplicate
+    // Kawhi Leonard traded to TOR — already in TOR pending ($50.3M); remove duplicate on LAC active
     { op:'release', team:'LAC', player:'Kawhi Leonard' },
-
-    // James Harden declined player option with CLE — show as FA cap hold
-    // Replace with op:'sign' once new deal is confirmed
-    { op:'hold',    team:'CLE', player:'James Harden', position:'SG', age:36, cap_hit:42300000, contract_type:'UFA' },
 
   ];
 
