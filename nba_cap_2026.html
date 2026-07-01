@@ -179,6 +179,9 @@ table.ht tr:last-child td{border-bottom:none}
 .verdict-pass{color:var(--green);background:#f0faf2;border:2px solid var(--green)}
 .verdict-fail{color:var(--red);background:#fff1ef;border:2px solid var(--red)}
 .verdict-neutral{color:var(--txt3);background:var(--bg2);border:2px solid var(--border);font-size:18px;font-weight:700}
+.mil-btn{grid-column:1/-1;width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:800;letter-spacing:.5px;cursor:pointer;transition:background .15s}
+.mil-btn:hover{background:#0058a3}
+.mil-btn.mil-fail{background:var(--red)!important;letter-spacing:0}
 .tm-empty{padding:13px;color:var(--txt3);font-size:11px}
 .mt-toggle-btn{padding:5px 13px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--txt2);font-size:11px;font-weight:700;cursor:pointer;margin-left:auto;white-space:nowrap;align-self:flex-end}
 .mt-toggle-btn.active{background:#1a4a6b;color:#fff;border-color:#1a4a6b}
@@ -1061,6 +1064,40 @@ function evaluate(team,side,outgoing,incoming,incomingCount){
   }
   return{ok,active,projected,final,reserve,route,hard,reason,tpe};
 }
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function getCombos(arr,k){if(k===1)return arr.map(p=>[p]);const out=[];for(let i=0;i<=arr.length-k;i++){for(const rest of getCombos(arr.slice(i+1),k-1))out.push([arr[i],...rest]);}return out;}
+function makeItLegal(){
+  const hk=document.getElementById('homeTeam').value,ak=document.getElementById('awayTeam').value;
+  if(ak==='ALL')return;
+  const h=teams[hk],a=teams[ak];
+  const fillAway=state.home.length>0&&state.away.length===0;
+  const fillHome=state.away.length>0&&state.home.length===0;
+  if(!fillAway&&!fillHome)return;
+  const fillKey=fillAway?'away':'home';
+  const fillTeam=fillAway?a:h;
+  const fillTk=fillAway?ak:hk;
+  const picked=new Set(state[fillKey].map(playerKey));
+  const pool=shuffle(tradeRoster(fillTeam,fillTk).filter(p=>!picked.has(playerKey(p))));
+  function tryCombo(combo){
+    const prev=state[fillKey];state[fillKey]=combo;
+    const ho=total('home'),ao=total('away');
+    const ok=evaluate(h,'home',ho,ao,state.away.length).ok&&
+              evaluate(a,'away',ao,ho,state.home.length+(state.sat?1:0)).ok;
+    state[fillKey]=prev;return ok;
+  }
+  let found=null;
+  for(let size=1;size<=3&&!found;size++){
+    found=shuffle(getCombos(pool,size)).find(tryCombo)||null;
+  }
+  if(found){state[fillKey]=found;renderTrade();}
+  else{
+    const btn=document.getElementById('makeItLegalBtn');
+    if(!btn)return;
+    btn.textContent='No legal trade found';btn.classList.add('mil-fail');
+    setTimeout(()=>{btn.textContent='Make It Legal';btn.classList.remove('mil-fail');},2000);
+  }
+}
+
 function renderTrade(){
   const hk=document.getElementById('homeTeam').value,ak=document.getElementById('awayTeam').value;
   const h=teams[hk],isAll=ak==='ALL';
@@ -1134,7 +1171,9 @@ function renderTrade(){
     }
     const verdict=empty?`<div class="trade-verdict verdict-neutral">NOT TESTED</div>`
       :`<div class="trade-verdict ${allOk?'verdict-pass':'verdict-fail'}">${allOk?'PASS':'FAIL'}</div>`;
-    document.getElementById('tradeResults').innerHTML=verdict+box(h,he)+box(a,ae);
+    const oneSide=(state.home.length>0)!==(state.away.length>0);
+    const milBtn=oneSide?`<button id="makeItLegalBtn" class="mil-btn" onclick="makeItLegal()">Make It Legal</button>`:'';
+    document.getElementById('tradeResults').innerHTML=milBtn+verdict+box(h,he)+box(a,ae);
   }
   bindDrag();
 }
