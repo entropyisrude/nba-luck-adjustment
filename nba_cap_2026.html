@@ -436,7 +436,8 @@ function tradeRoster(t,teamKey){
 function projectedActive(t){
   const movedOut=(t.active_roster||[]).filter(p=>pendingOwner.has(p.player)&&pendingOwner.get(p.player)!==t.abbreviation).reduce((n,p)=>n+(p.cap_hit||0),0);
   const pickTotal=firstRoundPicks(t).reduce((n,p)=>n+(p.cap_hit||0),0);
-  return(t.totals?.active_roster||0)-movedOut+(t.pending_transactions||[]).reduce((n,p)=>n+(p.cap_hit||0),0)+pickTotal;
+  const deadCap=(t.dead_money||[]).reduce((n,p)=>n+(p.cap_hit||0),0);
+  return(t.totals?.active_roster||0)-movedOut+(t.pending_transactions||[]).reduce((n,p)=>n+(p.cap_hit||0),0)+pickTotal+deadCap;
 }
 function opts(value,exclude){
   return keys.filter(k=>k!==exclude).map(k=>`<option value="${k}"${k===value?' selected':''}>${esc(teams[k].name)}</option>`).join('');
