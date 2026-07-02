@@ -21,6 +21,28 @@
 
     // ── ADD ENTRIES BELOW — newest at top ────────────────────────────────────
 
+    // 2026-07-02
+    // Paul George traded to BOS ($54.1M) — in BOS pending; remove stale PHI active entry
+    { op:'release', team:'PHI', player:'Paul George' },
+    // Jaylen Brown traded to PHI ($57.1M) — in PHI pending; remove stale BOS active entry
+    { op:'release', team:'BOS', player:'Jaylen Brown' },
+
+    // LaMelo Ball traded to MIN ($40.8M) — in MIN pending; remove stale CHA active
+    { op:'release', team:'CHA', player:'LaMelo Ball' },
+    // Miles Bridges traded to PHX ($22.8M) — in PHX pending; remove stale CHA active
+    { op:'release', team:'CHA', player:'Miles Bridges' },
+    // Josh Green traded to MIN ($14.7M) — in MIN pending; remove stale CHA active
+    { op:'release', team:'CHA', player:'Josh Green' },
+    // Naz Reid traded to CHA ($23.3M) — in CHA pending; remove stale MIN active
+    { op:'release', team:'MIN', player:'Naz Reid' },
+    // Grayson Allen traded to CHA ($18.1M) — in CHA pending; remove stale PHX active
+    { op:'release', team:'PHX', player:'Grayson Allen' },
+    // Royce O\'Neale traded to CHA ($10.9M) — in CHA pending; remove stale PHX active
+    { op:'release', team:'PHX', player:"Royce O'Neale" },
+
+    // Nicolas Claxton traded to CHI ($23.3M) — in CHI pending; remove stale BKN active
+    { op:'release', team:'BKN', player:'Nicolas Claxton' },
+
     // 2026-07-01
     // Mitchell Robinson signed 3yr/$47.4M with BOS — now in BOS pending in Spotrac ($15,044,000)
     // Spotrac still shows him as a cap hold on NYK; remove the duplicate
