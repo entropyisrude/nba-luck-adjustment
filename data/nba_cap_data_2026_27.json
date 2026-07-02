@@ -2027,21 +2027,6 @@
           "rights": "Bird"
         },
         {
-          "player": "Collin Sexton",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 28.0,
-          "contract_type": "S&T",
-          "cap_hit": 28762500,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Caleb Wilson",
           "category": "cap_hold",
           "position": "PF",
@@ -2551,21 +2536,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Dean Wade",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 12584566,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Thomas Bryant",
           "category": "cap_hold",
           "position": null,
@@ -2582,21 +2552,6 @@
         },
         {
           "player": "Ed Davis",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Keon Ellis",
           "category": "cap_hold",
           "position": null,
           "age": null,
@@ -3498,21 +3453,6 @@
           "rights": null
         },
         {
-          "player": "Tim Hardaway Jr.",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Justin Holiday",
           "category": "cap_hold",
           "position": null,
@@ -3915,21 +3855,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Tobias Harris",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 39951219,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
         {
           "player": "Kevin Huerter",
           "category": "cap_hold",
@@ -5545,21 +5470,6 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "John Collins",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 29.0,
-          "contract_type": "FA",
-          "cap_hit": 39870000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Bennedict Mathurin",
           "category": "cap_hold",
           "position": "SG",
@@ -5573,21 +5483,6 @@
           "guaranteed": null,
           "qualifying_offer": 8774590,
           "rights": "Restricted Bird"
-        },
-        {
-          "player": "Bogdan Bogdanovic",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 34.0,
-          "contract_type": "VET-EXT",
-          "cap_hit": 24030000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
         },
         {
           "player": "Keaton Wagler",
@@ -6118,51 +6013,6 @@
           "age": null,
           "contract_type": null,
           "cap_hit": 20900000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Luke Kennard",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 13200000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Marcus Smart",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 6160800,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Jaxson Hayes",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 4484120,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -7036,21 +6886,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Norman Powell",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 30724137,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
         {
           "player": "Simone Fontecchio",
           "category": "cap_hold",
@@ -8023,21 +7858,6 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Mike Conley",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 39.0,
-          "contract_type": "ROS",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Nah'Shon Hyland",
           "category": "cap_hold",
           "position": "PG",
@@ -8865,21 +8685,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Mitchell Robinson",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 24613637,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jose Alvarado",
           "category": "cap_hold",
           "position": null,
@@ -8911,21 +8716,6 @@
         },
         {
           "player": "Jordan Clarkson",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Ariel Hukporti",
           "category": "cap_hold",
           "position": null,
           "age": null,
@@ -10097,36 +9887,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Quentin Grimes",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 26.0,
-          "contract_type": "FA",
-          "cap_hit": 16608297,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
-          "player": "Kelly Oubre Jr.",
-          "category": "cap_hold",
-          "position": "SF",
-          "age": 31.0,
-          "contract_type": "FA",
-          "cap_hit": 15926085,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
         {
           "player": "Andre Drummond",
           "category": "cap_hold",
@@ -12485,21 +12245,6 @@
           "rights": null
         },
         {
-          "player": "Sandro Mamukelashvili",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 2953756,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Will Barton",
           "category": "cap_hold",
           "position": null,
@@ -12839,21 +12584,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Bird"
-        },
-        {
-          "player": "Walker Kessler",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 25.0,
-          "contract_type": "RK-1ST",
-          "cap_hit": 14636814,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 7064702,
-          "rights": "Restricted Bird"
         },
         {
           "player": "Kevin Love",

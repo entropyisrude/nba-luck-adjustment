@@ -311,6 +311,41 @@ def scrape_team(session: requests.Session, abbreviation: str, name: str, slug: s
     }
 
 
+def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
+    """
+    Spotrac's per-team cap pages update independently, so a player who just
+    signed elsewhere can still show up as a free-agent cap hold on his old
+    team for a day or two. We already catch new signings as
+    'pending_transaction' rows on the *new* team (main table + sidebar), so
+    use that to drop the stale cap hold on the old team.
+    """
+    signed_with: dict[str, set[str]] = {}
+    for abbr, data in teams.items():
+        for row in data.get("pending_transactions", []):
+            if row.get("category") == "pending_transaction":
+                signed_with.setdefault(row["player"], set()).add(abbr)
+
+    # A player reported to more than one team at once is a rumor conflict,
+    # not a resolved signing -- leave those cap holds alone.
+    resolved = {name: next(iter(abbrs)) for name, abbrs in signed_with.items() if len(abbrs) == 1}
+
+    for abbr, data in teams.items():
+        holds = data.get("cap_holds")
+        if not holds:
+            continue
+        keep, dropped = [], []
+        for row in holds:
+            new_team = resolved.get(row["player"])
+            (dropped if new_team and new_team != abbr else keep).append(row)
+        if dropped:
+            data["cap_holds"] = keep
+            print(
+                f"  {abbr}: removed {len(dropped)} cap hold(s) for players signed elsewhere: "
+                f"{[(r['player'], resolved[r['player']]) for r in dropped]}",
+                flush=True,
+            )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -336,6 +371,8 @@ def main() -> None:
             print(f"{abbreviation}: ERROR {errors[abbreviation]}", flush=True)
         if index + 1 < len(selected):
             time.sleep(max(0.0, args.delay))
+
+    reconcile_cross_team_signings(teams)
 
     snapshot = {
         "schema_version": 1,
