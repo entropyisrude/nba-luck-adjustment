@@ -25,12 +25,15 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .field select{min-width:220px;padding:7px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;font-size:13px;outline:none}
 .reset-btn{border:1px solid var(--border);background:#fff;color:var(--txt2);padding:7px 12px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer}
 .reset-btn:hover{border-color:var(--orange);color:var(--orange)}
+.team-total{margin-left:auto;font-size:12px;font-weight:700;color:var(--txt2);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 12px}
+.team-total .off{color:#cf222e}
 .note{font-size:11px;color:var(--txt3);margin-bottom:12px}
 
 .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
 .pos-col{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:120px}
-.pos-head{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 11px;font-size:12px;font-weight:800;color:var(--blue);display:flex;justify-content:space-between}
+.pos-head{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 11px;font-size:12px;font-weight:800;color:var(--blue);display:flex;justify-content:space-between;align-items:baseline}
 .pos-head span.cnt{color:var(--txt3);font-weight:600;font-size:10px}
+.pos-head span.mtotal{color:var(--txt3);font-weight:700;font-size:10px;font-family:"SF Mono",Consolas,monospace}
 .pos-body{padding:7px;min-height:90px;display:flex;flex-direction:column;gap:6px}
 .pos-body.drag-over{background:#deeaf8}
 
@@ -43,6 +46,10 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .bubble .meta{font-size:10px;color:var(--txt3);display:flex;gap:6px;flex-wrap:wrap}
 .bubble .sal{font-family:"SF Mono",Consolas,monospace}
 .bubble .tag-pending{color:var(--yellow);font-weight:700}
+.bubble .min-wrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px}
+.bubble .min-wrap label{font-size:8px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
+.bubble .min-input{width:38px;padding:2px 3px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:700;text-align:center;color:var(--txt);-moz-appearance:textfield}
+.bubble .min-input:focus{border-color:var(--blue);outline:none}
 .placeholder{text-align:center;color:#c8d0d8;font-size:10.5px;font-style:italic;padding:14px 4px;border:1.5px dashed var(--border);border-radius:6px}
 
 .pool-panel{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
@@ -64,8 +71,9 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
       <select id="teamSel" onchange="changeTeam()"></select>
     </label>
     <button class="reset-btn" onclick="resetChart()">Reset to Estimated</button>
+    <div class="team-total" id="teamTotal"></div>
   </div>
-  <div class="note">Drag players between position columns or reorder within a column to set depth. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
+  <div class="note">Drag players between position columns or reorder within a column to set depth. Edit a minutes estimate and the rest of the roster auto-adjusts to keep the team at 240 — same-position players absorb the change first. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
 
   <div class="board" id="board"></div>
 
@@ -79,6 +87,11 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
 const POSITIONS = ['PG','SG','SF','PF','C'];
+const TEAM_MINUTES = 240;
+const MAX_PLAYER_MINUTES = 48;
+// "Similar position" tiers for minutes auto-adjust: guards, then wings/forwards, then bigs.
+const POSITION_GROUPS = [['PG','SG'], ['SF','PF'], ['C']];
+const DEFAULT_MINUTE_WEIGHTS = [1, 0.62, 0.38, 0.22, 0.12, 0.06, 0.03];
 let chart = null;   // {PG:[...],SG:[...],...,POOL:[...]}
 let currentAbbr = null;
 let dragSrc = null; // {pos, idx}
@@ -103,6 +116,21 @@ function rosterFor(team){
   }
   return out;
 }
+function seedMinutes(players){
+  players.forEach(p=>{ p.minutes = 0; });
+  if(!players.length) return;
+  if(players.length===1){ players[0].minutes = MAX_PLAYER_MINUTES; return; }
+  const weights = players.map((_,i)=> DEFAULT_MINUTE_WEIGHTS[i] !== undefined ? DEFAULT_MINUTE_WEIGHTS[i] : 0.01);
+  const weightTotal = weights.reduce((a,b)=>a+b,0);
+  let assigned = 0;
+  players.forEach((p,i)=>{
+    const share = Math.round(TEAM_MINUTES/POSITIONS.length * weights[i] / weightTotal);
+    p.minutes = share;
+    assigned += share;
+  });
+  players[0].minutes += (TEAM_MINUTES/POSITIONS.length - assigned);
+  players[0].minutes = Math.max(0, players[0].minutes);
+}
 function buildEstimate(abbr){
   const roster = rosterFor(SNAP.teams[abbr]);
   const cols = {PG:[],SG:[],SF:[],PF:[],C:[],POOL:[]};
@@ -111,11 +139,22 @@ function buildEstimate(abbr){
   }
   for(const k of POSITIONS) cols[k].sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
   cols.POOL.sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
+  for(const k of POSITIONS) seedMinutes(cols[k]);
+  cols.POOL.forEach(p=>{ p.minutes = 0; });
   return cols;
 }
 
 function bubbleHtml(p, pos, idx){
   const pending = p.category==='pending_transaction' ? '<span class="tag-pending">PENDING</span>' : '';
+  const minutesField = pos!=='POOL' ? `
+      <div class="min-wrap">
+        <label>Min</label>
+        <input class="min-input" type="number" min="0" max="${MAX_PLAYER_MINUTES}" step="1"
+               value="${p.minutes||0}" data-pos="${pos}" data-idx="${idx}"
+               onclick="event.stopPropagation()" ondragstart="event.stopPropagation()"
+               onkeydown="if(event.key==='Enter') this.blur()"
+               onchange="setMinutes('${pos}',${idx},this.value)">
+      </div>` : '';
   return `
     <div class="bubble" draggable="true" data-pos="${pos}" data-idx="${idx}"
          ondragstart="bubbleDragStart(event,'${pos}',${idx})" ondragend="bubbleDragEnd(event)">
@@ -123,7 +162,7 @@ function bubbleHtml(p, pos, idx){
       <div class="info">
         <div class="nm">${esc(p.player)}</div>
         <div class="meta"><span class="sal">${fmtSal(p.cap_hit)}</span>${p.age?`<span>${p.age}y</span>`:''}${pending}</div>
-      </div>
+      </div>${minutesField}
     </div>`;
 }
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -134,9 +173,10 @@ function render(){
     const body = players.length
       ? players.map((p,i)=>bubbleHtml(p,pos,i)).join('')
       : '<div class="placeholder">Drop players here</div>';
+    const colTotal = players.reduce((s,p)=>s+(p.minutes||0),0);
     return `
       <div class="pos-col">
-        <div class="pos-head">${pos}<span class="cnt">${players.length}</span></div>
+        <div class="pos-head"><span>${pos}<span class="cnt">${players.length}</span></span><span class="mtotal">${colTotal} min</span></div>
         <div class="pos-body" data-pos="${pos}"
              ondragover="colDragOver(event,'${pos}')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,'${pos}')">
           ${body}
@@ -149,6 +189,10 @@ function render(){
   document.getElementById('pool').innerHTML = pool.length
     ? pool.map((p,i)=>bubbleHtml(p,'POOL',i)).join('')
     : '<div class="pool-empty">Nothing unassigned</div>';
+
+  const teamTotal = POSITIONS.reduce((s,pos)=>s+chart[pos].reduce((s2,p)=>s2+(p.minutes||0),0),0);
+  const totalEl = document.getElementById('teamTotal');
+  totalEl.innerHTML = `Team Minutes: <span class="${teamTotal===TEAM_MINUTES?'':'off'}">${teamTotal}</span> / ${TEAM_MINUTES}`;
 }
 
 function bubbleDragStart(e,pos,idx){
@@ -174,6 +218,18 @@ function colDrop(e, targetPos){
   const insertIdx = insertionIndex(e.currentTarget, e.clientY);
   const [moved] = chart[srcPos].splice(srcIdx,1);
   if(!moved) return;
+
+  if(targetPos==='POOL' && srcPos!=='POOL' && moved.minutes){
+    // Benching a rotation player: hand their minutes back to the rest of the roster
+    // (same similar-position-first priority), instead of just deleting them from the 240 total.
+    let remaining = moved.minutes;
+    for(const tier of buildTiers(srcPos, moved)){
+      if(remaining===0) break;
+      remaining = distributeInt(tier, remaining);
+    }
+    moved.minutes = 0;
+  }
+
   chart[targetPos].splice(insertIdx,0,moved);
   render();
 }
@@ -188,6 +244,68 @@ function insertionIndex(container, clientY){
     if(clientY <= rect.top + rect.height/2) return i;
   }
   return cards.length;
+}
+
+function groupIndexOf(pos){ return POSITION_GROUPS.findIndex(g=>g.includes(pos)); }
+
+// Tiers of "absorber" players for a minutes change, ordered nearest-position-first:
+// same group (e.g. other guards) first, then progressively less similar groups.
+// Excludes `excludePlayer` by identity (not by index -- the caller may have
+// already spliced it out of `chart`, which would leave a stale index pointing
+// at a different player and wrongly exclude them instead).
+function buildTiers(editPos, excludePlayer){
+  const gi = groupIndexOf(editPos);
+  const byDistance = {};
+  POSITION_GROUPS.forEach((group, idx)=>{
+    const d = Math.abs(idx-gi);
+    byDistance[d] = (byDistance[d]||[]).concat(group);
+  });
+  return Object.keys(byDistance).map(Number).sort((a,b)=>a-b).map(d=>{
+    const players = [];
+    byDistance[d].forEach(col=>{
+      chart[col].forEach(p=>{ if(p!==excludePlayer) players.push(p); });
+    });
+    return players;
+  });
+}
+
+// Spreads an integer `amount` (positive=add total, negative=remove total) round-robin
+// across `players`, clamped to [0, MAX_PLAYER_MINUTES]. Returns the leftover that
+// couldn't be absorbed because everyone in the group was already maxed/floored.
+function distributeInt(players, amount){
+  let remaining = amount;
+  if(remaining===0 || !players.length) return remaining;
+  const step = remaining>0 ? 1 : -1;
+  let i = 0;
+  let sinceProgress = 0;
+  while(remaining!==0 && sinceProgress < players.length){
+    const p = players[i % players.length];
+    if(step>0 && p.minutes < MAX_PLAYER_MINUTES){ p.minutes += 1; remaining -= 1; sinceProgress = 0; }
+    else if(step<0 && p.minutes > 0){ p.minutes -= 1; remaining += 1; sinceProgress = 0; }
+    else { sinceProgress += 1; }
+    i++;
+  }
+  return remaining;
+}
+
+function setMinutes(pos, idx, rawVal){
+  const player = chart[pos][idx];
+  const clamped = Math.max(0, Math.min(MAX_PLAYER_MINUTES, Math.round(Number(rawVal)||0)));
+  const old = player.minutes||0;
+  const delta = clamped - old;
+  if(delta===0){ render(); return; }
+  player.minutes = clamped;
+  let remaining = -delta; // total the rest of the roster must absorb, opposite sign
+  for(const tier of buildTiers(pos, player)){
+    if(remaining===0) break;
+    remaining = distributeInt(tier, remaining);
+  }
+  if(remaining!==0){
+    // Rest of the roster couldn't fully offset (everyone else maxed/floored) —
+    // claw the unabsorbed part back from the edited player so the team stays at 240.
+    player.minutes = Math.max(0, Math.min(MAX_PLAYER_MINUTES, player.minutes + remaining));
+  }
+  render();
 }
 
 function changeTeam(){
