@@ -39,7 +39,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .pos-head span.cnt{color:var(--txt3);font-weight:600;font-size:10px}
 .pos-head span.mtotal{color:var(--txt3);font-weight:700;font-size:10px;font-family:"SF Mono",Consolas,monospace}
 .pos-body{padding:7px;min-height:90px;display:flex;flex-direction:column;gap:6px}
-.pos-body.drag-over{background:#deeaf8}
+.pos-col.drag-over{background:#deeaf8}
 
 .bubble{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:5px 10px 5px 6px;cursor:grab;user-select:none;transition:box-shadow .1s,border-color .1s}
 .bubble:hover{border-color:var(--blue);box-shadow:0 1px 3px rgba(0,107,182,.15)}
@@ -61,7 +61,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .pool-panel{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
 .pool-head{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 11px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt2)}
 .pool-body{padding:9px;display:flex;flex-wrap:wrap;gap:7px;min-height:56px}
-.pool-body.drag-over{background:#deeaf8}
+.pool-panel.drag-over{background:#deeaf8}
 .pool-empty{color:var(--txt3);font-size:11px;font-style:italic;padding:4px}
 </style>
 </head>
@@ -87,9 +87,9 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 
   <div class="board" id="board"></div>
 
-  <div class="pool-panel">
+  <div class="pool-panel" ondragover="colDragOver(event,'POOL')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,'POOL')">
     <div class="pool-head">Unassigned / Two-Way — drag up into a position</div>
-    <div class="pool-body" id="pool" ondragover="colDragOver(event,'POOL')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,'POOL')"></div>
+    <div class="pool-body" id="pool"></div>
   </div>
 </main>
 
@@ -222,10 +222,9 @@ function render(){
       : '<div class="placeholder">Drop players here</div>';
     const colTotal = players.reduce((s,p)=>s+(p.minutes||0),0);
     return `
-      <div class="pos-col">
+      <div class="pos-col" ondragover="colDragOver(event,'${pos}')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,'${pos}')">
         <div class="pos-head"><span>${pos}<span class="cnt">${players.length}</span></span><span class="mtotal">${colTotal} min</span></div>
-        <div class="pos-body" data-pos="${pos}"
-             ondragover="colDragOver(event,'${pos}')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,'${pos}')">
+        <div class="pos-body" data-pos="${pos}">
           ${body}
         </div>
       </div>`;
