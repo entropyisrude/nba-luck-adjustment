@@ -14,7 +14,8 @@ body{background:var(--bg2);color:var(--txt);font-family:-apple-system,BlinkMacSy
 header{background:#003FA5;border-bottom:3px solid var(--orange);padding:14px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 header .brand{font-size:20px;font-weight:800;color:#fff}
 header .sub{font-size:11px;color:#a8c4e8}
-header a.back{margin-left:auto;font-size:11px;color:#ffd29a;text-decoration:none;font-weight:700}
+header .back-links{margin-left:auto;display:flex;gap:14px}
+header a.back{font-size:11px;color:#ffd29a;text-decoration:none;font-weight:700}
 header a.back:hover{text-decoration:underline}
 main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 .legend{font-size:11px;color:var(--txt3);margin-bottom:12px}
@@ -39,7 +40,10 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 <header>
   <div class="brand">NBA 2026–27 Depth Charts</div>
   <div class="sub" id="source"></div>
-  <a class="back" href="nba_cap_2026.html">← Cap Tracker</a>
+  <div class="back-links">
+    <a class="back" href="nba_cap_2026.html">← Cap Tracker</a>
+    <a class="back" href="index.html">Home</a>
+  </div>
 </header>
 <main>
   <div class="legend">Estimated from projected 2026-27 rosters on the Cap Tracker, ranked by cap hit within position (best available proxy for depth — not a scouting judgment). Click a team to open its editable depth chart.</div>
