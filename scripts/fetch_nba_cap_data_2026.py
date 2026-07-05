@@ -370,6 +370,42 @@ def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
                 )
 
 
+MANUAL_ADDITIONS_PATH = ROOT / "data" / "cap_manual_additions.json"
+
+
+def apply_manual_additions(teams: dict[str, Any]) -> None:
+    """
+    Merges in data/cap_manual_additions.json -- for players Spotrac's per-team
+    cap page structure just doesn't expose anywhere our table parser reaches
+    (e.g. a two-way player who only shows up in an unrelated future-year
+    "Deadlines" table, not the Active Roster table), so no amount of fixing
+    the scraper's table-matching logic would find them. Skips anyone already
+    present on that team under any category, so this stops applying on its
+    own once Spotrac's page catches up.
+    """
+    if not MANUAL_ADDITIONS_PATH.exists():
+        return
+    additions = json.loads(MANUAL_ADDITIONS_PATH.read_text(encoding="utf-8"))
+    for abbr, rows in additions.items():
+        data = teams.get(abbr)
+        if not data:
+            continue
+        existing_names = {
+            row["player"]
+            for cat in ("active_roster", "pending_transactions", "cap_holds", "dead_money", "retained_salary")
+            for row in (data.get(cat) or [])
+        }
+        added = []
+        for row in rows:
+            if row["player"] in existing_names:
+                continue
+            category = row.get("category", "active_roster")
+            data.setdefault(category, []).append(row)
+            added.append(row["player"])
+        if added:
+            print(f"  {abbr}: manually added {added} (not exposed anywhere on Spotrac's page)", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -397,6 +433,7 @@ def main() -> None:
             time.sleep(max(0.0, args.delay))
 
     reconcile_cross_team_signings(teams)
+    apply_manual_additions(teams)
 
     snapshot = {
         "schema_version": 1,

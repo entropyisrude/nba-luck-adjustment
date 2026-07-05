@@ -1,0 +1,19 @@
+{
+  "MEM": [
+    {
+      "player": "Javon Small",
+      "category": "active_roster",
+      "position": null,
+      "age": null,
+      "contract_type": "TWO-WAY",
+      "cap_hit": null,
+      "base_salary": null,
+      "likely_incentives": null,
+      "unlikely_incentives": null,
+      "trade_bonus_proration": null,
+      "guaranteed": null,
+      "qualifying_offer": null,
+      "rights": "Two-Way"
+    }
+  ]
+}
