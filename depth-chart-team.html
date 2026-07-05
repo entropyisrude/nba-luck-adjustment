@@ -27,7 +27,10 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .reset-btn{border:1px solid var(--border);background:#fff;color:var(--txt2);padding:7px 12px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer}
 .reset-btn:hover{border-color:var(--orange);color:var(--orange)}
 .team-total{margin-left:auto;font-size:12px;font-weight:700;color:var(--txt2);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 12px}
+.team-total .ok{color:var(--green)}
 .team-total .off{color:#cf222e}
+.scale-btn{border:1px solid var(--blue);background:#fff;color:var(--blue);padding:7px 12px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer}
+.scale-btn:hover{background:var(--blue);color:#fff}
 .note{font-size:11px;color:var(--txt3);margin-bottom:12px}
 
 .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
@@ -50,6 +53,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .bubble .min-wrap{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px}
 .bubble .min-wrap label{font-size:8px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
 .bubble .min-input{width:38px;padding:2px 3px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:700;text-align:center;color:var(--txt);-moz-appearance:textfield}
+.bubble .min-input::-webkit-outer-spin-button,.bubble .min-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .bubble .min-input:focus{border-color:var(--blue);outline:none}
 .bubble .last-yr{font-size:8px;font-weight:700;color:var(--txt3);white-space:nowrap}
 .placeholder{text-align:center;color:#c8d0d8;font-size:10.5px;font-style:italic;padding:14px 4px;border:1.5px dashed var(--border);border-radius:6px}
@@ -77,8 +81,9 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
     </label>
     <button class="reset-btn" onclick="resetChart()">Reset to Estimated</button>
     <div class="team-total" id="teamTotal"></div>
+    <button class="scale-btn" onclick="scaleTo240()">Scale to 240</button>
   </div>
-  <div class="note">Drag players between position columns or reorder within a column to set depth. Edit a minutes estimate and the rest of the roster auto-adjusts to keep the team at 240 — same-position players absorb the change first. The small number under each Min box is that player's 2025-26 MPG (or "Rookie" for first-year players); a dash means we don't have last season's data for them. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
+  <div class="note">Drag players between position columns or reorder within a column to set depth. Type any minutes value you want -- nothing auto-adjusts as you go. The Team Minutes total turns red once it's off 240 and green when it's back on the dot; click "Scale to 240" to have it rebalance for you, absorbing the change into similar positions first (guards, then wings, then bigs). The small number under each Min box is that player's 2025-26 MPG (or "Rookie" for first-year players); a dash means we don't have last season's data for them. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
 
   <div class="board" id="board"></div>
 
@@ -221,7 +226,8 @@ function render(){
 
   const teamTotal = POSITIONS.reduce((s,pos)=>s+chart[pos].reduce((s2,p)=>s2+(p.minutes||0),0),0);
   const totalEl = document.getElementById('teamTotal');
-  totalEl.innerHTML = `Team Minutes: <span class="${teamTotal===TEAM_MINUTES?'':'off'}">${teamTotal}</span> / ${TEAM_MINUTES}`;
+  const cls = teamTotal===TEAM_MINUTES ? 'ok' : 'off';
+  totalEl.innerHTML = `Team Minutes: <span class="${cls}">${teamTotal}</span> / ${TEAM_MINUTES}`;
 }
 
 function bubbleDragStart(e,pos,idx){
@@ -248,14 +254,9 @@ function colDrop(e, targetPos){
   const [moved] = chart[srcPos].splice(srcIdx,1);
   if(!moved) return;
 
-  if(targetPos==='POOL' && srcPos!=='POOL' && moved.minutes){
-    // Benching a rotation player: hand their minutes back to the rest of the roster
-    // (same similar-position-first priority), instead of just deleting them from the 240 total.
-    let remaining = moved.minutes;
-    for(const tier of buildTiers(srcPos, moved)){
-      if(remaining===0) break;
-      remaining = distributeInt(tier, remaining);
-    }
+  if(targetPos==='POOL' && srcPos!=='POOL'){
+    // Benching a rotation player just zeroes their minutes -- nothing auto-adjusts
+    // anymore. Team Minutes will show red until you hit "Scale to 240".
     moved.minutes = 0;
   }
 
@@ -273,29 +274,6 @@ function insertionIndex(container, clientY){
     if(clientY <= rect.top + rect.height/2) return i;
   }
   return cards.length;
-}
-
-function groupIndexOf(pos){ return POSITION_GROUPS.findIndex(g=>g.includes(pos)); }
-
-// Tiers of "absorber" players for a minutes change, ordered nearest-position-first:
-// same group (e.g. other guards) first, then progressively less similar groups.
-// Excludes `excludePlayer` by identity (not by index -- the caller may have
-// already spliced it out of `chart`, which would leave a stale index pointing
-// at a different player and wrongly exclude them instead).
-function buildTiers(editPos, excludePlayer){
-  const gi = groupIndexOf(editPos);
-  const byDistance = {};
-  POSITION_GROUPS.forEach((group, idx)=>{
-    const d = Math.abs(idx-gi);
-    byDistance[d] = (byDistance[d]||[]).concat(group);
-  });
-  return Object.keys(byDistance).map(Number).sort((a,b)=>a-b).map(d=>{
-    const players = [];
-    byDistance[d].forEach(col=>{
-      chart[col].forEach(p=>{ if(p!==excludePlayer) players.push(p); });
-    });
-    return players;
-  });
 }
 
 // Spreads an integer `amount` (positive=add total, negative=remove total) round-robin
@@ -319,20 +297,36 @@ function distributeInt(players, amount){
 
 function setMinutes(pos, idx, rawVal){
   const player = chart[pos][idx];
-  const clamped = Math.max(0, Math.min(MAX_PLAYER_MINUTES, Math.round(Number(rawVal)||0)));
-  const old = player.minutes||0;
-  const delta = clamped - old;
-  if(delta===0){ render(); return; }
-  player.minutes = clamped;
-  let remaining = -delta; // total the rest of the roster must absorb, opposite sign
-  for(const tier of buildTiers(pos, player)){
-    if(remaining===0) break;
-    remaining = distributeInt(tier, remaining);
+  player.minutes = Math.max(0, Math.min(MAX_PLAYER_MINUTES, Math.round(Number(rawVal)||0)));
+  render();
+}
+
+// "Scale to 240": rebalances the whole roster in one shot, on demand, instead of
+// auto-adjusting on every keystroke. Each position group (guards / wings / bigs)
+// absorbs a share of the needed change proportional to its current share of team
+// minutes, round-robin within the group; anything a group can't absorb (everyone
+// in it maxed at 48 or floored at 0) spills into one final pass across everyone.
+function scaleTo240(){
+  const groups = POSITION_GROUPS.map(g=>g.flatMap(pos=>chart[pos]));
+  const groupTotals = groups.map(g=>g.reduce((s,p)=>s+(p.minutes||0),0));
+  const grandTotal = groupTotals.reduce((a,b)=>a+b,0);
+  let diff = TEAM_MINUTES - grandTotal;
+  if(diff===0){ render(); return; }
+
+  let allocs;
+  if(grandTotal <= 0){
+    // Nobody has any minutes to scale proportionally from -- split evenly instead.
+    allocs = groups.map(()=>Math.round(diff/groups.length));
+  } else {
+    allocs = groupTotals.map(gt=>Math.round(diff*gt/grandTotal));
   }
-  if(remaining!==0){
-    // Rest of the roster couldn't fully offset (everyone else maxed/floored) —
-    // claw the unabsorbed part back from the edited player so the team stays at 240.
-    player.minutes = Math.max(0, Math.min(MAX_PLAYER_MINUTES, player.minutes + remaining));
+  const allocSum = allocs.reduce((a,b)=>a+b,0);
+  allocs[0] += diff - allocSum; // fix rounding remainder on the guards group
+
+  let leftover = 0;
+  groups.forEach((g,i)=>{ leftover += distributeInt(g, allocs[i]); });
+  if(leftover !== 0){
+    leftover = distributeInt(groups.flat(), leftover);
   }
   render();
 }
