@@ -93,8 +93,10 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
   </div>
 </main>
 
-<script src="data/nba_cap_data_2026_27.js"></script>
-<script src="data/last_season_mpg.js"></script>
+<script>
+document.write('<scr'+'ipt src="data/nba_cap_data_2026_27.js?v='+Date.now()+'"></scr'+'ipt>');
+document.write('<scr'+'ipt src="data/last_season_mpg.js?v='+Date.now()+'"></scr'+'ipt>');
+</script>
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
 const MPG = window.LAST_SEASON_MPG;

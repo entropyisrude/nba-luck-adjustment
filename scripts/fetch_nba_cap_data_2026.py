@@ -349,8 +349,9 @@ def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
                 signed_with.setdefault(row["player"], set()).add(abbr)
 
     # A player reported to more than one team at once is a rumor conflict,
-    # not a resolved signing -- leave those entries alone.
+    # not a resolved signing -- don't guess which team it'll land on.
     resolved = {name: next(iter(abbrs)) for name, abbrs in signed_with.items() if len(abbrs) == 1}
+    conflicted = {name for name, abbrs in signed_with.items() if len(abbrs) > 1}
 
     for abbr, data in teams.items():
         for category in STALE_ENTRY_CATEGORIES:
@@ -366,6 +367,23 @@ def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
                 print(
                     f"  {abbr}: removed {len(dropped)} stale {category} row(s) for players signed elsewhere: "
                     f"{[(r['player'], resolved[r['player']]) for r in dropped]}",
+                    flush=True,
+                )
+
+        # Unresolvable rumor conflicts still shouldn't sit on multiple teams'
+        # pending_transactions at once -- pull them off every team rather than
+        # guess. They'll reappear cleanly once the signing actually happens and
+        # Spotrac's Active Roster table (not just a rumor sidebar) reflects it.
+        pending = data.get("pending_transactions")
+        if pending:
+            keep, dropped = [], []
+            for row in pending:
+                (dropped if row["player"] in conflicted else keep).append(row)
+            if dropped:
+                data["pending_transactions"] = keep
+                print(
+                    f"  {abbr}: removed {len(dropped)} conflicting-rumor pending_transaction row(s): "
+                    f"{[r['player'] for r in dropped]}",
                     flush=True,
                 )
 
@@ -406,6 +424,31 @@ def apply_manual_additions(teams: dict[str, Any]) -> None:
             print(f"  {abbr}: manually added {added} (not exposed anywhere on Spotrac's page)", flush=True)
 
 
+def validate_no_cross_team_duplicates(teams: dict[str, Any]) -> list[str]:
+    """
+    Sanity check run after reconciliation/manual additions: no player should be
+    listed as actively on, or coming to, more than one team at once. A trade is
+    implicitly present in the data as soon as one side shows up as a
+    pending_transaction elsewhere (e.g. Kawhi Leonard pending on TOR implies
+    the Clippers side of that trade too) -- reconcile_cross_team_signings()
+    is supposed to catch every case, but this exists so any future gap in that
+    logic (a new category we don't sweep, a name-matching miss, etc.) produces
+    a loud, hard-to-miss warning instead of a silent duplicate roster spot,
+    the way Nicolas Claxton and Brandon Ingram both slipped through before the
+    active_roster sweep was added.
+    """
+    presence: dict[str, set[str]] = {}
+    for abbr, data in teams.items():
+        for category in ("active_roster", "pending_transactions"):
+            for row in data.get(category) or []:
+                presence.setdefault(row["player"], set()).add(abbr)
+    return [
+        f"{player} appears on multiple teams at once: {sorted(abbrs)}"
+        for player, abbrs in presence.items()
+        if len(abbrs) > 1
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -435,6 +478,10 @@ def main() -> None:
     reconcile_cross_team_signings(teams)
     apply_manual_additions(teams)
 
+    consistency_warnings = validate_no_cross_team_duplicates(teams)
+    for warning in consistency_warnings:
+        print(f"  CONSISTENCY WARNING: {warning}", flush=True)
+
     snapshot = {
         "schema_version": 1,
         "season": "2026-27",
@@ -443,6 +490,7 @@ def main() -> None:
         "source": "Spotrac team cap tables",
         "team_count": len(teams),
         "errors": errors,
+        "consistency_warnings": consistency_warnings,
         "teams": teams,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -456,8 +504,11 @@ def main() -> None:
         encoding="utf-8",
     )
     js_temp.replace(args.js_output)
-    print(json.dumps({"output": str(args.output), "teams": len(teams), "errors": errors}, indent=2))
-    if errors:
+    print(json.dumps(
+        {"output": str(args.output), "teams": len(teams), "errors": errors, "consistency_warnings": consistency_warnings},
+        indent=2,
+    ))
+    if errors or consistency_warnings:
         raise SystemExit(1)
 
 
