@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NBA 2026-27 Depth Charts</title>
+<style>
+:root{
+  --blue:#006BB6;--orange:#F58426;
+  --bg:#ffffff;--bg2:#f6f8fa;--bg3:#eef0f2;
+  --border:#d0d7de;--txt:#1a1d23;--txt2:#57606a;--txt3:#8c959f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg2);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;font-size:13px;line-height:1.5}
+header{background:#003FA5;border-bottom:3px solid var(--orange);padding:14px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header .brand{font-size:20px;font-weight:800;color:#fff}
+header .sub{font-size:11px;color:#a8c4e8}
+header a.back{margin-left:auto;font-size:11px;color:#ffd29a;text-decoration:none;font-weight:700}
+header a.back:hover{text-decoration:underline}
+main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
+.legend{font-size:11px;color:var(--txt3);margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.team-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.team-head{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:7px 10px;border-bottom:1px solid var(--border)}
+.team-head .abbr{font-weight:800;font-size:13px;color:var(--blue)}
+.team-head .name{font-size:10px;color:var(--txt3);margin-left:6px}
+.team-head a{font-size:10px;font-weight:700;color:var(--orange);text-decoration:none;white-space:nowrap}
+.team-head a:hover{text-decoration:underline}
+.pos-table{width:100%;border-collapse:collapse}
+.pos-table td{padding:4px 9px;border-bottom:1px solid #eef1f4;vertical-align:top;font-size:11.5px}
+.pos-table tr:last-child td{border-bottom:none}
+.pos-table td.pos{width:28px;font-weight:800;color:var(--txt3);font-size:10px;padding-top:5px}
+.pos-table td.names{color:var(--txt)}
+.pos-table td.names .more{color:var(--txt3);font-weight:600}
+.pos-table tr.other td.pos{color:#bc4c00}
+.empty{color:#c8d0d8;font-style:italic}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">NBA 2026–27 Depth Charts</div>
+  <div class="sub" id="source"></div>
+  <a class="back" href="nba_cap_2026.html">← Cap Tracker</a>
+</header>
+<main>
+  <div class="legend">Estimated from projected 2026-27 rosters on the Cap Tracker, ranked by cap hit within position (best available proxy for depth — not a scouting judgment). Click a team to open its editable depth chart.</div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script src="data/nba_cap_data_2026_27.js"></script>
+<script>
+const SNAP = window.NBA_CAP_SNAPSHOT;
+const POSITIONS = ['PG','SG','SF','PF','C'];
+
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+}
+
+function lastName(full){
+  const parts = full.trim().split(/\s+/);
+  if(parts.length<2) return full;
+  const suffixes = new Set(['jr.','jr','sr.','sr','ii','iii','iv','v']);
+  if(parts.length>2 && suffixes.has(parts[parts.length-1].toLowerCase())){
+    return parts.slice(-2).join(' ');
+  }
+  return parts[parts.length-1];
+}
+
+function rosterFor(team){
+  const rows = [...(team.active_roster||[]), ...(team.pending_transactions||[]).filter(r=>r.category==='pending_transaction')];
+  const seen = new Set();
+  const out = [];
+  for(const r of rows){
+    if(seen.has(r.player)) continue;
+    seen.add(r.player);
+    out.push(r);
+  }
+  return out;
+}
+
+function bucket(roster){
+  const cols = {PG:[],SG:[],SF:[],PF:[],C:[],OTHER:[]};
+  for(const p of roster){
+    const pos = POSITIONS.includes(p.position) ? p.position : 'OTHER';
+    cols[pos].push(p);
+  }
+  for(const k of Object.keys(cols)){
+    cols[k].sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
+  }
+  return cols;
+}
+
+function renderTeam(abbr, team){
+  const cols = bucket(rosterFor(team));
+  const rows = POSITIONS.map(pos=>{
+    const players = cols[pos];
+    if(!players.length) return `<tr><td class="pos">${pos}</td><td class="names empty">—</td></tr>`;
+    const shown = players.slice(0,4).map(p=>lastName(p.player));
+    const extra = players.length>4 ? ` <span class="more">+${players.length-4}</span>` : '';
+    return `<tr><td class="pos">${pos}</td><td class="names">${shown.join(', ')}${extra}</td></tr>`;
+  }).join('');
+  const other = cols.OTHER;
+  const otherRow = other.length
+    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.slice(0,4).map(p=>lastName(p.player)).join(', ')}${other.length>4?` <span class="more">+${other.length-4}</span>`:''}</td></tr>`
+    : '';
+  return `
+    <div class="team-card">
+      <div class="team-head">
+        <span><span class="abbr">${abbr}</span><span class="name">${team.name}</span></span>
+        <a href="depth-chart-team.html?team=${abbr}">Edit ↗</a>
+      </div>
+      <table class="pos-table">${rows}${otherRow}</table>
+    </div>`;
+}
+
+function render(){
+  document.getElementById('source').textContent = SNAP ? `Data: ${SNAP.season} · fetched ${fmtDate(SNAP.fetched_at)}` : '';
+  const abbrs = Object.keys(SNAP.teams).sort((a,b)=>SNAP.teams[a].name.localeCompare(SNAP.teams[b].name));
+  document.getElementById('grid').innerHTML = abbrs.map(a=>renderTeam(a, SNAP.teams[a])).join('');
+}
+render();
+</script>
+</body>
+</html>
