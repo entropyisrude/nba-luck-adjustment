@@ -51,6 +51,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .bubble .min-wrap label{font-size:8px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
 .bubble .min-input{width:38px;padding:2px 3px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:700;text-align:center;color:var(--txt);-moz-appearance:textfield}
 .bubble .min-input:focus{border-color:var(--blue);outline:none}
+.bubble .last-yr{font-size:8px;font-weight:700;color:var(--txt3);white-space:nowrap}
 .placeholder{text-align:center;color:#c8d0d8;font-size:10.5px;font-style:italic;padding:14px 4px;border:1.5px dashed var(--border);border-radius:6px}
 
 .pool-panel{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
@@ -77,7 +78,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
     <button class="reset-btn" onclick="resetChart()">Reset to Estimated</button>
     <div class="team-total" id="teamTotal"></div>
   </div>
-  <div class="note">Drag players between position columns or reorder within a column to set depth. Edit a minutes estimate and the rest of the roster auto-adjusts to keep the team at 240 — same-position players absorb the change first. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
+  <div class="note">Drag players between position columns or reorder within a column to set depth. Edit a minutes estimate and the rest of the roster auto-adjusts to keep the team at 240 — same-position players absorb the change first. The small number under each Min box is that player's 2025-26 MPG (or "Rookie" for first-year players); a dash means we don't have last season's data for them. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
 
   <div class="board" id="board"></div>
 
@@ -88,8 +89,11 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 </main>
 
 <script src="data/nba_cap_data_2026_27.js"></script>
+<script src="data/last_season_mpg.js"></script>
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
+const MPG = window.LAST_SEASON_MPG;
+const NAME_SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
 const POSITIONS = ['PG','SG','SF','PF','C'];
 const TEAM_MINUTES = 240;
 const MAX_PLAYER_MINUTES = 48;
@@ -108,6 +112,26 @@ function fmtDate(iso){
 function fmtSal(v){
   if(v==null) return '—';
   return '$'+(v/1e6).toFixed(1)+'M';
+}
+// Must stay logically in sync with normalize_name() in scripts/build_last_season_mpg.py --
+// that script builds data/last_season_mpg.js keyed by this same normalization, since the
+// cap-tracker's Spotrac-derived names don't always match the box-score data's spelling.
+function normalizeName(name){
+  let text = String(name||'').normalize('NFKD').replace(/[̀-ͯ]/g,'');
+  text = text.replace(/\./g,'').replace(/[^a-zA-Z0-9 ]/g,'');
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  while(words.length && NAME_SUFFIXES.has(words[words.length-1])) words.pop();
+  return words.join(' ');
+}
+const KNOWN_PLAYERS = new Set((MPG && MPG.known) || []);
+function lastYearLabel(p){
+  const key = normalizeName(p.player);
+  const rec = MPG && MPG.players[key];
+  if(rec) return `${rec.mpg} '25-26`;
+  // Never appeared in any prior season of our historical data at all -> genuine rookie.
+  // Present in an earlier season but missing 2025-26 specifically -> a real data gap
+  // (injury, pipeline lag), not a rookie -- don't conflate the two.
+  return KNOWN_PLAYERS.has(key) ? '—' : 'Rookie';
 }
 function rosterFor(team){
   const rows = [...(team.active_roster||[]), ...(team.pending_transactions||[]).filter(r=>r.category==='pending_transaction')];
@@ -158,6 +182,7 @@ function bubbleHtml(p, pos, idx){
                onclick="event.stopPropagation()" ondragstart="event.stopPropagation()"
                onkeydown="if(event.key==='Enter') this.blur()"
                onchange="setMinutes('${pos}',${idx},this.value)">
+        <span class="last-yr" title="2025-26 minutes per game">${lastYearLabel(p)}</span>
       </div>` : '';
   return `
     <div class="bubble" draggable="true" data-pos="${pos}" data-idx="${idx}"
