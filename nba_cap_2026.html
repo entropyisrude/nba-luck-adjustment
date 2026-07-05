@@ -14,9 +14,11 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg2);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif;font-size:13px;line-height:1.5}
 button,select,input{font:inherit}
-header{background:#003FA5;border-bottom:3px solid var(--orange);padding:14px 24px}
+header{background:#003FA5;border-bottom:3px solid var(--orange);padding:14px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 header .brand{font-size:20px;font-weight:800;color:#fff}
 header .sub{font-size:11px;color:#a8c4e8;margin-top:2px}
+header a.back{margin-left:auto;font-size:11px;color:#ffd29a;text-decoration:none;font-weight:700}
+header a.back:hover{text-decoration:underline}
 .top-nav{display:flex;align-items:center;gap:4px;background:#fff;border-bottom:1px solid var(--border);padding:0 22px}
 .top-nav button{border:0;background:none;padding:12px 14px;font-size:13px;font-weight:700;color:var(--txt2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
 .top-nav button:hover{color:var(--txt)}
@@ -228,6 +230,7 @@ table.ht tr:last-child td{border-bottom:none}
 <header>
   <div class="brand">NBA 2026–27 Cap &amp; Trade</div>
   <div class="sub" id="source"></div>
+  <a class="back" href="index.html">← Home</a>
 </header>
 <nav class="top-nav">
   <button id="teamTab" class="active" onclick="setView('team')">Team Pages</button>
