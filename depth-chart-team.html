@@ -130,7 +130,7 @@ const KNOWN_PLAYERS = new Set((MPG && MPG.known) || []);
 function lastYearLabel(p){
   const key = normalizeName(p.player);
   const rec = MPG && MPG.players[key];
-  if(rec) return `${rec.mpg} '25-26`;
+  if(rec) return `${rec.mpg.toFixed(1)} '25-26`;
   // Never appeared in any prior season of our historical data at all -> genuine rookie.
   // Present in an earlier season but missing 2025-26 specifically -> a real data gap
   // (injury, pipeline lag), not a rookie -- don't conflate the two.

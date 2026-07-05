@@ -1,10 +1,21 @@
 """
 Builds a small lookup of each player's most recent completed season's minutes-per-game,
-for display next to the minutes editor on the depth chart pages. Source: data/player_seasons.json
-(already built by build_player_seasons.py). Keyed by a normalized name so the depth chart JS
-(which reads player names from the Spotrac-derived cap data, a different source with its own
-name spellings) can match against it -- see normalize_name() in depth-chart-team.html /
-depth-chart-local.html, which must stay logically in sync with this function.
+for display next to the minutes editor on the depth chart pages.
+
+MPG/games come directly from data/nba_analytics.duckdb's player_game_facts, NOT from the
+already-aggregated data/player_seasons.json -- that table's season boundary is unreliable
+for the last couple of seasons (playoff games run through the same season='2025-26' /
+'2024-25' bucket well past the real regular-season end date, e.g. 2025-26 rows go to
+2026-05-24 when the actual regular season ended 2026-04-12), so aggregating it naively
+blends postseason minutes into what's supposed to be a regular-season rate. We filter to
+SEASON_END_DATE here to avoid that. player_seasons.json is still used for the "known"
+set (has this player appeared in ANY season, for the rookie-vs-data-gap distinction) since
+that part isn't affected by the current season's boundary problem.
+
+Keyed by a normalized name so the depth chart JS (which reads player names from the
+Spotrac-derived cap data, a different source with its own name spellings) can match
+against it -- see normalize_name() in depth-chart-team.html / depth-chart-local.html,
+which must stay logically in sync with this function.
 """
 from __future__ import annotations
 
@@ -13,11 +24,15 @@ import re
 import unicodedata
 from pathlib import Path
 
+import duckdb
+
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "data" / "player_seasons.json"
+DUCKDB_PATH = ROOT / "data" / "nba_analytics.duckdb"
+KNOWN_SOURCE = ROOT / "data" / "player_seasons.json"
 OUTPUT = ROOT / "data" / "last_season_mpg.json"
 JS_OUTPUT = ROOT / "data" / "last_season_mpg.js"
 LAST_SEASON = "2025-26"
+SEASON_END_DATE = "2026-04-12"  # true regular-season cutoff -- see module docstring
 
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
@@ -33,23 +48,31 @@ def normalize_name(name: str) -> str:
 
 
 def main() -> None:
-    data = json.loads(SOURCE.read_text(encoding="utf-8"))
-    lookup: dict[str, dict] = {}
     known: set[str] = set()
-    for row in data["seasons"]:
-        key = normalize_name(row["name"])
-        known.add(key)
-        if row["season"] != LAST_SEASON:
-            continue
-        games = row.get("games") or 0
-        minutes = row.get("min") or 0
+    for row in json.loads(KNOWN_SOURCE.read_text(encoding="utf-8"))["seasons"]:
+        known.add(normalize_name(row["name"]))
+
+    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    rows = con.execute(
+        """
+        SELECT player_name, count(*) AS games, sum(minutes) AS total_min
+        FROM player_game_facts
+        WHERE season = ? AND minutes > 0 AND date <= CAST(? AS DATE)
+        GROUP BY player_name
+        """,
+        [LAST_SEASON, SEASON_END_DATE],
+    ).fetchall()
+    con.close()
+
+    lookup: dict[str, dict] = {}
+    for name, games, total_min in rows:
         if games <= 0:
             continue
-        lookup[key] = {
-            "name": row["name"],
+        lookup[normalize_name(name)] = {
+            "name": name,
             "games": games,
-            "min": minutes,
-            "mpg": round(minutes / games, 1),
+            "min": round(total_min, 1),
+            "mpg": round(total_min / games, 1),
         }
 
     # Players who never appear in ANY season are true rookies; a player missing
@@ -58,7 +81,8 @@ def main() -> None:
     # since the depth chart labels the former "Rookie" and the latter "-".
     snapshot = {
         "season": LAST_SEASON,
-        "generated_from": data.get("generated"),
+        "season_end_date": SEASON_END_DATE,
+        "source": "player_game_facts, regular-season games only (date-filtered to exclude playoff bleed-through)",
         "players": lookup,
         "known": sorted(known),
     }
