@@ -329,13 +329,18 @@ def scrape_team(session: requests.Session, abbreviation: str, name: str, slug: s
     }
 
 
+STALE_ENTRY_CATEGORIES = ("cap_holds", "active_roster", "dead_money", "retained_salary")
+
+
 def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
     """
     Spotrac's per-team cap pages update independently, so a player who just
-    signed elsewhere can still show up as a free-agent cap hold on his old
-    team for a day or two. We already catch new signings as
+    signed elsewhere can still show up as a free-agent cap hold -- or, we've
+    since found, even still sitting in the *active roster* table -- on his
+    old team for a day or two. We already catch new signings as
     'pending_transaction' rows on the *new* team (main table + sidebar), so
-    use that to drop the stale cap hold on the old team.
+    use that to drop the stale entry on the old team, in whichever section
+    it's lingering in.
     """
     signed_with: dict[str, set[str]] = {}
     for abbr, data in teams.items():
@@ -344,24 +349,25 @@ def reconcile_cross_team_signings(teams: dict[str, Any]) -> None:
                 signed_with.setdefault(row["player"], set()).add(abbr)
 
     # A player reported to more than one team at once is a rumor conflict,
-    # not a resolved signing -- leave those cap holds alone.
+    # not a resolved signing -- leave those entries alone.
     resolved = {name: next(iter(abbrs)) for name, abbrs in signed_with.items() if len(abbrs) == 1}
 
     for abbr, data in teams.items():
-        holds = data.get("cap_holds")
-        if not holds:
-            continue
-        keep, dropped = [], []
-        for row in holds:
-            new_team = resolved.get(row["player"])
-            (dropped if new_team and new_team != abbr else keep).append(row)
-        if dropped:
-            data["cap_holds"] = keep
-            print(
-                f"  {abbr}: removed {len(dropped)} cap hold(s) for players signed elsewhere: "
-                f"{[(r['player'], resolved[r['player']]) for r in dropped]}",
-                flush=True,
-            )
+        for category in STALE_ENTRY_CATEGORIES:
+            rows = data.get(category)
+            if not rows:
+                continue
+            keep, dropped = [], []
+            for row in rows:
+                new_team = resolved.get(row["player"])
+                (dropped if new_team and new_team != abbr else keep).append(row)
+            if dropped:
+                data[category] = keep
+                print(
+                    f"  {abbr}: removed {len(dropped)} stale {category} row(s) for players signed elsewhere: "
+                    f"{[(r['player'], resolved[r['player']]) for r in dropped]}",
+                    flush=True,
+                )
 
 
 def main() -> None:
