@@ -55,7 +55,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .bubble .min-input{width:38px;padding:2px 3px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-weight:700;text-align:center;color:var(--txt);-moz-appearance:textfield}
 .bubble .min-input::-webkit-outer-spin-button,.bubble .min-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .bubble .min-input:focus{border-color:var(--blue);outline:none}
-.bubble .last-yr{font-size:8px;font-weight:700;color:var(--txt3);white-space:nowrap}
+.bubble .last-yr{font-size:10px;font-weight:800;color:var(--blue);white-space:nowrap}
 .placeholder{text-align:center;color:#c8d0d8;font-size:10.5px;font-style:italic;padding:14px 4px;border:1.5px dashed var(--border);border-radius:6px}
 
 .pool-panel{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
@@ -83,7 +83,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
     <div class="team-total" id="teamTotal"></div>
     <button class="scale-btn" onclick="scaleTo240()">Scale to 240</button>
   </div>
-  <div class="note">Drag players between position columns or reorder within a column to set depth. Type any minutes value you want -- nothing auto-adjusts as you go. The Team Minutes total turns red once it's off 240 and green when it's back on the dot; click "Scale to 240" to have it rebalance for you, absorbing the change into similar positions first (guards, then wings, then bigs). The small number under each Min box is that player's 2025-26 MPG (or "Rookie" for first-year players); a dash means we don't have last season's data for them. Session-only for now — reloading the page resets to the cap-hit-ranked estimate.</div>
+  <div class="note">Drag players between position columns or reorder within a column to set depth. Type any minutes value you want -- nothing auto-adjusts as you go. The Team Minutes total turns red once it's off 240 and green when it's back on the dot; click "Scale to 240" to proportionally rescale everyone's minutes back to 240 with the smallest change to each player's current number (position isn't a factor -- it's often wrong in the source data). Depth order and default minutes are seeded from each player's 2025-26 MPG when we have it (shown in blue under their Min box), falling back to cap hit for rookies or data gaps. Session-only for now — reloading the page resets to the estimate.</div>
 
   <div class="board" id="board"></div>
 
@@ -102,9 +102,7 @@ const NAME_SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
 const POSITIONS = ['PG','SG','SF','PF','C'];
 const TEAM_MINUTES = 240;
 const MAX_PLAYER_MINUTES = 48;
-// "Similar position" tiers for minutes auto-adjust: guards, then wings/forwards, then bigs.
-const POSITION_GROUPS = [['PG','SG'], ['SF','PF'], ['C']];
-const DEFAULT_MINUTE_WEIGHTS = [1, 0.62, 0.38, 0.22, 0.12, 0.06, 0.03];
+const NO_DATA_MPG_WEIGHT = 8; // placeholder weight for rookies/data gaps -- roughly a fringe bench rate
 let chart = null;   // {PG:[...],SG:[...],...,POOL:[...]}
 let currentAbbr = null;
 let dragSrc = null; // {pos, idx}
@@ -149,11 +147,16 @@ function rosterFor(team){
   }
   return out;
 }
+// Real last-season MPG if we have it, else a flat placeholder for rookies/data gaps.
+function mpgWeight(p){
+  const rec = MPG && MPG.players[normalizeName(p.player)];
+  return rec ? rec.mpg : NO_DATA_MPG_WEIGHT;
+}
 function seedMinutes(players){
   players.forEach(p=>{ p.minutes = 0; });
   if(!players.length) return;
   if(players.length===1){ players[0].minutes = MAX_PLAYER_MINUTES; return; }
-  const weights = players.map((_,i)=> DEFAULT_MINUTE_WEIGHTS[i] !== undefined ? DEFAULT_MINUTE_WEIGHTS[i] : 0.01);
+  const weights = players.map(mpgWeight);
   const weightTotal = weights.reduce((a,b)=>a+b,0);
   let assigned = 0;
   players.forEach((p,i)=>{
@@ -170,7 +173,17 @@ function buildEstimate(abbr){
   for(const p of roster){
     (POSITIONS.includes(p.position) ? cols[p.position] : cols.POOL).push(p);
   }
-  for(const k of POSITIONS) cols[k].sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
+  // Depth order follows real last-season minutes when we have them (a much better
+  // signal for who actually plays than salary), falling back to cap hit only when
+  // neither player being compared has last-season data.
+  for(const k of POSITIONS) cols[k].sort((a,b)=>{
+    const ra = MPG && MPG.players[normalizeName(a.player)];
+    const rb = MPG && MPG.players[normalizeName(b.player)];
+    if(ra && rb) return rb.mpg - ra.mpg;
+    if(ra) return -1;
+    if(rb) return 1;
+    return (b.cap_hit||0)-(a.cap_hit||0);
+  });
   cols.POOL.sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
   for(const k of POSITIONS) seedMinutes(cols[k]);
   cols.POOL.forEach(p=>{ p.minutes = 0; });
@@ -306,28 +319,31 @@ function setMinutes(pos, idx, rawVal){
 // absorbs a share of the needed change proportional to its current share of team
 // minutes, round-robin within the group; anything a group can't absorb (everyone
 // in it maxed at 48 or floored at 0) spills into one final pass across everyone.
+// Plain proportional rescale, position-agnostic (position data is unreliable enough
+// that grouping by it did more harm than good). Everyone's minutes move by roughly
+// the same ratio, which keeps each player's individual change as small as possible
+// relative to where they already stood, rather than concentrating the fix on
+// whichever position group the math happened to land on.
 function scaleTo240(){
-  const groups = POSITION_GROUPS.map(g=>g.flatMap(pos=>chart[pos]));
-  const groupTotals = groups.map(g=>g.reduce((s,p)=>s+(p.minutes||0),0));
-  const grandTotal = groupTotals.reduce((a,b)=>a+b,0);
-  let diff = TEAM_MINUTES - grandTotal;
-  if(diff===0){ render(); return; }
+  const all = POSITIONS.flatMap(pos=>chart[pos]);
+  const grandTotal = all.reduce((s,p)=>s+(p.minutes||0),0);
+  if(grandTotal === TEAM_MINUTES){ render(); return; }
 
-  let allocs;
   if(grandTotal <= 0){
-    // Nobody has any minutes to scale proportionally from -- split evenly instead.
-    allocs = groups.map(()=>Math.round(diff/groups.length));
-  } else {
-    allocs = groupTotals.map(gt=>Math.round(diff*gt/grandTotal));
+    distributeInt(all, TEAM_MINUTES);
+    render();
+    return;
   }
-  const allocSum = allocs.reduce((a,b)=>a+b,0);
-  allocs[0] += diff - allocSum; // fix rounding remainder on the guards group
 
-  let leftover = 0;
-  groups.forEach((g,i)=>{ leftover += distributeInt(g, allocs[i]); });
-  if(leftover !== 0){
-    leftover = distributeInt(groups.flat(), leftover);
-  }
+  let assigned = 0;
+  const targets = all.map(p=>{
+    const scaled = Math.max(0, Math.min(MAX_PLAYER_MINUTES, Math.round((p.minutes||0) * TEAM_MINUTES / grandTotal)));
+    assigned += scaled;
+    return scaled;
+  });
+  all.forEach((p,i)=>{ p.minutes = targets[i]; });
+  const remainder = TEAM_MINUTES - assigned;
+  if(remainder !== 0) distributeInt(all, remainder);
   render();
 }
 
