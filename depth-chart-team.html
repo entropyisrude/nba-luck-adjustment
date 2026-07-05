@@ -36,7 +36,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 
 .bubble{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:5px 10px 5px 6px;cursor:grab;user-select:none;transition:box-shadow .1s,border-color .1s}
 .bubble:hover{border-color:var(--blue);box-shadow:0 1px 3px rgba(0,107,182,.15)}
-.bubble.dragging{opacity:.35;cursor:grabbing}
+.bubble.dragging{display:none}
 .bubble .slot-num{width:16px;height:16px;border-radius:50%;background:var(--bg4);color:var(--txt2);font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .bubble .info{flex:1;min-width:0}
 .bubble .nm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -154,7 +154,8 @@ function render(){
 function bubbleDragStart(e,pos,idx){
   dragSrc = {pos, idx};
   e.dataTransfer.setData('text/plain', JSON.stringify(dragSrc));
-  e.target.classList.add('dragging');
+  const el = e.target;
+  setTimeout(()=>el.classList.add('dragging'), 0);
 }
 function bubbleDragEnd(e){ e.target.classList.remove('dragging'); }
 
@@ -173,16 +174,18 @@ function colDrop(e, targetPos){
   const insertIdx = insertionIndex(e.currentTarget, e.clientY);
   const [moved] = chart[srcPos].splice(srcIdx,1);
   if(!moved) return;
-  let adjIdx = insertIdx;
-  if(srcPos===targetPos && srcIdx<insertIdx) adjIdx -= 1;
-  chart[targetPos].splice(adjIdx,0,moved);
+  chart[targetPos].splice(insertIdx,0,moved);
   render();
 }
 function insertionIndex(container, clientY){
-  const cards = [...container.querySelectorAll('.bubble')];
+  // Exclude the dragged card itself: it hasn't been removed from the DOM yet
+  // (only from `chart` once we splice below), so including it would let the
+  // midpoint math resolve back to its own slot and produce a silent no-op
+  // when reordering within the same column.
+  const cards = [...container.querySelectorAll('.bubble:not(.dragging)')];
   for(let i=0;i<cards.length;i++){
     const rect = cards[i].getBoundingClientRect();
-    if(clientY < rect.top + rect.height/2) return i;
+    if(clientY <= rect.top + rect.height/2) return i;
   }
   return cards.length;
 }
