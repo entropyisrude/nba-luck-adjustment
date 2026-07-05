@@ -79,16 +79,32 @@ def money(value: Any) -> int | None:
     return -amount if negative else amount
 
 
-def clean_player_name(value: Any) -> str:
+_NAME_SUFFIX_RE = re.compile(r"\s+\(([A-Z][A-Z/-]*),\s*(\d+(?:\.\d+)?)\)$")
+
+
+def clean_player_name(value: Any) -> tuple[str, str | None, int | None]:
+    """
+    Returns (name, position, age). Some team pages (e.g. a condensed
+    "RK | Player | Cap Hit" table layout Spotrac serves for a rotating subset
+    of teams) have no separate Pos/Age columns at all -- that info only
+    exists as a "(C, 32)" suffix on the player name. Capture it here before
+    stripping it, so callers can fall back to it when the dedicated columns
+    are missing.
+    """
     text = re.sub(r"\s+", " ", str(scalar(value) or "")).strip()
     text = re.sub(r"\s+WAIVED$", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s+\([A-Z][A-Z/-]*,\s*\d+(?:\.\d+)?\)$", "", text)
+    suffix_pos, suffix_age = None, None
+    m = _NAME_SUFFIX_RE.search(text)
+    if m:
+        suffix_pos, suffix_age = m.group(1), int(float(m.group(2)))
+        text = text[: m.start()].rstrip()
     words = text.split()
     lowered = [word.lower() for word in words]
     for prefix_length in range(len(words) // 2, 0, -1):
         if lowered[:prefix_length] == lowered[-prefix_length:]:
-            return " ".join(words[prefix_length:])
-    return text
+            text = " ".join(words[prefix_length:])
+            break
+    return text, suffix_pos, suffix_age
 
 
 def matching_column(record: dict, prefix: str) -> Any:
@@ -108,7 +124,7 @@ def rows_from_contract_table(table, category: str) -> list[dict[str, Any]]:
         player_value = matching_column(raw, "Player")
         if player_value is None:
             player_value = next(iter(raw.values()))
-        player = clean_player_name(player_value)
+        player, suffix_pos, suffix_age = clean_player_name(player_value)
         if not player or player.lower() == "nan":
             continue
         values = [str(scalar(value) or "") for value in raw.values()]
@@ -116,11 +132,13 @@ def rows_from_contract_table(table, category: str) -> list[dict[str, Any]]:
             (value for value in values if any(token in value for token in ("Bird", "Two-Way", "Round Pick"))),
             None,
         )
+        position = scalar(matching_column(raw, "Pos")) or suffix_pos
+        age = scalar(matching_column(raw, "Age")) or suffix_age
         row = {
             "player": player,
             "category": category,
-            "position": scalar(matching_column(raw, "Pos")),
-            "age": scalar(matching_column(raw, "Age")),
+            "position": position,
+            "age": age,
             "contract_type": scalar(matching_column(raw, "Type")),
             "cap_hit": money(matching_column(raw, "Cap Hit")),
             "base_salary": money(matching_column(raw, "Base Salary")),
