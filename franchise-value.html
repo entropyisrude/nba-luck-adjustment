@@ -572,7 +572,7 @@ async function init() {
   } catch(e) {
     document.getElementById('loading').style.display = 'none';
     const err = document.getElementById('error-msg');
-    err.style.display = '';
+    err.style.display = 'block';
     err.textContent = 'Failed to load pick data: ' + e.message;
   }
 }
