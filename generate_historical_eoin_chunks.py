@@ -1,4 +1,4 @@
-"""Generate historical chunk files (1979-80 through 1995-96 RS, 1979-80 through 1994-95 PO)
+"""Generate historical chunk files (1979-80 through 1995-96 RS, 1979-80 through 1995-96 PO)
 from the Eoin Kaggle dataset (historical-nba-data-and-player-box-scores.zip).
 
 For these pre-pbpstats seasons we have real game-by-game box scores but no on/off data.
@@ -38,7 +38,7 @@ DRAFT_HISTORY = DATA_DIR / "draft_history.csv"
 RS_FIRST = 1979
 RS_LAST  = 1995   # last starting year included (1995-96)
 PO_FIRST = 1979
-PO_LAST  = 1994   # last starting year included (1994-95); 1995-96 PO already exists
+PO_LAST  = 1995   # last starting year included (1995-96); pbpstats-era chunks start 1996-97
 
 ABBREV_OVERRIDES = {
     "SAN": "SAS",
