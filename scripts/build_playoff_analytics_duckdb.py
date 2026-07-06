@@ -183,10 +183,19 @@ def main() -> None:
                 FROM rs_db.raw_common_player_info
             ),
             draft AS (
-                SELECT
-                    CAST(person_id AS BIGINT) AS player_id,
-                    TRY_CAST(overall_pick AS INTEGER) AS draft_overall_pick
-                FROM rs_db.raw_draft_history
+                -- One row per player: some players were drafted twice (e.g.
+                -- Sabonis 1985+1986); keep the most recent draft. Without this
+                -- the join fans out and duplicates every game row.
+                SELECT player_id, draft_overall_pick FROM (
+                    SELECT
+                        CAST(person_id AS BIGINT) AS player_id,
+                        TRY_CAST(overall_pick AS INTEGER) AS draft_overall_pick,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY CAST(person_id AS BIGINT)
+                            ORDER BY TRY_CAST(season AS INTEGER) DESC
+                        ) AS rn
+                    FROM rs_db.raw_draft_history
+                ) WHERE rn = 1
             ),
             recent AS (
                 SELECT
