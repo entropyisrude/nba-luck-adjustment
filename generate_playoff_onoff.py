@@ -15,6 +15,20 @@ DATA_DIR = Path("data")
 OFFICIAL_BOX = Path(r"C:\Users\Dave\Downloads\nba-boxscore-data\kaggle-traditional\traditional.csv")
 
 
+def _parse_minutes(v) -> float | None:
+    """Official MIN comes as '38', '38.5', or '38:24'."""
+    if pd.isna(v):
+        return None
+    s = str(v).strip()
+    try:
+        if ":" in s:
+            mm, ss = s.split(":", 1)
+            return int(mm) + int(ss) / 60.0
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
 def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
     """Anchor raw plus-minus to the official box scores where available.
 
@@ -36,11 +50,12 @@ def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
         print(f"  WARNING: {OFFICIAL_BOX} not found -- skipping official anchoring")
         return onoff
 
-    kag = pd.read_csv(OFFICIAL_BOX, usecols=["gameid", "type", "playerid", "team", "PTS", "+/-"],
+    kag = pd.read_csv(OFFICIAL_BOX, usecols=["gameid", "type", "playerid", "team", "MIN", "PTS", "+/-"],
                       dtype={"gameid": str}, low_memory=False)
     kag = kag[kag["type"].str.lower() == "playoff"].copy()
     kag["player_id"] = pd.to_numeric(kag["playerid"], errors="coerce")
     kag["pm_off"] = pd.to_numeric(kag["+/-"], errors="coerce")
+    kag["min_off"] = kag["MIN"].map(_parse_minutes)
     kag = kag.dropna(subset=["player_id", "pm_off"])
     kag["player_id"] = kag["player_id"].astype(int)
 
@@ -49,7 +64,7 @@ def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
     team_pts["margin_off"] = 2 * team_pts["PTS"] - game_pts  # own - opponent
 
     kag = kag.merge(team_pts[["gameid", "team", "margin_off"]], on=["gameid", "team"])
-    kag = kag[["gameid", "player_id", "pm_off", "margin_off"]].rename(columns={"gameid": "game_id"})
+    kag = kag[["gameid", "player_id", "pm_off", "margin_off", "min_off"]].rename(columns={"gameid": "game_id"})
     kag = kag.drop_duplicates(subset=["game_id", "player_id"])
 
     onoff = onoff.merge(kag, on=["game_id", "player_id"], how="left")
@@ -63,7 +78,7 @@ def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
             with z.open("PlayerStatistics.csv") as f:
                 eo = pd.read_csv(f, usecols=["gameId", "gameDateTimeEst", "gameType",
                                              "personId", "points", "plusMinusPoints",
-                                             "playerteamCity", "playerteamName"],
+                                             "numMinutes", "playerteamCity", "playerteamName"],
                                  low_memory=False)
         eo = eo[eo["gameType"] == "Playoffs"].copy()
         eo["date"] = pd.to_datetime(eo["gameDateTimeEst"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -75,15 +90,17 @@ def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
         tp = eo.groupby(["gameId", "team_key"], as_index=False)["points"].sum()
         gp = tp.groupby("gameId")["points"].transform("sum")
         tp["margin_eoin"] = 2 * tp["points"] - gp
+        eo["min_eoin"] = pd.to_numeric(eo["numMinutes"], errors="coerce")
         eo = eo.merge(tp[["gameId", "team_key", "margin_eoin"]], on=["gameId", "team_key"])
-        eo = eo[["date", "player_id", "pm_eoin", "margin_eoin"]].drop_duplicates(subset=["date", "player_id"])
+        eo = eo[["date", "player_id", "pm_eoin", "margin_eoin", "min_eoin"]].drop_duplicates(subset=["date", "player_id"])
         onoff["date_str"] = onoff["date"].astype(str).str[:10]
         onoff = onoff.merge(eo, left_on=["date_str", "player_id"],
                             right_on=["date", "player_id"], how="left", suffixes=("", "_eo"))
         fill = onoff["pm_off"].isna() & onoff["pm_eoin"].notna()
         onoff.loc[fill, "pm_off"] = onoff.loc[fill, "pm_eoin"]
         onoff.loc[fill, "margin_off"] = onoff.loc[fill, "margin_eoin"]
-        onoff = onoff.drop(columns=["pm_eoin", "margin_eoin", "date_str", "date_eo"], errors="ignore")
+        onoff.loc[fill, "min_off"] = onoff.loc[fill, "min_eoin"]
+        onoff = onoff.drop(columns=["pm_eoin", "margin_eoin", "min_eoin", "date_str", "date_eo"], errors="ignore")
         print(f"  Eoin secondary anchor: {int(fill.sum())} additional rows")
 
     hit = onoff["pm_off"].notna()
@@ -97,7 +114,15 @@ def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
     onoff.loc[hit, "off_diff_adj"] = onoff.loc[hit, "off_diff"] + luck_off[hit]
     onoff.loc[hit, "on_off_diff"] = onoff.loc[hit, "on_diff"] - onoff.loc[hit, "off_diff"]
     onoff.loc[hit, "on_off_diff_adj"] = onoff.loc[hit, "on_diff_adj"] - onoff.loc[hit, "off_diff_adj"]
-    return onoff.drop(columns=["pm_off", "margin_off"])
+
+    # Minutes: stint minutes are more precise than the (often whole-number)
+    # official MIN, so only take the official value when the stint total is
+    # clearly wrong (e.g. games whose stint data dropped an OT period).
+    fix_min = hit & onoff["min_off"].notna() & ((onoff["minutes_on"] - onoff["min_off"]).abs() > 1.5)
+    if fix_min.any():
+        print(f"  minutes repaired from official box: {int(fix_min.sum())} rows")
+        onoff.loc[fix_min, "minutes_on"] = onoff.loc[fix_min, "min_off"]
+    return onoff.drop(columns=["pm_off", "margin_off", "min_off"])
 
 
 def compute_onoff_from_stints(stints: pd.DataFrame) -> pd.DataFrame:
