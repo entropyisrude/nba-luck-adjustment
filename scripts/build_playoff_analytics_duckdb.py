@@ -389,25 +389,27 @@ def main() -> None:
                 CAST(fta AS INTEGER) AS fta
             FROM raw_recent_playoff_box
         ),
+        -- Season comes from the game-id prefix (4YY = playoffs of the season starting in
+        -- year YY), never from dates: source CSV dates are synthetic and one year early
+        -- for every playoff run before 2019-20 (e.g. the 1997 Finals dated June 1996),
+        -- which used to shift every pre-2019 season label back by one. Real dates are
+        -- restored from the Kaggle traditional box scores where available.
+        season_year AS (
+            SELECT
+                CAST(game_id AS VARCHAR) AS game_id,
+                CASE
+                    WHEN CAST(substr(CAST(game_id AS VARCHAR), 2, 2) AS INTEGER) >= 90
+                        THEN 1900 + CAST(substr(CAST(game_id AS VARCHAR), 2, 2) AS INTEGER)
+                    ELSE 2000 + CAST(substr(CAST(game_id AS VARCHAR), 2, 2) AS INTEGER)
+                END AS start_year
+            FROM (SELECT DISTINCT game_id FROM raw_playoff_onoff)
+        ),
         player_base AS (
             SELECT
-                CAST(date AS DATE) AS date,
-                CASE
-                    -- 2019-20 bubble Finals (Oct 1-11 2020): date-based formula would assign
-                    -- these to 2020-21 because month >= 10, but they belong to 2019-20.
-                    WHEN game_id IN (41900401,41900402,41900403,41900404,41900405,41900406)
-                        THEN '2019-20'
-                    -- Five early bubble games have incorrect dates in the source CSV
-                    -- (stored as June 2019 instead of Aug 2020). Force to 2019-20.
-                    WHEN game_id IN (41900131,41900141,41900166,41900171,41900211)
-                        THEN '2019-20'
-                    WHEN EXTRACT(month FROM CAST(date AS DATE)) >= 10
-                        THEN CAST(EXTRACT(year FROM CAST(date AS DATE)) AS VARCHAR) || '-' ||
-                             right(CAST(EXTRACT(year FROM CAST(date AS DATE)) + 1 AS VARCHAR), 2)
-                    ELSE CAST(EXTRACT(year FROM CAST(date AS DATE)) - 1 AS VARCHAR) || '-' ||
-                         right(CAST(EXTRACT(year FROM CAST(date AS DATE)) AS VARCHAR), 2)
-                END AS season,
-                CAST(game_id AS VARCHAR) AS game_id,
+                CAST(COALESCE(kg.date, o.date) AS DATE) AS date,
+                CAST(sy.start_year AS VARCHAR) || '-' ||
+                    right(CAST(sy.start_year + 1 AS VARCHAR), 2) AS season,
+                CAST(o.game_id AS VARCHAR) AS game_id,
                 CAST(player_id AS BIGINT) AS player_id,
                 CAST(player_name AS VARCHAR) AS player_name,
                 CAST(team_id AS BIGINT) AS team_id,
@@ -424,7 +426,9 @@ def main() -> None:
                 CAST(off_pts_against AS DOUBLE) AS off_pts_against,
                 CAST(on_diff AS DOUBLE) AS on_diff_reconstructed,
                 CAST(on_off_diff AS DOUBLE) AS on_off_diff_reconstructed
-            FROM raw_playoff_onoff
+            FROM raw_playoff_onoff o
+            JOIN season_year sy ON CAST(o.game_id AS VARCHAR) = sy.game_id
+            LEFT JOIN kaggle_game_meta kg ON CAST(o.game_id AS VARCHAR) = kg.game_id
         ),
         joined AS (
             SELECT
