@@ -3,12 +3,9 @@ Builds a small lookup of each player's most recent completed season's minutes-pe
 for display next to the minutes editor on the depth chart pages.
 
 MPG/games come directly from data/nba_analytics.duckdb's player_game_facts, NOT from the
-already-aggregated data/player_seasons.json -- that table's season boundary is unreliable
-for the last couple of seasons (playoff games run through the same season='2025-26' /
-'2024-25' bucket well past the real regular-season end date, e.g. 2025-26 rows go to
-2026-05-24 when the actual regular season ended 2026-04-12), so aggregating it naively
-blends postseason minutes into what's supposed to be a regular-season rate. We filter to
-SEASON_END_DATE here to avoid that. player_seasons.json is still used for the "known"
+already-aggregated data/player_seasons.json. The facts table carries playoff ('4') and
+play-in ('5') games alongside regular-season ones ('2') for recent seasons, so we filter
+to game ids starting with '2'. player_seasons.json is still used for the "known"
 set (has this player appeared in ANY season, for the rookie-vs-data-gap distinction) since
 that part isn't affected by the current season's boundary problem.
 
@@ -32,7 +29,6 @@ KNOWN_SOURCE = ROOT / "data" / "player_seasons.json"
 OUTPUT = ROOT / "data" / "last_season_mpg.json"
 JS_OUTPUT = ROOT / "data" / "last_season_mpg.js"
 LAST_SEASON = "2025-26"
-SEASON_END_DATE = "2026-04-12"  # true regular-season cutoff -- see module docstring
 
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
@@ -57,10 +53,11 @@ def main() -> None:
         """
         SELECT player_name, count(*) AS games, sum(minutes) AS total_min
         FROM player_game_facts
-        WHERE season = ? AND minutes > 0 AND date <= CAST(? AS DATE)
+        WHERE season = ? AND minutes > 0
+          AND CAST(game_id AS VARCHAR) LIKE '2%'  -- RS only; excludes playoffs ('4') and play-in ('5')
         GROUP BY player_name
         """,
-        [LAST_SEASON, SEASON_END_DATE],
+        [LAST_SEASON],
     ).fetchall()
     con.close()
 
@@ -81,8 +78,7 @@ def main() -> None:
     # since the depth chart labels the former "Rookie" and the latter "-".
     snapshot = {
         "season": LAST_SEASON,
-        "season_end_date": SEASON_END_DATE,
-        "source": "player_game_facts, regular-season games only (date-filtered to exclude playoff bleed-through)",
+        "source": "player_game_facts, regular-season games only (game-id prefix '2')",
         "players": lookup,
         "known": sorted(known),
     }

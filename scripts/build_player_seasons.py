@@ -311,6 +311,10 @@ def build_db_seasons(pbp_onoff: dict) -> list[dict]:
         SUM(ftm)                       AS ftm_s
     FROM player_game_facts
     WHERE minutes > 0
+      -- Regular-season games only: the facts table also carries playoff ('4')
+      -- and play-in ('5') games for 2024-25 and 2025-26, which must not blend
+      -- into regular-season rates.
+      AND CAST(game_id AS VARCHAR) LIKE '2%'
     GROUP BY player_id, player_name, season
     HAVING SUM(minutes) >= ?
     ORDER BY season, player_name
@@ -367,11 +371,23 @@ def main():
     modern = build_db_seasons(pbp_onoff)
     all_seasons = eoin + modern
 
+    # Normalize names: some players' display names changed mid-career
+    # (O.G./OG Anunoby, diacritics, etc.), splitting their player index entry.
+    # Use each pid's most-recent-season name everywhere.
+    latest_name: dict = {}
+    for r in sorted(all_seasons, key=lambda r: r["season"]):
+        latest_name[r["pid"]] = r["name"]
+    renamed = sum(1 for r in all_seasons if r["name"] != latest_name[r["pid"]])
+    for r in all_seasons:
+        r["name"] = latest_name[r["pid"]]
+    if renamed:
+        print(f"  Name normalization: {renamed} rows updated to most-recent name")
+
     # Sort by season then name
     all_seasons.sort(key=lambda r: (r["season"], r["name"]))
 
     output = {
-        "generated": "2026-05-31",
+        "generated": __import__("datetime").date.today().isoformat(),
         "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + pbpstats on/off",
         "min_minutes": MIN_MINUTES,
         "cols": ["pts","ast","or","dr","stl","blk","tov","fta","fg2a","fg3a",
