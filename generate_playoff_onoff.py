@@ -12,6 +12,92 @@ from pathlib import Path
 from collections import defaultdict
 
 DATA_DIR = Path("data")
+OFFICIAL_BOX = Path(r"C:\Users\Dave\Downloads\nba-boxscore-data\kaggle-traditional\traditional.csv")
+
+
+def anchor_to_official_pm(onoff: pd.DataFrame) -> pd.DataFrame:
+    """Anchor raw plus-minus to the official box scores where available.
+
+    The stint reconstruction misplaces a few points around substitution
+    boundaries (official box +/- matched only ~25-40% exactly even after
+    chaining stint scores). The official per-player +/- from the Kaggle
+    traditional box scores shares our exact game_id/player_id namespace and is
+    internally consistent (team sums balance in every game), so where a row
+    matches we take:
+        on_diff        := official +/-
+        off_diff       := official team margin - official +/-
+    and carry the possession-model luck adjustment over as a delta:
+        on_diff_adj    := on_diff  + (stint on_diff_adj  - stint on_diff)
+        off_diff_adj   := off_diff + (stint off_diff_adj - stint off_diff)
+    Rows with no official match (e.g. current season not yet in the Kaggle
+    dump) keep their stint-based values.
+    """
+    if not OFFICIAL_BOX.exists():
+        print(f"  WARNING: {OFFICIAL_BOX} not found -- skipping official anchoring")
+        return onoff
+
+    kag = pd.read_csv(OFFICIAL_BOX, usecols=["gameid", "type", "playerid", "team", "PTS", "+/-"],
+                      dtype={"gameid": str}, low_memory=False)
+    kag = kag[kag["type"].str.lower() == "playoff"].copy()
+    kag["player_id"] = pd.to_numeric(kag["playerid"], errors="coerce")
+    kag["pm_off"] = pd.to_numeric(kag["+/-"], errors="coerce")
+    kag = kag.dropna(subset=["player_id", "pm_off"])
+    kag["player_id"] = kag["player_id"].astype(int)
+
+    team_pts = kag.groupby(["gameid", "team"], as_index=False)["PTS"].sum()
+    game_pts = team_pts.groupby("gameid")["PTS"].transform("sum")
+    team_pts["margin_off"] = 2 * team_pts["PTS"] - game_pts  # own - opponent
+
+    kag = kag.merge(team_pts[["gameid", "team", "margin_off"]], on=["gameid", "team"])
+    kag = kag[["gameid", "player_id", "pm_off", "margin_off"]].rename(columns={"gameid": "game_id"})
+    kag = kag.drop_duplicates(subset=["game_id", "player_id"])
+
+    onoff = onoff.merge(kag, on=["game_id", "player_id"], how="left")
+
+    # Secondary source for games newer than the Kaggle dump (current playoffs):
+    # the Eoin dataset's official box +/- keyed by (real game date, player id).
+    eoin_zip = Path("historical-nba-data-and-player-box-scores.zip")
+    if eoin_zip.exists() and onoff["pm_off"].isna().any():
+        import zipfile
+        with zipfile.ZipFile(eoin_zip) as z:
+            with z.open("PlayerStatistics.csv") as f:
+                eo = pd.read_csv(f, usecols=["gameId", "gameDateTimeEst", "gameType",
+                                             "personId", "points", "plusMinusPoints",
+                                             "playerteamCity", "playerteamName"],
+                                 low_memory=False)
+        eo = eo[eo["gameType"] == "Playoffs"].copy()
+        eo["date"] = pd.to_datetime(eo["gameDateTimeEst"], errors="coerce").dt.strftime("%Y-%m-%d")
+        eo["player_id"] = pd.to_numeric(eo["personId"], errors="coerce")
+        eo["pm_eoin"] = pd.to_numeric(eo["plusMinusPoints"], errors="coerce")
+        eo = eo.dropna(subset=["player_id", "pm_eoin"])
+        eo["player_id"] = eo["player_id"].astype(int)
+        eo["team_key"] = eo["playerteamCity"].fillna("") + "|" + eo["playerteamName"].fillna("")
+        tp = eo.groupby(["gameId", "team_key"], as_index=False)["points"].sum()
+        gp = tp.groupby("gameId")["points"].transform("sum")
+        tp["margin_eoin"] = 2 * tp["points"] - gp
+        eo = eo.merge(tp[["gameId", "team_key", "margin_eoin"]], on=["gameId", "team_key"])
+        eo = eo[["date", "player_id", "pm_eoin", "margin_eoin"]].drop_duplicates(subset=["date", "player_id"])
+        onoff["date_str"] = onoff["date"].astype(str).str[:10]
+        onoff = onoff.merge(eo, left_on=["date_str", "player_id"],
+                            right_on=["date", "player_id"], how="left", suffixes=("", "_eo"))
+        fill = onoff["pm_off"].isna() & onoff["pm_eoin"].notna()
+        onoff.loc[fill, "pm_off"] = onoff.loc[fill, "pm_eoin"]
+        onoff.loc[fill, "margin_off"] = onoff.loc[fill, "margin_eoin"]
+        onoff = onoff.drop(columns=["pm_eoin", "margin_eoin", "date_str", "date_eo"], errors="ignore")
+        print(f"  Eoin secondary anchor: {int(fill.sum())} additional rows")
+
+    hit = onoff["pm_off"].notna()
+    print(f"  official anchoring: {hit.sum()}/{len(onoff)} rows matched")
+
+    luck_on = onoff["on_diff_adj"] - onoff["on_diff"]
+    luck_off = onoff["off_diff_adj"] - onoff["off_diff"]
+    onoff.loc[hit, "on_diff"] = onoff.loc[hit, "pm_off"]
+    onoff.loc[hit, "off_diff"] = onoff.loc[hit, "margin_off"] - onoff.loc[hit, "pm_off"]
+    onoff.loc[hit, "on_diff_adj"] = onoff.loc[hit, "on_diff"] + luck_on[hit]
+    onoff.loc[hit, "off_diff_adj"] = onoff.loc[hit, "off_diff"] + luck_off[hit]
+    onoff.loc[hit, "on_off_diff"] = onoff.loc[hit, "on_diff"] - onoff.loc[hit, "off_diff"]
+    onoff.loc[hit, "on_off_diff_adj"] = onoff.loc[hit, "on_diff_adj"] - onoff.loc[hit, "off_diff_adj"]
+    return onoff.drop(columns=["pm_off", "margin_off"])
 
 
 def compute_onoff_from_stints(stints: pd.DataFrame) -> pd.DataFrame:
@@ -240,6 +326,23 @@ def main():
             'off_pts_for_adj', 'off_pts_against_adj', 'off_diff_adj',
             'on_off_diff', 'on_off_diff_adj', 'minutes_on', 'date']
     onoff = onoff[cols]
+
+    # Preserve games that exist only in the current CSV, not in stint data
+    # (recent games appended from possessions by
+    # scripts/append_finals_onoff_from_possessions.py).
+    out_path = DATA_DIR / "adjusted_onoff_playoffs.csv"
+    if out_path.exists():
+        existing = pd.read_csv(out_path, dtype={"game_id": str})
+        extra = existing[~existing["game_id"].isin(set(onoff["game_id"]))]
+        if len(extra):
+            print(f"  preserving {len(extra)} rows from {extra['game_id'].nunique()} "
+                  f"games not present in stint data")
+            onoff = pd.concat([onoff, extra[cols]], ignore_index=True)
+
+    # Anchor raw plus-minus to official box scores (see docstring)
+    print("\nAnchoring to official box plus-minus...")
+    onoff['game_id'] = onoff['game_id'].astype(str)
+    onoff = anchor_to_official_pm(onoff)
 
     # Sort by date and game
     onoff = onoff.sort_values(['date', 'game_id', 'team_id', 'player_name'])

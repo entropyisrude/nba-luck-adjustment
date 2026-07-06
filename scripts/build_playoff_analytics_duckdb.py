@@ -259,20 +259,49 @@ def main() -> None:
             FROM raw_playoff_box_kaggle
             GROUP BY 1
         ),
+        kaggle_team_pts AS (
+            SELECT
+                CAST(gameid AS VARCHAR) AS game_id,
+                CAST(team AS VARCHAR) AS team_abbr,
+                SUM(CAST(PTS AS DOUBLE)) AS pts
+            FROM raw_playoff_box_kaggle
+            GROUP BY 1, 2
+        ),
+        recent_team_pts AS (
+            -- covers seasons newer than the Kaggle dump (e.g. current playoffs)
+            SELECT
+                CAST(game_id AS VARCHAR) AS game_id,
+                CAST(team_abbr AS VARCHAR) AS team_abbr,
+                SUM(CAST(pts AS DOUBLE)) AS pts
+            FROM raw_recent_playoff_box
+            GROUP BY 1, 2
+        ),
         game_team AS (
+            -- Final scores prefer the official box totals: the stint data is
+            -- missing whole OT periods in a few dozen games (e.g. the 2020
+            -- DEN-UTA bubble opener stored as a 115-115 "tie"), which corrupts
+            -- W/L and displayed scores.
             SELECT
                 sg.date,
                 sg.game_id,
                 COALESCE(kg.home_team, th.team_abbr) AS home_team,
                 COALESCE(kg.away_team, ta.team_abbr) AS away_team,
-                sg.home_pts_actual,
-                sg.away_pts_actual,
+                COALESCE(kh.pts, rh.pts, sg.home_pts_actual) AS home_pts_actual,
+                COALESCE(ka.pts, ra.pts, sg.away_pts_actual) AS away_pts_actual,
                 sg.home_pts_adj,
                 sg.away_pts_adj
             FROM stint_game sg
             LEFT JOIN kaggle_game_meta kg ON sg.game_id = kg.game_id
             LEFT JOIN team_map th ON sg.home_id = th.team_id
             LEFT JOIN team_map ta ON sg.away_id = ta.team_id
+            LEFT JOIN kaggle_team_pts kh
+              ON sg.game_id = kh.game_id AND COALESCE(kg.home_team, th.team_abbr) = kh.team_abbr
+            LEFT JOIN kaggle_team_pts ka
+              ON sg.game_id = ka.game_id AND COALESCE(kg.away_team, ta.team_abbr) = ka.team_abbr
+            LEFT JOIN recent_team_pts rh
+              ON sg.game_id = rh.game_id AND COALESCE(kg.home_team, th.team_abbr) = rh.team_abbr
+            LEFT JOIN recent_team_pts ra
+              ON sg.game_id = ra.game_id AND COALESCE(kg.away_team, ta.team_abbr) = ra.team_abbr
         ),
         playoff_possessions AS (
             SELECT DISTINCT

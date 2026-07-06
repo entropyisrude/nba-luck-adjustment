@@ -27,13 +27,44 @@ ALPHAS = [10, 500]
 DEFAULT_ALPHA = 500
 MIN_MINUTES_SEASON = 50
 
+EOIN_ZIP = Path("historical-nba-data-and-player-box-scores.zip")
+_ABBREV_OVERRIDES = {"SAN": "SAS", "NJ": "NJN"}
+
+
+def load_era_team_abbrs() -> dict[tuple[int, int], str]:
+    """(team_id, season_start_year) -> era-correct abbreviation from TeamHistories.
+
+    The static TEAM_ID_TO_ABBR maps franchise ids to their modern abbreviation,
+    which shows the 90s Sonics as OKC, the Nets as BKN, etc.
+    """
+    import zipfile
+    if not EOIN_ZIP.exists():
+        print(f"Warning: {EOIN_ZIP} not found -- keeping modern team abbreviations")
+        return {}
+    out: dict[tuple[int, int], str] = {}
+    with zipfile.ZipFile(EOIN_ZIP) as z:
+        with z.open("TeamHistories.csv") as f:
+            th = pd.read_csv(f, low_memory=False)
+    th = th[th["league"].astype(str).str.lower() == "nba"]
+    for _, row in th.iterrows():
+        try:
+            tid = int(row["teamId"])
+            y0, y1 = int(row["seasonFounded"]), int(row["seasonActiveTill"])
+        except (TypeError, ValueError):
+            continue
+        abbr = _ABBREV_OVERRIDES.get(str(row["teamAbbrev"]).strip(), str(row["teamAbbrev"]).strip())
+        for y in range(y0, y1 + 1):
+            out[(tid, y)] = abbr
+    return out
+
 
 def playoff_season_label(playoff_year: int) -> str:
     """Spring calendar year → season label, e.g. 2026 → '2025-26'."""
     return f"{playoff_year - 1}-{str(playoff_year)[-2:]}"
 
 
-def compute_rapm(stints_df: pd.DataFrame, alpha: float, min_minutes: int = 50) -> list[dict]:
+def compute_rapm(stints_df: pd.DataFrame, alpha: float, min_minutes: int = 50,
+                 era_abbrs: dict | None = None, season_year: int | None = None) -> list[dict]:
     from run_rapm import compute_unified_stint_rapm_rows
     results = compute_unified_stint_rapm_rows(
         stints_df, alpha=alpha, min_minutes=min_minutes, suffix="_playoffs"
@@ -42,6 +73,10 @@ def compute_rapm(stints_df: pd.DataFrame, alpha: float, min_minutes: int = 50) -
         row["minutes"] = int(round(row["minutes"]))
         for col in ("rapm", "orapm", "drapm", "rapm_raw", "orapm_raw", "drapm_raw"):
             row[col] = round(float(row[col]), 2)
+        if era_abbrs and season_year is not None:
+            era = era_abbrs.get((int(row.get("team_id") or 0), season_year))
+            if era:
+                row["team_abbr"] = era
         row.pop("team_id", None)
     return sorted(results, key=lambda x: x["rapm"], reverse=True)
 
@@ -72,12 +107,14 @@ def generate_rapm_report_playoffs() -> None:
     data: dict = {}
 
     # Per-season RAPM
+    era_abbrs = load_era_team_abbrs()
     for yr in playoff_years:
         label = playoff_season_label(yr)
         df = stints[stints["playoff_year"] == yr].copy()
         for alpha in ALPHAS:
             print(f"  {label} alpha={alpha} ...", end=" ")
-            rows = compute_rapm(df, alpha, MIN_MINUTES_SEASON)
+            rows = compute_rapm(df, alpha, MIN_MINUTES_SEASON,
+                                era_abbrs=era_abbrs, season_year=yr - 1)
             data[f"{label}_a{alpha}"] = rows
             print(len(rows), "players")
         data[label] = data[f"{label}_a{DEFAULT_ALPHA}"]
