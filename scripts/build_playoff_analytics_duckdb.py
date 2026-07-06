@@ -393,6 +393,14 @@ def main() -> None:
             SELECT
                 CAST(date AS DATE) AS date,
                 CASE
+                    -- 2019-20 bubble Finals (Oct 1-11 2020): date-based formula would assign
+                    -- these to 2020-21 because month >= 10, but they belong to 2019-20.
+                    WHEN game_id IN (41900401,41900402,41900403,41900404,41900405,41900406)
+                        THEN '2019-20'
+                    -- Five early bubble games have incorrect dates in the source CSV
+                    -- (stored as June 2019 instead of Aug 2020). Force to 2019-20.
+                    WHEN game_id IN (41900131,41900141,41900166,41900171,41900211)
+                        THEN '2019-20'
                     WHEN EXTRACT(month FROM CAST(date AS DATE)) >= 10
                         THEN CAST(EXTRACT(year FROM CAST(date AS DATE)) AS VARCHAR) || '-' ||
                              right(CAST(EXTRACT(year FROM CAST(date AS DATE)) + 1 AS VARCHAR), 2)
