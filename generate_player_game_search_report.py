@@ -23,6 +23,10 @@ PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-sear
 PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
 SOURCE_LABEL = os.environ.get("PLAYER_GAME_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
 ALLOW_PER100 = os.environ.get("PLAYER_GAME_SEARCH_ALLOW_PER100", "1") != "0"
+# Game-id prefix filter: '2' = regular season (default), '4' = playoffs.
+# The RS facts table also carries playoff ('4') and play-in ('5') games for
+# recent seasons, which must not leak into the regular-season search.
+GAME_ID_PREFIX = os.environ.get("PLAYER_GAME_SEARCH_GAME_ID_PREFIX", "2")
 
 
 def _season_start(season: str) -> int:
@@ -140,6 +144,7 @@ def generate_player_game_search_report() -> Path:
             on_off_delta
         FROM player_game_facts
         WHERE pts IS NOT NULL
+          AND CAST(game_id AS VARCHAR) LIKE '{game_id_prefix}%'
         ORDER BY date DESC, pts DESC, plus_minus_adjusted DESC
         """
         .format(
@@ -152,6 +157,7 @@ def generate_player_game_search_report() -> Path:
             team_pts_actual=select_col("team_pts_actual"),
             opp_pts_actual=select_col("opp_pts_actual"),
             score_margin=("team_pts_actual - opp_pts_actual AS score_margin") if {"team_pts_actual", "opp_pts_actual"}.issubset(available_cols) else "NULL AS score_margin",
+            game_id_prefix=GAME_ID_PREFIX,
         )
     ).fetchall()
     cols = [d[0] for d in con.description]
@@ -242,7 +248,7 @@ def generate_player_game_search_report() -> Path:
                         out_row[idx] = player_old[idx]
             merged_rows[key] = out_row
         for key, old_row in existing_by_key.items():
-            if key not in merged_rows:
+            if key not in merged_rows and str(key[0]).startswith(GAME_ID_PREFIX):
                 merged_rows[key] = old_row
         season_rows = sorted(
             merged_rows.values(),

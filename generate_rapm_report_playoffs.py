@@ -54,7 +54,16 @@ def generate_rapm_report_playoffs() -> None:
     print("Loading stints...")
     stints = pd.read_csv(STINTS_PATH, dtype={"game_id": str})
     stints["date"] = pd.to_datetime(stints["date"])
-    stints["playoff_year"] = stints["date"].dt.year
+
+    # Derive the playoff year from the game-id prefix (4YY = season starting in
+    # year YY, playoffs the following spring). Stint dates are synthetic and one
+    # year early for every playoff run before 2019-20, so date.year mislabels
+    # every pre-2019 season.
+    def _playoff_year(gid: str) -> int:
+        yy = int(str(gid).lstrip("0")[1:3])
+        return (1900 + yy if yy >= 90 else 2000 + yy) + 1
+
+    stints["playoff_year"] = stints["game_id"].map(_playoff_year)
 
     playoff_years = sorted(stints["playoff_year"].unique())
     latest_label = playoff_season_label(max(playoff_years))
