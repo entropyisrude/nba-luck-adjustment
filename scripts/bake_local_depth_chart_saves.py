@@ -1,18 +1,18 @@
-"""Bake downloaded depth-chart save files into data/depth_chart_local_saves.js.
+"""Bake downloaded depth-chart save files into the local editor AND site defaults.
 
-depth-chart-local.html's Save button used to only download a
-depth_chart_save_<ABBR>.json snapshot that had to be re-loaded by hand every
-visit. The page now persists saves in localStorage automatically; this script
-migrates previously-downloaded snapshots (and acts as a fallback for a fresh
-browser profile): it scans the Downloads folder plus the repo root for
-depth_chart_save_*.json, keeps the newest file per team (browser duplicates
-like "depth_chart_save_UTA (1).json" count), and writes them all into
-data/depth_chart_local_saves.js (gitignored, loaded only by the local editor).
+Scans the Downloads folder plus the repo root for depth_chart_save_*.json,
+keeps the newest file per team (browser duplicates like
+"depth_chart_save_UTA (1).json" count), and writes them to two places:
 
-Precedence in the page: localStorage save > this baked file > live estimate.
+1. data/depth_chart_local_saves.js (gitignored) — fallback defaults for the
+   local editor (its localStorage saves take precedence).
+2. data/depth_chart_defaults.js (committed, published) — the hand-tuned
+   defaults used by the PUBLISHED depth-chart-team.html and depth-charts.html
+   in place of the cap-hit/MPG estimate. Teams without a save keep the
+   estimate. Pages reconcile these against the live roster at render time.
 
-Rerun after downloading new saves on another machine/browser, or just hit
-Save Changes in the page itself (localStorage wins anyway).
+Workflow: edit a team on depth-chart-local.html, hit Save Changes (persists
+locally + downloads a snapshot), then rerun this script and push to publish.
 """
 from __future__ import annotations
 
@@ -22,7 +22,8 @@ import re
 from pathlib import Path
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
-OUT = ROOT / "data" / "depth_chart_local_saves.js"
+OUT_LOCAL = ROOT / "data" / "depth_chart_local_saves.js"
+OUT_PUBLISHED = ROOT / "data" / "depth_chart_defaults.js"
 SCAN_DIRS = [Path.home() / "Downloads", ROOT]
 NAME_RE = re.compile(r"^depth_chart_save_([A-Z]{2,4})(?: \(\d+\))?\.json$")
 
@@ -53,13 +54,10 @@ def main() -> None:
         saves[abbr] = save
         print(f"  {abbr}: {path.name} (saved {save.get('savedAt', '?')})")
 
-    OUT.write_text(
-        "window.DEPTH_CHART_LOCAL_SAVES = "
-        + json.dumps(saves, ensure_ascii=False, separators=(",", ":"))
-        + ";\n",
-        encoding="utf-8",
-    )
-    print(f"Wrote {len(saves)} team saves to {OUT}")
+    body = json.dumps(saves, ensure_ascii=False, separators=(",", ":"))
+    OUT_LOCAL.write_text("window.DEPTH_CHART_LOCAL_SAVES = " + body + ";\n", encoding="utf-8")
+    OUT_PUBLISHED.write_text("window.DEPTH_CHART_DEFAULTS = " + body + ";\n", encoding="utf-8")
+    print(f"Wrote {len(saves)} team saves to {OUT_LOCAL} and {OUT_PUBLISHED}")
 
 
 if __name__ == "__main__":

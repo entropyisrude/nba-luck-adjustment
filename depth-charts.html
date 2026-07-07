@@ -56,11 +56,14 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
       </select>
     </label>
   </div>
-  <div class="legend">Estimated from projected 2026-27 rosters on the Cap Tracker, ranked by cap hit within position (best available proxy for depth — not a scouting judgment). Click a team card to open its editable depth chart.</div>
+  <div class="legend">Projected 2026-27 rotations: most teams are hand-tuned depth charts; the rest are estimated from Cap Tracker rosters, ranked by cap hit within position. Click a team card to open its editable depth chart.</div>
   <div class="grid" id="grid"></div>
 </main>
 
-<script>document.write('<scr'+'ipt src="data/nba_cap_data_2026_27.js?v='+Date.now()+'"></scr'+'ipt>');</script>
+<script>
+document.write('<scr'+'ipt src="data/nba_cap_data_2026_27.js?v='+Date.now()+'"></scr'+'ipt>');
+document.write('<scr'+'ipt src="data/depth_chart_defaults.js?v='+Date.now()+'"></scr'+'ipt>');
+</script>
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
 const POSITIONS = ['PG','SG','SF','PF','C'];
@@ -93,8 +96,33 @@ function rosterFor(team){
   return out;
 }
 
-function bucket(roster){
+function bucket(roster, abbr){
   const cols = {PG:[],SG:[],SF:[],PF:[],C:[],OTHER:[]};
+  const saved = (window.DEPTH_CHART_DEFAULTS || {})[abbr];
+  if(saved){
+    // Hand-tuned depth chart: use its position assignments and ordering,
+    // reconciled against the live roster (departed players drop off, new
+    // arrivals land in their listed position after the tuned players).
+    const byName = new Map(roster.map(p=>[p.player, p]));
+    const used = new Set();
+    POSITIONS.forEach(pos=>{
+      ((saved.positions && saved.positions[pos]) || []).forEach(entry=>{
+        const p = byName.get(entry.player);
+        if(p && !used.has(entry.player)){ cols[pos].push(p); used.add(entry.player); }
+      });
+    });
+    (saved.unassigned || []).forEach(entry=>{
+      const p = byName.get(entry.player);
+      if(p && !used.has(entry.player)){ cols.OTHER.push(p); used.add(entry.player); }
+    });
+    const leftovers = roster.filter(p=>!used.has(p.player))
+      .sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
+    for(const p of leftovers){
+      const pos = POSITIONS.includes(p.position) ? p.position : 'OTHER';
+      cols[pos].push(p);
+    }
+    return cols;
+  }
   for(const p of roster){
     const pos = POSITIONS.includes(p.position) ? p.position : 'OTHER';
     cols[pos].push(p);
@@ -106,7 +134,7 @@ function bucket(roster){
 }
 
 function renderTeam(abbr, team){
-  const cols = bucket(rosterFor(team));
+  const cols = bucket(rosterFor(team), abbr);
   const rows = POSITIONS.map(pos=>{
     const players = cols[pos];
     if(!players.length) return `<tr><td class="pos">${pos}</td><td class="names empty">—</td></tr>`;
