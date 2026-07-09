@@ -22,6 +22,7 @@ POSSESSIONS = DATA_DIR / "possessions.csv"
 HIST_POSSESSIONS = DATA_DIR / "possessions_historical_pbp.csv"
 ADJUSTED_GAMES = DATA_DIR / "adjusted_games.csv"
 PLAYER_BOX_STATS = DATA_DIR / "player_boxscore_stats.csv"
+BOX_MANUAL_ADDITIONS = DATA_DIR / "player_boxscore_manual_additions.csv"
 HIST_PLAYER_BOX_STATS = DATA_DIR / "player_boxscore_stats_historical_cache.csv"
 HIST_GAME_META = DATA_DIR / "historical_game_metadata_cache.csv"
 EXT_PLAYER_BOX_STATS = DATA_DIR / "player_boxscore_stats_external_2010_2024.csv"
@@ -184,6 +185,17 @@ def main() -> None:
             SELECT * FROM read_csv_auto('{PLAYER_BOX_STATS}', header=true);
             """
         )
+        # Whole games missing from every scraped box source, backfilled from the
+        # official (Eoin) box scores — see scripts/append_missing_rs_games_from_official.py
+        if BOX_MANUAL_ADDITIONS.exists():
+            con.execute(
+                f"""
+                INSERT INTO raw_player_box_stats
+                SELECT a.* FROM read_csv_auto('{BOX_MANUAL_ADDITIONS}', header=true) a
+                WHERE CAST(a.game_id AS VARCHAR) NOT IN (
+                    SELECT DISTINCT CAST(game_id AS VARCHAR) FROM raw_player_box_stats)
+                """
+            )
     else:
         con.execute(
             """
