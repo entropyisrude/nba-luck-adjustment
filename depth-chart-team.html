@@ -326,14 +326,13 @@ function setMinutes(pos, idx, rawVal){
 // the same ratio, which keeps each player's individual change as small as possible
 // relative to where they already stood, rather than concentrating the fix on
 // whichever position group the math happened to land on.
-function scaleTo240(){
-  const all = POSITIONS.flatMap(pos=>chart[pos]);
+function normalizeRotation(ch){
+  const all = POSITIONS.flatMap(pos=>ch[pos]);
   const grandTotal = all.reduce((s,p)=>s+(p.minutes||0),0);
-  if(grandTotal === TEAM_MINUTES){ render(); return; }
+  if(grandTotal === TEAM_MINUTES) return;
 
   if(grandTotal <= 0){
     distributeInt(all, TEAM_MINUTES);
-    render();
     return;
   }
 
@@ -346,6 +345,10 @@ function scaleTo240(){
   all.forEach((p,i)=>{ p.minutes = targets[i]; });
   const remainder = TEAM_MINUTES - assigned;
   if(remainder !== 0) distributeInt(all, remainder);
+}
+
+function scaleTo240(){
+  normalizeRotation(chart);
   render();
 }
 
@@ -392,14 +395,24 @@ function loadDefault(){
       used.add(entry.player);
     }
   });
+  const appended = [];
   [...POSITIONS, 'POOL'].forEach(pos=>{
     fresh[pos].forEach(p=>{
       if(!used.has(p.player)){
         newChart[pos].push(p);
         used.add(p.player);
+        if(pos !== 'POOL') appended.push(p);
       }
     });
   });
+  // Roster moves since the save leave the rotation off 240. Give arrivals
+  // their prior-year MPG as the initial placeholder, then rescale the whole
+  // rotation back to exactly 240 with the usual least-change method.
+  const total = POSITIONS.flatMap(pos=>newChart[pos]).reduce((s,p)=>s+(p.minutes||0),0);
+  if(total !== TEAM_MINUTES){
+    appended.forEach(p=>{ p.minutes = Math.round(mpgWeight(p)); });
+    normalizeRotation(newChart);
+  }
   chart = newChart;
   render();
 }
