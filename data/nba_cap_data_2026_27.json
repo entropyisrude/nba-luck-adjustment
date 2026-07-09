@@ -2,7 +2,7 @@
   "schema_version": 1,
   "season": "2026-27",
   "season_year": 2026,
-  "fetched_at": "2026-07-07T12:19:57.420189+00:00",
+  "fetched_at": "2026-07-09T10:46:11.241636+00:00",
   "source": "Spotrac team cap tables",
   "team_count": 30,
   "errors": {},
@@ -12,7 +12,7 @@
       "abbreviation": "ATL",
       "name": "Atlanta Hawks",
       "source_url": "https://www.spotrac.com/nba/atlanta-hawks/cap/_/year/2026",
-      "source_sha256": "40054c7e29312a8f5532287c2bd91aaec28f24bea9185385354bdc227c9533cd",
+      "source_sha256": "94c0998bdb24010ff2bd6d72d4f88f131e27351fb167097ab00aa03971afcc48",
       "pending_transactions": [
         {
           "player": "Jock Landale",
@@ -400,16 +400,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -468,39 +468,7 @@
       "abbreviation": "BOS",
       "name": "Boston Celtics",
       "source_url": "https://www.spotrac.com/nba/boston-celtics/cap/_/year/2026",
-      "source_sha256": "491bcf05df137ae07b18a87f81ed96a9816ed62f96add05ee41e49c33f90c3b9",
-      "pending_transactions": [
-        {
-          "player": "Mitchell Robinson",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 15044000,
-          "base_salary": 15044000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 15044000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Mike Conley",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": 39,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": 3876529,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3876529,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "529eaa79e698877eb9b944b3ae395c6adf7e53a109b4e8f5221f63ce50546218",
       "active_roster": [
         {
           "player": "Jayson Tatum",
@@ -544,6 +512,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 28458000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Mitchell Robinson",
+          "category": "active_roster",
+          "position": "C",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 15044000,
+          "base_salary": 15044000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 15044000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -683,6 +666,21 @@
           "rights": null
         },
         {
+          "player": "Mike Conley",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 39,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 3876529,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3876529,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jordan Walsh",
           "category": "active_roster",
           "position": "SF",
@@ -793,35 +791,19 @@
       "exceptions": [
         {
           "type": "Non-Taxpayer Mid-Level",
+          "reason": "Mitchell Robinson",
+          "used_on": "$15,044,000",
+          "expires": "End-of-Season",
+          "original": 15044000,
+          "available": 0
+        },
+        {
+          "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
-        },
-        {
-          "type": "Non-Taxpayer Mid-Level",
-          "reason": null,
-          "used_on": null,
-          "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
-        },
-        {
-          "type": "Trade",
-          "reason": "Kristaps Porzingis trade with ATL",
-          "used_on": "Nikola Vucevic, $21,481,481",
-          "expires": "7/7/2026",
-          "original": 22531707,
-          "available": 1050226
-        },
-        {
-          "type": "Trade",
-          "reason": "Jrue Holiday trade with POR",
-          "used_on": null,
-          "expires": "7/7/2026",
-          "original": 4721429,
-          "available": 4721429
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -866,20 +848,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 184030331,
+        "active_roster": 201523752,
         "cap_holds": 11454190,
-        "total_allocations": 195484521,
-        "cap_space": -30523521,
+        "total_allocations": 212977942,
+        "cap_space": -48016942,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 184030331,
-        "first_apron_space": 24984669,
+        "first_apron_allocations": 201523752,
+        "first_apron_space": 7491248,
         "second_apron": 221686000,
-        "second_apron_allocations": 184030331,
-        "second_apron_space": 37655669
+        "second_apron_allocations": 201523752,
+        "second_apron_space": 20162248
       },
       "reconciliation": {
-        "active_roster_row_total": 184030331,
-        "published_active_roster_total": 184030331,
+        "active_roster_row_total": 201523752,
+        "published_active_roster_total": 201523752,
         "published_less_rows": 0
       }
     },
@@ -887,7 +870,7 @@
       "abbreviation": "BKN",
       "name": "Brooklyn Nets",
       "source_url": "https://www.spotrac.com/nba/brooklyn-nets/cap/_/year/2026",
-      "source_sha256": "1a795b334d248e320905708bfbc57108303c486ecd4527a1e570c807d21986ce",
+      "source_sha256": "57ebcf5dcddd4c7aa1fd0a12b1a75b7f8fdcf8ac638728525a566f52eddc3c00",
       "pending_transactions": [
         {
           "player": "Julius Randle",
@@ -967,6 +950,21 @@
           "rights": null
         },
         {
+          "player": "Keon Ellis",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 9000000,
+          "base_salary": 9000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 9000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Mikel Brown Jr.",
           "category": "active_roster",
           "position": "PG",
@@ -978,21 +976,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 8787000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Keon Ellis",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 8780488,
-          "base_salary": 8780488,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 8780488,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1119,36 +1102,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Ochai Agbaji",
-          "category": "cap_hold",
-          "position": "SF",
-          "age": 26.0,
-          "contract_type": "RK-1ST",
-          "cap_hit": 19150575,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
-          "player": "Ziaire Williams",
-          "category": "cap_hold",
-          "position": "SF",
-          "age": 25.0,
-          "contract_type": "FA",
-          "cap_hit": 11875000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Jalen Wilson",
           "category": "cap_hold",
           "position": "PF",
@@ -1266,20 +1219,20 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 140005647,
-        "cap_holds": 47176270,
-        "total_allocations": 187181917,
-        "cap_space": -22220917,
+        "active_roster": 140225159,
+        "cap_holds": 16150695,
+        "total_allocations": 156375854,
+        "cap_space": 8585146,
         "first_apron": 209015000,
-        "first_apron_allocations": 140548543,
-        "first_apron_space": 68466457,
+        "first_apron_allocations": 140768055,
+        "first_apron_space": 68246945,
         "second_apron": 221686000,
-        "second_apron_allocations": 140548543,
-        "second_apron_space": 81137457
+        "second_apron_allocations": 140768055,
+        "second_apron_space": 80917945
       },
       "reconciliation": {
-        "active_roster_row_total": 140005647,
-        "published_active_roster_total": 140005647,
+        "active_roster_row_total": 140225159,
+        "published_active_roster_total": 140225159,
         "published_less_rows": 0
       }
     },
@@ -1287,20 +1240,20 @@
       "abbreviation": "CHA",
       "name": "Charlotte Hornets",
       "source_url": "https://www.spotrac.com/nba/charlotte-hornets/cap/_/year/2026",
-      "source_sha256": "c74e41d050fa4583bd02ede4cdad7d91a5212393fa27cd1a15dd655e5032ea50",
+      "source_sha256": "ba39ffa3cf464325d8de26856673ed68804a9a754bcdc8cca054ffa00fb72be8",
       "pending_transactions": [
         {
           "player": "Naz Reid",
           "category": "pending_transaction",
           "position": "C",
           "age": 27,
-          "contract_type": "FA",
+          "contract_type": null,
           "cap_hit": 23275862,
-          "base_salary": 23275862,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 23275862,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1309,28 +1262,13 @@
           "category": "pending_transaction",
           "position": "SG",
           "age": 31,
-          "contract_type": "VET-EXT",
+          "contract_type": null,
           "cap_hit": 18125000,
-          "base_salary": 18125000,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 18125000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Dorian Finney-Smith",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 33,
-          "contract_type": "FA",
-          "cap_hit": 13335000,
-          "base_salary": 13335000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 13335000,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1339,13 +1277,13 @@
           "category": "pending_transaction",
           "position": "SF",
           "age": 33,
-          "contract_type": "FA",
+          "contract_type": null,
           "cap_hit": 10875000,
-          "base_salary": 10875000,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 10875000,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1386,13 +1324,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 22839506,
-          "base_salary": 22839506,
+          "contract_type": null,
+          "cap_hit": 26811593,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 22839506,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1401,13 +1339,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 24,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 15104626,
-          "base_salary": 15104626,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 15104626,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1416,13 +1354,28 @@
           "category": "active_roster",
           "position": "PF",
           "age": 28,
-          "contract_type": "S&T",
+          "contract_type": null,
           "cap_hit": 14265750,
-          "base_salary": 14265750,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 14265750,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Dorian Finney-Smith",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 33,
+          "contract_type": null,
+          "cap_hit": 13765987,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1431,13 +1384,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 21,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 10516560,
-          "base_salary": 10516560,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 10516560,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1446,13 +1399,13 @@
           "category": "active_roster",
           "position": "PF",
           "age": 21,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 8237880,
-          "base_salary": 8237880,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 8237880,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1461,13 +1414,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 25,
-          "contract_type": "FA",
+          "contract_type": null,
           "cap_hit": 8000000,
-          "base_salary": 8000000,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 8000000,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1476,13 +1429,13 @@
           "category": "active_roster",
           "position": "PF",
           "age": 20,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 5227200,
-          "base_salary": 5227200,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 5227200,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1491,13 +1444,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 20,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 4257480,
-          "base_salary": 4257480,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 4257480,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1506,9 +1459,9 @@
           "category": "active_roster",
           "position": "SG",
           "age": 34,
-          "contract_type": "ROS",
+          "contract_type": null,
           "cap_hit": 3815861,
-          "base_salary": 3815861,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -1521,13 +1474,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 21,
-          "contract_type": "RK-1ST",
+          "contract_type": null,
           "cap_hit": 2902080,
-          "base_salary": 2902080,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 2902080,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1536,13 +1489,13 @@
           "category": "active_roster",
           "position": "PF",
           "age": 25,
-          "contract_type": "ROS",
+          "contract_type": null,
           "cap_hit": 2461462,
-          "base_salary": 2461462,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 2461462,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1551,13 +1504,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 24,
-          "contract_type": "RK-2ND",
+          "contract_type": null,
           "cap_hit": 2411090,
-          "base_salary": 2411090,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 2411090,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -1566,39 +1519,24 @@
           "category": "active_roster",
           "position": "C",
           "age": 25,
-          "contract_type": "RK-2ND",
+          "contract_type": null,
           "cap_hit": 2411090,
-          "base_salary": 2411090,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2411090,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
-      "cap_holds": [
-        {
-          "player": "Coby White",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 24488889,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": "Bird"
-        },
+          "rights": null
+        }
+      ],
+      "cap_holds": [
         {
           "player": "Xavier Tillman",
           "category": "cap_hold",
           "position": "C",
           "age": 28,
-          "contract_type": "FA",
+          "contract_type": null,
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -1606,14 +1544,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": "Bird"
+          "rights": null
         },
         {
           "player": "Antonio Reeves",
           "category": "cap_hold",
           "position": "SG",
           "age": 26,
-          "contract_type": "2W",
+          "contract_type": null,
           "cap_hit": 2185116,
           "base_salary": null,
           "likely_incentives": null,
@@ -1621,7 +1559,7 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": "Non-Bird"
+          "rights": null
         }
       ],
       "exceptions": [
@@ -1629,51 +1567,52 @@
           "type": "Non-Taxpayer Mid-Level",
           "reason": null,
           "used_on": null,
-          "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "expires": null,
+          "original": null,
+          "available": 15044000
         },
         {
           "type": "Trade",
-          "reason": "Mason Plumlee trade with OKC",
+          "reason": null,
           "used_on": null,
-          "expires": "2/4/2027",
-          "original": 2296274,
+          "expires": null,
+          "original": null,
           "available": 2296274
         },
         {
           "type": "Trade",
-          "reason": "Collin Sexton trade with CHI",
+          "reason": null,
           "used_on": null,
-          "expires": "2/4/2027",
-          "original": 8200962,
+          "expires": null,
+          "original": null,
           "available": 8200962
         },
         {
           "type": "Trade",
-          "reason": "Tyus Jones trade with DAL",
+          "reason": null,
           "used_on": null,
-          "expires": "2/5/2027",
-          "original": 7000000,
+          "expires": null,
+          "original": null,
           "available": 7000000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 180726204,
-        "cap_holds": 29123426,
-        "total_allocations": 209849630,
-        "cap_space": -44888630,
+        "active_roster": 198464278,
+        "cap_holds": 4634537,
+        "total_allocations": 203098815,
+        "cap_space": -38137815,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 180726204,
-        "first_apron_space": 28288796,
+        "first_apron_allocations": 198464278,
+        "first_apron_space": 10550722,
         "second_apron": 221686000,
-        "second_apron_allocations": 180726204,
-        "second_apron_space": 40959796
+        "second_apron_allocations": 198464278,
+        "second_apron_space": 23221722
       },
       "reconciliation": {
-        "active_roster_row_total": 180726204,
-        "published_active_roster_total": 180726204,
+        "active_roster_row_total": 198464278,
+        "published_active_roster_total": 198464278,
         "published_less_rows": 0
       }
     },
@@ -1681,7 +1620,7 @@
       "abbreviation": "CHI",
       "name": "Chicago Bulls",
       "source_url": "https://www.spotrac.com/nba/chicago-bulls/cap/_/year/2026",
-      "source_sha256": "00445d81fecafb288e94f12f5b09db4184f8082afdefb131f8932c969a8b8899",
+      "source_sha256": "56f348c7ab8d2242d7c8921e51adb89fb1e75f78edd9a1b4ed0f245c75d1e74f",
       "pending_transactions": [
         {
           "player": "Nicolas Claxton",
@@ -2144,54 +2083,7 @@
       "abbreviation": "CLE",
       "name": "Cleveland Cavaliers",
       "source_url": "https://www.spotrac.com/nba/cleveland-cavaliers/cap/_/year/2026",
-      "source_sha256": "8856ea96c921af6cb0c4379660b256179645fc69f425860e57fdf05d067ee811",
-      "pending_transactions": [
-        {
-          "player": "Thomas Bryant",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 29,
-          "contract_type": "FA",
-          "cap_hit": 2450000,
-          "base_salary": 3524948,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3524948,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Ernest Udeh Jr.",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Meleek Thomas",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": 2315000,
-          "base_salary": 2315000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2315000,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "6b8a9ed71ea51c9867b751855c30e2fd7cf0c16c869fa42f526be374fd669ce9",
       "active_roster": [
         {
           "player": "Donovan Mitchell",
@@ -2299,6 +2191,21 @@
           "rights": null
         },
         {
+          "player": "Thomas Bryant",
+          "category": "active_roster",
+          "position": "C",
+          "age": 29,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 3524115,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3524115,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Nae'qwan Tomlin",
           "category": "active_roster",
           "position": "F",
@@ -2366,7 +2273,7 @@
           "player": "James Harden",
           "category": "cap_hold",
           "position": "SG",
-          "age": 37.0,
+          "age": 37,
           "contract_type": "FA",
           "cap_hit": 47019232,
           "base_salary": null,
@@ -2378,25 +2285,10 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Thomas Bryant",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 29.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Ed Davis",
           "category": "cap_hold",
           "position": "C",
-          "age": 37.0,
+          "age": 37,
           "contract_type": null,
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2411,7 +2303,7 @@
           "player": "Damian Jones",
           "category": "cap_hold",
           "position": "C",
-          "age": 31.0,
+          "age": 31,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2423,25 +2315,10 @@
           "rights": "Early Bird"
         },
         {
-          "player": "Larry Nance Jr.",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 34.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Raul Neto",
           "category": "cap_hold",
           "position": "PG",
-          "age": 34.0,
+          "age": 34,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2456,7 +2333,7 @@
           "player": "Chuma Okeke",
           "category": "cap_hold",
           "position": "PF",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2471,7 +2348,7 @@
           "player": "Rajon Rondo",
           "category": "cap_hold",
           "position": "PG",
-          "age": 40.0,
+          "age": 40,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2486,7 +2363,7 @@
           "player": "Olivier Sarr",
           "category": "cap_hold",
           "position": "C",
-          "age": 27.0,
+          "age": 27,
           "contract_type": "2W",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2501,7 +2378,7 @@
           "player": "Tristan Thompson",
           "category": "cap_hold",
           "position": "C",
-          "age": 35.0,
+          "age": 35,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -2511,21 +2388,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Early Bird"
-        },
-        {
-          "player": "Incomplete Roster Charge",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 1357763,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "exceptions": [
@@ -2556,48 +2418,22 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 179468779,
-        "cap_holds": 70421784,
-        "total_allocations": 250315235,
-        "cap_space": -85354235,
+        "active_roster": 181918200,
+        "cap_holds": 66614600,
+        "total_allocations": 248957472,
+        "cap_space": -83996472,
         "first_apron": 209015000,
-        "first_apron_allocations": 181251214,
-        "first_apron_space": 27763786,
+        "first_apron_allocations": 183700635,
+        "first_apron_space": 25314365,
         "second_apron": 221686000,
-        "second_apron_allocations": 181251214,
-        "second_apron_space": 40434786
+        "second_apron_allocations": 183700635,
+        "second_apron_space": 37985365
       },
-      "reconciliation": {
-        "active_roster_row_total": 179468779,
-        "published_active_roster_total": 179468779,
-        "published_less_rows": 0
-      }
-    },
-    "DAL": {
-      "abbreviation": "DAL",
-      "name": "Dallas Mavericks",
-      "source_url": "https://www.spotrac.com/nba/dallas-mavericks/cap/_/year/2026",
-      "source_sha256": "4d2b934eac9e722b83ddcd071afdde1edf779b5467c947c3e85547370c9c1c48",
       "pending_transactions": [
         {
-          "player": "Santi Aldama",
+          "player": "Ernest Udeh Jr.",
           "category": "pending_transaction",
           "position": "C",
-          "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 17007043,
-          "base_salary": 17007043,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 17007043,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Tobi Lawal",
-          "category": "pending_transaction",
-          "position": "F",
           "age": null,
           "contract_type": "UFA",
           "cap_hit": null,
@@ -2606,6 +2442,49 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Meleek Thomas",
+          "category": "pending_transaction",
+          "position": "SG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": 2315000,
+          "base_salary": 2315000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 2315000,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
+      "reconciliation": {
+        "active_roster_row_total": 181918200,
+        "published_active_roster_total": 181918200,
+        "published_less_rows": 0
+      }
+    },
+    "DAL": {
+      "abbreviation": "DAL",
+      "name": "Dallas Mavericks",
+      "source_url": "https://www.spotrac.com/nba/dallas-mavericks/cap/_/year/2026",
+      "source_sha256": "bf486c34e8058ae4f2a1905c4d7f0b7993cd97a2e41cc1bdb6ef62fba0294e04",
+      "pending_transactions": [
+        {
+          "player": "Tarik Biberovic",
+          "category": "pending_transaction",
+          "position": "PF",
+          "age": 26,
+          "contract_type": "RK",
+          "cap_hit": 2926829,
+          "base_salary": 2926829,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 2926829,
           "qualifying_offer": null,
           "rights": null
         }
@@ -2668,6 +2547,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 17263584,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Santi Aldama",
+          "category": "active_roster",
+          "position": "C",
+          "age": 26,
+          "contract_type": "FA",
+          "cap_hit": 17007043,
+          "base_salary": 17007043,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 17007043,
           "qualifying_offer": null,
           "rights": null
         },
@@ -2762,6 +2656,21 @@
           "rights": null
         },
         {
+          "player": "Marcus Sasser",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 26,
+          "contract_type": "RK-1ST",
+          "cap_hit": 5198983,
+          "base_salary": 5198983,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5198983,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Sergio de Larrea",
           "category": "active_roster",
           "position": "SG",
@@ -2825,21 +2734,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Khris Middleton",
-          "category": "cap_hold",
-          "position": "SF",
-          "age": 35,
-          "contract_type": "FA",
-          "cap_hit": 52629629,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
         {
           "player": "Dwight Powell",
           "category": "cap_hold",
@@ -2997,16 +2891,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -3035,21 +2929,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 158825734,
-        "cap_holds": 86019560,
-        "total_allocations": 248056510,
-        "cap_space": -83095510,
+        "active_roster": 177794640,
+        "cap_holds": 33389931,
+        "total_allocations": 214395787,
+        "cap_space": -49434787,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 163381535,
-        "first_apron_space": 45633465,
-        "second_apron_hard_cap": true,
+        "first_apron_allocations": 182350441,
+        "first_apron_space": 26664559,
         "second_apron": 221686000,
-        "second_apron_allocations": 163381535,
-        "second_apron_space": 58304465
+        "second_apron_allocations": 182350441,
+        "second_apron_space": 39335559
       },
       "reconciliation": {
-        "active_roster_row_total": 158825734,
-        "published_active_roster_total": 158825734,
+        "active_roster_row_total": 177794640,
+        "published_active_roster_total": 177794640,
         "published_less_rows": 0
       }
     },
@@ -3057,7 +2951,7 @@
       "abbreviation": "DEN",
       "name": "Denver Nuggets",
       "source_url": "https://www.spotrac.com/nba/denver-nuggets/cap/_/year/2026",
-      "source_sha256": "6ab72f41981e0e6eccd98c03c79d09b0e88aee0c4e99cc3c86bec3b2cd9de82e",
+      "source_sha256": "951ff5e9b46afa7141104780fc1194196ae75550cc7fd37f22f9a1d7e98c512e",
       "pending_transactions": [
         {
           "player": "Marvin Bagley III",
@@ -3167,21 +3061,6 @@
           "rights": null
         },
         {
-          "player": "Jonas Valanciunas",
-          "category": "active_roster",
-          "position": "C",
-          "age": 34,
-          "contract_type": "S&T",
-          "cap_hit": 10000000,
-          "base_salary": 10000000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Zeke Nnaji",
           "category": "active_roster",
           "position": "PF",
@@ -3223,6 +3102,23 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 3372120,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
+      "dead_money": [
+        {
+          "player": "Jonas Valanciunas",
+          "category": "dead_money",
+          "position": "C",
+          "age": null,
+          "contract_type": null,
+          "cap_hit": 2000000,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         }
@@ -3444,7 +3340,7 @@
           "position": null,
           "age": null,
           "contract_type": null,
-          "cap_hit": 4073289,
+          "cap_hit": 5431052,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -3472,14 +3368,6 @@
       "exceptions": [
         {
           "type": "Trade",
-          "reason": "Michael Porter Jr. trade with BKN",
-          "used_on": "Jonas Valanciunas, $10,395,000",
-          "expires": "7/8/2026",
-          "original": 17275985,
-          "available": 6880985
-        },
-        {
-          "type": "Trade",
           "reason": "Dario Saric trade with SAC",
           "used_on": null,
           "expires": "7/13/2026",
@@ -3497,20 +3385,20 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 211396723,
-        "cap_holds": 50842275,
-        "total_allocations": 262238998,
-        "cap_space": -97277998,
+        "active_roster": 201396723,
+        "cap_holds": 49750617,
+        "total_allocations": 253147340,
+        "cap_space": -88186340,
         "first_apron": 209015000,
-        "first_apron_allocations": 217014223,
-        "first_apron_space": -7999223,
+        "first_apron_allocations": 209014223,
+        "first_apron_space": 777,
         "second_apron": 221686000,
-        "second_apron_allocations": 217014223,
-        "second_apron_space": 4671777
+        "second_apron_allocations": 209014223,
+        "second_apron_space": 12671777
       },
       "reconciliation": {
-        "active_roster_row_total": 211396723,
-        "published_active_roster_total": 211396723,
+        "active_roster_row_total": 201396723,
+        "published_active_roster_total": 201396723,
         "published_less_rows": 0
       }
     },
@@ -3518,23 +3406,8 @@
       "abbreviation": "DET",
       "name": "Detroit Pistons",
       "source_url": "https://www.spotrac.com/nba/detroit-pistons/cap/_/year/2026",
-      "source_sha256": "fd565a3b4d6abfae14afa4be77550d693f3f4603f8efebbf6472032129f1663e",
+      "source_sha256": "8219a3d71b037a0768a4c7adb01ea1d70e51b1e7bea4475b0573cba6bbe913c6",
       "pending_transactions": [
-        {
-          "player": "John Collins",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 29,
-          "contract_type": "S&T",
-          "cap_hit": 16190476,
-          "base_salary": 16190476,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 16190476,
-          "qualifying_offer": null,
-          "rights": null
-        },
         {
           "player": "Kevin Huerter",
           "category": "pending_transaction",
@@ -3564,21 +3437,6 @@
           "guaranteed": 3943679,
           "qualifying_offer": null,
           "rights": null
-        },
-        {
-          "player": "Ugonna Onyenso",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "active_roster": [
@@ -3598,6 +3456,21 @@
           "rights": null
         },
         {
+          "player": "John Collins",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 29,
+          "contract_type": "S&T",
+          "cap_hit": 17000000,
+          "base_salary": 17000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 17000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Duncan Robinson",
           "category": "active_roster",
           "position": "SF",
@@ -3609,21 +3482,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 2000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Caris LeVert",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 32,
-          "contract_type": "FA",
-          "cap_hit": 14809200,
-          "base_salary": 14809200,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 14809200,
           "qualifying_offer": null,
           "rights": null
         },
@@ -3688,21 +3546,6 @@
           "rights": null
         },
         {
-          "player": "Marcus Sasser",
-          "category": "active_roster",
-          "position": "PG",
-          "age": 26,
-          "contract_type": "RK-1ST",
-          "cap_hit": 5198983,
-          "base_salary": 5198983,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5198983,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Ebuka Okorie",
           "category": "active_roster",
           "position": "PG",
@@ -3729,6 +3572,36 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 4000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Gary Harris",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 32,
+          "contract_type": "FA",
+          "cap_hit": 3815861,
+          "base_salary": 3815861,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3815861,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Taurean Prince",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 32,
+          "contract_type": "FA",
+          "cap_hit": 3815861,
+          "base_salary": 3815861,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3815861,
           "qualifying_offer": null,
           "rights": null
         },
@@ -3861,43 +3734,35 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
-        },
-        {
-          "type": "Trade",
-          "reason": "Dennis Schroder trade with SAC",
-          "used_on": "Dario Saric, $5,426,400",
-          "expires": "7/7/2026",
-          "original": 14104000,
-          "available": 8677600
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 151263275,
+        "active_roster": 140886814,
         "cap_holds": 58270576,
-        "total_allocations": 209533851,
-        "cap_space": -44572851,
+        "total_allocations": 199157390,
+        "cap_space": -34196390,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 152263275,
-        "first_apron_space": 56751725,
-        "second_apron_hard_cap": true,
+        "first_apron_allocations": 140886814,
+        "first_apron_space": 68128186,
         "second_apron": 221686000,
-        "second_apron_allocations": 152263275,
-        "second_apron_space": 69422725
+        "second_apron_allocations": 140886814,
+        "second_apron_space": 80799186
       },
       "reconciliation": {
-        "active_roster_row_total": 151263275,
-        "published_active_roster_total": 151263275,
+        "active_roster_row_total": 140886814,
+        "published_active_roster_total": 140886814,
         "published_less_rows": 0
       }
     },
@@ -3905,7 +3770,7 @@
       "abbreviation": "GSW",
       "name": "Golden State Warriors",
       "source_url": "https://www.spotrac.com/nba/golden-state-warriors/cap/_/year/2026",
-      "source_sha256": "e6cfcef6c657709185f65a2a72ace0a454b318bfde79040544b7c902f0aaa96f",
+      "source_sha256": "e063d91023bbcd579356d83fff2ade0c7d9ac63d3de67389f603bf3bc387a453",
       "pending_transactions": [
         {
           "player": "De'Anthony Melton",
@@ -3965,7 +3830,7 @@
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 3000000,
+          "guaranteed": 20000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4383,16 +4248,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -4406,13 +4271,13 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 177298177,
-        "cap_holds": 91316826,
-        "total_allocations": 268615003,
-        "cap_space": -103654003,
-        "first_apron_hard_cap": true,
+        "cap_holds": 88666826,
+        "total_allocations": 265965003,
+        "cap_space": -101004003,
         "first_apron": 209015000,
         "first_apron_allocations": 177798177,
         "first_apron_space": 31216823,
+        "second_apron_hard_cap": true,
         "second_apron": 221686000,
         "second_apron_allocations": 177798177,
         "second_apron_space": 43887823
@@ -4427,20 +4292,20 @@
       "abbreviation": "HOU",
       "name": "Houston Rockets",
       "source_url": "https://www.spotrac.com/nba/houston-rockets/cap/_/year/2026",
-      "source_sha256": "d1d02b00e2e7a175748cae121a3149166d585a3964f793be1c8fb15d6411bd00",
+      "source_sha256": "ce2429fa1560b1c1bbc7ae7565fea4f3120e7b6d3a97732b448eb8e9eea65ec0",
       "pending_transactions": [
         {
           "player": "Tari Eason",
           "category": "pending_transaction",
           "position": "PF",
           "age": 25,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 14051724,
-          "base_salary": null,
+          "base_salary": 14051724,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 14051724,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4449,23 +4314,23 @@
           "category": "pending_transaction",
           "position": "PG",
           "age": 32,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 6368000,
-          "base_salary": null,
+          "base_salary": 6368000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 6368000,
           "qualifying_offer": null,
           "rights": null
         },
         {
-          "player": "Bogdan Bogdanovic",
+          "player": "Quadir Copeland",
           "category": "pending_transaction",
-          "position": "SG",
-          "age": 34,
-          "contract_type": null,
-          "cap_hit": 2449421,
+          "position": "F",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -4481,13 +4346,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 38,
-          "contract_type": null,
+          "contract_type": "VET-EXT",
           "cap_hit": 43902439,
-          "base_salary": null,
+          "base_salary": 43902439,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 43902439,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4496,13 +4361,13 @@
           "category": "active_roster",
           "position": "C",
           "age": 24,
-          "contract_type": null,
+          "contract_type": "RK-EXT",
           "cap_hit": 35642202,
-          "base_salary": null,
+          "base_salary": 35642202,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 35642202,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4511,13 +4376,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 32,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 25000000,
-          "base_salary": null,
+          "base_salary": 25000000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 25000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4526,13 +4391,13 @@
           "category": "active_roster",
           "position": "PF",
           "age": 23,
-          "contract_type": null,
+          "contract_type": "RK-EXT",
           "cap_hit": 23643411,
-          "base_salary": null,
+          "base_salary": 23643411,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 23643411,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4541,13 +4406,13 @@
           "category": "active_roster",
           "position": "C",
           "age": 33,
-          "contract_type": null,
+          "contract_type": "VET-EXT",
           "cap_hit": 13000000,
-          "base_salary": null,
+          "base_salary": 13000000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 13000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4556,13 +4421,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 24,
-          "contract_type": null,
+          "contract_type": "RK-1ST",
           "cap_hit": 12258609,
-          "base_salary": null,
+          "base_salary": 12258609,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 12258609,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4571,13 +4436,13 @@
           "category": "active_roster",
           "position": "SG",
           "age": 22,
-          "contract_type": null,
+          "contract_type": "RK-1ST",
           "cap_hit": 11108880,
-          "base_salary": null,
+          "base_salary": 11108880,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 11108880,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4586,13 +4451,13 @@
           "category": "active_roster",
           "position": "C",
           "age": 32,
-          "contract_type": null,
+          "contract_type": "S&T",
           "cap_hit": 7035000,
-          "base_salary": null,
+          "base_salary": 7035000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 7035000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -4601,13 +4466,43 @@
           "category": "active_roster",
           "position": "PG",
           "age": 24,
-          "contract_type": null,
+          "contract_type": "ROS",
           "cap_hit": 2584539,
-          "base_salary": null,
+          "base_salary": 2584539,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Bogdan Bogdanovic",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 34,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 3876529,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3876529,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Bruce Thornton",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 23,
+          "contract_type": "RK-2ND",
+          "cap_hit": 1357763,
+          "base_salary": 1357763,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 1357763,
           "qualifying_offer": null,
           "rights": null
         }
@@ -4617,23 +4512,23 @@
           "player": "Tari Eason",
           "category": "cap_hold",
           "position": "PF",
-          "age": 25,
-          "contract_type": null,
+          "age": 25.0,
+          "contract_type": "RK-1ST",
           "cap_hit": 17027298,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "qualifying_offer": 8014182,
+          "rights": "Restricted Bird"
         },
         {
           "player": "Reggie Bullock",
           "category": "cap_hold",
           "position": "SF",
-          "age": 35,
-          "contract_type": null,
+          "age": 35.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -4641,14 +4536,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Jeff Green",
           "category": "cap_hold",
           "position": "PF",
-          "age": 40,
-          "contract_type": null,
+          "age": 40.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -4656,14 +4551,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Bird"
         },
         {
           "player": "Aaron Holiday",
           "category": "cap_hold",
           "position": "PG",
-          "age": 30,
-          "contract_type": null,
+          "age": 30.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -4671,14 +4566,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Bird"
         },
         {
           "player": "Boban Marjanovic",
           "category": "cap_hold",
           "position": "C",
-          "age": 38,
-          "contract_type": null,
+          "age": 38.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -4686,14 +4581,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Bird"
         },
         {
           "player": "Jae’Sean Tate",
           "category": "cap_hold",
           "position": "SF",
-          "age": 31,
-          "contract_type": null,
+          "age": 31.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -4701,15 +4596,45 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Bird"
         },
         {
           "player": "Isaiah Crawford",
           "category": "cap_hold",
           "position": "G",
-          "age": 25,
-          "contract_type": null,
+          "age": 25.0,
+          "contract_type": "2W",
           "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": 2185116,
+          "rights": "Two-Way"
+        },
+        {
+          "player": "Jack McVeigh",
+          "category": "cap_hold",
+          "position": "F",
+          "age": 30.0,
+          "contract_type": "2W",
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Two-Way"
+        },
+        {
+          "player": "Incomplete Roster Charge",
+          "category": "cap_hold",
+          "position": null,
+          "age": null,
+          "contract_type": null,
+          "cap_hit": 1357763,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -4719,12 +4644,12 @@
           "rights": null
         },
         {
-          "player": "Jack McVeigh",
+          "player": "Round 2, Pick #39",
           "category": "cap_hold",
-          "position": "F",
-          "age": 30,
+          "position": null,
+          "age": null,
           "contract_type": null,
-          "cap_hit": 2185116,
+          "cap_hit": null,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -4739,35 +4664,36 @@
           "type": "Non-Taxpayer Mid-Level",
           "reason": null,
           "used_on": null,
-          "expires": null,
-          "original": null,
-          "available": 15048000
+          "expires": "End-of-Season",
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
-          "expires": null,
-          "original": null,
-          "available": 5478000
+          "expires": "End-of-Season",
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 187510080,
-        "cap_holds": 38809582,
-        "total_allocations": 226319662,
-        "cap_space": -61358662,
+        "active_roster": 177982264,
+        "cap_holds": 37451819,
+        "total_allocations": 215434083,
+        "cap_space": -50473083,
         "first_apron": 209015000,
-        "first_apron_allocations": 187510080,
-        "first_apron_space": 21504920,
+        "first_apron_allocations": 177982264,
+        "first_apron_space": 31032736,
+        "second_apron_hard_cap": true,
         "second_apron": 221686000,
-        "second_apron_allocations": 187510080,
-        "second_apron_space": 34175920
+        "second_apron_allocations": 177982264,
+        "second_apron_space": 43703736
       },
       "reconciliation": {
-        "active_roster_row_total": 187510080,
-        "published_active_roster_total": 187510080,
+        "active_roster_row_total": 177982264,
+        "published_active_roster_total": 177982264,
         "published_less_rows": 0
       }
     },
@@ -4775,35 +4701,20 @@
       "abbreviation": "IND",
       "name": "Indiana Pacers",
       "source_url": "https://www.spotrac.com/nba/indiana-pacers/cap/_/year/2026",
-      "source_sha256": "878ee5279be0f0c848ebf90eb440aa590f9adb548366753a1421181c448dd8cb",
+      "source_sha256": "57516be1e6c0c6bbbf171eff3c0718143e28e51620d5beb19ad9c88ebc8e4e4b",
       "pending_transactions": [
         {
-          "player": "Kelly Oubre Jr.",
-          "category": "pending_transaction",
-          "position": "SF",
-          "age": 31,
-          "contract_type": "FA",
-          "cap_hit": 8292683,
-          "base_salary": 8292683,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 8292683,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Jalen Slawson",
+          "player": "Larry Nance Jr.",
           "category": "pending_transaction",
           "position": "PF",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
+          "age": 34,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 3876529,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 3876529,
           "qualifying_offer": null,
           "rights": null
         }
@@ -4930,6 +4841,21 @@
           "rights": null
         },
         {
+          "player": "Kelly Oubre Jr.",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 31,
+          "contract_type": "FA",
+          "cap_hit": 8050000,
+          "base_salary": 8050000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 8050000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Ben Sheppard",
           "category": "active_roster",
           "position": "SF",
@@ -4941,21 +4867,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5031669,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Micah Potter",
-          "category": "active_roster",
-          "position": "C",
-          "age": 28,
-          "contract_type": "ROS",
-          "cap_hit": 2801346,
-          "base_salary": 2801346,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5070,38 +4981,38 @@
       "exceptions": [
         {
           "type": "Non-Taxpayer Mid-Level",
-          "reason": null,
-          "used_on": null,
+          "reason": "Kelly Oubre Jr.",
+          "used_on": "$8,050,000",
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 6994000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 198601859,
+        "active_roster": 203850513,
         "cap_holds": 11611712,
-        "total_allocations": 210213571,
-        "cap_space": -45252571,
+        "total_allocations": 215462225,
+        "cap_space": -50501225,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 199081859,
-        "first_apron_space": 9933141,
-        "second_apron_hard_cap": true,
+        "first_apron_allocations": 204330513,
+        "first_apron_space": 4684487,
         "second_apron": 221686000,
-        "second_apron_allocations": 199081859,
-        "second_apron_space": 22604141
+        "second_apron_allocations": 204330513,
+        "second_apron_space": 17355487
       },
       "reconciliation": {
-        "active_roster_row_total": 198601859,
-        "published_active_roster_total": 198601859,
+        "active_roster_row_total": 203850513,
+        "published_active_roster_total": 203850513,
         "published_less_rows": 0
       }
     },
@@ -5109,35 +5020,20 @@
       "abbreviation": "LAC",
       "name": "Los Angeles Clippers",
       "source_url": "https://www.spotrac.com/nba/la-clippers/cap/_/year/2026",
-      "source_sha256": "a1913a68d833fc301114a79ad6718292c7758fe86830fd00a5ad6a8a20a0a0f9",
+      "source_sha256": "aa5b1f08defdd423f538aa9df0a6ca6322dbd0282128e8fe7e03c4845c11dd2c",
       "pending_transactions": [
         {
           "player": "Brandon Ingram",
           "category": "pending_transaction",
           "position": "SF",
           "age": 29,
-          "contract_type": null,
+          "contract_type": "VET-EXT",
           "cap_hit": 40000000,
-          "base_salary": null,
+          "base_salary": 40000000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Rui Hachimura",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 28,
-          "contract_type": null,
-          "cap_hit": 13658537,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 40000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5146,13 +5042,13 @@
           "category": "pending_transaction",
           "position": "SG",
           "age": 23,
-          "contract_type": null,
+          "contract_type": "RK-1ST",
           "cap_hit": 7131511,
-          "base_salary": null,
+          "base_salary": 7131511,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 7131511,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5161,28 +5057,13 @@
           "category": "pending_transaction",
           "position": "SF",
           "age": 27,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 4857143,
-          "base_salary": null,
+          "base_salary": 4857143,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Kobe Sanders",
-          "category": "pending_transaction",
-          "position": "G",
-          "age": 24,
-          "contract_type": null,
-          "cap_hit": 2500000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 4857143,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5208,13 +5089,28 @@
           "category": "active_roster",
           "position": "PG",
           "age": 27,
-          "contract_type": null,
+          "contract_type": "DRK-EXT",
           "cap_hit": 42166510,
-          "base_salary": null,
+          "base_salary": 42166510,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 42166510,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Rui Hachimura",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 14000000,
+          "base_salary": 14000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 14000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5223,13 +5119,13 @@
           "category": "active_roster",
           "position": "SF",
           "age": 29,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 10476190,
-          "base_salary": null,
+          "base_salary": 10476190,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 10476190,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5238,13 +5134,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 19,
-          "contract_type": null,
+          "contract_type": "RK-1ST",
           "cap_hit": 9674760,
-          "base_salary": null,
+          "base_salary": 9674760,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 9674760,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5253,13 +5149,13 @@
           "category": "active_roster",
           "position": "C",
           "age": 38,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 9187500,
-          "base_salary": null,
+          "base_salary": 9187500,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 9187500,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5268,13 +5164,13 @@
           "category": "active_roster",
           "position": "PF",
           "age": 25,
-          "contract_type": null,
+          "contract_type": "FA",
           "cap_hit": 7000000,
-          "base_salary": null,
+          "base_salary": 7000000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 7000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5283,13 +5179,13 @@
           "category": "active_roster",
           "position": "PG",
           "age": 32,
-          "contract_type": null,
+          "contract_type": "S&T",
           "cap_hit": 5684800,
-          "base_salary": null,
+          "base_salary": 5684800,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 5684800,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5298,13 +5194,28 @@
           "category": "active_roster",
           "position": "F",
           "age": 23,
-          "contract_type": null,
+          "contract_type": "RK-1ST",
           "cap_hit": 2880960,
-          "base_salary": null,
+          "base_salary": 2880960,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 2880960,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Kobe Sanders",
+          "category": "active_roster",
+          "position": "G",
+          "age": 24,
+          "contract_type": "FA",
+          "cap_hit": 2622139,
+          "base_salary": 2622139,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 2622139,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5313,9 +5224,9 @@
           "category": "active_roster",
           "position": "SG",
           "age": 21,
-          "contract_type": null,
+          "contract_type": "RK-2ND",
           "cap_hit": 2296271,
-          "base_salary": null,
+          "base_salary": 2296271,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -5329,23 +5240,23 @@
           "player": "Bennedict Mathurin",
           "category": "cap_hold",
           "position": "SG",
-          "age": 24,
-          "contract_type": null,
+          "age": 24.0,
+          "contract_type": "RK-1ST",
           "cap_hit": 27562719,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "qualifying_offer": 8774590,
+          "rights": "Restricted Bird"
         },
         {
           "player": "Nicolas Batum",
           "category": "cap_hold",
           "position": "SF",
-          "age": 38,
-          "contract_type": null,
+          "age": 38.0,
+          "contract_type": "FA",
           "cap_hit": 7646184,
           "base_salary": null,
           "likely_incentives": null,
@@ -5353,14 +5264,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Early Bird"
         },
         {
           "player": "Bradley Beal",
           "category": "cap_hold",
           "position": "SG",
-          "age": 33,
-          "contract_type": null,
+          "age": 33.0,
+          "contract_type": "FA",
           "cap_hit": 6424800,
           "base_salary": null,
           "likely_incentives": null,
@@ -5368,29 +5279,29 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Jordan Miller",
           "category": "cap_hold",
           "position": "SF",
-          "age": 27,
-          "contract_type": null,
+          "age": 27.0,
+          "contract_type": "ROS",
           "cap_hit": 2738126,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "qualifying_offer": 2738126,
+          "rights": "Non-Bird"
         },
         {
           "player": "Rodney Hood",
           "category": "cap_hold",
           "position": "SF",
-          "age": 34,
-          "contract_type": null,
+          "age": 34.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -5398,14 +5309,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Patty Mills",
           "category": "cap_hold",
           "position": "PG",
-          "age": 38,
-          "contract_type": null,
+          "age": 38.0,
+          "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -5413,14 +5324,14 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Ben Simmons",
           "category": "cap_hold",
           "position": "PG",
-          "age": 30,
-          "contract_type": null,
+          "age": 30.0,
+          "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
           "likely_incentives": null,
@@ -5428,60 +5339,75 @@
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Kobe Sanders",
-          "category": "cap_hold",
-          "position": "G",
-          "age": 24,
-          "contract_type": null,
-          "cap_hit": 2385633,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Sean Pedulla",
           "category": "cap_hold",
           "position": "G",
-          "age": 24,
-          "contract_type": null,
+          "age": 24.0,
+          "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "qualifying_offer": 2185116,
+          "rights": "Two-Way"
         },
         {
           "player": "TyTy Washington Jr.",
           "category": "cap_hold",
           "position": "PG",
-          "age": 25,
-          "contract_type": null,
+          "age": 25.0,
+          "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
+          "qualifying_offer": 2185116,
+          "rights": "Two-Way"
         },
         {
           "player": "Xavier Moon",
           "category": "cap_hold",
           "position": "SG",
-          "age": 32,
-          "contract_type": null,
+          "age": 32.0,
+          "contract_type": "2W",
           "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Two-Way"
+        },
+        {
+          "player": "Norchad Omier",
+          "category": "cap_hold",
+          "position": "F",
+          "age": 25.0,
+          "contract_type": "2W",
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Non-Bird"
+        },
+        {
+          "player": "Incomplete Roster Charge",
+          "category": "cap_hold",
+          "position": null,
+          "age": null,
+          "contract_type": null,
+          "cap_hit": 1357763,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -5491,12 +5417,12 @@
           "rights": null
         },
         {
-          "player": "Norchad Omier",
+          "player": "Round 2, Pick #36",
           "category": "cap_hold",
-          "position": "F",
-          "age": 25,
+          "position": null,
+          "age": null,
           "contract_type": null,
-          "cap_hit": 2185116,
+          "cap_hit": null,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -5509,61 +5435,62 @@
       "exceptions": [
         {
           "type": "Non-Taxpayer Mid-Level",
-          "reason": null,
-          "used_on": null,
-          "expires": null,
-          "original": null,
-          "available": 15048000
+          "reason": "Rui Hachimura",
+          "used_on": "$14,000,000",
+          "expires": "End-of-Season",
+          "original": 15044000,
+          "available": 1044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
-          "expires": null,
-          "original": null,
-          "available": 5478000
+          "expires": "End-of-Season",
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
-          "reason": null,
+          "reason": "Kobe Brown trade with IND",
           "used_on": null,
-          "expires": null,
-          "original": null,
+          "expires": "2/5/2027",
+          "original": 2654880,
           "available": 2654880
         },
         {
           "type": "Trade",
-          "reason": null,
+          "reason": "Chris Paul trade with TOR",
           "used_on": null,
-          "expires": null,
-          "original": null,
+          "expires": "2/5/2027",
+          "original": 2296274,
           "available": 2296274
         },
         {
           "type": "Trade",
-          "reason": null,
+          "reason": "Ivica Zubac trade with IND",
           "used_on": null,
-          "expires": null,
-          "original": null,
+          "expires": "2/5/2027",
+          "original": 1314427,
           "available": 1314427
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 139666991,
-        "cap_holds": 130819478,
-        "total_allocations": 270486469,
-        "cap_space": -105525469,
+        "active_roster": 156289130,
+        "cap_holds": 61818319,
+        "total_allocations": 218107449,
+        "cap_space": -53146449,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 139666991,
-        "first_apron_space": 69348009,
+        "first_apron_allocations": 156289130,
+        "first_apron_space": 52725870,
         "second_apron": 221686000,
-        "second_apron_allocations": 139666991,
-        "second_apron_space": 82019009
+        "second_apron_allocations": 156289130,
+        "second_apron_space": 65396870
       },
       "reconciliation": {
-        "active_roster_row_total": 139666991,
-        "published_active_roster_total": 139666991,
+        "active_roster_row_total": 156289130,
+        "published_active_roster_total": 156289130,
         "published_less_rows": 0
       }
     },
@@ -5571,7 +5498,7 @@
       "abbreviation": "LAL",
       "name": "Los Angeles Lakers",
       "source_url": "https://www.spotrac.com/nba/los-angeles-lakers/cap/_/year/2026",
-      "source_sha256": "aebdedf038b9780a6092eca1ffa87d6dd55f5d11866e1b26b38cb914eade0c48",
+      "source_sha256": "3471e34b5e9e0bbb81d8c28d58f47b3e26b8107c63847f4cfa9873b2feab34b1",
       "pending_transactions": [
         {
           "player": "Austin Reaves",
@@ -5585,51 +5512,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 41240250,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Walker Kessler",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 25,
-          "contract_type": "S&T",
-          "cap_hit": 30232558,
-          "base_salary": 30232558,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 30232558,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Quentin Grimes",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 13953488,
-          "base_salary": 13953488,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 13953488,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Sandro Mamukelashvili",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 12093023,
-          "base_salary": 12093023,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 12093023,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5649,62 +5531,17 @@
           "rights": null
         },
         {
-          "player": "Jaden Hardy",
+          "player": "Kevon Looney",
           "category": "pending_transaction",
-          "position": "SG",
-          "age": 24,
-          "contract_type": "VET-EXT",
-          "cap_hit": 6000000,
-          "base_salary": 6000000,
+          "position": "C",
+          "age": 30,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 3876529,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 6000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "AK Okereke",
-          "category": "pending_transaction",
-          "position": "F",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Peter Suder",
-          "category": "pending_transaction",
-          "position": "G",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Chris Manon",
-          "category": "pending_transaction",
-          "position": "G",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
+          "guaranteed": 3876529,
           "qualifying_offer": null,
           "rights": null
         }
@@ -5726,6 +5563,51 @@
           "rights": null
         },
         {
+          "player": "Walker Kessler",
+          "category": "active_roster",
+          "position": "C",
+          "age": 25,
+          "contract_type": "S&T",
+          "cap_hit": 30232558,
+          "base_salary": 30232558,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 30232558,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Quentin Grimes",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 26,
+          "contract_type": "FA",
+          "cap_hit": 13953489,
+          "base_salary": 13953489,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 13953489,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Sandro Mamukelashvili",
+          "category": "active_roster",
+          "position": "C",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 13000000,
+          "base_salary": 13000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 13000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jarred Vanderbilt",
           "category": "active_roster",
           "position": "PF",
@@ -5737,6 +5619,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 12428571,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Jaden Hardy",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 24,
+          "contract_type": "VET-EXT",
+          "cap_hit": 6000000,
+          "base_salary": 6000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 6000000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5818,21 +5715,6 @@
       ],
       "cap_holds": [
         {
-          "player": "LeBron James",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 42.0,
-          "contract_type": "FA",
-          "cap_hit": 59539200,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Austin Reaves",
           "category": "cap_hold",
           "position": "SG",
@@ -5848,162 +5730,12 @@
           "rights": "Bird"
         },
         {
-          "player": "Maxi Kleber",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 35.0,
-          "contract_type": "VET-EXT",
-          "cap_hit": 20900000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
-          "player": "Carmelo Anthony",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 42.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Avery Bradley",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 36.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Jared Dudley",
-          "category": "cap_hold",
-          "position": "SF",
-          "age": 41.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Early Bird"
-        },
-        {
-          "player": "Wayne Ellington",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 39.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Dwight Howard",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 41.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Markieff Morris",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 37.0,
-          "contract_type": null,
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
-          "player": "Nick Smith Jr.",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 22.0,
-          "contract_type": "ROS",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Drew Timme",
-          "category": "cap_hold",
-          "position": "F",
-          "age": 26.0,
-          "contract_type": "2W",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
-          "player": "Dion Waiters",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 35.0,
-          "contract_type": "ROS",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Incomplete Roster Charge",
           "category": "cap_hold",
           "position": null,
           "age": null,
           "contract_type": null,
-          "cap_hit": 5431052,
+          "cap_hit": 1357763,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -6033,21 +5765,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 87984499,
-        "cap_holds": 180055211,
-        "total_allocations": 268039710,
-        "cap_space": -103078710,
+        "active_roster": 143066546,
+        "cap_holds": 22264124,
+        "total_allocations": 165330670,
+        "cap_space": -369670,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 87984499,
-        "first_apron_space": 121030501,
-        "second_apron_hard_cap": true,
+        "first_apron_allocations": 143066546,
+        "first_apron_space": 65948454,
         "second_apron": 221686000,
-        "second_apron_allocations": 87984499,
-        "second_apron_space": 133701501
+        "second_apron_allocations": 143066546,
+        "second_apron_space": 78619454
       },
       "reconciliation": {
-        "active_roster_row_total": 87984499,
-        "published_active_roster_total": 87984499,
+        "active_roster_row_total": 143066546,
+        "published_active_roster_total": 143066546,
         "published_less_rows": 0
       }
     },
@@ -6055,54 +5787,7 @@
       "abbreviation": "MEM",
       "name": "Memphis Grizzlies",
       "source_url": "https://www.spotrac.com/nba/memphis-grizzlies/cap/_/year/2026",
-      "source_sha256": "51516c217f85b8f896949f5685ea61e2292d2e1fca612153ccab244e73d769e6",
-      "pending_transactions": [
-        {
-          "player": "Isaiah Stewart",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 25,
-          "contract_type": "RK-EXT",
-          "cap_hit": 15000000,
-          "base_salary": 15000000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 15000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Quinten Post",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 8285714,
-          "base_salary": 8285714,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 8285714,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "AJ Johnson",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": 22,
-          "contract_type": "RK-1ST",
-          "cap_hit": 3237120,
-          "base_salary": 3237120,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3237120,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "254b64ddc79961601b2bc9ed7cc72c03a16b3b85641c723a873124785e710f3b",
       "active_roster": [
         {
           "player": "Jerami Grant",
@@ -6135,6 +5820,21 @@
           "rights": null
         },
         {
+          "player": "Isaiah Stewart",
+          "category": "active_roster",
+          "position": "C",
+          "age": 25,
+          "contract_type": "RK-EXT",
+          "cap_hit": 15000000,
+          "base_salary": 15000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 15000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Ty Jerome",
           "category": "active_roster",
           "position": "SG",
@@ -6146,6 +5846,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 9220050,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Quinten Post",
+          "category": "active_roster",
+          "position": "C",
+          "age": 26,
+          "contract_type": "FA",
+          "cap_hit": 8285714,
+          "base_salary": 8285714,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 8285714,
           "qualifying_offer": null,
           "rights": null
         },
@@ -6195,6 +5910,21 @@
           "rights": null
         },
         {
+          "player": "D'Angelo Russell",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 30,
+          "contract_type": "FA",
+          "cap_hit": 5969250,
+          "base_salary": 5969250,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5969250,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Kris Murray",
           "category": "active_roster",
           "position": "PF",
@@ -6236,6 +5966,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "AJ Johnson",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 22,
+          "contract_type": "RK-1ST",
+          "cap_hit": 3237120,
+          "base_salary": 3237120,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3237120,
           "qualifying_offer": null,
           "rights": null
         },
@@ -6394,21 +6139,6 @@
           "rights": "1st Round Pick"
         },
         {
-          "player": "Rayan Rupert",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 22.0,
-          "contract_type": "2W",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Round 1, Pick #3",
           "category": "cap_hold",
           "position": null,
@@ -6445,16 +6175,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -6475,20 +6205,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 127589456,
-        "cap_holds": 18049661,
-        "total_allocations": 149803167,
-        "cap_space": 15157833,
+        "active_roster": 143074497,
+        "cap_holds": 15600240,
+        "total_allocations": 162838787,
+        "cap_space": 2122213,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 131753506,
-        "first_apron_space": 77261494,
+        "first_apron_allocations": 149538547,
+        "first_apron_space": 59476453,
         "second_apron": 221686000,
-        "second_apron_allocations": 131753506,
-        "second_apron_space": 89932494
+        "second_apron_allocations": 149538547,
+        "second_apron_space": 72147453
       },
       "reconciliation": {
-        "active_roster_row_total": 127589456,
-        "published_active_roster_total": 127589456,
+        "active_roster_row_total": 143074497,
+        "published_active_roster_total": 143074497,
         "published_less_rows": 0
       }
     },
@@ -6496,39 +6227,7 @@
       "abbreviation": "MIA",
       "name": "Miami Heat",
       "source_url": "https://www.spotrac.com/nba/miami-heat/cap/_/year/2026",
-      "source_sha256": "cbf6f6d8ad9ceec58b5ef3b0be8fedfc001f8f45413c5fefe7f7c153b67ada08",
-      "pending_transactions": [
-        {
-          "player": "Tim Hardaway Jr.",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": 34,
-          "contract_type": "FA",
-          "cap_hit": 6500000,
-          "base_salary": 6500000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 6500000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Tre Donaldson",
-          "category": "pending_transaction",
-          "position": "G",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "db5f5bfebb3f01591a153cbd8fbd416a1693e4e4c40432703c6650fe0501d809",
       "active_roster": [
         {
           "player": "Giannis Antetokounmpo",
@@ -6621,6 +6320,21 @@
           "rights": null
         },
         {
+          "player": "Tim Hardaway Jr.",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 34,
+          "contract_type": "FA",
+          "cap_hit": 6065000,
+          "base_salary": 6065000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 6065000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Myron Gardner",
           "category": "active_roster",
           "position": "G",
@@ -6686,7 +6400,7 @@
           "player": "Alec Burks",
           "category": "cap_hold",
           "position": "SG",
-          "age": 35.0,
+          "age": 35,
           "contract_type": "FA",
           "cap_hit": 2457009,
           "base_salary": null,
@@ -6701,7 +6415,7 @@
           "player": "Josh Christopher",
           "category": "cap_hold",
           "position": "SG",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "2W",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6716,7 +6430,7 @@
           "player": "Udonis Haslem",
           "category": "cap_hold",
           "position": "PF",
-          "age": 46.0,
+          "age": 46,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6731,7 +6445,7 @@
           "player": "Keshad Johnson",
           "category": "cap_hold",
           "position": "PF",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6746,7 +6460,7 @@
           "player": "Trevor Keels",
           "category": "cap_hold",
           "position": "SG",
-          "age": 23.0,
+          "age": 23,
           "contract_type": "2W",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6761,7 +6475,7 @@
           "player": "Jordan Mickey",
           "category": "cap_hold",
           "position": "PF",
-          "age": 32.0,
+          "age": 32,
           "contract_type": null,
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6776,7 +6490,7 @@
           "player": "Dwyane Wade",
           "category": "cap_hold",
           "position": "SG",
-          "age": 45.0,
+          "age": 45,
           "contract_type": null,
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6791,7 +6505,7 @@
           "player": "Jahmir Young",
           "category": "cap_hold",
           "position": "PG",
-          "age": 26.0,
+          "age": 26,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -6806,7 +6520,7 @@
           "player": "Vladislav Goldin",
           "category": "cap_hold",
           "position": "C",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "2W",
           "cap_hit": -11,
           "base_salary": null,
@@ -6816,62 +6530,24 @@
           "guaranteed": null,
           "qualifying_offer": -11,
           "rights": "Two-Way"
-        },
-        {
-          "player": "Incomplete Roster Charge",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 1357763,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Round 1, Pick #13",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 5502000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "exceptions": [
         {
           "type": "Non-Taxpayer Mid-Level",
-          "reason": null,
-          "used_on": null,
+          "reason": "Tim Hardaway Jr.",
+          "used_on": "$6,065,000",
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 8979000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
-        },
-        {
-          "type": "Trade",
-          "reason": "Duncan Robinson trade with DET",
-          "used_on": null,
-          "expires": "7/7/2026",
-          "original": 16834692,
-          "available": 16834692
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -6884,21 +6560,38 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 191150694,
-        "cap_holds": 51684845,
-        "total_allocations": 242835539,
-        "cap_space": -77874539,
+        "active_roster": 197215694,
+        "cap_holds": 50327082,
+        "total_allocations": 247542776,
+        "cap_space": -82581776,
         "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 192508457,
-        "first_apron_space": 16506543,
+        "first_apron_allocations": 198573457,
+        "first_apron_space": 10441543,
         "second_apron": 221686000,
-        "second_apron_allocations": 192508457,
-        "second_apron_space": 29177543
+        "second_apron_allocations": 198573457,
+        "second_apron_space": 23112543
       },
+      "pending_transactions": [
+        {
+          "player": "Tre Donaldson",
+          "category": "pending_transaction",
+          "position": "G",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
       "reconciliation": {
-        "active_roster_row_total": 191150694,
-        "published_active_roster_total": 191150694,
+        "active_roster_row_total": 197215694,
+        "published_active_roster_total": 197215694,
         "published_less_rows": 0
       }
     },
@@ -6906,7 +6599,7 @@
       "abbreviation": "MIL",
       "name": "Milwaukee Bucks",
       "source_url": "https://www.spotrac.com/nba/milwaukee-bucks/cap/_/year/2026",
-      "source_sha256": "7d7451feb49b9895cd8ddf3e4a894ad339e94730413f87edbb3153c56649b48d",
+      "source_sha256": "3643d03ebbdbc04f036592a87dd3d69cefc945d901ed96ed92459da8dc73b9fd",
       "pending_transactions": [
         {
           "player": "Ousmane Dieng",
@@ -6986,6 +6679,21 @@
           "rights": null
         },
         {
+          "player": "Caris LeVert",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 32,
+          "contract_type": "FA",
+          "cap_hit": 14809200,
+          "base_salary": 14809200,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 14809200,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "AJ Green",
           "category": "active_roster",
           "position": "SG",
@@ -7027,6 +6735,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5939141,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Nate Ament",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 20,
+          "contract_type": "RK-1ST",
+          "cap_hit": 5502000,
+          "base_salary": 5502000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5502000,
           "qualifying_offer": null,
           "rights": null
         },
@@ -7087,36 +6810,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 3841680,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Gary Harris",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 32,
-          "contract_type": "FA",
-          "cap_hit": 3815861,
-          "base_salary": 3815861,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3815861,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Taurean Prince",
-          "category": "active_roster",
-          "position": "PF",
-          "age": 32,
-          "contract_type": "FA",
-          "cap_hit": 3815861,
-          "base_salary": 3815861,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3815861,
           "qualifying_offer": null,
           "rights": null
         },
@@ -7200,21 +6893,6 @@
           "rights": "Bird"
         },
         {
-          "player": "Nate Ament",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 20,
-          "contract_type": null,
-          "cap_hit": 5503320,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "1st Round Pick"
-        },
-        {
           "player": "Gary Trent Jr.",
           "category": "cap_hold",
           "position": "SG",
@@ -7296,35 +6974,35 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 132153592,
-        "cap_holds": 39485871,
-        "total_allocations": 194822733,
-        "cap_space": -29861733,
+        "active_roster": 144833070,
+        "cap_holds": 33982551,
+        "total_allocations": 201998891,
+        "cap_space": -37037891,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 160111862,
-        "first_apron_space": 48903138,
-        "second_apron_hard_cap": true,
+        "first_apron_allocations": 172791340,
+        "first_apron_space": 36223660,
         "second_apron": 221686000,
-        "second_apron_allocations": 160111862,
-        "second_apron_space": 61574138
+        "second_apron_allocations": 172791340,
+        "second_apron_space": 48894660
       },
       "reconciliation": {
-        "active_roster_row_total": 132153592,
-        "published_active_roster_total": 132153592,
+        "active_roster_row_total": 144833070,
+        "published_active_roster_total": 144833070,
         "published_less_rows": 0
       }
     },
@@ -7332,7 +7010,7 @@
       "abbreviation": "MIN",
       "name": "Minnesota Timberwolves",
       "source_url": "https://www.spotrac.com/nba/minnesota-timberwolves/cap/_/year/2026",
-      "source_sha256": "2f82dcc63be6440663a9d40e198d87e2cff23c410674b4233da0561d5963a14a",
+      "source_sha256": "f65bc6acd53c26d3ccea2dd59c8b1dceeae1fdd9aac6fc3d1e9ef4e5ac1f3f1c",
       "pending_transactions": [
         {
           "player": "LaMelo Ball",
@@ -7594,6 +7272,21 @@
           "rights": "Restricted Bird"
         },
         {
+          "player": "Julian Phillips",
+          "category": "cap_hold",
+          "position": "SF",
+          "age": 23.0,
+          "contract_type": "RK-2ND",
+          "cap_hit": 2450000,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Bird"
+        },
+        {
           "player": "Aaron Brooks",
           "category": "cap_hold",
           "position": "PG",
@@ -7705,16 +7398,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -7736,13 +7429,12 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 190827543,
-        "cap_holds": 63659589,
-        "total_allocations": 254487132,
-        "cap_space": -89526132,
+        "cap_holds": 63660168,
+        "total_allocations": 254487711,
+        "cap_space": -89526711,
         "first_apron": 209015000,
         "first_apron_allocations": 192577543,
         "first_apron_space": 16437457,
-        "second_apron_hard_cap": true,
         "second_apron": 221686000,
         "second_apron_allocations": 192577543,
         "second_apron_space": 29108457
@@ -7757,7 +7449,7 @@
       "abbreviation": "NOP",
       "name": "New Orleans Pelicans",
       "source_url": "https://www.spotrac.com/nba/new-orleans-pelicans/cap/_/year/2026",
-      "source_sha256": "546dd4161b1bf740510b707c66bcde12775127fa07c5fbf39a7bf1792a6f0e19",
+      "source_sha256": "e4f6d18529ebe4c8d81d2c86b9bb6af70669c47d7ec42b3d4c011c5949a96f5a",
       "pending_transactions": [
         {
           "player": "DeAndre Jordan",
@@ -7771,6 +7463,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 3876529,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Hunter Dickinson",
+          "category": "pending_transaction",
+          "position": "C",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         }
@@ -7974,21 +7681,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Kevon Looney",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 30.0,
-          "contract_type": "FA",
-          "cap_hit": 9600000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Willy Hernangomez",
           "category": "cap_hold",
           "position": "C",
@@ -8062,21 +7754,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Non-Bird"
-        },
-        {
-          "player": "Hunter Dickinson",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 26.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": "Two-Way"
         },
         {
           "player": "Keion Brooks Jr.",
@@ -8175,16 +7852,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -8198,9 +7875,9 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 188330791,
-        "cap_holds": 39600605,
-        "total_allocations": 227931396,
-        "cap_space": -62970396,
+        "cap_holds": 34966068,
+        "total_allocations": 223296859,
+        "cap_space": -58335859,
         "first_apron": 209015000,
         "first_apron_allocations": 194749592,
         "first_apron_space": 14265408,
@@ -8218,24 +7895,7 @@
       "abbreviation": "NYK",
       "name": "New York Knicks",
       "source_url": "https://www.spotrac.com/nba/new-york-knicks/cap/_/year/2026",
-      "source_sha256": "6171c4f4c8dc541a7ffc13958f000f50cd27fb27da9c4863362ed622896f6461",
-      "pending_transactions": [
-        {
-          "player": "Landry Shamet",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": 29,
-          "contract_type": "FA",
-          "cap_hit": 5357143,
-          "base_salary": 5357143,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5357143,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "51706325e75f5e53ef02dd7a4071d9d4dc108337e4624951e26e696b264a7534",
       "active_roster": [
         {
           "player": "Karl-Anthony Towns",
@@ -8313,17 +7973,32 @@
           "rights": null
         },
         {
+          "player": "Landry Shamet",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 29,
+          "contract_type": "FA",
+          "cap_hit": 5490967,
+          "base_salary": 5490967,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5490967,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jose Alvarado",
           "category": "active_roster",
           "position": "PG",
           "age": 28,
           "contract_type": "FA",
-          "cap_hit": 4500000,
-          "base_salary": 4500000,
+          "cap_hit": 4439656,
+          "base_salary": 4439656,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 4500000,
+          "guaranteed": 4439656,
           "qualifying_offer": null,
           "rights": null
         },
@@ -8358,6 +8033,21 @@
           "rights": null
         },
         {
+          "player": "Mohamed Diawara",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 21,
+          "contract_type": "FA",
+          "cap_hit": 2622139,
+          "base_salary": 2622139,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 2622139,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Andre Drummond",
           "category": "active_roster",
           "position": "C",
@@ -8386,21 +8076,6 @@
           "guaranteed": 2296271,
           "qualifying_offer": null,
           "rights": null
-        },
-        {
-          "player": "Mohamed Diawara",
-          "category": "active_roster",
-          "position": "PF",
-          "age": 21,
-          "contract_type": "FA",
-          "cap_hit": 2232143,
-          "base_salary": 2232143,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2232143,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "cap_holds": [
@@ -8408,7 +8083,7 @@
           "player": "Petteri Koponen",
           "category": "cap_hold",
           "position": "G",
-          "age": 38.0,
+          "age": 38,
           "contract_type": "RK",
           "cap_hit": 3173040,
           "base_salary": null,
@@ -8423,7 +8098,7 @@
           "player": "Jordan Clarkson",
           "category": "cap_hold",
           "position": "SG",
-          "age": 34.0,
+          "age": 34,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -8438,7 +8113,7 @@
           "player": "Trey Jemison",
           "category": "cap_hold",
           "position": "PF",
-          "age": 27.0,
+          "age": 27,
           "contract_type": "2W",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -8453,7 +8128,7 @@
           "player": "Kevin McCullar Jr.",
           "category": "cap_hold",
           "position": "SG",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "2W",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -8465,25 +8140,10 @@
           "rights": "Early Bird"
         },
         {
-          "player": "Landry Shamet",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 29.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jeremy Sochan",
           "category": "cap_hold",
           "position": "PF",
-          "age": 23.0,
+          "age": 23,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -8498,7 +8158,7 @@
           "player": "P.J. Tucker",
           "category": "cap_hold",
           "position": "PF",
-          "age": 41.0,
+          "age": 41,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -8513,7 +8173,7 @@
           "player": "Dillon Jones",
           "category": "cap_hold",
           "position": "SF",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -8523,36 +8183,6 @@
           "guaranteed": null,
           "qualifying_offer": 2185116,
           "rights": "Two-Way"
-        },
-        {
-          "player": "Incomplete Roster Charge",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 1357763,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Round 2, Pick #31",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "exceptions": [
@@ -8575,20 +8205,20 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 210142192,
-        "cap_holds": 48475503,
-        "total_allocations": 258617695,
-        "cap_space": -93656695,
+        "active_roster": 215962811,
+        "cap_holds": 17605261,
+        "total_allocations": 233568072,
+        "cap_space": -68607072,
         "first_apron": 209015000,
-        "first_apron_allocations": 210142192,
-        "first_apron_space": -1127192,
+        "first_apron_allocations": 215962811,
+        "first_apron_space": -6947811,
         "second_apron": 221686000,
-        "second_apron_allocations": 210142192,
-        "second_apron_space": 11543808
+        "second_apron_allocations": 215962811,
+        "second_apron_space": 5723189
       },
       "reconciliation": {
-        "active_roster_row_total": 210142192,
-        "published_active_roster_total": 210142192,
+        "active_roster_row_total": 215962811,
+        "published_active_roster_total": 215962811,
         "published_less_rows": 0
       }
     },
@@ -8596,84 +8226,7 @@
       "abbreviation": "OKC",
       "name": "Oklahoma City Thunder",
       "source_url": "https://www.spotrac.com/nba/oklahoma-city-thunder/cap/_/year/2026",
-      "source_sha256": "8ed185b149306ceb2d861a7be9d4383b9f2f19eaa46f1335d33444d75166a920",
-      "pending_transactions": [
-        {
-          "player": "Isaiah Hartenstein",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 25000000,
-          "base_salary": 25000000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 25000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Kenrich Williams",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 32,
-          "contract_type": "FA",
-          "cap_hit": 5000000,
-          "base_salary": 5000000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Josh Dix",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Brooks Barnhizer",
-          "category": "pending_transaction",
-          "position": "SF",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Otega Oweh",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "d4de877992f739a9053f09843a4a80538f41bec7f9725fde04acef30bb800af6",
       "active_roster": [
         {
           "player": "Chet Holmgren",
@@ -8717,6 +8270,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 40806150,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Isaiah Hartenstein",
+          "category": "active_roster",
+          "position": "C",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 23148148,
+          "base_salary": 23148148,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 23148148,
           "qualifying_offer": null,
           "rights": null
         },
@@ -8811,6 +8379,21 @@
           "rights": null
         },
         {
+          "player": "Kenrich Williams",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 32,
+          "contract_type": "FA",
+          "cap_hit": 5000000,
+          "base_salary": 5000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Thomas Sorber",
           "category": "active_roster",
           "position": "C",
@@ -8873,36 +8456,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Isaiah Hartenstein",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 42750000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
-          "player": "Kenrich Williams",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 32,
-          "contract_type": "VET-EXT",
-          "cap_hit": 13609700,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Alex Ducas",
           "category": "cap_hold",
           "position": "G",
@@ -8930,20 +8483,37 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 203853566,
-        "cap_holds": 58544816,
-        "total_allocations": 262398382,
-        "cap_space": -97437382,
+        "active_roster": 232001714,
+        "cap_holds": 2185116,
+        "total_allocations": 234186830,
+        "cap_space": -69225830,
         "first_apron": 209015000,
-        "first_apron_allocations": 204853566,
-        "first_apron_space": 4161434,
+        "first_apron_allocations": 233501714,
+        "first_apron_space": -24486714,
         "second_apron": 221686000,
-        "second_apron_allocations": 204853566,
-        "second_apron_space": 16832434
+        "second_apron_allocations": 233501714,
+        "second_apron_space": -11815714
       },
+      "pending_transactions": [
+        {
+          "player": "Josh Dix",
+          "category": "pending_transaction",
+          "position": "SG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
       "reconciliation": {
-        "active_roster_row_total": 203853566,
-        "published_active_roster_total": 203853566,
+        "active_roster_row_total": 232001714,
+        "published_active_roster_total": 232001714,
         "published_less_rows": 0
       }
     },
@@ -8951,7 +8521,7 @@
       "abbreviation": "ORL",
       "name": "Orlando Magic",
       "source_url": "https://www.spotrac.com/nba/orlando-magic/cap/_/year/2026",
-      "source_sha256": "ab63190b25e1976e5e8f9e299162c22da29232932b6cbe4cf19c3f79c109469b",
+      "source_sha256": "2488020a6ff90a3bb66ea5c1256de2b78a9649f7f609be7ca56c061b143a177d",
       "pending_transactions": [
         {
           "player": "Moritz Wagner",
@@ -9233,7 +8803,7 @@
           "player": "Moritz Wagner",
           "category": "cap_hold",
           "position": "C",
-          "age": 29.0,
+          "age": 29,
           "contract_type": "FA",
           "cap_hit": 9500000,
           "base_salary": null,
@@ -9248,7 +8818,7 @@
           "player": "Jett Howard",
           "category": "cap_hold",
           "position": "SG",
-          "age": 23.0,
+          "age": 23,
           "contract_type": "RK-1ST",
           "cap_hit": 7337939,
           "base_salary": null,
@@ -9263,7 +8833,7 @@
           "player": "Cory Joseph",
           "category": "cap_hold",
           "position": "PG",
-          "age": 35.0,
+          "age": 35,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -9275,25 +8845,10 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Colin Castleton",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 26.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": null
-        },
-        {
           "player": "Mac McClung",
           "category": "cap_hold",
           "position": "PG",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -9308,7 +8863,7 @@
           "player": "Trevelin Queen",
           "category": "cap_hold",
           "position": "SG",
-          "age": 29.0,
+          "age": 29,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -9318,21 +8873,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Two-Way"
-        },
-        {
-          "player": "Round 2, Pick #46",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "exceptions": [
@@ -9356,9 +8896,9 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 209865321,
-        "cap_holds": 25842708,
-        "total_allocations": 243708029,
-        "cap_space": -78747029,
+        "cap_holds": 23657592,
+        "total_allocations": 241522913,
+        "cap_space": -76561913,
         "first_apron": 209015000,
         "first_apron_allocations": 219189751,
         "first_apron_space": -10174751,
@@ -9376,24 +8916,7 @@
       "abbreviation": "PHI",
       "name": "Philadelphia 76ers",
       "source_url": "https://www.spotrac.com/nba/philadelphia-76ers/cap/_/year/2026",
-      "source_sha256": "18fd12ae298f52d7ff0a8829914f0507920ef63f7e8a69d3b038d634eaee89ef",
-      "pending_transactions": [
-        {
-          "player": "Ariel Hukporti",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 24,
-          "contract_type": null,
-          "cap_hit": 3400000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "a65e9c87ff98d483448f6cac4b2ac5414cb189e31c075b552b8a298716b00c04",
       "active_roster": [
         {
           "player": "Joel Embiid",
@@ -9507,6 +9030,21 @@
           "age": 23,
           "contract_type": null,
           "cap_hit": 3415000,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Ariel Hukporti",
+          "category": "active_roster",
+          "position": "C",
+          "age": 24,
+          "contract_type": null,
+          "cap_hit": 3400000,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -9713,7 +9251,7 @@
           "used_on": null,
           "expires": null,
           "original": null,
-          "available": 5478000
+          "available": 2077000
         },
         {
           "type": "Trade",
@@ -9734,20 +9272,38 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 202195978,
-        "cap_holds": 49151719,
-        "total_allocations": 251347697,
-        "cap_space": -86386697,
+        "active_roster": 205595978,
+        "cap_holds": 16617337,
+        "total_allocations": 222213315,
+        "cap_space": -57252315,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 202195978,
-        "first_apron_space": 6819022,
+        "first_apron_allocations": 205595978,
+        "first_apron_space": 3419022,
         "second_apron": 221686000,
-        "second_apron_allocations": 202195978,
-        "second_apron_space": 19490022
+        "second_apron_allocations": 205595978,
+        "second_apron_space": 16090022
       },
+      "pending_transactions": [
+        {
+          "player": "Rayan Rupert",
+          "category": "pending_transaction",
+          "position": "SG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
       "reconciliation": {
-        "active_roster_row_total": 202195978,
-        "published_active_roster_total": 202195978,
+        "active_roster_row_total": 205595978,
+        "published_active_roster_total": 205595978,
         "published_less_rows": 0
       }
     },
@@ -9755,7 +9311,7 @@
       "abbreviation": "PHX",
       "name": "Phoenix Suns",
       "source_url": "https://www.spotrac.com/nba/phoenix-suns/cap/_/year/2026",
-      "source_sha256": "887ea0c8a6ae9a3ad94a3e6d82a55cd4eb7c8ae1e5ede8311b3dd9560d48f317",
+      "source_sha256": "7f72ec0cd6dc26ee9e6104b11e248f241dac589b9c25f5c16f97197256d21ca8",
       "pending_transactions": [
         {
           "player": "Miles Bridges",
@@ -9773,36 +9329,6 @@
           "rights": null
         },
         {
-          "player": "Mark Williams",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 25,
-          "contract_type": "FA",
-          "cap_hit": 11728395,
-          "base_salary": 11728395,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 11728395,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Collin Gillespie",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 10714286,
-          "base_salary": 10714286,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 10714286,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Luke Kennard",
           "category": "pending_transaction",
           "position": "SG",
@@ -9814,21 +9340,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 6368000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Jordan Goodwin",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 5864198,
-          "base_salary": 5864198,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5864198,
           "qualifying_offer": null,
           "rights": null
         },
@@ -9910,6 +9421,36 @@
           "rights": null
         },
         {
+          "player": "Mark Williams",
+          "category": "active_roster",
+          "position": "C",
+          "age": 25,
+          "contract_type": "FA",
+          "cap_hit": 11728395,
+          "base_salary": 11728395,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 11728395,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Collin Gillespie",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 10714286,
+          "base_salary": 10714286,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 10714286,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Khaman Maluach",
           "category": "active_roster",
           "position": "C",
@@ -9921,6 +9462,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 6316680,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Jordan Goodwin",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 5864198,
+          "base_salary": 5864198,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5864198,
           "qualifying_offer": null,
           "rights": null
         },
@@ -10064,21 +9620,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Mark Williams",
-          "category": "cap_hold",
-          "position": "C",
-          "age": 25.0,
-          "contract_type": "RK-1ST",
-          "cap_hit": 18829593,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 9615393,
-          "rights": "Restricted Bird"
-        },
-        {
           "player": "Bol Bol",
           "category": "cap_hold",
           "position": "PF",
@@ -10107,36 +9648,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Non-Bird"
-        },
-        {
-          "player": "Collin Gillespie",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 27.0,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Early Bird"
-        },
-        {
-          "player": "Jordan Goodwin",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 28.0,
-          "contract_type": "ROS",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Early Bird"
         },
         {
           "player": "Damion Lee",
@@ -10229,21 +9740,6 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Koby Brea",
-          "category": "cap_hold",
-          "position": "G",
-          "age": 24.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": "Two-Way"
-        },
-        {
           "player": "Udoka Azubuike",
           "category": "cap_hold",
           "position": "C",
@@ -10310,16 +9806,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -10340,21 +9836,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 165400226,
-        "cap_holds": 52064267,
-        "total_allocations": 240661544,
-        "cap_space": -75700544,
+        "active_roster": 193707105,
+        "cap_holds": 26150716,
+        "total_allocations": 243054872,
+        "cap_space": -78093872,
         "first_apron": 209015000,
-        "first_apron_allocations": 189097277,
-        "first_apron_space": 19917723,
+        "first_apron_allocations": 217404156,
+        "first_apron_space": -8389156,
         "second_apron_hard_cap": true,
         "second_apron": 221686000,
-        "second_apron_allocations": 189097277,
-        "second_apron_space": 32588723
+        "second_apron_allocations": 217404156,
+        "second_apron_space": 4281844
       },
       "reconciliation": {
-        "active_roster_row_total": 165400226,
-        "published_active_roster_total": 165400226,
+        "active_roster_row_total": 193707105,
+        "published_active_roster_total": 193707105,
         "published_less_rows": 0
       }
     },
@@ -10362,7 +9858,7 @@
       "abbreviation": "POR",
       "name": "Portland Trail Blazers",
       "source_url": "https://www.spotrac.com/nba/portland-trail-blazers/cap/_/year/2026",
-      "source_sha256": "7f81bb28df27b152a16dd0951b74a4487725521743e0da0159becd91945fe2bd",
+      "source_sha256": "10049834b47346691de4d77c098b61c8e4b0c2f1bbc29875260baf92ea1ac067",
       "active_roster": [
         {
           "player": "Ja Morant",
@@ -10562,21 +10058,6 @@
       ],
       "dead_money": [
         {
-          "player": "Rayan Rupert",
-          "category": "dead_money",
-          "position": "SG",
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 2221677,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Didi Louzada",
           "category": "dead_money",
           "position": "SF",
@@ -10705,16 +10186,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
@@ -10723,6 +10204,7 @@
         "cap_holds": 35848611,
         "total_allocations": 227361615,
         "cap_space": -62400615,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
         "first_apron_allocations": 191513004,
         "first_apron_space": 17501996,
@@ -10757,23 +10239,8 @@
       "abbreviation": "SAC",
       "name": "Sacramento Kings",
       "source_url": "https://www.spotrac.com/nba/sacramento-kings/cap/_/year/2026",
-      "source_sha256": "57b1d460dc8d3f83cdea63ee56f390a9de7f2b4c1f1d3150b1cc23f367499de9",
+      "source_sha256": "ee01527e0c664138ad99f162d9ea96422123fc8b84346fbd6cc06d30ba9c1753",
       "pending_transactions": [
-        {
-          "player": "Precious Achiuwa",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 5609756,
-          "base_salary": 5609756,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5609756,
-          "qualifying_offer": null,
-          "rights": null
-        },
         {
           "player": "Daeqwon Plowden",
           "category": "pending_transaction",
@@ -10897,6 +10364,21 @@
           "rights": null
         },
         {
+          "player": "Precious Achiuwa",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 5477000,
+          "base_salary": 5477000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5477000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Nique Clifford",
           "category": "active_roster",
           "position": "SF",
@@ -10976,25 +10458,10 @@
       ],
       "cap_holds": [
         {
-          "player": "Precious Achiuwa",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 27.0,
-          "contract_type": "ROS",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Jae Crowder",
           "category": "cap_hold",
           "position": "SF",
-          "age": 36.0,
+          "age": 36,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11009,7 +10476,7 @@
           "player": "Drew Eubanks",
           "category": "cap_hold",
           "position": "C",
-          "age": 29.0,
+          "age": 29,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11024,7 +10491,7 @@
           "player": "Markelle Fultz",
           "category": "cap_hold",
           "position": "PG",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11039,7 +10506,7 @@
           "player": "Killian Hayes",
           "category": "cap_hold",
           "position": "PG",
-          "age": 25.0,
+          "age": 25,
           "contract_type": "ROS",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11054,7 +10521,7 @@
           "player": "Doug McDermott",
           "category": "cap_hold",
           "position": "SF",
-          "age": 35.0,
+          "age": 35,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11069,7 +10536,7 @@
           "player": "JaVale McGee",
           "category": "cap_hold",
           "position": "C",
-          "age": 39.0,
+          "age": 39,
           "contract_type": "FA",
           "cap_hit": 2449421,
           "base_salary": null,
@@ -11084,7 +10551,7 @@
           "player": "Patrick Baldwin Jr.",
           "category": "cap_hold",
           "position": "SF",
-          "age": 24.0,
+          "age": 24,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -11099,7 +10566,7 @@
           "player": "Daeqwon Plowden",
           "category": "cap_hold",
           "position": "G",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -11114,7 +10581,7 @@
           "player": "Isaiah Stevens",
           "category": "cap_hold",
           "position": "PG",
-          "age": 26.0,
+          "age": 26,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -11129,7 +10596,7 @@
           "player": "Jordan Ford",
           "category": "cap_hold",
           "position": "PG",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -11144,7 +10611,7 @@
           "player": "Mason Jones",
           "category": "cap_hold",
           "position": "SG",
-          "age": 28.0,
+          "age": 28,
           "contract_type": "2W",
           "cap_hit": 2185116,
           "base_salary": null,
@@ -11154,21 +10621,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Two-Way"
-        },
-        {
-          "player": "Incomplete Roster Charge",
-          "category": "cap_hold",
-          "position": null,
-          "age": null,
-          "contract_type": null,
-          "cap_hit": 1357763,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         }
       ],
       "exceptions": [
@@ -11179,6 +10631,14 @@
           "expires": "End-of-Season",
           "original": 6065000,
           "available": 6065000
+        },
+        {
+          "type": "Bi-Annual",
+          "reason": "Precious Achiuwa",
+          "used_on": "$5,477,000",
+          "expires": "End-of-Season",
+          "original": 5477000,
+          "available": 0
         },
         {
           "type": "Trade",
@@ -11207,20 +10667,21 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 182213220,
-        "cap_holds": 44629290,
-        "total_allocations": 236842510,
-        "cap_space": -71881510,
+        "active_roster": 187690220,
+        "cap_holds": 40822106,
+        "total_allocations": 238512326,
+        "cap_space": -73551326,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 197420983,
-        "first_apron_space": 11594017,
+        "first_apron_allocations": 202897983,
+        "first_apron_space": 6117017,
         "second_apron": 221686000,
-        "second_apron_allocations": 197420983,
-        "second_apron_space": 24265017
+        "second_apron_allocations": 202897983,
+        "second_apron_space": 18788017
       },
       "reconciliation": {
-        "active_roster_row_total": 182213220,
-        "published_active_roster_total": 182213220,
+        "active_roster_row_total": 187690220,
+        "published_active_roster_total": 187690220,
         "published_less_rows": 0
       }
     },
@@ -11228,54 +10689,7 @@
       "abbreviation": "SAS",
       "name": "San Antonio Spurs",
       "source_url": "https://www.spotrac.com/nba/san-antonio-spurs/cap/_/year/2026",
-      "source_sha256": "b4b87f33343e53bf86c1f81dfa6a29b73e64eb2866bf8f81406cacc15c6fb47d",
-      "pending_transactions": [
-        {
-          "player": "Harrison Barnes",
-          "category": "pending_transaction",
-          "position": "PF",
-          "age": 34,
-          "contract_type": "FA",
-          "cap_hit": 8000000,
-          "base_salary": 8000000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 8000000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Ja'Kobi Gillespie",
-          "category": "pending_transaction",
-          "position": "SG",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Maliq Brown",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "bcca210233c25dcfc73fc8ed3af74bf253e6ebb3210836aec248498b1c645432",
       "active_roster": [
         {
           "player": "De'Aaron Fox",
@@ -11413,6 +10827,21 @@
           "rights": null
         },
         {
+          "player": "Harrison Barnes",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 34,
+          "contract_type": "FA",
+          "cap_hit": 8000000,
+          "base_salary": 8000000,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 8000000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Carter Bryant",
           "category": "active_roster",
           "position": "PF",
@@ -11459,21 +10888,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Harrison Barnes",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 34.0,
-          "contract_type": "VET-EXT",
-          "cap_hit": 28500000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
         {
           "player": "Kelly Olynyk",
           "category": "cap_hold",
@@ -11598,38 +11012,70 @@
       "exceptions": [
         {
           "type": "Non-Taxpayer Mid-Level",
-          "reason": null,
-          "used_on": null,
+          "reason": "Tobias Harris",
+          "used_on": "$15,044,000",
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 0
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         }
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 187830546,
-        "cap_holds": 68213648,
-        "total_allocations": 256044194,
-        "cap_space": -91083194,
+        "active_roster": 195830546,
+        "cap_holds": 39713648,
+        "total_allocations": 235544194,
+        "cap_space": -70583194,
         "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 190530546,
-        "first_apron_space": 18484454,
+        "first_apron_allocations": 198530546,
+        "first_apron_space": 10484454,
         "second_apron": 221686000,
-        "second_apron_allocations": 190530546,
-        "second_apron_space": 31155454
+        "second_apron_allocations": 198530546,
+        "second_apron_space": 23155454
       },
+      "pending_transactions": [
+        {
+          "player": "Ja'Kobi Gillespie",
+          "category": "pending_transaction",
+          "position": "SG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Maliq Brown",
+          "category": "pending_transaction",
+          "position": "PG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
       "reconciliation": {
-        "active_roster_row_total": 187830546,
-        "published_active_roster_total": 187830546,
+        "active_roster_row_total": 195830546,
+        "published_active_roster_total": 195830546,
         "published_less_rows": 0
       }
     },
@@ -11637,7 +11083,7 @@
       "abbreviation": "TOR",
       "name": "Toronto Raptors",
       "source_url": "https://www.spotrac.com/nba/toronto-raptors/cap/_/year/2026",
-      "source_sha256": "aa87c47478a974180aa5c921bdca7ad16f8433729230a151af0646182b843fa2",
+      "source_sha256": "b1454da5050ccfd6b071395d0523800d556c1493b7d743841ee0f11379f79fa1",
       "pending_transactions": [
         {
           "player": "Kawhi Leonard",
@@ -11927,21 +11373,6 @@
           "guaranteed": null,
           "qualifying_offer": 2385633,
           "rights": null
-        },
-        {
-          "player": "Alijah Martin",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 25,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": null
         }
       ],
       "exceptions": [
@@ -11950,16 +11381,16 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Bi-Annual",
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 5478000,
-          "available": 5478000
+          "original": 5477000,
+          "available": 5477000
         },
         {
           "type": "Trade",
@@ -11973,9 +11404,10 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 196662636,
-        "cap_holds": 20572768,
-        "total_allocations": 217235404,
-        "cap_space": -52274404,
+        "cap_holds": 15433896,
+        "total_allocations": 212096532,
+        "cap_space": -47135532,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
         "first_apron_allocations": 203260845,
         "first_apron_space": 5754155,
@@ -11993,7 +11425,7 @@
       "abbreviation": "UTA",
       "name": "Utah Jazz",
       "source_url": "https://www.spotrac.com/nba/utah-jazz/cap/_/year/2026",
-      "source_sha256": "309293e25ba732248edba5b48e58c8ffc354fa18ba054a473c02657af8c92970",
+      "source_sha256": "868ab77f1d579fb30ebb5a5405dda5cd650a55766ecc71e3563b60690c9a24a4",
       "pending_transactions": [
         {
           "player": "Jusuf Nurkic",
@@ -12037,6 +11469,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5853659,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Mohamed Bamba",
+          "category": "pending_transaction",
+          "position": "C",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 3286399,
+          "base_salary": 3286399,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3286399,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12300,6 +11747,21 @@
           "rights": "Early Bird"
         },
         {
+          "player": "Hayden Gray",
+          "category": "cap_hold",
+          "position": "G",
+          "age": 23.0,
+          "contract_type": "ROS",
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Non-Bird"
+        },
+        {
           "player": "Bez Mbeng",
           "category": "cap_hold",
           "position": "G",
@@ -12336,16 +11798,8 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
-        },
-        {
-          "type": "Trade",
-          "reason": "John Collins trade with LAC",
-          "used_on": "Georges Niang, $8,200,000; Lonzo Ball, $10,000,000; John Konchar, $6,165,000",
-          "expires": "7/7/2026",
-          "original": 26580000,
-          "available": 2215000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Trade",
@@ -12359,9 +11813,10 @@
       "totals": {
         "salary_cap": 164961000,
         "active_roster": 151052276,
-        "cap_holds": 60026035,
-        "total_allocations": 211078311,
-        "cap_space": -46117311,
+        "cap_holds": 47574337,
+        "total_allocations": 198626613,
+        "cap_space": -33665613,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
         "first_apron_allocations": 151052276,
         "first_apron_space": 57962724,
@@ -12379,54 +11834,7 @@
       "abbreviation": "WAS",
       "name": "Washington Wizards",
       "source_url": "https://www.spotrac.com/nba/washington-wizards/cap/_/year/2026",
-      "source_sha256": "7ea64a44e05ad9e5f6f854c10754481e41c4686bb7a28265ee75eb856a279f23",
-      "pending_transactions": [
-        {
-          "player": "Trae Young",
-          "category": "pending_transaction",
-          "position": "PG",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 49488300,
-          "base_salary": 49488300,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 49488300,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Deandre Ayton",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": 28,
-          "contract_type": "FA",
-          "cap_hit": 8104000,
-          "base_salary": 8104000,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 8104000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Jamir Watkins",
-          "category": "pending_transaction",
-          "position": "G",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        }
-      ],
+      "source_sha256": "3c9da5b6a9a90076b077d82d09054b2230def507176102ccc381016dd5fe077d",
       "active_roster": [
         {
           "player": "Anthony Davis",
@@ -12440,6 +11848,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 58456566,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Trae Young",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 28,
+          "contract_type": "FA",
+          "cap_hit": 49488300,
+          "base_salary": 49488300,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 49488300,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12504,17 +11927,32 @@
           "rights": null
         },
         {
-          "player": "D'Angelo Russell",
+          "player": "Deandre Ayton",
           "category": "active_roster",
-          "position": "PG",
-          "age": 30,
+          "position": "C",
+          "age": 28,
           "contract_type": "FA",
-          "cap_hit": 5969250,
-          "base_salary": 5969250,
+          "cap_hit": 8104000,
+          "base_salary": 8104000,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 5969250,
+          "guaranteed": 8104000,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Khris Middleton",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 35,
+          "contract_type": "S&T",
+          "cap_hit": 5591122,
+          "base_salary": 5591122,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5591122,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12610,21 +12048,6 @@
         }
       ],
       "cap_holds": [
-        {
-          "player": "Trae Young",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 28.0,
-          "contract_type": "DRK-EXT",
-          "cap_hit": 48713805,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
         {
           "player": "Ian Mahinmi",
           "category": "cap_hold",
@@ -12827,8 +12250,8 @@
           "reason": null,
           "used_on": null,
           "expires": "End-of-Season",
-          "original": 15048000,
-          "available": 15048000
+          "original": 15044000,
+          "available": 15044000
         },
         {
           "type": "Trade",
@@ -12841,20 +12264,38 @@
       ],
       "totals": {
         "salary_cap": 164961000,
-        "active_roster": 138257242,
-        "cap_holds": 102351389,
-        "total_allocations": 240608631,
-        "cap_space": -75647631,
+        "active_roster": 189471414,
+        "cap_holds": 53637584,
+        "total_allocations": 243108998,
+        "cap_space": -78147998,
+        "first_apron_hard_cap": true,
         "first_apron": 209015000,
-        "first_apron_allocations": 138257242,
-        "first_apron_space": 70757758,
+        "first_apron_allocations": 189471414,
+        "first_apron_space": 19543586,
         "second_apron": 221686000,
-        "second_apron_allocations": 138257242,
-        "second_apron_space": 83428758
+        "second_apron_allocations": 189471414,
+        "second_apron_space": 32214586
       },
+      "pending_transactions": [
+        {
+          "player": "Felix Okpara",
+          "category": "pending_transaction",
+          "position": "C",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        }
+      ],
       "reconciliation": {
-        "active_roster_row_total": 138257242,
-        "published_active_roster_total": 138257242,
+        "active_roster_row_total": 189471414,
+        "published_active_roster_total": 189471414,
         "published_less_rows": 0
       }
     }
