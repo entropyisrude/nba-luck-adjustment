@@ -44,7 +44,7 @@ BBREF_DIR = METRIC_DATA / "benchmarks" / "bbref_advanced"
 RAPTOR_PATH = METRIC_DATA / "benchmarks" / "historical_RAPTOR_by_player.csv"
 OUT_DIR = METRIC_DATA / "metric"
 
-ALPHA_GRID = [150, 500, 1000, 2000]
+ALPHA_GRID = [500, 2000, 4000, 8000]
 EVID_ALPHA = 150          # single-season evidence solves (validation only)
 MIN_EVID_POSS = 1000
 
@@ -278,8 +278,10 @@ def main() -> None:
         top = out[(out["target_season"] == season) & (out["poss_season"] > 3000)]
         top = top.nlargest(12, "metric")
         print(f"\nTop 12 metric v0, {season}:")
-        print(top[["player_name", "metric_o", "metric_d", "metric", "poss_season"]]
-              .round(2).to_string(index=False))
+        txt = top[["player_name", "metric_o", "metric_d", "metric", "poss_season"]] \
+            .round(2).to_string(index=False)
+        enc = sys.stdout.encoding or "utf-8"
+        print(txt.encode(enc, errors="replace").decode(enc))
 
 
 if __name__ == "__main__":
