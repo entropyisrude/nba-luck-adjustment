@@ -61,7 +61,11 @@ JOINTK_PATH = METRIC_DATA / "metric" / "metric_v1_kcenter.parquet"
 # walk-forward calibration (margin ~ a + b1*d_static + b2*d_form)
 FORM_SHRINK_POSS = 2000.0
 COMBOS = {"static+form": ["static", "form"],
-          "kalman+form": ["kalman", "form"]}
+          "kalman+form": ["kalman", "form"],
+          "static+form1k": ["static", "form1k"],
+          "static+form4k": ["static", "form4k"],
+          "static+formdec": ["static", "formdec"],
+          "static+form+dec": ["static", "form", "formdec"]}
 
 
 def load_games() -> pd.DataFrame:
@@ -144,8 +148,18 @@ def load_inseason_form() -> tuple[pd.DataFrame, pd.DataFrame]:
     cum_pm = g["pm"].cumsum() - d["pm"]
     cum_poss = g["poss"].cumsum() - d["poss"]
     rate = np.where(cum_poss > 0, cum_pm / cum_poss.clip(lower=1) * 100.0, 0.0)
-    d["form"] = rate * (cum_poss / (cum_poss + FORM_SHRINK_POSS))
-    game_form = d[["pid", "game_int", "form"]]
+    shrink = cum_poss / (cum_poss + FORM_SHRINK_POSS)
+    d["form"] = rate * shrink
+    d["form1k"] = rate * (cum_poss / (cum_poss + 1000.0))
+    d["form4k"] = rate * (cum_poss / (cum_poss + 4000.0))
+    # recency-decayed variant: EWM over prior games (halflife 12 games),
+    # same possession-based shrink for reliability
+    ew_pm = g["pm"].transform(lambda s: s.shift().ewm(halflife=12).mean())
+    ew_poss = g["poss"].transform(lambda s: s.shift().ewm(halflife=12).mean())
+    dec_rate = np.where(ew_poss > 0, ew_pm / ew_poss.clip(lower=1) * 100.0, 0.0)
+    d["formdec"] = np.nan_to_num(dec_rate) * shrink
+    fcols = ["form", "form1k", "form4k", "formdec"]
+    game_form = d[["pid", "game_int"] + fcols]
     eos = g.agg(pm=("pm", "sum"), poss=("poss", "sum")).reset_index()
     eos["form"] = (eos["pm"] / eos["poss"].clip(lower=1) * 100.0
                    * eos["poss"] / (eos["poss"] + FORM_SHRINK_POSS))
@@ -218,7 +232,7 @@ def team_strengths(pg: pd.DataFrame, ratings: dict[str, pd.DataFrame]) -> pd.Dat
     df["kblend2"] = w * df["kalman"] + (1 - w) * -2.0
     df["kblend4"] = w * df["kalman"] + (1 - w) * -4.0
     df["ens"] = (df["static"] + df["kalman"]) / 2.0
-    for extra in ("ens", "form"):
+    for extra in ("ens", "form", "form1k", "form4k", "formdec"):
         if extra in df.columns and extra not in MODELS:
             MODELS.append(extra)
     rows = []
@@ -240,7 +254,8 @@ def main() -> None:
     eos = eos_form.rename(columns={"form": "form_eos"})
     pg = pg.merge(eos, on=["pid", "season_year"], how="left")
     pg.loc[po, "form"] = pg.loc[po, "form"].fillna(pg.loc[po, "form_eos"])
-    pg["form"] = pg["form"].fillna(0.0)
+    for c in ("form", "form1k", "form4k", "formdec"):
+        pg[c] = pg[c].fillna(0.0)
     print(f"form coverage (RS rows): "
           f"{pg.loc[~po, 'form'].ne(0).mean():.1%} nonzero")
     ratings = load_ratings()
