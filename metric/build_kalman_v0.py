@@ -60,6 +60,18 @@ Q_GRID = [0.25, 0.5, 1.0]     # process variance per season, per side
 C_GRID = [2e4, 5e4, 1e5]      # evidence variance = c / poss
 SB_GRID = [4.0, 8.0]          # box-prior observation variance
 
+# Fringe-player fix (2026-07-10, motivated by the margin backtest): the box
+# prior is fit on >=1000-poss players and extrapolates too generously below
+# that range (200-1k-poss players were predicted -0.96 vs evidence -1.61).
+# Exposure-dependent LEVEL shift of the prior observation (and init):
+# p = prior - (1 - w) * shift, w = min(poss / full_poss, 1). A shift (not a
+# blend to a constant) fixes the level the margin backtest cares about while
+# preserving ordering among fringe players — blending to a constant was
+# tried first and destroyed fringe correlation (0.143 -> 0.107).
+SHIFT_GRID = [0.0, 1.0, 2.0, 3.0]        # total shift at zero exposure (split O/D)
+FULL_POSS_GRID = [1000.0, 2000.0]        # poss at which the prior is fully trusted
+FRINGE_LO, FRINGE_HI = 200.0, 1000.0     # fringe scoreboard bucket
+
 
 def build_evidence() -> pd.DataFrame:
     if EVID_CACHE.exists():
@@ -98,8 +110,13 @@ def build_evidence() -> pd.DataFrame:
 
 
 def run_filter(panel: pd.DataFrame, drift_o, drift_d,
-               q: float, c: float, sb: float) -> pd.DataFrame:
-    """Sequential filter per player. panel: one row per (player, season) sorted."""
+               q: float, c: float, sb: float,
+               shift_total: float = 0.0, full_poss: float = 0.0) -> pd.DataFrame:
+    """Sequential filter per player. panel: one row per (player, season) sorted.
+    shift_total/full_poss > 0 level-shifts the prior observation down for
+    players below the prior's fit range: p = prior - (1-w)*shift,
+    w = min(poss/full_poss, 1)."""
+    shift_o = shift_d = shift_total / 2.0
     out = []
     for pid, g in panel.groupby("player_id", sort=False):
         m_o = m_d = None
@@ -112,10 +129,21 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
             if np.isnan(age_now):
                 age_now = (last_age + (r.season_year - last_year)
                            if last_age is not None else 25.0)
+            # exposure-shifted prior observation: below the prior's fit
+            # range, shift the level down (being barely played is itself
+            # evidence — coaches' revealed preference)
+            if full_poss > 0:
+                w = min(r.ev_poss / full_poss, 1.0)
+                base_o = r.prior_o if not np.isnan(r.prior_o) else -0.5
+                base_d = r.prior_d if not np.isnan(r.prior_d) else -0.2
+                p_o = base_o - (1 - w) * shift_o
+                p_d = base_d - (1 - w) * shift_d
+            else:
+                p_o, p_d = r.prior_o, r.prior_d
             if m_o is None:
-                # initialize at box prior (or 0) with wide variance
-                m_o = r.prior_o if not np.isnan(r.prior_o) else -0.5
-                m_d = r.prior_d if not np.isnan(r.prior_d) else -0.2
+                # initialize at (blended) box prior with wide variance
+                m_o = p_o if not np.isnan(p_o) else -0.5
+                m_d = p_d if not np.isnan(p_d) else -0.2
                 v_o = v_d = INIT_VAR
             else:
                 gap = r.season_year - last_year
@@ -128,11 +156,11 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
             pred_o, pred_d, pv_o, pv_d = m_o, m_d, v_o, v_d
 
             # update with box prior observation
-            if not np.isnan(r.prior_o):
+            if not np.isnan(p_o):
                 k = v_o / (v_o + sb)
-                m_o += k * (r.prior_o - m_o); v_o *= (1 - k)
+                m_o += k * (p_o - m_o); v_o *= (1 - k)
                 k = v_d / (v_d + sb)
-                m_d += k * (r.prior_d - m_d); v_d *= (1 - k)
+                m_d += k * (p_d - m_d); v_d *= (1 - k)
             # update with season RAPM evidence
             if not np.isnan(r.ev_o) and r.ev_poss > 0:
                 var_e = c / r.ev_poss
@@ -187,28 +215,60 @@ def main() -> None:
     drift_d = lambda a: float(np.interp(a, curves["age"], curves["d_drapm"]))
 
     # scoreboard: predicted (pre-observation) state vs that season's evidence
-    score_mask_cols = ["ev_o", "ev_d"]
+    firsts = panel.groupby("player_id")["season_year"].min().rename("fy")
+
+    def score(f):
+        """primary (>=1000 poss, star-weighted) + fringe (200-1000) boards."""
+        j = f.merge(panel[["player_id", "season_year", "ev_o", "ev_d",
+                           "ev_poss"]], on=["player_id", "season_year"])
+        # exclude each player's first season (prediction == prior init)
+        j = j.merge(firsts, on="player_id")
+        j = j[j["season_year"] > j["fy"]]
+        j["pred"] = j["pred_o"] + j["pred_d"]
+        j["evid"] = j["ev_o"] + j["ev_d"]
+        main_ = j[j["ev_poss"] >= MIN_EVID_POSS]
+        fr = j[(j["ev_poss"] >= FRINGE_LO) & (j["ev_poss"] < FRINGE_HI)]
+        s = wcorr(main_["pred"], main_["evid"], main_["ev_poss"])
+        sf = wcorr(fr["pred"], fr["evid"], fr["ev_poss"])
+        bias = (fr["pred"] - fr["evid"]).mean()
+        return s, sf, bias, len(main_), len(fr)
+
     best = None
     for q in Q_GRID:
         for c in C_GRID:
             for sb in SB_GRID:
                 f = run_filter(panel, drift_o, drift_d, q, c, sb)
-                j = f.merge(panel[["player_id", "season_year", "ev_o", "ev_d",
-                                   "ev_poss"]], on=["player_id", "season_year"])
-                # only seasons after the first (a prediction exists) and real minutes
-                j = j[(j["ev_poss"] >= MIN_EVID_POSS)]
-                # exclude each player's first season (prediction == prior init)
-                firsts = panel.groupby("player_id")["season_year"].min().rename("fy")
-                j = j.merge(firsts, on="player_id")
-                j = j[j["season_year"] > j["fy"]]
-                s = wcorr(j["pred_o"] + j["pred_d"], j["ev_o"] + j["ev_d"],
-                          j["ev_poss"])
-                print(f"  q={q:<5} c={c:<7.0f} sb={sb:<3}: {s:.4f} (n={len(j)})",
+                s, sf, bias, n, nf = score(f)
+                print(f"  q={q:<5} c={c:<7.0f} sb={sb:<3}: {s:.4f} (n={n})",
                       flush=True)
                 if best is None or s > best[0]:
                     best = (s, q, c, sb, f)
     s, q, c, sb, f = best
     print(f"\nBest: q={q} c={c} sb={sb} -> predictive wcorr {s:.4f}")
+
+    # stage 2: exposure-dependent level shift below the prior's fit range.
+    # Guard: primary board must hold (>= legacy - 0.002); among survivors
+    # minimize |fringe bias| (the margin backtest cares about levels).
+    _, sf0, bias0, _, nf = score(f)
+    print(f"\nExposure shift (legacy fringe wcorr {sf0:.4f}, "
+          f"bias {bias0:+.2f}, n={nf}):")
+    best2 = (s, sf0, abs(bias0), 0.0, 0.0, f)
+    for shift in SHIFT_GRID:
+        for fp in FULL_POSS_GRID:
+            if shift == 0.0:
+                continue
+            f2 = run_filter(panel, drift_o, drift_d, q, c, sb,
+                            shift_total=shift, full_poss=fp)
+            s2, sf2, bias2, n2, _ = score(f2)
+            tag = ""
+            if s2 >= s - 0.002 and abs(bias2) < best2[2]:
+                best2 = (s2, sf2, abs(bias2), shift, fp, f2)
+                tag = "  <-"
+            print(f"  shift={shift:<4} full={fp:<6.0f}: primary {s2:.4f}  "
+                  f"fringe {sf2:.4f}  bias {bias2:+.2f}{tag}", flush=True)
+    s, sf, _, shift, fp, f = best2
+    print(f"\nSelected: shift={shift} full_poss={fp} -> "
+          f"primary {s:.4f}, fringe {sf:.4f}")
 
     names = load_player_names()
     f["player_name"] = f["player_id"].map(names)

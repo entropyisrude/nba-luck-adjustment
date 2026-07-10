@@ -43,7 +43,12 @@ OUT_DIR = METRIC_DATA / "backtest"
 REPLACEMENT = -2.0        # rating for players with no pre-game rating
 CALIB_SEASONS = 4         # trailing seasons for the (a, b) calibration
 TEST_SEASONS = range(2006, 2018)   # seasons with closing spreads
-MODELS = ["kalman", "static", "bpm", "raptor"]
+# kblendX = kalman blended toward replacement -X by prior-season minutes
+# (w = min(prev_min/1500, 1)) — consumer-side fix for the fringe-player
+# overrating; the filter-side fix failed the player scoreboards, and the
+# backtest's affine calibration can't correct this (it's non-affine)
+MODELS = ["kalman", "static", "bpm", "raptor", "kblend2", "kblend4"]
+BLEND_FULL_MIN = 1500.0
 
 
 def load_games() -> pd.DataFrame:
@@ -90,10 +95,10 @@ def load_rosters() -> pd.DataFrame:
     # projected minutes: trailing within-season mean of PRIOR games,
     # previous-season MPG for the season opener, 15 for true rookies
     pg = pg.sort_values(["pid", "game_date"]).reset_index(drop=True)
-    mpg = (pg.groupby(["pid", "season_year"])["min"].mean()
-           .rename("prev_mpg").reset_index())
-    mpg["season_year"] += 1
-    pg = pg.merge(mpg, on=["pid", "season_year"], how="left")
+    prev = (pg.groupby(["pid", "season_year"])["min"]
+            .agg(prev_mpg="mean", prev_smin="sum").reset_index())
+    prev["season_year"] += 1
+    pg = pg.merge(prev, on=["pid", "season_year"], how="left")
     grp = pg.groupby(["pid", "season_year"])["min"]
     prior_sum = grp.cumsum() - pg["min"]
     prior_cnt = grp.cumcount()
@@ -155,11 +160,14 @@ def team_strengths(pg: pd.DataFrame, ratings: dict[str, pd.DataFrame]) -> pd.Dat
     for name, r in ratings.items():
         df = df.merge(r.rename(columns={"rating": name}),
                       on=["pid", "season_year"], how="left")
-    cov = {name: 1 - df[name].isna().mean() for name in MODELS}
+    cov = {name: 1 - df[name].isna().mean() for name in ratings}
     print("Rating coverage of player-games:",
           {k: f"{v:.1%}" for k, v in cov.items()})
-    for name in MODELS:
+    for name in ratings:
         df[name] = df[name].fillna(REPLACEMENT)
+    w = (df["prev_smin"] / BLEND_FULL_MIN).clip(0, 1).fillna(0.0)
+    df["kblend2"] = w * df["kalman"] + (1 - w) * -2.0
+    df["kblend4"] = w * df["kalman"] + (1 - w) * -4.0
     rows = []
     for mv, mcol in [("actual", "min"), ("proj", "min_proj")]:
         t = df[["game_id", "team_id"]].copy()
