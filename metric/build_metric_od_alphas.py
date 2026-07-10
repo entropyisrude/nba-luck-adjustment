@@ -9,8 +9,12 @@ same honest scoreboard (predict next season's single-season evidence).
 
 Baseline to beat: symmetric alpha=4000 -> 0.5257 (metric_v0).
 
-Output: nba-metric-data/metric/metric_v1_od.parquet|csv (metric_* = best
-pair) if the best pair beats the symmetric baseline; always prints the grid.
+RESULT (2026-07-10): symmetric 4000/4000 wins EXACTLY; every asymmetric
+pair is worse (defense-heavier 0.505-0.519, offense-heavier 0.522).
+Engelmann's advice targets plain RAPM where the shrinkage center is zero
+(shrink noisy defense harder toward nothing). In a prior-informed solve,
+alpha is the prior's WEIGHT — and our D prior doesn't merit extra trust.
+The asymmetry recommendation does not transfer. metric_v0 stays as is.
 
 Usage: python metric/build_metric_od_alphas.py
 """
