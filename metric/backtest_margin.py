@@ -27,11 +27,16 @@ Usage: python metric/backtest_margin.py
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
+import duckdb
 import numpy as np
 import pandas as pd
 
+ROOT = Path(os.environ.get("NBA_ONOFF_ROOT",
+                           r"C:\Users\Dave\Downloads\nba-onoff-publish"))
+RS_DB = ROOT / "data" / "nba_analytics.duckdb"
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
 ODDS_DIR = METRIC_DATA / "odds"
 KALMAN_PATH = METRIC_DATA / "kalman" / "kalman_states.parquet"
@@ -51,6 +56,12 @@ TEST_SEASONS = range(2006, 2018)   # seasons with closing spreads
 MODELS = ["kalman", "static", "bpm", "raptor", "kblend2", "kblend4"]
 BLEND_FULL_MIN = 1500.0
 JOINTK_PATH = METRIC_DATA / "metric" / "metric_v1_kcenter.parquet"
+# in-season form: shrunk cumulative current-season luck-adjusted on-court
+# +/- per 100, strictly pre-game; combined with static via a 2-feature
+# walk-forward calibration (margin ~ a + b1*d_static + b2*d_form)
+FORM_SHRINK_POSS = 2000.0
+COMBOS = {"static+form": ["static", "form"],
+          "kalman+form": ["kalman", "form"]}
 
 
 def load_games() -> pd.DataFrame:
@@ -110,6 +121,35 @@ def load_rosters() -> pd.DataFrame:
     tp = pg.groupby(["game_id", "team_id"])["min_proj"].transform("sum")
     pg["min_proj"] *= 240.0 / tp
     return pg
+
+
+def load_inseason_form() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Per (pid, game): shrunk cumulative current-season adjusted on-court
+    +/- per 100 BEFORE that game; plus per (pid, season) end-of-RS values
+    for playoff games. All strictly pre-game information."""
+    con = duckdb.connect(str(RS_DB), read_only=True)
+    d = con.execute("""
+        SELECT CAST(player_id AS BIGINT) pid,
+               CAST(CAST(game_id AS VARCHAR) AS BIGINT) game_int,
+               CAST(substr(season,1,4) AS INTEGER) season_year,
+               date, on_possessions poss, plus_minus_adjusted pm
+        FROM player_game_facts
+        WHERE CAST(game_id AS VARCHAR) LIKE '2%'
+          AND CAST(substr(season,1,4) AS INTEGER) BETWEEN 2001 AND 2019
+          AND on_possessions IS NOT NULL AND plus_minus_adjusted IS NOT NULL
+    """).df()
+    con.close()
+    d = d.sort_values(["pid", "season_year", "date"]).reset_index(drop=True)
+    g = d.groupby(["pid", "season_year"])
+    cum_pm = g["pm"].cumsum() - d["pm"]
+    cum_poss = g["poss"].cumsum() - d["poss"]
+    rate = np.where(cum_poss > 0, cum_pm / cum_poss.clip(lower=1) * 100.0, 0.0)
+    d["form"] = rate * (cum_poss / (cum_poss + FORM_SHRINK_POSS))
+    game_form = d[["pid", "game_int", "form"]]
+    eos = g.agg(pm=("pm", "sum"), poss=("poss", "sum")).reset_index()
+    eos["form"] = (eos["pm"] / eos["poss"].clip(lower=1) * 100.0
+                   * eos["poss"] / (eos["poss"] + FORM_SHRINK_POSS))
+    return game_form, eos[["pid", "season_year", "form"]]
 
 
 def load_ratings() -> dict[str, pd.DataFrame]:
@@ -178,8 +218,9 @@ def team_strengths(pg: pd.DataFrame, ratings: dict[str, pd.DataFrame]) -> pd.Dat
     df["kblend2"] = w * df["kalman"] + (1 - w) * -2.0
     df["kblend4"] = w * df["kalman"] + (1 - w) * -4.0
     df["ens"] = (df["static"] + df["kalman"]) / 2.0
-    if "ens" not in MODELS:
-        MODELS.append("ens")
+    for extra in ("ens", "form"):
+        if extra in df.columns and extra not in MODELS:
+            MODELS.append(extra)
     rows = []
     for mv, mcol in [("actual", "min"), ("proj", "min_proj")]:
         t = df[["game_id", "team_id"]].copy()
@@ -192,6 +233,16 @@ def team_strengths(pg: pd.DataFrame, ratings: dict[str, pd.DataFrame]) -> pd.Dat
 def main() -> None:
     g = load_games()
     pg = load_rosters()
+    game_form, eos_form = load_inseason_form()
+    pg["game_int"] = pg["game_id"].astype(np.int64)
+    pg = pg.merge(game_form, on=["pid", "game_int"], how="left")
+    po = pg["season_type"] == "Playoffs"
+    eos = eos_form.rename(columns={"form": "form_eos"})
+    pg = pg.merge(eos, on=["pid", "season_year"], how="left")
+    pg.loc[po, "form"] = pg.loc[po, "form"].fillna(pg.loc[po, "form_eos"])
+    pg["form"] = pg["form"].fillna(0.0)
+    print(f"form coverage (RS rows): "
+          f"{pg.loc[~po, 'form'].ne(0).mean():.1%} nonzero")
     ratings = load_ratings()
     ts = team_strengths(pg, ratings)
 
@@ -216,6 +267,13 @@ def main() -> None:
             X = np.column_stack([np.ones(len(tr)), tr["d_" + c]])
             beta, *_ = np.linalg.lstsq(X, tr["margin"], rcond=None)
             te["pred_" + c] = beta[0] + beta[1] * te["d_" + c]
+        for cname, members in COMBOS.items():
+            for mv in ("actual", "proj"):
+                fcs = [f"d_{m}_{mv}" for m in members]
+                X = np.column_stack([np.ones(len(tr))] + [tr[f] for f in fcs])
+                beta, *_ = np.linalg.lstsq(X, tr["margin"], rcond=None)
+                te[f"pred_{cname}_{mv}"] = beta[0] + sum(
+                    b * te[f] for b, f in zip(beta[1:], fcs))
         preds.append(te)
     p = pd.concat(preds, ignore_index=True)
     ev = p.dropna(subset=["vegas"]).copy()
@@ -232,7 +290,7 @@ def main() -> None:
         line("vegas", (e["vegas"] - e["margin"]).abs().mean(),
              np.corrcoef(e["vegas"], e["margin"])[0, 1])
         for mv in ("actual", "proj"):
-            for name in MODELS:
+            for name in MODELS + list(COMBOS):
                 c = f"pred_{name}_{mv}"
                 mae = (e[c] - e["margin"]).abs().mean()
                 r = np.corrcoef(e[c], e["margin"])[0, 1]
@@ -246,7 +304,8 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     keep = (["game_id", "game_date", "season_year", "season_type", "home_id",
              "away_id", "margin", "vegas"]
-            + [f"pred_{n}_{mv}" for n in MODELS for mv in ("actual", "proj")])
+            + [f"pred_{n}_{mv}" for n in MODELS + list(COMBOS)
+               for mv in ("actual", "proj")])
     p[keep].to_parquet(OUT_DIR / "backtest_games.parquet", index=False)
     print(f"\nWrote {len(p)} game predictions to {OUT_DIR / 'backtest_games.parquet'}")
 
