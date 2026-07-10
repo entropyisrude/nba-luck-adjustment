@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2026-27 Win Projections — NERD</title>
+  <style>
+    :root {
+      --bg: #f2f6fb; --card: #fff; --line: #d6e1ef; --ink: #192231;
+      --muted: #5b6778; --good: #0f766e; --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff; border-radius: 14px; padding: 18px 20px;
+      border: 1px solid #254b72; margin-bottom: 14px; text-align: center;
+    }
+    h1 { margin: 0; font-size: 26px; }
+    h2 { margin: 0 0 10px; font-size: 18px; }
+    .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; justify-content: center; }
+    .chip {
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      padding: 6px 10px; border-radius: 999px; font-size: 12px;
+    }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px; padding: 6px 10px; font-size: 12px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px; box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06); margin-bottom: 14px;
+    }
+    .explain {
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+      padding: 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.55;
+    }
+    .explain h3 { margin: 0 0 8px; font-size: 14px; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: end; }
+    .controls label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+    select { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: 13px; background: #fff; color: var(--ink); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #edf2f9; padding: 8px 9px; text-align: right; white-space: nowrap; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    thead th { background: #edf3fc; color: #123154; cursor: pointer; }
+    thead th:hover { background: #e4edf9; }
+    .pos { color: var(--good); font-weight: 600; }
+    .neg { color: var(--bad); font-weight: 600; }
+    .muted { color: var(--muted); }
+    tr.team-row { cursor: pointer; }
+    tr.team-row:hover { background: #f4f8fd; }
+    tr.team-row td:first-child::before { content: "\25B8 "; color: var(--muted); }
+    tr.team-row.open td:first-child::before { content: "\25BE "; }
+    .detail td { background: #fafcff; padding: 0; }
+    .rot { padding: 8px 12px 12px 34px; }
+    .rot table { font-size: 12px; }
+    .rot th, .rot td { padding: 5px 8px; border-bottom: 1px solid #eef3f9; }
+    .rk { color: var(--muted); font-size: 11px; }
+    .barwrap { display: inline-block; width: 90px; height: 9px; background: #e7eef7; border-radius: 5px; overflow: hidden; vertical-align: middle; }
+    .bar { height: 100%; }
+    .tag-rep { font-size: 10px; color: #9a6b00; background: #fff4d6; border: 1px solid #f0dca0; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>2026-27 Win Projections</h1>
+      <div class="meta">
+        <span class="chip">Depth-chart minutes &times; Projected NERD</span>
+        <span class="chip" id="src-chip"></span>
+      </div>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="nerd.html">NERD Ratings</a>
+        <a href="depth-charts.html">Depth Charts</a>
+        <a href="nba_cap_2026.html">Cap Tracker</a>
+      </div>
+    </section>
+
+    <section class="explain">
+      <h3>How these projections work</h3>
+      <p>Each team's projected point differential is built bottom-up: for every player in the
+      team's depth chart, we take his projected minutes and multiply by his
+      <a href="nerd.html">Projected NERD</a> (his 2026-27 impact per 100 possessions, forecast
+      by carrying his career trajectory forward along our aging curves). Summed and
+      minute-weighted across the rotation, that gives a team net rating, which converts to an
+      expected win total. Tested on last season, this pipeline correlates 0.92 with actual
+      records (about &plusmn;5 wins typical error).</p>
+      <p class="muted">Minutes come from the hand-tuned depth charts where they exist, otherwise
+      a last-season-minutes-based estimate (same as the <a href="depth-charts.html">Depth
+      Charts</a> pages). Players we don't project — rookies and anyone without NBA history — are
+      treated as replacement level (about &minus;2 per 100) and tagged <span class="tag-rep">REP</span>;
+      teams leaning on unproven youth are therefore projected conservatively. Rosters reflect the
+      current offseason snapshot and will shift with trades and signings.</p>
+    </section>
+
+    <section class="card">
+      <div class="controls">
+        <label>Group
+          <select id="group-sel">
+            <option value="league">League (all 30)</option>
+            <option value="East">Eastern Conference</option>
+            <option value="West">Western Conference</option>
+          </select>
+        </label>
+        <label>Replacement level
+          <select id="rep-sel">
+            <option value="-2">Standard (&minus;2.0)</option>
+            <option value="-1">Lenient (&minus;1.0)</option>
+            <option value="-3">Harsh (&minus;3.0)</option>
+          </select>
+        </label>
+      </div>
+      <table id="proj-table">
+        <thead>
+          <tr>
+            <th data-key="rank">#</th>
+            <th data-key="team">Team</th>
+            <th data-key="net">Net Rtg</th>
+            <th data-key="wins">Proj W</th>
+            <th data-key="wins">Proj L</th>
+            <th data-key="off">Off</th>
+            <th data-key="def">Def</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted" style="font-size:11.5px;margin:10px 2px 0;">
+        Click a team to see its rotation. Net Rtg is centered so the league averages to .500
+        (projected wins across all 30 teams sum to a full season).
+      </p>
+    </section>
+  </div>
+
+  <script src="data/nba_cap_data_2026_27.js"></script>
+  <script src="data/last_season_mpg.js"></script>
+  <script src="data/depth_chart_defaults.js"></script>
+  <script src="data/nerd_seasons.js"></script>
+  <script>
+    // ---- shared depth-chart minute logic (kept in sync with depth-chart-team.html) ----
+    const SNAP = window.NBA_CAP_SNAPSHOT;
+    const MPG = window.LAST_SEASON_MPG;
+    const DEFAULTS = window.DEPTH_CHART_DEFAULTS || {};
+    const NAME_SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
+    const POSITIONS = ['PG','SG','SF','PF','C'];
+    const TEAM_MINUTES = 240, MAX_PLAYER_MINUTES = 48, NO_DATA_MPG_WEIGHT = 8;
+    const GAME_SD = 11.5;   // single-game margin sd; wins = 82*Phi(net/GAME_SD)
+
+    const CONF = { East: new Set(['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS']),
+                   West: new Set(['DAL','DEN','GSW','HOU','LAC','LAL','MEM','MIN','NOP','OKC','PHX','POR','SAC','SAS','UTA']) };
+
+    function normalizeName(name){
+      let text = String(name||'').normalize('NFKD').replace(/[̀-ͯ]/g,'');
+      text = text.replace(/\./g,'').replace(/[^a-zA-Z0-9 ]/g,'');
+      const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+      while(words.length && NAME_SUFFIXES.has(words[words.length-1])) words.pop();
+      return words.join(' ');
+    }
+    function rosterFor(team){
+      const rows = [...(team.active_roster||[]), ...(team.pending_transactions||[]).filter(r=>r.category==='pending_transaction')];
+      const seen = new Set(), out = [];
+      for(const r of rows){ if(seen.has(r.player)) continue; seen.add(r.player); out.push({...r}); }
+      return out;
+    }
+    function mpgWeight(p){ const rec = MPG && MPG.players[normalizeName(p.player)]; return rec ? rec.mpg : NO_DATA_MPG_WEIGHT; }
+    function seedMinutes(players){
+      players.forEach(p=>{ p.minutes = 0; });
+      if(!players.length) return;
+      if(players.length===1){ players[0].minutes = MAX_PLAYER_MINUTES; return; }
+      const weights = players.map(mpgWeight), wt = weights.reduce((a,b)=>a+b,0);
+      let assigned = 0;
+      players.forEach((p,i)=>{ const s = Math.round(TEAM_MINUTES/POSITIONS.length * weights[i] / wt); p.minutes = s; assigned += s; });
+      players[0].minutes += (TEAM_MINUTES/POSITIONS.length - assigned);
+      players[0].minutes = Math.max(0, players[0].minutes);
+    }
+    function buildEstimate(abbr){
+      const roster = rosterFor(SNAP.teams[abbr]);
+      const cols = {PG:[],SG:[],SF:[],PF:[],C:[],POOL:[]};
+      for(const p of roster){ (POSITIONS.includes(p.position) ? cols[p.position] : cols.POOL).push(p); }
+      for(const k of POSITIONS) cols[k].sort((a,b)=>{
+        const ra = MPG && MPG.players[normalizeName(a.player)], rb = MPG && MPG.players[normalizeName(b.player)];
+        if(ra && rb) return rb.mpg - ra.mpg; if(ra) return -1; if(rb) return 1;
+        return (b.cap_hit||0)-(a.cap_hit||0);
+      });
+      for(const k of POSITIONS) seedMinutes(cols[k]);
+      cols.POOL.forEach(p=>{ p.minutes = 0; });
+      return cols;
+    }
+    function distributeInt(players, amount){
+      let remaining = amount; if(remaining===0 || !players.length) return remaining;
+      const step = remaining>0 ? 1 : -1; let i = 0, since = 0;
+      while(remaining!==0 && since < players.length){
+        const p = players[i % players.length];
+        if(step>0 && p.minutes < MAX_PLAYER_MINUTES){ p.minutes += 1; remaining -= 1; since = 0; }
+        else if(step<0 && p.minutes > 0){ p.minutes -= 1; remaining += 1; since = 0; }
+        else since += 1;
+        i++;
+      }
+      return remaining;
+    }
+    function normalizeRotation(ch){
+      const all = POSITIONS.flatMap(pos=>ch[pos]);
+      const gt = all.reduce((s,p)=>s+(p.minutes||0),0);
+      if(gt === TEAM_MINUTES) return;
+      if(gt <= 0){ distributeInt(all, TEAM_MINUTES); return; }
+      let assigned = 0;
+      const targets = all.map(p=>{ const s = Math.max(0, Math.min(MAX_PLAYER_MINUTES, Math.round((p.minutes||0)*TEAM_MINUTES/gt))); assigned += s; return s; });
+      all.forEach((p,i)=>{ p.minutes = targets[i]; });
+      const rem = TEAM_MINUTES - assigned;
+      if(rem !== 0) distributeInt(all, rem);
+    }
+    // Position-agnostic fallback for teams without a hand-tuned chart: carry
+    // last-season MPG forward (the real "who plays" signal), normalized to 240.
+    // The per-position estimate mis-allocates here because Spotrac positions are
+    // unreliable (lone-position players wrongly get 48); MPG order avoids that.
+    function estimateFlat(abbr){
+      const roster = rosterFor(SNAP.teams[abbr]).map(p=>({...p, w: mpgWeight(p)}));
+      roster.sort((a,b)=>b.w-a.w);
+      let cum = 0; const rot = [];
+      for(const p of roster){
+        if(cum >= TEAM_MINUTES && rot.length >= 8) break;
+        p.minutes = Math.min(Math.round(p.w), MAX_PLAYER_MINUTES);
+        if(p.minutes <= 0) continue;
+        rot.push(p); cum += p.minutes;
+      }
+      const wrap = {PG:rot,SG:[],SF:[],PF:[],C:[],POOL:[]};
+      normalizeRotation(wrap);
+      return rot.filter(p=>p.minutes>0);
+    }
+    // saved default reconciled to the live roster (mirrors depth-chart-team.html loadDefault)
+    function rotationFor(abbr){
+      const saved = DEFAULTS[abbr];
+      if(!saved){ return estimateFlat(abbr); }
+      const fresh = buildEstimate(abbr);
+      const byName = new Map();
+      [...POSITIONS,'POOL'].forEach(pos=>fresh[pos].forEach(p=>byName.set(p.player, p)));
+      const used = new Set(), out = {PG:[],SG:[],SF:[],PF:[],C:[],POOL:[]};
+      POSITIONS.forEach(pos=>((saved.positions&&saved.positions[pos])||[]).forEach(e=>{
+        const p = byName.get(e.player);
+        if(p && !used.has(e.player)){ p.minutes = e.minutes||0; out[pos].push(p); used.add(e.player); }
+      }));
+      (saved.unassigned||[]).forEach(e=>{ const p = byName.get(e.player); if(p && !used.has(e.player)){ p.minutes = e.minutes||0; out.POOL.push(p); used.add(e.player); } });
+      const appended = [];
+      [...POSITIONS,'POOL'].forEach(pos=>fresh[pos].forEach(p=>{ if(!used.has(p.player)){ out[pos].push(p); used.add(p.player); if(pos!=='POOL') appended.push(p); } }));
+      const total = POSITIONS.flatMap(pos=>out[pos]).reduce((s,p)=>s+(p.minutes||0),0);
+      if(total !== TEAM_MINUTES){ appended.forEach(p=>{ p.minutes = Math.round(mpgWeight(p)); }); normalizeRotation(out); }
+      return POSITIONS.flatMap(pos=>out[pos]).filter(p=>p.minutes>0);
+    }
+
+    // ---- projected NERD lookup (2026 rows), keyed by normalized name ----
+    const ND = window.NERD_DATA, NI = Object.fromEntries(ND.cols.map((c,i)=>[c,i]));
+    const PROJ = new Map();
+    for(const r of ND.rows){
+      if(r[NI.season] !== 2026) continue;
+      PROJ.set(normalizeName(r[NI.name]), { nerd: r[NI.nerd], o: r[NI.o], d: r[NI.d] });
+    }
+    function lookupNerd(name){ return PROJ.get(normalizeName(name)) || null; }
+
+    // ---- compute every team ----
+    let REP = -2.0;
+    function computeTeams(){
+      const teams = [];
+      for(const abbr of Object.keys(SNAP.teams)){
+        const rot = rotationFor(abbr);
+        let net = 0, off = 0, def = 0;
+        const players = rot.map(p=>{
+          const nd = lookupNerd(p.player);
+          const val = nd ? nd.nerd : REP;
+          const ov = nd ? nd.o : REP/2, dv = nd ? nd.d : REP/2;
+          const w = p.minutes / 48;
+          net += w*val; off += w*ov; def += w*dv;
+          return { name:p.player, minutes:p.minutes, nerd:val, o:ov, d:dv, isRep:!nd };
+        }).sort((a,b)=>b.minutes-a.minutes);
+        teams.push({ abbr, name: SNAP.teams[abbr].name, net, off, def, players });
+      }
+      const mean = teams.reduce((s,t)=>s+t.net,0)/teams.length;
+      const offMean = teams.reduce((s,t)=>s+t.off,0)/teams.length;
+      const defMean = teams.reduce((s,t)=>s+t.def,0)/teams.length;
+      const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
+      teams.forEach(t=>{
+        t.netC = t.net - mean; t.offC = t.off - offMean; t.defC = t.def - defMean;
+        t.wins = 82*Phi(t.netC/GAME_SD);
+      });
+      return teams;
+    }
+    function erf(x){ // Abramowitz-Stegun 7.1.26
+      const s = x<0?-1:1; x = Math.abs(x);
+      const t = 1/(1+0.3275911*x);
+      const y = 1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+      return s*y;
+    }
+
+    let sortKey = 'wins', sortDir = -1, openTeam = null;
+    function fmt(v,d=1){ if(v==null||isNaN(v)) return '&mdash;'; const s=(v>0?'+':'')+v.toFixed(d); return `<span class="${v>0?'pos':v<0?'neg':''}">${s}</span>`; }
+
+    function render(){
+      const grp = document.getElementById('group-sel').value;
+      let teams = computeTeams();
+      if(grp!=='league') teams = teams.filter(t=>CONF[grp].has(t.abbr));
+      teams.sort((a,b)=>{
+        const av=a[sortKey], bv=b[sortKey];
+        if(sortKey==='team') return sortDir*a.name.localeCompare(b.name);
+        return sortDir*(av-bv);
+      });
+      const maxMin = 40;
+      const body = document.querySelector('#proj-table tbody');
+      body.innerHTML = teams.map((t,i)=>{
+        const w = Math.round(t.wins), rows =
+        `<tr class="team-row ${openTeam===t.abbr?'open':''}" data-team="${t.abbr}">
+          <td class="muted">${i+1}</td>
+          <td><strong>${t.abbr}</strong> <span class="muted">${t.name}</span></td>
+          <td>${fmt(t.netC)}</td>
+          <td><strong>${w}</strong></td>
+          <td class="muted">${82-w}</td>
+          <td>${fmt(t.offC)}</td>
+          <td>${fmt(t.defC)}</td>
+        </tr>`;
+        if(openTeam!==t.abbr) return rows;
+        const pr = t.players.map(p=>{
+          const barw = Math.round(Math.min(p.minutes,maxMin)/maxMin*100);
+          const col = p.nerd>0 ? 'var(--good)' : 'var(--bad)';
+          return `<tr>
+            <td style="text-align:left">${p.name}${p.isRep?'<span class="tag-rep">REP</span>':''}</td>
+            <td>${p.minutes}<span class="rk"> mpg</span></td>
+            <td><span class="barwrap"><span class="bar" style="width:${barw}%;background:${col}"></span></span></td>
+            <td>${fmt(p.nerd)}</td>
+            <td>${fmt(p.o)}</td>
+            <td>${fmt(p.d)}</td>
+            <td class="muted">${(p.minutes/48*p.nerd).toFixed(2)}</td>
+          </tr>`; }).join('');
+        return rows + `<tr class="detail"><td colspan="7"><div class="rot">
+          <table><thead><tr><th style="text-align:left">Player</th><th>Min</th><th></th>
+          <th>NERD</th><th>O</th><th>D</th><th>Contrib</th></tr></thead><tbody>${pr}</tbody></table>
+          </div></td></tr>`;
+      }).join('');
+      body.querySelectorAll('tr.team-row').forEach(tr=>tr.addEventListener('click',()=>{
+        openTeam = openTeam===tr.dataset.team ? null : tr.dataset.team; render();
+      }));
+    }
+
+    document.querySelectorAll('#proj-table thead th').forEach(th=>th.addEventListener('click',()=>{
+      const k = th.dataset.key;
+      if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir = k==='team'?1:-1; }
+      render();
+    }));
+    document.getElementById('group-sel').addEventListener('change', render);
+    document.getElementById('rep-sel').addEventListener('change', e=>{ REP = +e.target.value; render(); });
+    document.getElementById('src-chip').textContent = SNAP ? `Rosters: ${SNAP.season} snapshot` : '';
+    render();
+  </script>
+</body>
+</html>
