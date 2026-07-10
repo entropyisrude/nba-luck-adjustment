@@ -9,8 +9,13 @@ thin RAPM samples toward.
 
 Features come from the Eoin extended per-game box (usage, assisted/unassisted
 splits, scoring mix, fouls drawn, ...) aggregated to player-season rates
-(regular season only), plus age and height from our DB. Feature aggregation
-is cached at FEATURES_CACHE (delete to rebuild, ~5 min).
+(regular season only), plus age and height from our DB. The features cache
+also carries v2 candidate columns (scoring-mix splits, team shares, on-court
+opponent points allowed, hustle 2016+, combine wingspan 2001+) — evaluated
+and EXCLUDED from the production prior; see FEATURES_V2_EXTRA and
+metric/ablate_box_prior_features.py for the negative result. Structurally-
+missing eras are era-mean imputed at fit time.
+Feature aggregation is cached at FEATURES_CACHE (delete to rebuild, ~5 min).
 
 Validation:
   * leave-one-season-out within each era (the honest fit metric),
@@ -70,6 +75,25 @@ PCT_COLS = {
     "percentPointsFastBreak": "pct_fb", "percentPointsFreeThrow": "pct_ft",
     "percentFieldGoalAttempts3Point": "pct_fga3",
 }
+# v2 additions from the same extended file
+PCT_COLS_V2 = {
+    "percentAssisted2PointMade": "pct_ast2", "percentAssisted3PointMade": "pct_ast3",
+    "percentPoints2PointMidRange": "pct_mid", "percentTeamSteals": "stl_share",
+    "percentTeamBlocks": "blk_share", "percentTeamFoulsDrawn": "fd_share",
+    "pace": "pace", "estimatedTurnoverPercentage": "tov_pct",
+}
+COUNT_COLS_V2 = {
+    "pointsOffTurnovers": "pts_offtov", "pointsSecondChance": "pts_2nd",
+    "opponentPointsInPaint": "opp_paint", "opponentPointsFastBreak": "opp_fb",
+    "opponentPointsOffTurnovers": "opp_offtov",
+    "opponentPointsSecondChance": "opp_2nd",
+}
+HUSTLE_COLS = ["deflections", "contested_shots", "charges_drawn",
+               "screen_assists", "loose_balls_recovered", "box_outs"]
+HUSTLE_75 = {"deflections": "defl_75", "contested_shots": "contest_75",
+             "charges_drawn": "chg_75", "screen_assists": "screen_75",
+             "loose_balls_recovered": "loose_75", "box_outs": "boxout_75"}
+COMBINE_CSV = Path(r"C:\Users\Dave\Downloads\nba-boxscore-data\kaggle-basketball\csv\draft_combine_stats.csv")
 
 
 def season_label(y: int) -> str:
@@ -85,8 +109,10 @@ def build_features() -> pd.DataFrame:
         print(f"Using cached {FEATURES_CACHE}")
         return pd.read_parquet(FEATURES_CACHE)
 
-    usecols = (["personId", "gameDateTimeEst", "gameType", "numMinutes", "possessions"]
-               + list(COUNT_COLS) + list(PCT_COLS))
+    usecols = sorted(set(
+        ["personId", "gameDateTimeEst", "gameType", "numMinutes", "possessions"]
+        + list(COUNT_COLS) + list(PCT_COLS)
+        + list(COUNT_COLS_V2) + list(PCT_COLS_V2)))
     print("Loading extended box (one-time, cached afterwards)...")
     with zipfile.ZipFile(EOIN_ZIP) as z:
         with z.open("PlayerStatisticsExtended.csv") as f:
@@ -103,24 +129,33 @@ def build_features() -> pd.DataFrame:
     # possessions occasionally null -> minutes-based estimate at league pace
     eo["poss"] = eo["poss"].fillna(eo["mins"] * 2.08)
     eo = eo[eo["mins"] > 0]
-    for c in list(COUNT_COLS) + list(PCT_COLS):
+    all_counts = {**COUNT_COLS, **COUNT_COLS_V2}
+    all_pcts = {**PCT_COLS, **PCT_COLS_V2}
+    for c in list(all_counts) + list(all_pcts):
         eo[c] = pd.to_numeric(eo[c], errors="coerce")
 
     print(f"  {len(eo)} player-games; aggregating to player-seasons...")
     grp = eo.groupby(["pid", "season_year"])
     agg = grp.agg(games=("mins", "size"), mins=("mins", "sum"), poss=("poss", "sum"),
-                  **{v: (k, "sum") for k, v in COUNT_COLS.items()})
-    # minutes-weighted means for pct features
-    for k, v in PCT_COLS.items():
+                  **{v: (k, "sum") for k, v in all_counts.items()})
+    # minutes-weighted means for pct features (denominator: minutes of games
+    # where the source column is populated, so partial-coverage seasons stay
+    # unbiased instead of being dragged toward zero)
+    for k, v in all_pcts.items():
         eo["_w"] = eo[k] * eo["mins"]
-        agg[v] = grp["_w"].sum() / grp.apply(
-            lambda g: g.loc[g[k].notna(), "mins"].sum(), include_groups=False)
+        eo["_wd"] = eo["mins"].where(eo[k].notna())
+        agg[v] = grp["_w"].sum() / grp["_wd"].sum()
     agg = agg.reset_index()
 
     per75 = ["pts", "ast", "oreb", "dreb", "stl", "blk", "tov", "pf",
              "fouls_drawn", "blocked", "fta", "fg3a"]
     for c in per75:
         agg[c + "_75"] = agg[c] / agg["poss"].clip(lower=1) * 75.0
+    # v2 counts aren't populated in every game -> rate over covered poss only
+    for k, v in COUNT_COLS_V2.items():
+        eo["_p"] = eo["poss"].where(eo[k].notna())
+        cov = grp["_p"].sum().reset_index(drop=True)
+        agg[v + "_75"] = np.where(cov > 0, agg[v] / cov.clip(lower=1) * 75.0, np.nan)
     agg["fg3_rate"] = agg["fg3a"] / agg["fga"].clip(lower=1)
     agg["ft_pct"] = agg["ftm"] / agg["fta"].clip(lower=1)
     agg["mpg"] = agg["mins"] / agg["games"]
@@ -139,17 +174,61 @@ def build_features() -> pd.DataFrame:
     agg["age"] = agg["age"].fillna(agg["age"].median())
     agg["height"] = agg["height"].fillna(agg["height"].median())
 
+    # hustle stats (stats.nba, 2016+ only) summed per player-season; rate over
+    # the minutes of games actually covered (converted to poss at league pace)
+    hustle_sums = ", ".join(
+        f"sum({c}) {c}, sum(CASE WHEN {c} IS NOT NULL THEN minutes END) mins_{c}"
+        for c in HUSTLE_COLS)
+    con = duckdb.connect(str(RS_DB), read_only=True)
+    hu = con.execute(f"""
+        SELECT CAST(player_id AS BIGINT) pid,
+               CAST(substr(season, 1, 4) AS INTEGER) season_year, {hustle_sums}
+        FROM player_game_facts
+        WHERE CAST(game_id AS VARCHAR) LIKE '2%'
+        GROUP BY 1, 2""").df()
+    con.close()
+    for c in HUSTLE_COLS:
+        cov = hu[f"mins_{c}"] * 2.08
+        hu[HUSTLE_75[c]] = np.where(cov > 0, hu[c] / cov.clip(lower=1) * 75.0, np.nan)
+    agg = agg.merge(hu[["pid", "season_year"] + list(HUSTLE_75.values())],
+                    on=["pid", "season_year"], how="left")
+
+    # draft combine wingspan (2001+ attendees): length relative to own height,
+    # time-invariant per player; missing stays NaN (imputed at fit time)
+    cmb = pd.read_csv(COMBINE_CSV)
+    cmb["pid"] = pd.to_numeric(cmb["player_id"], errors="coerce")
+    cmb = cmb.dropna(subset=["pid", "wingspan", "height_wo_shoes"])
+    cmb["wing_rel"] = cmb["wingspan"] - cmb["height_wo_shoes"]
+    cmb = (cmb.sort_values("season").groupby(cmb["pid"].astype(int))["wing_rel"]
+           .last().rename_axis("pid").reset_index())
+    agg = agg.merge(cmb, on="pid", how="left")
+
     METRIC_DATA.mkdir(parents=True, exist_ok=True)
     agg.to_parquet(FEATURES_CACHE, index=False)
     print(f"Cached {len(agg)} player-season feature rows to {FEATURES_CACHE}")
     return agg
 
 
-FEATURES = ["pts_75", "ast_75", "oreb_75", "dreb_75", "stl_75", "blk_75",
-            "tov_75", "pf_75", "fouls_drawn_75", "blocked_75", "fta_75",
-            "fg3a_75", "fg3_rate", "ft_pct", "ts", "efg", "usg", "ast_pct",
-            "oreb_pct", "dreb_pct", "pct_unassisted", "pct_pts3", "pct_paint",
-            "pct_fb", "pct_ft", "pct_fga3", "mpg", "age", "height"]
+FEATURES_V1 = ["pts_75", "ast_75", "oreb_75", "dreb_75", "stl_75", "blk_75",
+               "tov_75", "pf_75", "fouls_drawn_75", "blocked_75", "fta_75",
+               "fg3a_75", "fg3_rate", "ft_pct", "ts", "efg", "usg", "ast_pct",
+               "oreb_pct", "dreb_pct", "pct_unassisted", "pct_pts3", "pct_paint",
+               "pct_fb", "pct_ft", "pct_fga3", "mpg", "age", "height"]
+# v2 candidates, evaluated 2026-07-10 (metric/ablate_box_prior_features.py):
+# the on-court context group (opp_* points allowed, pace) lifts same-season
+# LOSO 0.707->0.742 but that is target contamination (measured on the same
+# possessions the target scores) and double-counts on-court evidence inside
+# the Phase 3/4a combination; NO v2 group improves next-season transfer
+# (0.4760 v1 vs 0.4753 full v2; posterior 0.526->0.522, Kalman 0.547->0.5445).
+# They stay in the features cache (fit/versatility trait material) but are
+# excluded from the production prior.
+FEATURES_V2_EXTRA = ["pct_ast2", "pct_ast3", "pct_mid", "stl_share",
+                     "blk_share", "fd_share", "pace", "tov_pct",
+                     "pts_offtov_75", "pts_2nd_75", "opp_paint_75",
+                     "opp_fb_75", "opp_offtov_75", "opp_2nd_75",
+                     "defl_75", "contest_75", "chg_75", "screen_75",
+                     "loose_75", "boxout_75", "wing_rel"]
+FEATURES = FEATURES_V1
 
 
 def era_of(y: int) -> int:
@@ -159,11 +238,20 @@ def era_of(y: int) -> int:
     return len(ERAS) - 1
 
 
-def fit_predict(df: pd.DataFrame) -> pd.DataFrame:
+def fit_predict(df: pd.DataFrame, features: list[str] | None = None) -> pd.DataFrame:
     """Era-bucketed weighted ridge, O and D separately.
     Adds columns: prior_o/prior_d/prior (in-sample-era fit, used for output)
     and loso_o/loso_d/loso (leave-one-season-out honest predictions)."""
+    FEATURES = features if features is not None else globals()["FEATURES"]
     df = df.copy()
+    # v2 features are structurally missing in early eras (hustle 2016+,
+    # combine 2001+): impute era mean, then global mean — a within-era
+    # constant column standardizes to a constant the intercept absorbs
+    for c in FEATURES:
+        if df[c].isna().any():
+            df[c] = df[c].fillna(df.groupby("era")[c].transform("mean"))
+            df[c] = df[c].fillna(df[c].mean())
+    df[FEATURES] = df[FEATURES].astype(float)
     Xall = df[FEATURES].to_numpy(dtype=float)
     # standardize globally (weighted)
     wq = df["fit_w"].to_numpy()
