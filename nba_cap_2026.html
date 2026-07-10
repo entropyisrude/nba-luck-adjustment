@@ -766,20 +766,21 @@ function renderTeamAnalysis(t,projected){
     ri.push({d:'dot-block',t:'No salary aggregation in trades; hard match required'});
     ri.push({d:'dot-block',t:'Cannot receive via sign-and-trade'});
   } else if(projected>FIRST){
-    ri.push({d:'dot-warn',t:'Over 1st apron — no salary aggregation in trades'});
-    ri.push({d:'dot-warn',t:'Trade match limit: incoming ≤ 110% of outgoing + $100K'});
+    ri.push({d:'dot-warn',t:'Over 1st apron — incoming salary cannot exceed outgoing (100% match, no buffer)'});
+    ri.push({d:'dot-warn',t:'Cannot use trade exceptions created in a prior season'});
     ri.push({d:'dot-warn',t:'Cannot receive via sign-and-trade'});
+    ri.push({d:'dot-ok',t:'Aggregation still allowed if the trade stays under the 2nd apron (hard-caps there)'});
     ri.push({d:'dot-ok',t:'TMLE still available (if signing stays under 2nd apron)'});
   } else if(projected>TAX){
     ri.push({d:'dot-warn',t:'Luxury taxpayer — no BAE, no Non-Taxpayer MLE'});
-    ri.push({d:'dot-ok',t:'Trade matching: incoming ≤ 125% + $100K'});
+    ri.push({d:'dot-ok',t:'Trade matching: 100% + $250K standard; up to ~200% expanded (hard-caps at 1st apron)'});
     ri.push({d:'dot-ok',t:'Taxpayer MLE (~$6.1M) available'});
   } else if(projected<=CAP){
     ri.push({d:'dot-ok',t:'Under salary cap — can use cap space to sign free agents'});
     ri.push({d:'dot-ok',t:'Non-Taxpayer MLE and BAE available'});
   } else {
     ri.push({d:'dot-ok',t:'Over cap, under luxury tax — Non-Taxpayer MLE (~$12.4M) and BAE available'});
-    ri.push({d:'dot-ok',t:'Trade matching: incoming ≤ 125% + $100K'});
+    ri.push({d:'dot-ok',t:'Trade matching: 100% + $250K standard; up to ~200% expanded (hard-caps at 1st apron)'});
   }
   document.getElementById('restrictList').innerHTML=ri.map(r=>`<div class="ri"><div class="ri-dot ${r.d}"></div><div class="ri-text">${r.t}</div></div>`).join('');
 
@@ -1026,40 +1027,38 @@ function evaluate(team,side,outgoing,incoming,incomingCount){
   const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
   const tpe=teamTpe(team);
   function routeFor(out,playerCount){
-    const canTpe=tpe>0&&projected<=SECOND;
-    const eff=canTpe?out+tpe:out;
+    // A TPE can never be stacked on outgoing salary for matching, and these are
+    // prior-season TPEs — unusable if the trade leaves the team above the 1st apron
+    // (standalone use hard-caps at the 1st apron).
+    const canTpe=tpe>0&&projected<=FIRST;
     const room=after<CAP&&projected<=CAP+ALLOW;
-    const strict=projected>FIRST?incoming<=eff:incoming<=eff+ALLOW;
+    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
     const aggregate=playerCount>1&&projected<=SECOND&&strict;
-    const expanded=eff>0&&projected<=FIRST&&incoming<=expandedMax(eff);
-    const sfx=canTpe&&eff>out?' (+ TPE)':'';
+    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
     if(room)return'Cap room';
     if(canTpe&&out===0&&incoming<=tpe)return'Trade exception';
-    if(playerCount<=1&&strict)return'Standard matching'+sfx;
-    if(aggregate)return'Aggregated matching'+sfx;
-    if(expanded)return'Expanded exception'+sfx;
+    if(playerCount<=1&&strict)return'Standard matching';
+    if(aggregate)return'Aggregated matching';
+    if(expanded)return'Expanded exception';
     return null;
   }
   let route=routeFor(outgoing,state[side].length+(side==='home'&&state.sat?1:0));
-  let hard=route?.includes('Aggregated')?SECOND:route?.includes('Expanded')?FIRST:null;
+  let hard=route?.includes('Aggregated')?SECOND:(route?.includes('Expanded')||route?.includes('Trade exception'))?FIRST:null;
   if(side==='home'&&state.sat&&route&&!routeFor(rosterOutgoing,state[side].length))hard=SECOND;
   const ok=!!route&&(!hard||final<=hard);
   let reason='';
   if(!ok){
-    const canTpe=tpe>0&&projected<=SECOND;
-    const eff=canTpe?outgoing+tpe:outgoing;
     if(!route){
       if(projected>SECOND){
         reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}). Teams over the 2nd apron cannot take back more salary than they send out — no matching route available.`+(tpe?` (${fmt(tpe)} TPE unavailable while over 2nd apron.)`:'');
       }else if(projected>FIRST){
-        reason=`Projected payroll ${fmt(projected)} is over the 1st apron (${fmt(FIRST)}). No salary buffer allowed — incoming must not exceed outgoing${canTpe?` + TPE (${fmt(eff)} combined)`:' ('+fmt(outgoing)+')'}. Over by ${fmt(incoming-eff)}.`;
+        reason=`Projected payroll ${fmt(projected)} is over the 1st apron (${fmt(FIRST)}). No salary buffer allowed — incoming must not exceed outgoing (${fmt(outgoing)}). Over by ${fmt(incoming-outgoing)}.`+(tpe?` (${fmt(tpe)} TPE unusable: prior-season TPEs are unavailable above the 1st apron, and a TPE can never be added to outgoing salary for matching.)`:'');
       }else{
-        const stdLimit=eff+ALLOW;
-        const expLimit=eff>0?expandedMax(eff):0;
+        const stdLimit=outgoing+ALLOW;
+        const expLimit=outgoing>0?expandedMax(outgoing):0;
         const bestLimit=Math.max(stdLimit,expLimit);
-        const src=canTpe?`outgoing + ${fmt(tpe)} TPE`:'outgoing';
-        const which=expLimit>stdLimit?`expanded exception (≈200% of ${src})`:(projected>TAX?`taxpayer `:'')+'standard matching ('+src+' + $250K)';
-        reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`;
+        const which=expLimit>stdLimit?'expanded exception (≈200% of outgoing)':(projected>TAX?'taxpayer ':'')+'standard matching (outgoing + $250K)';
+        reason=`Incoming ${fmt(incoming)} exceeds the best available matching limit of ${fmt(bestLimit)} via ${which}. Over by ${fmt(incoming-bestLimit)}.`+(tpe&&outgoing>0?` (The ${fmt(tpe)} TPE cannot be combined with outgoing salary matching.)`:'');
       }
     }else if(hard&&final>hard){
       const apronName=hard===SECOND?'2nd apron hard cap':'1st apron hard cap';
@@ -1284,31 +1283,29 @@ function evaluateDirect(team,rosterOut,rosterOutCount,playerCount,outgoing,incom
   const reserve=Math.max(0,ROSTER_MIN-count)*MIN,final=projected+reserve;
   const tpe=teamTpe(team);
   function routeFor(out,pc){
-    const canTpe=tpe>0&&projected<=SECOND;
-    const eff=canTpe?out+tpe:out;
+    // Same rules as evaluate(): no TPE stacking on matching; prior-season TPEs
+    // unusable above the 1st apron; standalone TPE use hard-caps at the 1st apron.
+    const canTpe=tpe>0&&projected<=FIRST;
     const room=after<CAP&&projected<=CAP+ALLOW;
-    const strict=projected>FIRST?incoming<=eff:incoming<=eff+ALLOW;
+    const strict=projected>FIRST?incoming<=out:incoming<=out+ALLOW;
     const aggregate=pc>1&&projected<=SECOND&&strict;
-    const expanded=eff>0&&projected<=FIRST&&incoming<=expandedMax(eff);
-    const sfx=canTpe&&eff>out?' (+ TPE)':'';
+    const expanded=out>0&&projected<=FIRST&&incoming<=expandedMax(out);
     if(room)return'Cap room';
     if(canTpe&&out===0&&incoming<=tpe)return'Trade exception';
-    if(pc<=1&&strict)return'Standard matching'+sfx;
-    if(aggregate)return'Aggregated matching'+sfx;
-    if(expanded)return'Expanded exception'+sfx;
+    if(pc<=1&&strict)return'Standard matching';
+    if(aggregate)return'Aggregated matching';
+    if(expanded)return'Expanded exception';
     return null;
   }
   let route=routeFor(outgoing,playerCount);
-  let hard=route?.includes('Aggregated')?SECOND:route?.includes('Expanded')?FIRST:null;
+  let hard=route?.includes('Aggregated')?SECOND:(route?.includes('Expanded')||route?.includes('Trade exception'))?FIRST:null;
   const ok=!!route&&(!hard||final<=hard);
   let reason='';
   if(!ok){
-    const canTpe=tpe>0&&projected<=SECOND;
-    const eff=canTpe?outgoing+tpe:outgoing;
     if(!route){
       if(projected>SECOND){reason=`Projected payroll ${fmt(projected)} exceeds the 2nd apron (${fmt(SECOND)}) — no matching route available.`+(tpe?` (${fmt(tpe)} TPE unavailable while over 2nd apron.)`:'');}
-      else if(projected>FIRST){reason=`Over 1st apron — incoming must not exceed outgoing${canTpe?` + TPE (${fmt(eff)} combined)`:''}. Receiving ${fmt(incoming)}, over by ${fmt(incoming-eff)}.`;}
-      else{const std=eff+ALLOW,exp=eff>0?expandedMax(eff):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception':'Standard matching'} limit${canTpe?' (incl. TPE)':''} of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}.`;}
+      else if(projected>FIRST){reason=`Over 1st apron — incoming must not exceed outgoing (${fmt(outgoing)}). Receiving ${fmt(incoming)}, over by ${fmt(incoming-outgoing)}.`+(tpe?` (${fmt(tpe)} TPE unusable above the 1st apron.)`:'');}
+      else{const std=outgoing+ALLOW,exp=outgoing>0?expandedMax(outgoing):0,best=Math.max(std,exp);reason=`${exp>std?'Expanded exception':'Standard matching'} limit of ${fmt(best)}. Incoming ${fmt(incoming)} over by ${fmt(incoming-best)}.`+(tpe&&outgoing>0?` (TPE cannot be combined with outgoing salary matching.)`:'');}
     }else if(hard&&final>hard){
       reason=`Via ${route}: adjusted payroll ${fmt(final)} exceeds ${hard===SECOND?'2nd':'1st'} apron hard cap (${fmt(hard)}) by ${fmt(final-hard)}.`;
     }
