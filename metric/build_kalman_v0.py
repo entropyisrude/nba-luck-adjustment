@@ -40,7 +40,9 @@ from build_rapm_target import prepare, load_player_names
 from build_aging_curves import load_ages
 
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
+# --filtered-prior swaps in the Phase 4b game-filtered box prior
 PRIOR_PATH = METRIC_DATA / "priors" / "box_prior.parquet"
+FILTERED_PRIOR_PATH = METRIC_DATA / "game_kalman" / "filtered_prior.parquet"
 CURVES_PATH = METRIC_DATA / "aging" / "aging_curves.csv"
 EVID_CACHE = METRIC_DATA / "evidence_season.parquet"
 OUT_DIR = METRIC_DATA / "kalman"
@@ -157,8 +159,16 @@ def wcorr(a, b, w):
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--filtered-prior", action="store_true",
+                    help="use the Phase 4b game-filtered box prior")
+    args = ap.parse_args()
+
     ev = build_evidence()
-    prior = pd.read_parquet(PRIOR_PATH)
+    path = FILTERED_PRIOR_PATH if args.filtered_prior else PRIOR_PATH
+    print(f"Prior source: {path.name}")
+    prior = pd.read_parquet(path)
     prior = prior.rename(columns={"pid": "player_id"})[
         ["player_id", "season_year", "loso_o", "loso_d"]].rename(
         columns={"loso_o": "prior_o", "loso_d": "prior_d"})
