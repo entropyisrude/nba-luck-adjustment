@@ -47,7 +47,12 @@ OUT_DIR = METRIC_DATA / "kalman"
 
 EVID_ALPHA = 150
 MIN_EVID_POSS = 1000          # scoreboard filter (same as Phase 3)
+MIN_PANEL_POSS = 50           # below this an "appearance" is likely a lineup-id
+                              # parsing ghost (retired coaches show up with ~15
+                              # possessions) and carries no information anyway
 INIT_VAR = 9.0                # first-appearance state variance (sd 3)
+MAX_DRIFT_YEARS = 4           # cap accumulated aging drift across long gaps;
+                              # beyond this the exploding variance does the work
 
 Q_GRID = [0.25, 0.5, 1.0]     # process variance per season, per side
 C_GRID = [2e4, 5e4, 1e5]      # evidence variance = c / poss
@@ -98,7 +103,13 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
         m_o = m_d = None
         v_o = v_d = None
         last_year = None
+        last_age = None
         for r in g.itertuples(index=False):
+            # age for this row: observed, else carried forward from last seen
+            age_now = r.age
+            if np.isnan(age_now):
+                age_now = (last_age + (r.season_year - last_year)
+                           if last_age is not None else 25.0)
             if m_o is None:
                 # initialize at box prior (or 0) with wide variance
                 m_o = r.prior_o if not np.isnan(r.prior_o) else -0.5
@@ -106,8 +117,8 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
                 v_o = v_d = INIT_VAR
             else:
                 gap = r.season_year - last_year
-                for yy in range(last_year, r.season_year):
-                    age_then = r.age - (r.season_year - yy)
+                for k in range(min(gap, MAX_DRIFT_YEARS)):
+                    age_then = last_age + k
                     m_o += drift_o(age_then)
                     m_d += drift_d(age_then)
                 v_o += q * gap
@@ -134,6 +145,7 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
                         "filt_o": m_o, "filt_d": m_d,
                         "filt_var_o": v_o, "filt_var_d": v_d})
             last_year = r.season_year
+            last_age = age_now
     return pd.DataFrame(out)
 
 
@@ -154,9 +166,11 @@ def main() -> None:
 
     panel = ev.merge(prior, on=["player_id", "season_year"], how="left") \
               .merge(ages, on=["player_id", "season_year"], how="left")
-    panel["age"] = panel["age"].fillna(27.0)
+    n0 = len(panel)
+    panel = panel[panel["ev_poss"] >= MIN_PANEL_POSS]
     panel = panel.sort_values(["player_id", "season_year"]).reset_index(drop=True)
-    print(f"Panel: {len(panel)} player-seasons")
+    print(f"Panel: {len(panel)} player-seasons "
+          f"({n0 - len(panel)} ghost/trivial appearances dropped)")
 
     curves = pd.read_csv(CURVES_PATH).dropna()
     drift_o = lambda a: float(np.interp(a, curves["age"], curves["d_orapm"]))
@@ -195,10 +209,15 @@ def main() -> None:
     f.to_csv(OUT_DIR / "kalman_states.csv", index=False)
     print(f"Wrote {len(f)} rows to {OUT_DIR / 'kalman_states.parquet'}")
 
-    top = f[f["season_year"] == 2025].nlargest(12, "filt_total")
-    print("\nTop 12 filtered states, 2025-26:")
-    print(top[["player_name", "filt_o", "filt_d", "filt_total",
-               "filt_var_o"]].round(2).to_string(index=False))
+    f = f.merge(panel[["player_id", "season_year", "ev_poss"]],
+                on=["player_id", "season_year"], how="left")
+    top = f[(f["season_year"] == 2025) & (f["ev_poss"] >= 3000)] \
+        .nlargest(12, "filt_total")
+    print("\nTop 12 filtered states, 2025-26 (>=3000 poss):")
+    txt = top[["player_name", "filt_o", "filt_d", "filt_total",
+               "filt_var_o"]].round(2).to_string(index=False)
+    enc = sys.stdout.encoding or "utf-8"
+    print(txt.encode(enc, errors="replace").decode(enc))
 
 
 if __name__ == "__main__":
