@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NERD — Net Estimated Rating, Denoised</title>
+  <style>
+    :root {
+      --bg: #f2f6fb;
+      --card: #fff;
+      --line: #d6e1ef;
+      --ink: #192231;
+      --muted: #5b6778;
+      --good: #0f766e;
+      --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      border: 1px solid #254b72;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    h2 { margin: 0 0 10px; font-size: 20px; }
+    .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; justify-content: center; }
+    .chip {
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.22);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06);
+      margin-bottom: 14px;
+    }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .controls label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+    select, input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 13px;
+      min-width: 100px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 640px;
+      background: #fff;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td {
+      border-bottom: 1px solid #edf2f9;
+      padding: 7px 9px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4) { text-align: left; }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #edf3fc;
+      color: #123154;
+    }
+    thead th.sortable { cursor: pointer; }
+    thead th.sortable:hover { background: #e4edf9; }
+    .pos { color: var(--good); font-weight: 600; }
+    .neg { color: var(--bad); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .sdcol { color: var(--muted); font-size: 11.5px; }
+    .explain {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .explain h3 { margin: 0 0 8px; font-size: 14px; }
+    .explain details { margin-top: 8px; }
+    .explain summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>NERD</h1>
+      <div class="meta">
+        <span class="chip">Net Estimated Rating, Denoised</span>
+        <span class="chip">Points per 100 possessions</span>
+        <span class="chip">1996-97 &rarr; 2025-26</span>
+      </div>
+      <div class="nav">
+        <a href="index.html">Overview</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="onoff.html">+/- Stats</a>
+        <a href="rapm-playoffs.html">Playoff RAPM</a>
+        <a href="player-similarity.html">Similarity</a>
+      </div>
+    </section>
+
+    <section class="explain">
+      <h3>What is NERD?</h3>
+      <p><strong>NERD (Net Estimated Rating, Denoised)</strong> is our all-in-one player impact
+      metric: an estimate of how many points per 100 possessions a player adds to his team,
+      split into offense (<strong>O-NERD</strong>) and defense (<strong>D-NERD</strong>).
+      It combines two kinds of evidence, each weighted by its reliability: what actually happens
+      on the scoreboard when the player is on the floor (a multi-year, luck-adjusted RAPM in
+      which every player in the league is estimated jointly), and what his statistical profile
+      suggests (a box-score prior fit against long-run impact). Thin samples lean on the profile;
+      large samples earn their own number.</p>
+      <p>The <em>Denoised</em> part is what makes it ours: every possession behind NERD runs
+      through this site's luck-adjustment pipeline — opponent three-point variance and other
+      scoreboard noise are muted before the model ever sees the data, and all stint scores are
+      calibrated to official box scores. Playoff possessions are included in the on-court
+      evidence; the statistical profile uses regular-season stats only.</p>
+      <p>The <strong>&plusmn;</strong> column is an honest uncertainty band (one standard
+      deviation) from a Kalman filter that tracks each player through his career with
+      aging curves fit on 14,600 player-seasons. Small samples have wide bands — that is the
+      point.</p>
+      <details>
+        <summary>How good is it? (validation)</summary>
+        <p>On the retrodiction benchmark published by dunksandthrees (prior-season ratings,
+        weighted by next-season minutes, predicting next-season team net rating), NERD's
+        error (2.33) beats BPM (2.60) and RAPTOR (2.75) measured on the identical pipeline —
+        a larger margin over those anchors than EPM reports over them on its own test.
+        In a 12-season game-margin backtest (~14,000 games), NERD is the most accurate
+        public-style metric tested (MAE 9.50 vs RAPTOR 9.63, BPM 9.68; Vegas closing lines 9.20).
+        Season-level values here are fixed at season end; no in-season information leaks in.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Leaderboard</h2>
+      <div class="controls">
+        <label>Season
+          <select id="season-sel"></select>
+        </label>
+        <label>Team
+          <select id="team-sel"><option value="ALL">All Teams</option></select>
+        </label>
+        <label>Min possessions
+          <input id="min-poss" type="number" min="0" step="250" value="2000" />
+        </label>
+        <label>Player search
+          <input id="search" type="text" placeholder="name..." />
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="nerd-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="rank" data-type="num">#</th>
+              <th class="sortable" data-key="name" data-type="str">Player</th>
+              <th class="sortable" data-key="seasonLabel" data-type="str">Season</th>
+              <th class="sortable" data-key="team" data-type="str">Team</th>
+              <th class="sortable" data-key="poss" data-type="num" title="Possessions on court (RS+PO)">Poss</th>
+              <th class="sortable" data-key="nerd" data-type="num" title="Net Estimated Rating, Denoised">NERD</th>
+              <th data-key="sd" title="Uncertainty (1 sd, from the career Kalman filter)">&plusmn;</th>
+              <th class="sortable" data-key="o" data-type="num" title="Offensive NERD">O-NERD</th>
+              <th class="sortable" data-key="d" data-type="num" title="Defensive NERD">D-NERD</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:12px;margin:8px 2px 0;">
+        Career mode aggregates possession-weighted across a player's qualifying seasons.
+        Team = most-minutes regular-season team that season.
+      </p>
+    </section>
+  </div>
+
+  <script src="data/nerd_seasons.js"></script>
+  <script>
+    const D = window.NERD_DATA;
+    const IDX = Object.fromEntries(D.cols.map((c, i) => [c, i]));
+    const seasonLabel = y => y + "-" + String(y + 1).slice(2);
+
+    const rows = D.rows.map(r => ({
+      season: r[IDX.season], pid: r[IDX.pid], name: r[IDX.name],
+      team: r[IDX.team], poss: r[IDX.poss], o: r[IDX.o], d: r[IDX.d],
+      nerd: r[IDX.nerd], sd: r[IDX.sd], seasonLabel: seasonLabel(r[IDX.season]),
+    }));
+
+    const seasons = [...new Set(rows.map(r => r.season))].sort((a, b) => b - a);
+    const seasonSel = document.getElementById("season-sel");
+    for (const s of seasons) {
+      const o = document.createElement("option");
+      o.value = s; o.textContent = seasonLabel(s);
+      seasonSel.appendChild(o);
+    }
+    const oAll = document.createElement("option");
+    oAll.value = "ALL"; oAll.textContent = "All player-seasons";
+    seasonSel.appendChild(oAll);
+    const oCar = document.createElement("option");
+    oCar.value = "CAREER"; oCar.textContent = "Career (poss-weighted)";
+    seasonSel.appendChild(oCar);
+
+    const teamSel = document.getElementById("team-sel");
+    for (const t of [...new Set(rows.map(r => r.team))].filter(Boolean).sort()) {
+      const o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      teamSel.appendChild(o);
+    }
+
+    let sortKey = "nerd", sortDir = -1;
+
+    function careerRows() {
+      const by = new Map();
+      for (const r of rows) {
+        let c = by.get(r.pid);
+        if (!c) { c = { pid: r.pid, name: r.name, team: r.team, poss: 0,
+                        so: 0, sd_: 0, sn: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
+        c.poss += r.poss;
+        c.so += r.o * r.poss; c.sd_ += r.d * r.poss; c.sn += r.nerd * r.poss;
+        c.seasons += 1;
+        if (r.season > c.lastSeason) { c.lastSeason = r.season; c.name = r.name; c.team = r.team; }
+      }
+      return [...by.values()].map(c => ({
+        pid: c.pid, name: c.name, team: c.team, poss: c.poss,
+        o: c.so / c.poss, d: c.sd_ / c.poss, nerd: c.sn / c.poss, sd: null,
+        season: c.lastSeason, seasonLabel: c.seasons + " szn",
+      }));
+    }
+
+    function currentRows() {
+      const sv = seasonSel.value;
+      let base = sv === "CAREER" ? careerRows()
+               : sv === "ALL" ? rows
+               : rows.filter(r => r.season === +sv);
+      const minPoss = +document.getElementById("min-poss").value || 0;
+      const tv = teamSel.value;
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      base = base.filter(r => r.poss >= minPoss
+                           && (tv === "ALL" || r.team === tv)
+                           && (!q || r.name.toLowerCase().includes(q)));
+      base.sort((a, b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        if (typeof av === "string") return sortDir * av.localeCompare(bv);
+        return sortDir * ((av ?? -1e9) - (bv ?? -1e9));
+      });
+      return base;
+    }
+
+    function fmt(v, digits = 1) {
+      if (v == null) return "&mdash;";
+      const s = v.toFixed(digits);
+      const cls = v > 0 ? "pos" : v < 0 ? "neg" : "";
+      return `<span class="${cls}">${v > 0 ? "+" : ""}${s}</span>`;
+    }
+
+    function render() {
+      const body = document.querySelector("#nerd-table tbody");
+      const rs = currentRows().slice(0, 500);
+      body.innerHTML = rs.map((r, i) => `
+        <tr>
+          <td class="muted">${i + 1}</td>
+          <td>${r.name}</td>
+          <td class="muted">${r.seasonLabel}</td>
+          <td class="muted">${r.team || "&mdash;"}</td>
+          <td>${r.poss.toLocaleString()}</td>
+          <td>${fmt(r.nerd)}</td>
+          <td class="sdcol">${r.sd == null ? "&mdash;" : "&plusmn;" + r.sd.toFixed(1)}</td>
+          <td>${fmt(r.o)}</td>
+          <td>${fmt(r.d)}</td>
+        </tr>`).join("");
+    }
+
+    document.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        const k = th.dataset.key;
+        if (k === "rank") return;
+        if (sortKey === k) sortDir *= -1;
+        else { sortKey = k; sortDir = th.dataset.type === "str" ? 1 : -1; }
+        render();
+      });
+    });
+    for (const id of ["season-sel", "team-sel", "min-poss", "search"])
+      document.getElementById(id).addEventListener("input", render);
+
+    render();
+  </script>
+</body>
+</html>
