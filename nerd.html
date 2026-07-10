@@ -178,6 +178,13 @@
           <input id="search" type="text" placeholder="name..." />
         </label>
       </div>
+      <p id="proj-note" class="muted" style="display:none;font-size:12.5px;margin:0 2px 10px;">
+        <strong>Projected view:</strong> these are pre-season forecasts — each player's
+        Kalman state carried forward along our aging curves, before any 2026-27 games.
+        Poss shows the player's <em>last</em> season (for the minimum filter);
+        &plusmn; bands are wider because the future adds uncertainty. Rookies are not
+        projected yet. Teams reflect last season's rosters, not offseason moves.
+      </p>
       <div class="table-wrap">
         <table id="nerd-table">
           <thead>
@@ -215,13 +222,17 @@
       nerd: r[IDX.nerd], sd: r[IDX.sd], seasonLabel: seasonLabel(r[IDX.season]),
     }));
 
+    const PROJ_SEASON = 2026;   // rows for this season are Kalman projections
     const seasons = [...new Set(rows.map(r => r.season))].sort((a, b) => b - a);
     const seasonSel = document.getElementById("season-sel");
     for (const s of seasons) {
       const o = document.createElement("option");
-      o.value = s; o.textContent = seasonLabel(s);
+      o.value = s;
+      o.textContent = s === PROJ_SEASON ? seasonLabel(s) + " (Projected)"
+                                        : seasonLabel(s);
       seasonSel.appendChild(o);
     }
+    if (seasons.includes(PROJ_SEASON)) seasonSel.value = PROJ_SEASON - 1;
     const oAll = document.createElement("option");
     oAll.value = "ALL"; oAll.textContent = "All player-seasons";
     seasonSel.appendChild(oAll);
@@ -241,6 +252,7 @@
     function careerRows() {
       const by = new Map();
       for (const r of rows) {
+        if (r.season === PROJ_SEASON) continue;
         let c = by.get(r.pid);
         if (!c) { c = { pid: r.pid, name: r.name, team: r.team, poss: 0,
                         so: 0, sd_: 0, sn: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
@@ -259,8 +271,10 @@
     function currentRows() {
       const sv = seasonSel.value;
       let base = sv === "CAREER" ? careerRows()
-               : sv === "ALL" ? rows
+               : sv === "ALL" ? rows.filter(r => r.season !== PROJ_SEASON)
                : rows.filter(r => r.season === +sv);
+      document.getElementById("proj-note").style.display =
+        +sv === PROJ_SEASON ? "block" : "none";
       const minPoss = +document.getElementById("min-poss").value || 0;
       const tv = teamSel.value;
       const q = document.getElementById("search").value.trim().toLowerCase();
