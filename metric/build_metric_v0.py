@@ -39,6 +39,7 @@ from build_rapm_target import (prepare, load_player_names, season_label,
 
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
 PRIOR_PATH = METRIC_DATA / "priors" / "box_prior.parquet"
+KALMAN_PATH = METRIC_DATA / "kalman" / "kalman_states.parquet"
 TARGET_PATH = METRIC_DATA / "targets" / "rapm_target_hl550.parquet"
 BBREF_DIR = METRIC_DATA / "benchmarks" / "bbref_advanced"
 RAPTOR_PATH = METRIC_DATA / "benchmarks" / "historical_RAPTOR_by_player.csv"
@@ -95,12 +96,21 @@ def normal_eqs(X, y, w_st):
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--centers", choices=["box", "kalman"], default="box",
+                    help="ridge centers: LOSO box prior (v0) or Kalman "
+                         "one-step states (v1 candidate: dynamics-aware "
+                         "centers + joint solve's team-sum consistency), "
+                         "with box-prior fallback")
+    args = ap.parse_args()
+
     st = prepare()
     st["date"] = pd.to_datetime(st["date"])
     st, X, y, poss, players, pidx, hidx, aidx = build_design(st)
     P = len(players)
     n = len(st)
-    print(f"Design: {n} stints, {P} players")
+    print(f"Design: {n} stints, {P} players  (centers: {args.centers})")
 
     dates = st["date"].to_numpy()
     syears = st["season_year"].to_numpy()
@@ -113,6 +123,16 @@ def main() -> None:
     prior_d = {(int(r.pid), int(r.season_year)): r.loso_d
                for r in prior.itertuples(index=False) if pd.notna(r.loso_d)}
     print(f"Priors loaded for {len(prior_o)} player-seasons")
+    if args.centers == "kalman":
+        ks = pd.read_parquet(KALMAN_PATH)
+        # one-step-ahead state: honest for season t (info through t-1)
+        kal_o = {(int(r.player_id), int(r.season_year)): r.pred_o
+                 for r in ks.itertuples(index=False) if pd.notna(r.pred_o)}
+        kal_d = {(int(r.player_id), int(r.season_year)): r.pred_d
+                 for r in ks.itertuples(index=False) if pd.notna(r.pred_d)}
+        print(f"Kalman centers loaded for {len(kal_o)} player-seasons")
+        prior_o = {**prior_o, **kal_o}
+        prior_d = {**prior_d, **kal_d}
 
     results = []
     evid_rows = []
@@ -270,9 +290,10 @@ def main() -> None:
     out["metric_d"] = out[f"m{best}_d"]
     out["metric"] = out[f"m{best}"]
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out.to_parquet(OUT_DIR / "metric_v0.parquet", index=False)
-    out.to_csv(OUT_DIR / "metric_v0.csv", index=False)
-    print(f"\nWrote {len(out)} rows to {OUT_DIR / 'metric_v0.parquet'}")
+    stem = "metric_v0" if args.centers == "box" else "metric_v1_kcenter"
+    out.to_parquet(OUT_DIR / f"{stem}.parquet", index=False)
+    out.to_csv(OUT_DIR / f"{stem}.csv", index=False)
+    print(f"\nWrote {len(out)} rows to {OUT_DIR / f'{stem}.parquet'}")
 
     for season in ("2025-26", "2015-16"):
         top = out[(out["target_season"] == season) & (out["poss_season"] > 3000)]

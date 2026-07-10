@@ -47,8 +47,10 @@ TEST_SEASONS = range(2006, 2018)   # seasons with closing spreads
 # (w = min(prev_min/1500, 1)) — consumer-side fix for the fringe-player
 # overrating; the filter-side fix failed the player scoreboards, and the
 # backtest's affine calibration can't correct this (it's non-affine)
+# jointk = metric_v1 candidate: joint solve with Kalman-state ridge centers
 MODELS = ["kalman", "static", "bpm", "raptor", "kblend2", "kblend4"]
 BLEND_FULL_MIN = 1500.0
+JOINTK_PATH = METRIC_DATA / "metric" / "metric_v1_kcenter.parquet"
 
 
 def load_games() -> pd.DataFrame:
@@ -122,6 +124,13 @@ def load_ratings() -> dict[str, pd.DataFrame]:
     m = m[["pid", "season_year", "metric"]].copy()
     m["season_year"] += 1
     out["static"] = m.rename(columns={"metric": "rating"})
+    if JOINTK_PATH.exists():
+        jk = pd.read_parquet(JOINTK_PATH).rename(columns={"player_id": "pid"})
+        jk = jk[["pid", "season_year", "metric"]].copy()
+        jk["season_year"] += 1
+        out["jointk"] = jk.rename(columns={"metric": "rating"})
+        if "jointk" not in MODELS:
+            MODELS.append("jointk")
 
     names = (k.groupby("player_id")["player_name"].last().rename_axis("pid")
              .reset_index())
@@ -168,6 +177,9 @@ def team_strengths(pg: pd.DataFrame, ratings: dict[str, pd.DataFrame]) -> pd.Dat
     w = (df["prev_smin"] / BLEND_FULL_MIN).clip(0, 1).fillna(0.0)
     df["kblend2"] = w * df["kalman"] + (1 - w) * -2.0
     df["kblend4"] = w * df["kalman"] + (1 - w) * -4.0
+    df["ens"] = (df["static"] + df["kalman"]) / 2.0
+    if "ens" not in MODELS:
+        MODELS.append("ens")
     rows = []
     for mv, mcol in [("actual", "min"), ("proj", "min_proj")]:
         t = df[["game_id", "team_id"]].copy()
