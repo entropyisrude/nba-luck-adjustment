@@ -425,20 +425,26 @@
           const pr = r.nP.map(p=>{
             const dp = dv.get(p.name);
             const dval = dp ? dp.nerd : null;
-            // delta compares each value to ITS OWN system's rotation average
-            // (the scales have different zero points)
-            const del = dval==null ? null : p.nerd - dval + SCALE_OFFSET_DARKO;
+            // estimated wins per 82 at these minutes, each vs its own
+            // system's (depth-consistent) replacement floor -> comparable
+            const nw = p.minutes/48*(p.nerd - p.rep)*82/PTS_PER_WIN;
+            const dw = dp ? p.minutes/48*(dp.nerd - dp.rep)*82/PTS_PER_WIN : null;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep&&(dp?dp.isRep:true)?'<span class="tag-rep">REP</span>':''}</td>
               <td>${p.minutes}<span class="rk"> mpg</span></td>
               <td>${fmt(p.nerd)}</td>
               <td>${dval==null?'&mdash;':fmt(dval)}</td>
-              <td>${del==null?'&mdash;':fmt(del)}</td>
+              <td>${nw.toFixed(1)}</td>
+              <td>${dw==null?'&mdash;':dw.toFixed(1)}</td>
+              <td>${dw==null?'&mdash;':fmt(nw-dw)}</td>
             </tr>`; }).join('');
           return main + `<tr class="detail"><td colspan="7"><div class="rot">
             <table><thead><tr><th style="text-align:left">Player</th><th>Min</th>
-            <th>NERD</th><th>DARKO</th>
-            <th title="Each value measured against its own system's rotation average (the scales have different zero points)">&Delta; rel</th></tr></thead><tbody>${pr}</tbody></table>
+            <th title="Rate, points per 100 (NERD units)">NERD</th>
+            <th title="Rate, points per 100 (DPM units — different zero point; compare the wins columns instead)">DARKO</th>
+            <th title="Estimated wins per 82 at these minutes vs NERD's replacement floor">W/82 N</th>
+            <th title="Estimated wins per 82 at these minutes vs DARKO's depth-matched floor">W/82 D</th>
+            <th title="NERD wins minus DARKO wins — comparable because both floors sit at the same depth below their own scale's average">&Delta;W</th></tr></thead><tbody>${pr}</tbody></table>
             </div></td></tr>`;
         }).join('');
       } else {
