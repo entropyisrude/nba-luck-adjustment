@@ -111,6 +111,20 @@
     .explain h3 { margin: 0 0 8px; font-size: 14px; }
     .explain details { margin-top: 8px; }
     .explain summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+    @media (max-width: 640px) {
+      .wrap { padding: 8px; }
+      .hero { padding: 12px 10px; border-radius: 10px; }
+      h1 { font-size: 22px; }
+      .chip { font-size: 10.5px; padding: 4px 8px; }
+      .nav a { font-size: 11px; padding: 5px 8px; }
+      .card, .explain { padding: 10px; }
+      .controls { gap: 6px; }
+      .controls label { font-size: 11px; flex: 1 1 40%; }
+      select, input { min-width: 0; width: 100%; font-size: 12px; padding: 6px 7px; }
+      table { font-size: 11px; }
+      th, td { padding: 5px 5px; }
+      .table-wrap { max-height: 70vh; }
+    }
   </style>
 </head>
 <body>

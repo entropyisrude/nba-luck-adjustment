@@ -15,5 +15,39 @@
       "qualifying_offer": null,
       "rights": "Two-Way"
     }
+  ],
+  "CLE": [
+    {
+      "player": "James Harden",
+      "category": "active_roster",
+      "position": null,
+      "age": null,
+      "contract_type": null,
+      "cap_hit": null,
+      "base_salary": null,
+      "likely_incentives": null,
+      "unlikely_incentives": null,
+      "trade_bonus_proration": null,
+      "guaranteed": null,
+      "qualifying_offer": null,
+      "rights": null
+    }
+  ],
+  "DET": [
+    {
+      "player": "Jalen Duren",
+      "category": "active_roster",
+      "position": null,
+      "age": null,
+      "contract_type": null,
+      "cap_hit": null,
+      "base_salary": null,
+      "likely_incentives": null,
+      "unlikely_incentives": null,
+      "trade_bonus_proration": null,
+      "guaranteed": null,
+      "qualifying_offer": null,
+      "rights": null
+    }
   ]
 }

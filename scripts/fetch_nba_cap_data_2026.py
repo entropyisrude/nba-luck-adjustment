@@ -397,9 +397,12 @@ def apply_manual_additions(teams: dict[str, Any]) -> None:
     cap page structure just doesn't expose anywhere our table parser reaches
     (e.g. a two-way player who only shows up in an unrelated future-year
     "Deadlines" table, not the Active Roster table), so no amount of fixing
-    the scraper's table-matching logic would find them. Skips anyone already
-    present on that team under any category, so this stops applying on its
-    own once Spotrac's page catches up.
+    the scraper's table-matching logic would find them. Also handles the
+    PROMOTION case: an agreed signing Spotrac still lists only as a cap hold
+    gets lifted into the manual row's category, carrying over the scraped
+    fields where the manual row leaves them null. Skips anyone already on
+    the active roster / pending list, so this stops applying on its own
+    once Spotrac's page catches up.
     """
     if not MANUAL_ADDITIONS_PATH.exists():
         return
@@ -408,20 +411,39 @@ def apply_manual_additions(teams: dict[str, Any]) -> None:
         data = teams.get(abbr)
         if not data:
             continue
-        existing_names = {
+        rostered_names = {
             row["player"]
-            for cat in ("active_roster", "pending_transactions", "cap_holds", "dead_money", "retained_salary")
+            for cat in ("active_roster", "pending_transactions")
             for row in (data.get(cat) or [])
         }
         added = []
+        promoted = []
         for row in rows:
-            if row["player"] in existing_names:
+            if row["player"] in rostered_names:
                 continue
             category = row.get("category", "active_roster")
-            data.setdefault(category, []).append(row)
-            added.append(row["player"])
+            src = None
+            for cat in ("cap_holds", "dead_money", "retained_salary"):
+                for existing in (data.get(cat) or []):
+                    if existing["player"] == row["player"]:
+                        src = (cat, existing)
+                        break
+                if src:
+                    break
+            if src:
+                cat, existing = src
+                data[cat].remove(existing)
+                merged = {**existing, **{k: v for k, v in row.items() if v is not None}}
+                merged["category"] = category
+                data.setdefault(category, []).append(merged)
+                promoted.append(f"{row['player']} (from {cat})")
+            else:
+                data.setdefault(category, []).append(row)
+                added.append(row["player"])
         if added:
             print(f"  {abbr}: manually added {added} (not exposed anywhere on Spotrac's page)", flush=True)
+        if promoted:
+            print(f"  {abbr}: manually promoted {promoted}", flush=True)
 
 
 def validate_no_cross_team_duplicates(teams: dict[str, Any]) -> list[str]:

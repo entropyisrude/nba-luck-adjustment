@@ -35,6 +35,7 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 .pos-table td.pos{width:28px;font-weight:800;color:var(--txt3);font-size:10px;padding-top:5px}
 .pos-table td.names{color:var(--txt)}
 .pos-table td.names .more{color:var(--txt3);font-weight:600}
+.pos-table td.names .inj{color:#b91c1c;background:#fdecec;border:1px solid #f3c4c4;border-radius:3px;font-size:9px;font-weight:800;padding:0 3px;vertical-align:1px;text-transform:uppercase;cursor:help}
 .pos-table tr.other td.pos{color:#bc4c00}
 .empty{color:#c8d0d8;font-style:italic}
 </style>
@@ -64,6 +65,7 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 <script>
 document.write('<scr'+'ipt src="data/nba_cap_data_2026_27.js?v='+Date.now()+'"></scr'+'ipt>');
 document.write('<scr'+'ipt src="data/depth_chart_defaults.js?v='+Date.now()+'"></scr'+'ipt>');
+document.write('<scr'+'ipt src="data/injury_notes.js?v='+Date.now()+'"></scr'+'ipt>');
 </script>
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
@@ -83,6 +85,19 @@ function lastName(full){
     return parts.slice(-2).join(' ');
   }
   return parts[parts.length-1];
+}
+
+// "J. Brunson" -- first initial + last name; single-word names unchanged.
+function shortName(full){
+  const parts = full.trim().split(/\s+/);
+  if(parts.length<2) return full;
+  return parts[0][0] + '. ' + lastName(full);
+}
+const INJ = window.INJURY_NOTES || {};
+function dispName(p){
+  const note = INJ[p.player];
+  const badge = note ? ` <span class="inj" title="${note.replace(/"/g,'&quot;')}">inj</span>` : '';
+  return shortName(p.player) + badge;
 }
 
 function rosterFor(team){
@@ -139,13 +154,13 @@ function renderTeam(abbr, team){
   const rows = POSITIONS.map(pos=>{
     const players = cols[pos];
     if(!players.length) return `<tr><td class="pos">${pos}</td><td class="names empty">—</td></tr>`;
-    const shown = players.slice(0,4).map(p=>lastName(p.player));
+    const shown = players.slice(0,4).map(dispName);
     const extra = players.length>4 ? ` <span class="more">+${players.length-4}</span>` : '';
     return `<tr><td class="pos">${pos}</td><td class="names">${shown.join(', ')}${extra}</td></tr>`;
   }).join('');
   const other = cols.OTHER;
   const otherRow = other.length
-    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.slice(0,4).map(p=>lastName(p.player)).join(', ')}${other.length>4?` <span class="more">+${other.length-4}</span>`:''}</td></tr>`
+    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.slice(0,4).map(dispName).join(', ')}${other.length>4?` <span class="more">+${other.length-4}</span>`:''}</td></tr>`
     : '';
   return `
     <a class="team-card" href="depth-chart-team.html?team=${abbr}">
