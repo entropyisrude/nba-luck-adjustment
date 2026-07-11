@@ -56,6 +56,23 @@ INIT_VAR = 9.0                # first-appearance state variance (sd 3)
 MAX_DRIFT_YEARS = 4           # cap accumulated aging drift across long gaps;
                               # beyond this the exploding variance does the work
 
+# Survivorship correction to the old-age drift (added 2026-07-11): the
+# delta-method aging curves only see players who kept playing, so they
+# understate decline past ~30. Fit on train-year (<=2018) one-step forecast
+# residuals, validated OOS 2019+: 30+ residuals -0.47/-0.59 -> -0.18/-0.19,
+# younger ages untouched, wcorr 0.5550 -> 0.5590. Split evenly O/D.
+OLD_DRIFT_AGE = 29.0
+OLD_DRIFT_A = -0.230          # extra total drift/season at age 30
+OLD_DRIFT_B = -0.029          # additional per year beyond 30
+
+
+def old_drift_extra(age: float) -> float:
+    """Extra total drift for the season played at `age` (>29): the fit is
+    corr(age) = -0.230 - 0.029*(age - 29), i.e. -0.259 at 30, -0.46 at 37."""
+    if age <= OLD_DRIFT_AGE:
+        return 0.0
+    return OLD_DRIFT_A + OLD_DRIFT_B * (age - OLD_DRIFT_AGE)
+
 Q_GRID = [0.25, 0.5, 1.0]     # process variance per season, per side
 C_GRID = [2e4, 5e4, 1e5]      # evidence variance = c / poss
 SB_GRID = [4.0, 8.0]          # box-prior observation variance
@@ -149,8 +166,9 @@ def run_filter(panel: pd.DataFrame, drift_o, drift_d,
                 gap = r.season_year - last_year
                 for k in range(min(gap, MAX_DRIFT_YEARS)):
                     age_then = last_age + k
-                    m_o += drift_o(age_then)
-                    m_d += drift_d(age_then)
+                    extra = old_drift_extra(age_then + 1)
+                    m_o += drift_o(age_then) + extra / 2
+                    m_d += drift_d(age_then) + extra / 2
                 v_o += q * gap
                 v_d += q * gap
             pred_o, pred_d, pv_o, pv_d = m_o, m_d, v_o, v_d

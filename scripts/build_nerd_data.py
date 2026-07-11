@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import duckdb
@@ -44,6 +45,9 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
     curves = pd.read_csv(METRIC_DATA / "aging" / "aging_curves.csv").dropna()
     drift_o = lambda a: float(np.interp(a, curves["age"], curves["d_orapm"]))
     drift_d = lambda a: float(np.interp(a, curves["age"], curves["d_drapm"]))
+    # survivorship correction past 29 (see build_kalman_v0.old_drift_extra)
+    sys.path.insert(0, str(ROOT / "metric"))
+    from build_kalman_v0 import old_drift_extra
     feats = pd.read_parquet(METRIC_DATA / "features_box_season.parquet",
                             columns=["pid", "season_year", "age", "poss"])
 
@@ -62,8 +66,9 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
         age = float(r.age) if pd.notna(r.age) else 27.0
         gap = PROJECT_TO - int(r.season_year)
         for step in range(min(gap, MAX_DRIFT_YEARS)):
-            m_o += drift_o(age + step)
-            m_d += drift_d(age + step)
+            extra = old_drift_extra(age + step + 1)
+            m_o += drift_o(age + step) + extra / 2
+            m_d += drift_d(age + step) + extra / 2
         v_o += KALMAN_Q * gap
         v_d += KALMAN_Q * gap
         rows.append([PROJECT_TO, int(r.player_id), r.player_name,
