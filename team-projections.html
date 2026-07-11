@@ -138,7 +138,20 @@
             <option value="-3">Harsh (&minus;3.0)</option>
           </select>
         </label>
+        <label>Health
+          <select id="health-sel">
+            <option value="healthy">All healthy (82 games)</option>
+            <option value="inj">Injury-adjusted</option>
+          </select>
+        </label>
       </div>
+      <p id="inj-note" class="muted" style="display:none;font-size:12px;margin:0 2px 10px;">
+        <strong>Injury-adjusted:</strong> players with a games projection in
+        <code>data/availability_2026_27.js</code> contribute their rating for their expected
+        games and replacement level for the rest (their missed-night minutes go to a
+        replacement body). Everyone unlisted plays 82. Currently adjusted:
+        <span id="inj-list"></span>.
+      </p>
       <p id="darko-note" class="muted" style="display:none;font-size:12px;margin:0 2px 10px;">
         <strong>DARKO:</strong> current DPM values from
         <a href="https://darko.app" target="_blank" rel="noopener">darko.app</a>
@@ -179,6 +192,7 @@
   <script src="data/depth_chart_defaults.js"></script>
   <script src="data/nerd_seasons.js"></script>
   <script src="data/darko_current.js"></script>
+  <script src="data/availability_2026_27.js"></script>
   <script>
     // ---- shared depth-chart minute logic (kept in sync with depth-chart-team.html) ----
     const SNAP = window.NBA_CAP_SNAPSHOT;
@@ -334,20 +348,29 @@
         SCALE_OFFSET_DARKO = slotMean(lookupDarko) - slotMean(lookupNerd);
       return REP + SCALE_OFFSET_DARKO;
     }
+    const AVAIL = window.AVAILABILITY || {};
     function computeTeams(lookup = lookupNerd){
       const teams = [];
       const rep = repFor(lookup);
+      const useInj = document.getElementById('health-sel').value === 'inj';
       for(const abbr of Object.keys(SNAP.teams)){
         const rot = rotationFor(abbr);
         let net = 0, off = 0, def = 0;
         const players = rot.map(p=>{
           const nd = lookup(p.player);
-          const val = nd ? nd.nerd : rep;
-          const ov = nd ? nd.o : rep/2, dv = nd ? nd.d : rep/2;
+          let val = nd ? nd.nerd : rep;
+          let ov = nd ? nd.o : rep/2, dv = nd ? nd.d : rep/2;
+          const gp = useInj ? Math.max(0, Math.min(82, AVAIL[p.player] ?? 82)) : 82;
+          if(gp < 82){
+            const a = gp / 82;
+            val = a*val + (1-a)*rep;
+            ov = a*ov + (1-a)*rep/2;
+            dv = a*dv + (1-a)*rep/2;
+          }
           const w = p.minutes / 48;
           net += w*val; off += w*ov; def += w*dv;
           return { name:p.player, minutes:p.minutes, nerd:val, o:ov, d:dv,
-                   isRep:!nd, rep };
+                   isRep:!nd, rep, gp };
         }).sort((a,b)=>b.minutes-a.minutes);
         teams.push({ abbr, name: SNAP.teams[abbr].name, net, off, def, players });
       }
@@ -387,6 +410,10 @@
       const src = document.getElementById('src-sel').value;
       const grp = document.getElementById('group-sel').value;
       document.getElementById('darko-note').style.display = src==='nerd' ? 'none' : 'block';
+      const inj = document.getElementById('health-sel').value === 'inj';
+      document.getElementById('inj-note').style.display = inj ? 'block' : 'none';
+      if(inj) document.getElementById('inj-list').textContent =
+        Object.entries(AVAIL).map(([n,g])=>`${n} (${g}g)`).join(', ') || 'none listed';
       if(src !== lastSrc){
         sortKey = src==='compare' ? 'dif' : 'wins'; sortDir = -1; lastSrc = src;
       }
@@ -431,7 +458,7 @@
             const dw = dp ? p.minutes/48*(dp.nerd - dp.rep)*82/PTS_PER_WIN : null;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep&&(dp?dp.isRep:true)?'<span class="tag-rep">REP</span>':''}</td>
-              <td>${p.minutes}<span class="rk"> mpg</span></td>
+              <td>${p.minutes}<span class="rk"> mpg</span>${p.gp<82?` <span class="rk">(${p.gp}g)</span>`:''}</td>
               <td>${fmt(p.nerd)}</td>
               <td>${dval==null?'&mdash;':fmt(dval)}</td>
               <td>${nw.toFixed(1)}</td>
@@ -475,7 +502,7 @@
             const war82 = ppgRep*82/PTS_PER_WIN;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep?'<span class="tag-rep">REP</span>':''}</td>
-              <td>${p.minutes}<span class="rk"> mpg</span></td>
+              <td>${p.minutes}<span class="rk"> mpg</span>${p.gp<82?` <span class="rk">(${p.gp}g)</span>`:''}</td>
               <td><span class="barwrap"><span class="bar" style="width:${barw}%;background:${col}"></span></span></td>
               <td>${fmt(p.nerd)}</td>
               <td>${fmt(p.o)}</td>
@@ -506,6 +533,7 @@
     });
     document.getElementById('src-sel').addEventListener('change', render);
     document.getElementById('group-sel').addEventListener('change', render);
+    document.getElementById('health-sel').addEventListener('change', render);
     document.getElementById('rep-sel').addEventListener('change', e=>{ REP = +e.target.value; render(); });
     document.getElementById('src-chip').textContent = SNAP ? `Rosters: ${SNAP.season} snapshot` : '';
     document.getElementById('darko-date').textContent = (window.DARKO_CURRENT||{}).date || '?';
