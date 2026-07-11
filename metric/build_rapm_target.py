@@ -196,7 +196,8 @@ def prepare() -> pd.DataFrame:
     keep = ["game_id", "date", "stint_index", "seconds",
             "home_pts", "away_pts", "home_pts_adj", "away_pts_adj",
             "start_home_score", "start_away_score",
-            "end_home_score", "end_away_score"] + HCOLS + ACOLS
+            "end_home_score", "end_away_score",
+            "start_elapsed", "end_elapsed", "start_period"] + HCOLS + ACOLS
 
     print("Loading RS lineup_stint_facts...")
     con = duckdb.connect(str(RS_DB), read_only=True)
@@ -236,8 +237,12 @@ def prepare() -> pd.DataFrame:
 
     both = pd.concat([rs, po], ignore_index=True)
     both["date"] = pd.to_datetime(both["date"])
+    # stint_index + start scores (post-chaining) + clock fields ride along for
+    # leverage weighting and future play-by-play joins (FT variance etc.)
     slim = both[["game_id", "date", "is_playoff", "seconds",
-                 "home_pts", "away_pts", "home_pts_adj", "away_pts_adj"] + HCOLS + ACOLS]
+                 "home_pts", "away_pts", "home_pts_adj", "away_pts_adj",
+                 "stint_index", "start_home_score", "start_away_score",
+                 "start_elapsed", "end_elapsed", "start_period"] + HCOLS + ACOLS]
     METRIC_DATA.mkdir(parents=True, exist_ok=True)
     slim.to_parquet(PREPARED_CACHE, index=False)
     print(f"Cached {len(slim)} stints to {PREPARED_CACHE}")
