@@ -160,6 +160,13 @@
       scoreboard noise are muted before the model ever sees the data, and all stint scores are
       calibrated to official box scores. Playoff possessions are included in the on-court
       evidence; the statistical profile uses regular-season stats only.</p>
+      <p><strong>PAR</strong> and <strong>WAR</strong> convert the rate into season totals
+      against a <em>replacement</em> baseline (&minus;2.0 per 100 — a full team of
+      freely-available players, which our win model puts at about a 16-win season):
+      PAR = (NERD + 2) &times; possessions / 100 is total points added over a replacement
+      player across the season, and WAR = PAR / 28.8 converts points to wins. NERD itself
+      stays centered on league average (0 = average player); PAR/WAR reward both quality
+      and durability. In Career mode they sum across seasons.</p>
       <details>
         <summary>How good is it? (validation)</summary>
         <p>On the retrodiction benchmark published by dunksandthrees (prior-season ratings,
@@ -191,9 +198,9 @@
       <p id="proj-note" class="muted" style="display:none;font-size:12.5px;margin:0 2px 10px;">
         <strong>Projected view:</strong> these are pre-season forecasts — each player's
         Kalman state carried forward along our aging curves, before any 2026-27 games.
-        Poss shows the player's <em>last</em> season (for the minimum filter).
-        Rookies are not projected yet. Teams reflect last season's rosters, not
-        offseason moves.
+        Poss shows the player's <em>last</em> season (for the minimum filter), and
+        projected PAR/WAR use it as the workload assumption. Rookies are not projected
+        yet. Teams reflect last season's rosters, not offseason moves.
       </p>
       <div class="table-wrap">
         <table id="nerd-table">
@@ -207,6 +214,8 @@
               <th class="sortable" data-key="nerd" data-type="num" title="Net Estimated Rating, Denoised">NERD</th>
               <th class="sortable" data-key="o" data-type="num" title="Offensive NERD">O-NERD</th>
               <th class="sortable" data-key="d" data-type="num" title="Defensive NERD">D-NERD</th>
+              <th class="sortable" data-key="par" data-type="num" title="Points above replacement: (NERD + 2) x possessions / 100">PAR</th>
+              <th class="sortable" data-key="war" data-type="num" title="Wins above replacement: PAR / 28.8 points-per-win">WAR</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -225,11 +234,20 @@
     const IDX = Object.fromEntries(D.cols.map((c, i) => [c, i]));
     const seasonLabel = y => y + "-" + String(y + 1).slice(2);
 
-    const rows = D.rows.map(r => ({
-      season: r[IDX.season], pid: r[IDX.pid], name: r[IDX.name],
-      team: r[IDX.team], poss: r[IDX.poss], o: r[IDX.o], d: r[IDX.d],
-      nerd: r[IDX.nerd], sd: r[IDX.sd], seasonLabel: seasonLabel(r[IDX.season]),
-    }));
+    // Replacement level: -2.0 per 100 (a full team of these wins ~16 games).
+    // PAR = season points above replacement = (NERD + 2) x poss/100;
+    // WAR = PAR / 28.8, the points-per-win slope of the wins conversion.
+    const REPLACEMENT = -2.0, PTS_PER_WIN = 28.8;
+    const rows = D.rows.map(r => {
+      const nerd = r[IDX.nerd], poss = r[IDX.poss];
+      const par = (nerd - REPLACEMENT) * poss / 100;
+      return {
+        season: r[IDX.season], pid: r[IDX.pid], name: r[IDX.name],
+        team: r[IDX.team], poss, o: r[IDX.o], d: r[IDX.d],
+        nerd, sd: r[IDX.sd], par, war: par / PTS_PER_WIN,
+        seasonLabel: seasonLabel(r[IDX.season]),
+      };
+    });
 
     const PROJ_SEASON = 2026;   // rows for this season are Kalman projections
     const seasons = [...new Set(rows.map(r => r.season))].sort((a, b) => b - a);
@@ -264,15 +282,17 @@
         if (r.season === PROJ_SEASON) continue;
         let c = by.get(r.pid);
         if (!c) { c = { pid: r.pid, name: r.name, team: r.team, poss: 0,
-                        so: 0, sd_: 0, sn: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
+                        so: 0, sd_: 0, sn: 0, par: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
         c.poss += r.poss;
         c.so += r.o * r.poss; c.sd_ += r.d * r.poss; c.sn += r.nerd * r.poss;
+        c.par += r.par;
         c.seasons += 1;
         if (r.season > c.lastSeason) { c.lastSeason = r.season; c.name = r.name; c.team = r.team; }
       }
       return [...by.values()].map(c => ({
         pid: c.pid, name: c.name, team: c.team, poss: c.poss,
         o: c.so / c.poss, d: c.sd_ / c.poss, nerd: c.sn / c.poss, sd: null,
+        par: c.par, war: c.par / PTS_PER_WIN,
         season: c.lastSeason, seasonLabel: c.seasons + " szn",
       }));
     }
@@ -318,6 +338,8 @@
           <td>${fmt(r.nerd)}</td>
           <td>${fmt(r.o)}</td>
           <td>${fmt(r.d)}</td>
+          <td>${r.par == null ? "&mdash;" : Math.round(r.par)}</td>
+          <td>${r.war == null ? "&mdash;" : r.war.toFixed(1)}</td>
         </tr>`).join("");
     }
 

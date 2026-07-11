@@ -183,6 +183,7 @@
     const POSITIONS = ['PG','SG','SF','PF','C'];
     const TEAM_MINUTES = 240, MAX_PLAYER_MINUTES = 48, NO_DATA_MPG_WEIGHT = 8;
     const GAME_SD = 11.5;   // single-game margin sd; wins = 82*Phi(net/GAME_SD)
+    const PTS_PER_WIN = 28.8;  // slope of that curve at .500: GAME_SD / phi(0)
 
     const CONF = { East: new Set(['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS']),
                    West: new Set(['DAL','DEN','GSW','HOU','LAC','LAL','MEM','MIN','NOP','OKC','PHX','POR','SAC','SAS','UTA']) };
@@ -430,6 +431,8 @@
           const pr = t.players.map(p=>{
             const barw = Math.round(Math.min(p.minutes,maxMin)/maxMin*100);
             const col = p.nerd>0 ? 'var(--good)' : 'var(--bad)';
+            const ppgRep = p.minutes/48*(p.nerd - REP);
+            const war82 = ppgRep*82/PTS_PER_WIN;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep?'<span class="tag-rep">REP</span>':''}</td>
               <td>${p.minutes}<span class="rk"> mpg</span></td>
@@ -437,11 +440,14 @@
               <td>${fmt(p.nerd)}</td>
               <td>${fmt(p.o)}</td>
               <td>${fmt(p.d)}</td>
-              <td class="muted">${(p.minutes/48*p.nerd).toFixed(2)}</td>
+              <td class="muted">${ppgRep.toFixed(1)}</td>
+              <td class="muted">${war82.toFixed(1)}</td>
             </tr>`; }).join('');
           return rows + `<tr class="detail"><td colspan="7"><div class="rot">
             <table><thead><tr><th style="text-align:left">Player</th><th>Min</th><th></th>
-            <th>${lbl}</th><th>O</th><th>D</th><th>Contrib</th></tr></thead><tbody>${pr}</tbody></table>
+            <th>${lbl}</th><th>O</th><th>D</th>
+            <th title="Points per game above a replacement player at these minutes">P/g +Rep</th>
+            <th title="Wins above replacement over 82 games at these minutes">WAR/82</th></tr></thead><tbody>${pr}</tbody></table>
             </div></td></tr>`;
         }).join('');
       }
