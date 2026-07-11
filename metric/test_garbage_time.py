@@ -18,6 +18,15 @@ season-t evidence predicting the BASELINE evidence at t+1, possession-
 weighted, pooled across seasons; plus within-variant year-over-year
 autocorrelation. A denoiser must beat baseline on the fixed target.
 
+RESULT (2026-07-11): NEGATIVE — do not ship. Garbage share: A 6.0% of
+possessions, B 3.2%. Fixed-target board: baseline 0.4271 vs A_w25 0.4266 /
+A_w0 0.4241 / B_w25 0.4259 — every variant equal-or-worse; full deletion
+worst (sample loss beats noise gain). Interpretation: the joint solve is
+already structurally robust to garbage time (the lineups on the floor are
+controlled for — the classic complaints target box stats and raw plus-
+minus); the residual effort distortion on ~6% of possessions is too small
+to beat the cost of down-weighting real sample.
+
 Usage: python metric/test_garbage_time.py
 """
 from __future__ import annotations
