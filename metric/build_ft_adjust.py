@@ -80,7 +80,7 @@ def add_expectations(ft: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    st = prepare(apply_ft=False)   # never build the adjustment from adjusted data
+    st = prepare(adjustments=())   # never build the adjustment from adjusted data
     ft = add_expectations(load_ft_events())
 
     stc = st[["game_id", "stint_index", "start_elapsed"] + HCOLS + ACOLS].copy()

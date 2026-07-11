@@ -65,7 +65,7 @@ def wcorr(a, b, w):
 
 
 def main() -> None:
-    st = prepare(apply_ft=False)   # this script applies its own FT variant
+    st = prepare(adjustments=())   # this script applies its own FT variant
     st["date"] = pd.to_datetime(st["date"])
     adj = pd.read_parquet(FT_ADJ)
     st = st.merge(adj, on=["game_id", "stint_index"], how="left")

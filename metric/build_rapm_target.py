@@ -188,30 +188,37 @@ def calibrate_game(g: pd.DataFrame, pm: dict, totals: tuple[float, float]) -> bo
     return True
 
 
-FT_ADJUST = METRIC_DATA / "ft_stint_adjust.parquet"
+# Post-hoc luck adjustments applied on top of the cached stints. Each was
+# validated on the fixed-target evidence board before shipping:
+#   ft: free-throw luck (0.4271 -> 0.4311; autocorr 0.4394 -> 0.4454)
+#   mr: mid-range 10-23ft luck (on FT base: total 0.4339 -> 0.4367,
+#       O 0.6522 -> 0.6585, D 0.5508 -> 0.5649)
+LUCK_FILES = {
+    "ft": (METRIC_DATA / "ft_stint_adjust.parquet", "ft_luck_home", "ft_luck_away"),
+    "mr": (METRIC_DATA / "midrange_stint_adjust.parquet", "mr_luck_home", "mr_luck_away"),
+}
 
 
-def _apply_ft(st: pd.DataFrame) -> pd.DataFrame:
-    """Subtract per-stint free-throw luck (build_ft_adjust.py) from the
-    adjusted points. Validated 2026-07-11: fixed-target evidence board
-    0.4271 -> 0.4311, self-autocorr 0.4394 -> 0.4454."""
-    if not FT_ADJUST.exists():
-        print("NOTE: ft_stint_adjust.parquet missing - FT luck NOT removed")
-        return st
-    adj = pd.read_parquet(FT_ADJUST)
-    st = st.merge(adj, on=["game_id", "stint_index"], how="left")
-    st[["ft_luck_home", "ft_luck_away"]] = \
-        st[["ft_luck_home", "ft_luck_away"]].fillna(0.0)
-    st["home_pts_adj"] = st["home_pts_adj"] - st["ft_luck_home"]
-    st["away_pts_adj"] = st["away_pts_adj"] - st["ft_luck_away"]
-    return st.drop(columns=["ft_luck_home", "ft_luck_away"])
+def _apply_luck(st: pd.DataFrame, adjustments) -> pd.DataFrame:
+    for name in adjustments:
+        path, ch, ca = LUCK_FILES[name]
+        if not path.exists():
+            print(f"NOTE: {path.name} missing - {name} luck NOT removed")
+            continue
+        adj = pd.read_parquet(path)
+        st = st.merge(adj, on=["game_id", "stint_index"], how="left")
+        st[[ch, ca]] = st[[ch, ca]].fillna(0.0)
+        st["home_pts_adj"] = st["home_pts_adj"] - st[ch]
+        st["away_pts_adj"] = st["away_pts_adj"] - st[ca]
+        st = st.drop(columns=[ch, ca])
+    return st
 
 
-def prepare(apply_ft: bool = True) -> pd.DataFrame:
+def prepare(adjustments: tuple = ("ft", "mr")) -> pd.DataFrame:
     if PREPARED_CACHE.exists():
         print(f"Using cached {PREPARED_CACHE}")
         st = pd.read_parquet(PREPARED_CACHE)
-        return _apply_ft(st) if apply_ft else st
+        return _apply_luck(st, adjustments)
 
     keep = ["game_id", "date", "stint_index", "seconds",
             "home_pts", "away_pts", "home_pts_adj", "away_pts_adj",
@@ -266,7 +273,7 @@ def prepare(apply_ft: bool = True) -> pd.DataFrame:
     METRIC_DATA.mkdir(parents=True, exist_ok=True)
     slim.to_parquet(PREPARED_CACHE, index=False)
     print(f"Cached {len(slim)} stints to {PREPARED_CACHE}")
-    return _apply_ft(slim) if apply_ft else slim
+    return _apply_luck(slim, adjustments)
 
 
 # --------------------------------------------------------------------------

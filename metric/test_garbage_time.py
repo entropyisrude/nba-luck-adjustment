@@ -58,7 +58,7 @@ def leverage_flags(st: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    st = prepare(apply_ft=False)   # historical experiment ran pre-FT-adjustment
+    st = prepare(adjustments=())   # historical experiment ran pre-FT-adjustment
     st["date"] = pd.to_datetime(st["date"])
     st = leverage_flags(st)
     st, X, y, poss, players, pidx, hidx, aidx = build_design(st)
