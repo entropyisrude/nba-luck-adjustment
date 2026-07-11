@@ -311,18 +311,43 @@
 
     // ---- compute every team ----
     let REP = -2.0;
+    // Replacement depth must be consistent ACROSS rating scales: the two
+    // systems put "zero" in different places, so a fixed -2.0 floor sits
+    // 3.3 below a typical NERD rotation player but only ~2.3 below a
+    // typical DPM one (inflating DARKO-mode WAR and rookie value). Anchor
+    // each system's floor at the same depth below its own minutes-weighted
+    // rotation mean, calibrated to NERD's (-2.0 = 16-win replacement team).
+    function slotMean(lookup){
+      let sw = 0, sv = 0;
+      for(const abbr of Object.keys(SNAP.teams)){
+        for(const p of rotationFor(abbr)){
+          const nd = lookup(p.player);
+          if(nd){ sw += p.minutes; sv += p.minutes * nd.nerd; }
+        }
+      }
+      return sv / sw;
+    }
+    let SCALE_OFFSET_DARKO = null;   // darko slot mean - nerd slot mean
+    function repFor(lookup){
+      if(lookup !== lookupDarko) return REP;
+      if(SCALE_OFFSET_DARKO === null)
+        SCALE_OFFSET_DARKO = slotMean(lookupDarko) - slotMean(lookupNerd);
+      return REP + SCALE_OFFSET_DARKO;
+    }
     function computeTeams(lookup = lookupNerd){
       const teams = [];
+      const rep = repFor(lookup);
       for(const abbr of Object.keys(SNAP.teams)){
         const rot = rotationFor(abbr);
         let net = 0, off = 0, def = 0;
         const players = rot.map(p=>{
           const nd = lookup(p.player);
-          const val = nd ? nd.nerd : REP;
-          const ov = nd ? nd.o : REP/2, dv = nd ? nd.d : REP/2;
+          const val = nd ? nd.nerd : rep;
+          const ov = nd ? nd.o : rep/2, dv = nd ? nd.d : rep/2;
           const w = p.minutes / 48;
           net += w*val; off += w*ov; def += w*dv;
-          return { name:p.player, minutes:p.minutes, nerd:val, o:ov, d:dv, isRep:!nd };
+          return { name:p.player, minutes:p.minutes, nerd:val, o:ov, d:dv,
+                   isRep:!nd, rep };
         }).sort((a,b)=>b.minutes-a.minutes);
         teams.push({ abbr, name: SNAP.teams[abbr].name, net, off, def, players });
       }
@@ -400,16 +425,20 @@
           const pr = r.nP.map(p=>{
             const dp = dv.get(p.name);
             const dval = dp ? dp.nerd : null;
+            // delta compares each value to ITS OWN system's rotation average
+            // (the scales have different zero points)
+            const del = dval==null ? null : p.nerd - dval + SCALE_OFFSET_DARKO;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep&&(dp?dp.isRep:true)?'<span class="tag-rep">REP</span>':''}</td>
               <td>${p.minutes}<span class="rk"> mpg</span></td>
               <td>${fmt(p.nerd)}</td>
               <td>${dval==null?'&mdash;':fmt(dval)}</td>
-              <td>${dval==null?'&mdash;':fmt(p.nerd-dval)}</td>
+              <td>${del==null?'&mdash;':fmt(del)}</td>
             </tr>`; }).join('');
           return main + `<tr class="detail"><td colspan="7"><div class="rot">
             <table><thead><tr><th style="text-align:left">Player</th><th>Min</th>
-            <th>NERD</th><th>DARKO</th><th>&Delta;</th></tr></thead><tbody>${pr}</tbody></table>
+            <th>NERD</th><th>DARKO</th>
+            <th title="Each value measured against its own system's rotation average (the scales have different zero points)">&Delta; rel</th></tr></thead><tbody>${pr}</tbody></table>
             </div></td></tr>`;
         }).join('');
       } else {
@@ -436,7 +465,7 @@
           const pr = t.players.map(p=>{
             const barw = Math.round(Math.min(p.minutes,maxMin)/maxMin*100);
             const col = p.nerd>0 ? 'var(--good)' : 'var(--bad)';
-            const ppgRep = p.minutes/48*(p.nerd - REP);
+            const ppgRep = p.minutes/48*(p.nerd - p.rep);
             const war82 = ppgRep*82/PTS_PER_WIN;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep?'<span class="tag-rep">REP</span>':''}</td>
