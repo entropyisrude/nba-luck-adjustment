@@ -32,6 +32,23 @@ LAST_SEASON = "2025-26"
 
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
+# Spotrac name variant (normalized) -> our box-data name (normalized).
+# Normalization alone can't bridge these (different first names entirely).
+# Found via the 2026-07-11 league-wide audit of Spotrac rosters vs box data;
+# add a line whenever a veteran shows up mislabeled "Rookie" on the depth
+# charts. Applied as duplicate entries so every consumer (MPG labels,
+# minutes seeding, and the projections' NERD lookup via the exported
+# "aliases" map) matches without JS changes.
+ALIASES = {
+    "herb jones": "herbert jones",
+    "nicolas claxton": "nic claxton",
+    "ron holland": "ronald holland",
+    "cameron christie": "cam christie",
+    "nahshon hyland": "bones hyland",
+    "sviatoslav mykhailiuk": "svi mykhailiuk",
+    "mohamed bamba": "mo bamba",
+}
+
 
 def normalize_name(name: str) -> str:
     text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
@@ -72,6 +89,13 @@ def main() -> None:
             "mpg": round(total_min / games, 1),
         }
 
+    # Alias entries: Spotrac variants resolve to the same record/known status.
+    for variant, canonical in ALIASES.items():
+        if canonical in lookup:
+            lookup.setdefault(variant, lookup[canonical])
+        if canonical in known:
+            known.add(variant)
+
     # Players who never appear in ANY season are true rookies; a player missing
     # only LAST_SEASON but present in an earlier season is a veteran with a data
     # gap (injury, pipeline lag, etc.) -- those two cases must not be conflated,
@@ -81,6 +105,7 @@ def main() -> None:
         "source": "player_game_facts, regular-season games only (game-id prefix '2')",
         "players": lookup,
         "known": sorted(known),
+        "aliases": ALIASES,
     }
     OUTPUT.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     JS_OUTPUT.write_text(

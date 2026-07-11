@@ -277,7 +277,11 @@
       if(r[NI.season] !== 2026) continue;
       PROJ.set(normalizeName(r[NI.name]), { nerd: r[NI.nerd], o: r[NI.o], d: r[NI.d] });
     }
-    function lookupNerd(name){ return PROJ.get(normalizeName(name)) || null; }
+    const ALIASES = (MPG && MPG.aliases) || {};
+    function lookupNerd(name){
+      const n = normalizeName(name);
+      return PROJ.get(n) || PROJ.get(ALIASES[n]) || null;
+    }
 
     // ---- compute every team ----
     let REP = -2.0;
