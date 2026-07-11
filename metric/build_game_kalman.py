@@ -148,8 +148,10 @@ def select_halflives(g: pd.DataFrame) -> pd.DataFrame:
     return hl
 
 
-def filter_states(g: pd.DataFrame, hl: pd.DataFrame) -> pd.DataFrame:
-    """Second pass at the chosen half-lives; returns end-of-season states."""
+def filter_states(g: pd.DataFrame, hl: pd.DataFrame,
+                  full: bool = False) -> pd.DataFrame:
+    """Second pass at the chosen half-lives; returns end-of-season states,
+    or (full=True) the complete per-game state trajectories with dates."""
     F = len(GAME_FEATURES)
     hls = hl.set_index("feature").loc[GAME_FEATURES, "halflife_poss"].to_numpy()
     X = g[GAME_FEATURES].to_numpy(dtype=float)
@@ -174,9 +176,14 @@ def filter_states(g: pd.DataFrame, hl: pd.DataFrame) -> pd.DataFrame:
         den[valid] += w
         states[i] = num / np.maximum(den, 1e-9)
 
-    out = pd.DataFrame(states, columns=[c + "_filt" for c in GAME_FEATURES])
+    out = pd.DataFrame(states.astype(np.float32),
+                       columns=[c + "_filt" for c in GAME_FEATURES])
     out["pid"] = pids
     out["season_year"] = sy
+    if full:
+        out["date"] = g["date"].to_numpy()
+        out["poss"] = poss.astype(np.float32)
+        return out.reset_index(drop=True)
     # keep the LAST game of each player-season
     out = out.groupby(["pid", "season_year"], as_index=False).tail(1)
     return out.reset_index(drop=True)
@@ -185,10 +192,20 @@ def filter_states(g: pd.DataFrame, hl: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--cache-only", action="store_true")
+    ap.add_argument("--trajectories", action="store_true",
+                    help="emit full per-game state trajectories using the "
+                         "already-selected half-lives, then exit")
     args = ap.parse_args()
 
     g = build_game_cache()
     if args.cache_only:
+        return
+    if args.trajectories:
+        hl = pd.read_csv(OUT_DIR / "feature_halflives.csv")
+        traj = filter_states(g, hl, full=True)
+        traj.to_parquet(OUT_DIR / "state_trajectories.parquet", index=False)
+        print(f"wrote {OUT_DIR / 'state_trajectories.parquet'} "
+              f"({len(traj)} player-game states)")
         return
 
     print("Selecting per-feature half-lives (one-game-ahead)...")
