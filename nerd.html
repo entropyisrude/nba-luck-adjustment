@@ -146,10 +146,6 @@
       scoreboard noise are muted before the model ever sees the data, and all stint scores are
       calibrated to official box scores. Playoff possessions are included in the on-court
       evidence; the statistical profile uses regular-season stats only.</p>
-      <p>The <strong>&plusmn;</strong> column is an honest uncertainty band (one standard
-      deviation) from a Kalman filter that tracks each player through his career with
-      aging curves fit on 14,600 player-seasons. Small samples have wide bands — that is the
-      point.</p>
       <details>
         <summary>How good is it? (validation)</summary>
         <p>On the retrodiction benchmark published by dunksandthrees (prior-season ratings,
@@ -181,9 +177,9 @@
       <p id="proj-note" class="muted" style="display:none;font-size:12.5px;margin:0 2px 10px;">
         <strong>Projected view:</strong> these are pre-season forecasts — each player's
         Kalman state carried forward along our aging curves, before any 2026-27 games.
-        Poss shows the player's <em>last</em> season (for the minimum filter);
-        &plusmn; bands are wider because the future adds uncertainty. Rookies are not
-        projected yet. Teams reflect last season's rosters, not offseason moves.
+        Poss shows the player's <em>last</em> season (for the minimum filter).
+        Rookies are not projected yet. Teams reflect last season's rosters, not
+        offseason moves.
       </p>
       <div class="table-wrap">
         <table id="nerd-table">
@@ -195,7 +191,6 @@
               <th class="sortable" data-key="team" data-type="str">Team</th>
               <th class="sortable" data-key="poss" data-type="num" title="Possessions on court (RS+PO)">Poss</th>
               <th class="sortable" data-key="nerd" data-type="num" title="Net Estimated Rating, Denoised">NERD</th>
-              <th data-key="sd" title="Uncertainty (1 sd, from the career Kalman filter)">&plusmn;</th>
               <th class="sortable" data-key="o" data-type="num" title="Offensive NERD">O-NERD</th>
               <th class="sortable" data-key="d" data-type="num" title="Defensive NERD">D-NERD</th>
             </tr>
@@ -307,7 +302,6 @@
           <td class="muted">${r.team || "&mdash;"}</td>
           <td>${r.poss.toLocaleString()}</td>
           <td>${fmt(r.nerd)}</td>
-          <td class="sdcol">${r.sd == null ? "&mdash;" : "&plusmn;" + r.sd.toFixed(1)}</td>
           <td>${fmt(r.o)}</td>
           <td>${fmt(r.d)}</td>
         </tr>`).join("");
