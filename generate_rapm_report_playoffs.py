@@ -89,6 +89,8 @@ def generate_rapm_report_playoffs() -> None:
     print("Loading stints...")
     stints = pd.read_csv(STINTS_PATH, dtype={"game_id": str})
     stints["date"] = pd.to_datetime(stints["date"])
+    import rapm_luck
+    stints = rapm_luck.apply_to_stints(stints)
 
     # Derive the playoff year from the game-id prefix (4YY = season starting in
     # year YY, playoffs the following spring). Stint dates are synthetic and one
@@ -271,7 +273,7 @@ def generate_rapm_report_playoffs() -> None:
     <section class="explain">
       <h3>Playoff RAPM</h3>
       <p>RAPM computed from playoff stint data only — separate from the regular season model. Each season is estimated independently; the multi-year leaderboard uses minutes-weighted averaging across seasons.</p>
-      <p>Playoff samples are much smaller than regular season (~15–20 games vs 82), so estimates are noisier. The 3PT luck adjustment can help reduce variance from hot/cold shooting runs.</p>
+      <p>Playoff samples are much smaller than regular season (~15–20 games vs 82), so estimates are noisier. The luck adjustment — 3PT, free-throw, and mid-range make/miss variance removed against each shooter's own expectation — matters most here, muting hot/cold shooting runs.</p>
       <p><strong>Alpha:</strong> Ridge regularization strength. α=500 (default) applies strong shrinkage, which is especially useful for small playoff samples. α=10 shrinks less and can show more separation among players with large samples.</p>
     </section>
 

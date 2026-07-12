@@ -8,6 +8,7 @@ import pandas as pd
 from scipy import sparse
 
 import run_rapm as run_rapm_module
+import rapm_luck
 
 TEAM_ID_TO_ABBR = run_rapm_module.TEAM_ID_TO_ABBR
 build_design_matrix = run_rapm_module.build_design_matrix
@@ -550,11 +551,14 @@ def main() -> None:
     if stints is None or stints.empty:
         print("No valid stints found in configured stint files.")
         return
+    stints = rapm_luck.apply_to_stints(stints)
 
     # Load possessions if available and requested
     possessions = None
     if args.use_possessions:
         possessions = load_possessions(poss_paths)
+        if possessions is not None:
+            possessions = rapm_luck.apply_to_possessions(possessions)
 
     seasons = sorted(stints["season"].dropna().unique())
     seasons = [s for s in seasons if len(s) == 7 and s[4] == "-"]
