@@ -197,6 +197,12 @@ LUCK_FILES = {
     "ft": (METRIC_DATA / "ft_stint_adjust.parquet", "ft_luck_home", "ft_luck_away"),
     "mr": (METRIC_DATA / "midrange_stint_adjust.parquet", "mr_luck_home", "mr_luck_away"),
 }
+# Fraction of the FT+mid-range luck deviation removed. Lambda grid
+# (test_lambda_grid.py, 2026-07-12): full removal over-corrects (some
+# above-own-baseline shooting is real in-season form); fixed-target
+# boards peak at 0.5-0.75 with 0.75 best on the O and D splits.
+# Asymmetric O/D removal tested and rejected (cross-solve incoherence).
+LUCK_LAMBDA = 0.75
 
 
 def _apply_luck(st: pd.DataFrame, adjustments) -> pd.DataFrame:
@@ -208,8 +214,8 @@ def _apply_luck(st: pd.DataFrame, adjustments) -> pd.DataFrame:
         adj = pd.read_parquet(path)
         st = st.merge(adj, on=["game_id", "stint_index"], how="left")
         st[[ch, ca]] = st[[ch, ca]].fillna(0.0)
-        st["home_pts_adj"] = st["home_pts_adj"] - st[ch]
-        st["away_pts_adj"] = st["away_pts_adj"] - st[ca]
+        st["home_pts_adj"] = st["home_pts_adj"] - LUCK_LAMBDA * st[ch]
+        st["away_pts_adj"] = st["away_pts_adj"] - LUCK_LAMBDA * st[ca]
         st = st.drop(columns=[ch, ca])
     return st
 

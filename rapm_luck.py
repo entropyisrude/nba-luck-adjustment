@@ -19,6 +19,11 @@ import pandas as pd
 
 LUCK_PATH = Path(__file__).resolve().parent / "data" / "rapm_luck_adjust.parquet"
 
+# Fraction of the luck deviation removed — matches the metric pipeline's
+# validated LUCK_LAMBDA (see metric/test_lambda_grid.py: full removal
+# over-corrects; boards peak at 0.75).
+LUCK_LAMBDA = 0.75
+
 _HCOLS = [f"home_p{i}" for i in range(1, 6)]
 _ACOLS = [f"away_p{i}" for i in range(1, 6)]
 _OCOLS = [f"off_p{i}" for i in range(1, 6)]
@@ -52,8 +57,8 @@ def apply_to_stints(stints: pd.DataFrame) -> pd.DataFrame:
     st[["luck_home", "luck_away"]] = st[["luck_home", "luck_away"]].fillna(0.0)
     grp = st.groupby(["game_id", "_hk", "_ak"])["seconds"]
     share = st["seconds"] / grp.transform("sum").clip(lower=1e-9)
-    st["home_pts_adj"] = st["home_pts_adj"] - st["luck_home"] * share
-    st["away_pts_adj"] = st["away_pts_adj"] - st["luck_away"] * share
+    st["home_pts_adj"] = st["home_pts_adj"] - LUCK_LAMBDA * st["luck_home"] * share
+    st["away_pts_adj"] = st["away_pts_adj"] - LUCK_LAMBDA * st["luck_away"] * share
     n = int((st["luck_home"].ne(0) | st["luck_away"].ne(0)).sum())
     print(f"rapm_luck: FT+mid-range luck removed on {n} stints")
     return st.drop(columns=["_hk", "_ak", "luck_home", "luck_away"])
@@ -80,7 +85,7 @@ def apply_to_possessions(poss: pd.DataFrame) -> pd.DataFrame:
     po = po.merge(lk, on=["game_id", "_ok", "_dk"], how="left")
     po["_luck"] = po["_luck"].fillna(0.0)
     size = po.groupby(["game_id", "_ok", "_dk"])["_luck"].transform("size")
-    po["points_adj"] = po["points_adj"] - po["_luck"] / size
+    po["points_adj"] = po["points_adj"] - LUCK_LAMBDA * po["_luck"] / size
     n = int(po["_luck"].ne(0).sum())
     print(f"rapm_luck: FT+mid-range luck removed across {n} possessions")
     return po.drop(columns=["_ok", "_dk", "_luck"])
