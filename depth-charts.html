@@ -34,7 +34,6 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 .pos-table tr:last-child td{border-bottom:none}
 .pos-table td.pos{width:28px;font-weight:800;color:var(--txt3);font-size:10px;padding-top:5px}
 .pos-table td.names{color:var(--txt)}
-.pos-table td.names .more{color:var(--txt3);font-weight:600}
 .pos-table td.names .inj{color:#b91c1c;background:#fdecec;border:1px solid #f3c4c4;border-radius:3px;font-size:9px;font-weight:800;padding:0 3px;vertical-align:1px;text-transform:uppercase;cursor:help}
 .pos-table tr.other td.pos{color:#bc4c00}
 .empty{color:#c8d0d8;font-style:italic}
@@ -154,13 +153,11 @@ function renderTeam(abbr, team){
   const rows = POSITIONS.map(pos=>{
     const players = cols[pos];
     if(!players.length) return `<tr><td class="pos">${pos}</td><td class="names empty">—</td></tr>`;
-    const shown = players.slice(0,4).map(dispName);
-    const extra = players.length>4 ? ` <span class="more">+${players.length-4}</span>` : '';
-    return `<tr><td class="pos">${pos}</td><td class="names">${shown.join(', ')}${extra}</td></tr>`;
+    return `<tr><td class="pos">${pos}</td><td class="names">${players.map(dispName).join(', ')}</td></tr>`;
   }).join('');
   const other = cols.OTHER;
   const otherRow = other.length
-    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.slice(0,4).map(dispName).join(', ')}${other.length>4?` <span class="more">+${other.length-4}</span>`:''}</td></tr>`
+    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.map(dispName).join(', ')}</td></tr>`
     : '';
   return `
     <a class="team-card" href="depth-chart-team.html?team=${abbr}">

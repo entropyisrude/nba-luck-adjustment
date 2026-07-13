@@ -63,6 +63,27 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .pool-body{padding:9px;display:flex;flex-wrap:wrap;gap:7px;min-height:56px}
 .pool-panel.drag-over{background:#deeaf8}
 .pool-empty{color:var(--txt3);font-size:11px;font-style:italic;padding:4px}
+
+@media (max-width: 640px) {
+  header{padding:10px 12px;gap:6px 10px}
+  header .brand{font-size:16px}
+  header .sub{font-size:10px;flex-basis:100%}
+  header .back-links{margin-left:0;gap:12px}
+  main{padding:10px 8px 30px}
+  .controls{flex-direction:column;align-items:stretch;gap:8px}
+  .field select{min-width:0;width:100%;font-size:14px;padding:8px}
+  .team-total{margin-left:0;text-align:center}
+  .reset-btn,.scale-btn{width:100%;padding:9px 12px;font-size:12px}
+  .note{font-size:10.5px}
+  .board{grid-template-columns:1fr;gap:8px}
+  .pos-col{min-height:0}
+  .bubble{padding:7px 10px 7px 7px;gap:8px}
+  .bubble .nm{font-size:13px}
+  .bubble .meta{font-size:10.5px}
+  .bubble .min-input{width:42px;font-size:12px;padding:4px 3px}
+  .bubble .last-yr{font-size:9.5px}
+  .pool-body{gap:8px}
+}
 </style>
 </head>
 <body>
