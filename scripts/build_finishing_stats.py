@@ -42,7 +42,7 @@ RIM_FT = 4.0
 
 
 def main() -> None:
-    cols = ["personId", "period", "clock", "description", "actionType",
+    cols = ["gameId", "personId", "period", "clock", "description", "actionType",
             "shotDistance", "gameDateTimeEst"]
     pbp = pd.read_parquet(PBP, columns=cols)
     at = pbp["actionType"].str.strip().str.lower()
@@ -60,6 +60,17 @@ def main() -> None:
     sh = sh.dropna(subset=["pid", "date"])
     sh["pid"] = sh["pid"].astype(int)
     sh["season_year"] = sh["date"].dt.year - (sh["date"].dt.month < 10)
+
+    # regular season only -- NBA game_id convention: leading digit 1=preseason,
+    # 2=regular season, 3=all-star, 4=playoffs, 5=play-in (same '2%' filter
+    # used everywhere else in this codebase, e.g. player_game_facts queries).
+    # Missed pre-fix: preseason games leaked in and inflated volume stats
+    # (caught via user cross-check of Mohamed Diawara's rim FGA/36 against
+    # Basketball-Reference, 2026-07-14 -- see git log for before/after).
+    n0 = len(sh)
+    sh = sh[sh["gameId"].astype(str).str.startswith("2")]
+    print(f"  regular-season filter: {n0:,} -> {len(sh):,} shot rows "
+          f"({n0 - len(sh):,} preseason/playoff/other dropped)")
 
     sh["is_rim"] = sh["dist"] <= RIM_FT
     sh["is_dunk_make"] = sh["made"] & sh["description"].str.contains("dunk", case=False, na=False)
