@@ -28,6 +28,7 @@ DATA_DIR = ROOT / "data"
 KAGGLE_ZIP = ROOT / "historical-nba-data-and-player-box-scores.zip"
 RS_DB = DATA_DIR / "nba_analytics.duckdb"
 PBPSTATS_CACHE = DATA_DIR / "pbpstats_cache.json.gz"
+FINISHING_CACHE = DATA_DIR / "finishing_stats.json"
 OUT = DATA_DIR / "player_seasons.json"
 
 MIN_MINUTES = 500
@@ -190,6 +191,7 @@ def build_eoin_seasons() -> list[dict]:
             "ht":    b.get("ht"),
             "wt":    b.get("wt"),
             "career_year": career_year,
+            "rimfga": None, "rimfgp": None, "dunks": None,  # PBP shot data starts 1996-97
             "spct":  r2(r["starter_games"] / r["games"]) if r["games"] else None,
             # per-36
             "pts":   per36(r["pts"], m),
@@ -306,7 +308,23 @@ def load_pbpstats_onoff() -> dict[tuple[int, str], dict]:
 # DuckDB: 1996-97 onwards
 # ---------------------------------------------------------------------------
 
-def build_db_seasons(pbp_onoff: dict, bio: dict) -> list[dict]:
+def load_finishing_stats() -> dict[tuple[int, int], dict]:
+    """{(pid, season_year): {rim_fga, rim_fgm, dunks}} from
+    scripts/build_finishing_stats.py's output (run that first to regenerate)."""
+    if not FINISHING_CACHE.exists():
+        print(f"  WARNING: {FINISHING_CACHE} not found — run build_finishing_stats.py first; "
+              f"rim/dunk fields will be None")
+        return {}
+    with open(FINISHING_CACHE, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    for k, v in raw.items():
+        pid_s, yr_s = k.rsplit("_", 1)
+        out[(int(pid_s), int(yr_s))] = v
+    return out
+
+
+def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
     print("Querying DuckDB for 1996-97+ …")
     con = duckdb.connect(str(RS_DB), read_only=True)
 
@@ -356,6 +374,9 @@ def build_db_seasons(pbp_onoff: dict, bio: dict) -> list[dict]:
         season = r["season"]
         oo_data = pbp_onoff.get((pid, season), {})
         b = bio.get(pid, {})
+        season_year = int(season[:4])
+        fin = finishing.get((pid, season_year), {})
+        rim_fga, rim_fgm, dunks = fin.get("rim_fga"), fin.get("rim_fgm"), fin.get("dunks")
         records.append({
             "pid":    pid,
             "name":   r["player_name"],
@@ -367,6 +388,9 @@ def build_db_seasons(pbp_onoff: dict, bio: dict) -> list[dict]:
             "ht":     int(r["avg_height"]) if pd.notna(r["avg_height"]) else None,
             "wt":     b.get("wt"),
             "career_year": int(round(r["avg_career_year"])) if pd.notna(r["avg_career_year"]) else None,
+            "rimfga": per36(rim_fga, m) if rim_fga is not None else None,
+            "rimfgp": pct(rim_fgm, rim_fga) if rim_fga else None,
+            "dunks":  per36(dunks, m) if dunks is not None else None,
             "spct":   r2(r["starter_pct"]),
             "pts":    per36(r["pts_s"], m),
             "ast":    per36(r["ast_s"], m),
@@ -396,10 +420,11 @@ def build_db_seasons(pbp_onoff: dict, bio: dict) -> list[dict]:
 
 def main():
     pbp_onoff = load_pbpstats_onoff()
+    finishing = load_finishing_stats()
     eoin = build_eoin_seasons()
     with zipfile.ZipFile(KAGGLE_ZIP) as z:
         bio = load_player_bio(z)
-    modern = build_db_seasons(pbp_onoff, bio)
+    modern = build_db_seasons(pbp_onoff, bio, finishing)
     all_seasons = eoin + modern
 
     # Normalize names: some players' display names changed mid-career
@@ -422,13 +447,15 @@ def main():
         "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + pbpstats on/off",
         "min_minutes": MIN_MINUTES,
         "cols": ["pts","ast","or","dr","stl","blk","tov","fta","fg2a","fg3a",
-                 "fg2p","fg3p","ftp","oo","oo_off","oo_def","ht","wt"],
+                 "fg2p","fg3p","ftp","oo","oo_off","oo_def","ht","wt",
+                 "rimfga","rimfgp","dunks"],
         "col_labels": {
             "pts":"Pts/36","ast":"Ast/36","or":"OReb/36","dr":"DReb/36",
             "stl":"Stl/36","blk":"Blk/36","tov":"Tov/36","fta":"FTA/36",
             "fg2a":"2PA/36","fg3a":"3PA/36","fg2p":"2P%","fg3p":"3P%","ftp":"FT%",
             "oo":"On/Off","oo_off":"Off On/Off","oo_def":"Def On/Off",
             "ht":"Height (in)","wt":"Weight (lb)",
+            "rimfga":"Rim FGA/36","rimfgp":"Rim FG%","dunks":"Dunks/36",
         },
         "seasons": all_seasons,
     }
