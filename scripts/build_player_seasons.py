@@ -71,6 +71,23 @@ def pct(made, attempted):
 # Eoin: 1979-80 through 1995-96
 # ---------------------------------------------------------------------------
 
+def load_player_bio(zf: zipfile.ZipFile) -> dict[int, dict]:
+    """personId -> {ht, wt, from_year} from Players.csv. Static per player
+    (one row, not season-specific) -- used to fill height/weight for the
+    physical-similarity dimension and to backfill height pre-1996, and
+    from_year to compute career_year for the Eoin (pre-1996) seasons."""
+    with zf.open("Players.csv") as f:
+        df = pd.read_csv(f, usecols=["personId", "heightInches", "bodyWeightLbs", "fromYear"])
+    out = {}
+    for r in df.itertuples(index=False):
+        out[int(r.personId)] = {
+            "ht": int(r.heightInches) if pd.notna(r.heightInches) else None,
+            "wt": int(r.bodyWeightLbs) if pd.notna(r.bodyWeightLbs) else None,
+            "from_year": int(r.fromYear) if pd.notna(r.fromYear) else None,
+        }
+    return out
+
+
 def load_team_abbrevs(zf: zipfile.ZipFile) -> dict[int, dict]:
     """Build teamId → {season → abbrev} lookup from TeamHistories.csv."""
     with zf.open("TeamHistories.csv") as f:
@@ -98,6 +115,7 @@ def build_eoin_seasons() -> list[dict]:
     print("Loading Eoin PlayerStatistics.csv …")
     with zipfile.ZipFile(KAGGLE_ZIP) as z:
         team_lookup = load_team_abbrevs(z)
+        bio = load_player_bio(z)
         with z.open("PlayerStatistics.csv") as f:
             df = pd.read_csv(f, low_memory=False)
 
@@ -150,21 +168,28 @@ def build_eoin_seasons() -> list[dict]:
     records = []
     for _, r in agg.iterrows():
         m = r["total_min"]
+        pid = int(r["personId"])
         season_year = int(r["season"][:4])
         tid = r["team_id"]
         abbrev = None
         if pd.notna(tid):
             abbrev = team_abbrev(int(tid), season_year, team_lookup)
+        b = bio.get(pid, {})
+        career_year = (season_year - b["from_year"] + 1) if b.get("from_year") else None
+        if career_year is not None and career_year < 1:
+            career_year = None   # bad from_year data (e.g. ABA seasons not in this schema)
 
         records.append({
-            "pid":   int(r["personId"]),
+            "pid":   pid,
             "name":  r["player_name"],
             "season": r["season"],
             "team":  abbrev,
             "games": int(r["games"]),
             "min":   int(m),
             "age":   None,
-            "ht":    None,
+            "ht":    b.get("ht"),
+            "wt":    b.get("wt"),
+            "career_year": career_year,
             "spct":  r2(r["starter_games"] / r["games"]) if r["games"] else None,
             # per-36
             "pts":   per36(r["pts"], m),
@@ -281,7 +306,7 @@ def load_pbpstats_onoff() -> dict[tuple[int, str], dict]:
 # DuckDB: 1996-97 onwards
 # ---------------------------------------------------------------------------
 
-def build_db_seasons(pbp_onoff: dict) -> list[dict]:
+def build_db_seasons(pbp_onoff: dict, bio: dict) -> list[dict]:
     print("Querying DuckDB for 1996-97+ …")
     con = duckdb.connect(str(RS_DB), read_only=True)
 
@@ -295,6 +320,7 @@ def build_db_seasons(pbp_onoff: dict) -> list[dict]:
         SUM(minutes)                   AS total_min,
         AVG(age)                       AS avg_age,
         AVG(height_inches)             AS avg_height,
+        AVG(career_year)               AS avg_career_year,
         AVG(CAST(starter AS INTEGER))  AS starter_pct,
         SUM(pts)                       AS pts_s,
         SUM(ast)                       AS ast_s,
@@ -329,6 +355,7 @@ def build_db_seasons(pbp_onoff: dict) -> list[dict]:
         pid = int(r["player_id"])
         season = r["season"]
         oo_data = pbp_onoff.get((pid, season), {})
+        b = bio.get(pid, {})
         records.append({
             "pid":    pid,
             "name":   r["player_name"],
@@ -338,6 +365,8 @@ def build_db_seasons(pbp_onoff: dict) -> list[dict]:
             "min":    int(m),
             "age":    r2(r["avg_age"]),
             "ht":     int(r["avg_height"]) if pd.notna(r["avg_height"]) else None,
+            "wt":     b.get("wt"),
+            "career_year": int(round(r["avg_career_year"])) if pd.notna(r["avg_career_year"]) else None,
             "spct":   r2(r["starter_pct"]),
             "pts":    per36(r["pts_s"], m),
             "ast":    per36(r["ast_s"], m),
@@ -368,7 +397,9 @@ def build_db_seasons(pbp_onoff: dict) -> list[dict]:
 def main():
     pbp_onoff = load_pbpstats_onoff()
     eoin = build_eoin_seasons()
-    modern = build_db_seasons(pbp_onoff)
+    with zipfile.ZipFile(KAGGLE_ZIP) as z:
+        bio = load_player_bio(z)
+    modern = build_db_seasons(pbp_onoff, bio)
     all_seasons = eoin + modern
 
     # Normalize names: some players' display names changed mid-career
@@ -391,12 +422,13 @@ def main():
         "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + pbpstats on/off",
         "min_minutes": MIN_MINUTES,
         "cols": ["pts","ast","or","dr","stl","blk","tov","fta","fg2a","fg3a",
-                 "fg2p","fg3p","ftp","oo","oo_off","oo_def"],
+                 "fg2p","fg3p","ftp","oo","oo_off","oo_def","ht","wt"],
         "col_labels": {
             "pts":"Pts/36","ast":"Ast/36","or":"OReb/36","dr":"DReb/36",
             "stl":"Stl/36","blk":"Blk/36","tov":"Tov/36","fta":"FTA/36",
             "fg2a":"2PA/36","fg3a":"3PA/36","fg2p":"2P%","fg3p":"3P%","ftp":"FT%",
             "oo":"On/Off","oo_off":"Off On/Off","oo_def":"Def On/Off",
+            "ht":"Height (in)","wt":"Weight (lb)",
         },
         "seasons": all_seasons,
     }

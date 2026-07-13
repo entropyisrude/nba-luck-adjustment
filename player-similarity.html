@@ -153,6 +153,7 @@
         <input type="number" id="min-min" value="500" min="100" max="3000" step="100">
         <label><input type="checkbox" id="excl-player" checked> Exclude other seasons by same player</label>
         <label><input type="checkbox" id="same-era"> Same era only (±8 years)</label>
+        <label><input type="checkbox" id="same-career-yr"> Same career year <span class="note" id="career-yr-note"></span></label>
         <span style="color:#aab">|</span>
         <label>Results: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
           <option value="10" selected>10</option>
@@ -187,6 +188,7 @@ const STAT_DIMS = [
   { id:'threepoint', label:'3-Point',     stats:['fg3a','fg3p'],                    note:'3PA per 36, 3P%' },
   { id:'oooff',      label:'Off. On/Off', stats:['oo_off'],                         note:'off impact, post-1996', optional:true },
   { id:'oodef',      label:'Def. On/Off', stats:['oo_def'],                         note:'def impact, post-1996', optional:true },
+  { id:'physical',   label:'Physical',    stats:['ht','wt'],                        note:'height, weight — off by default', defaultVal:0 },
 ];
 
 const COL_FMT = {
@@ -194,9 +196,10 @@ const COL_FMT = {
   stl:'Stl/36', blk:'Blk/36', tov:'Tov/36', fta:'FTA/36',
   fg2a:'2PA/36', fg3a:'3PA/36', fg2p:'2P%', fg3p:'3P%', ftp:'FT%',
   oo:'On/Off', oo_off:'Off +/-', oo_def:'Def +/-',
+  ht:'Height', wt:'Weight',
 };
 
-const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def'];
+const DISPLAY_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def','ht','wt'];
 
 let allSeasons = [];
 let playerIndex = {};   // name → [{season, team, idx}]
@@ -205,15 +208,24 @@ let selectedSeason = null;
 
 // ─── Weights UI ─────────────────────────────────────────────────────────────
 
+function defaultWeight(d) {
+  if (d.defaultVal != null) return d.defaultVal;
+  if (d.id === 'oooff' || d.id === 'oodef') return 0.5;
+  return 1;
+}
+
 function buildWeightsUI() {
   const grid = document.getElementById('weights-grid');
-  grid.innerHTML = STAT_DIMS.map(d => `
+  grid.innerHTML = STAT_DIMS.map(d => {
+    const dv = defaultWeight(d);
+    return `
     <div class="weight-row">
       <label>${d.label}${d.optional ? ' <span class="note">(post-96)</span>' : ''}</label>
-      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${(d.id==='oooff'||d.id==='oodef')?0.5:1}">
-      <div class="w-val" id="wv-${d.id}">${(d.id==='oooff'||d.id==='oodef')?'0.5':'1.0'}</div>
+      <input type="range" id="w-${d.id}" min="0" max="2" step="0.1" value="${dv}">
+      <div class="w-val" id="wv-${d.id}">${dv.toFixed(1)}</div>
       <div class="note">${d.note}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   STAT_DIMS.forEach(d => {
     const inp = document.getElementById('w-' + d.id);
     inp.addEventListener('input', () => {
@@ -315,7 +327,7 @@ seasonSel.addEventListener('change', () => {
 
 // ─── Career profiles ──────────────────────────────────────────────────────────
 
-const CAREER_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def'];
+const CAREER_COLS = ['pts','ast','or','dr','stl','blk','tov','fta','fg2a','fg3a','fg2p','fg3p','ftp','oo_off','oo_def','ht','wt'];
 
 function buildCareerProfile(seasons) {
   let totalMin = 0, totalGames = 0;
@@ -371,11 +383,15 @@ function computeSimilarity() {
   const minMin = parseInt(document.getElementById('min-min').value) || 500;
   const exclPlayer = document.getElementById('excl-player').checked;
   const sameEra = document.getElementById('same-era').checked;
+  const sameCareerYrChecked = document.getElementById('same-career-yr').checked;
   const nResults = parseInt(document.getElementById('n-results').value) || 10;
 
   let query, pool;
+  const careerYrNote = document.getElementById('career-yr-note');
+  careerYrNote.textContent = '';
 
   if (isCareer) {
+    if (sameCareerYrChecked) careerYrNote.textContent = '(n/a in Career mode)';
     const allCareer = buildAllCareerProfiles(minMin);
     const queryPid = allSeasons.find(s => s.name.toLowerCase() === selectedPlayer.toLowerCase())?.pid;
     query = allCareer.find(p => p.pid === queryPid);
@@ -389,11 +405,18 @@ function computeSimilarity() {
   } else {
     query = allSeasons[queryIdx];
     const queryYear = parseInt(query.season);
+    const sameCareerYr = sameCareerYrChecked && query.career_year != null;
+    if (sameCareerYrChecked && query.career_year == null) {
+      careerYrNote.textContent = '(unknown for this player-season — filter skipped)';
+    } else if (sameCareerYrChecked) {
+      careerYrNote.textContent = query.career_year === 1 ? '(rookie seasons only)' : `(year ${query.career_year} seasons only)`;
+    }
     pool = allSeasons.filter((s, i) => {
       if (i === queryIdx) return false;
       if (s.min < minMin) return false;
       if (exclPlayer && s.pid === query.pid) return false;
       if (sameEra && Math.abs(parseInt(s.season) - queryYear) > 8) return false;
+      if (sameCareerYr && s.career_year !== query.career_year) return false;
       return true;
     });
   }
@@ -535,6 +558,8 @@ const PCT_COLS = new Set(['fg2p','fg3p','ftp']);
 function fmtStat(col, val) {
   if (val == null) return '<span class="no-oo">—</span>';
   if (PCT_COLS.has(col)) return (val*100).toFixed(1)+'%';
+  if (col === 'ht') { const inches = Math.round(val); return `${Math.floor(inches/12)}'${inches%12}"`; }
+  if (col === 'wt') return Math.round(val) + ' lb';
   return val.toFixed(1);
 }
 
