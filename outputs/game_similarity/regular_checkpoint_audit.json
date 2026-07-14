@@ -1,125 +1,149 @@
 {
-  "pbp_games_seen": 8289,
-  "eligible_regular_games": 7758,
-  "validated_regular_games": 5084,
+  "pbp_games_seen": 32739,
+  "eligible_regular_games": 32204,
+  "validated_regular_games": 23301,
+  "historical_pbp_games_seen": 24450,
+  "historical_validated_games": 18217,
+  "modern_pbp_games_seen": 8289,
+  "modern_validated_games": 5084,
   "unsupported_legacy_schema_games": 264,
-  "missing_stints": 267,
+  "missing_stints": 271,
   "missing_final_box": 0,
   "team_mapping_failures": 10,
-  "stat_mismatch_games": 901,
-  "stat_mismatch_fields": 5889,
-  "minute_mismatch_games": 1763,
-  "largest_accepted_minute_gap": 0.747,
+  "stat_mismatch_games": 1431,
+  "stat_mismatch_fields": 7576,
+  "minute_mismatch_games": 7462,
+  "largest_accepted_minute_gap": 0.75,
   "largest_rejected_minute_gap": 32.987,
   "failure_examples": [
     {
-      "game_id": "21900012",
+      "game_id": "20000002",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 7.7
+      "minute_gap": 9.487
     },
     {
-      "game_id": "21900014",
+      "game_id": "20000003",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 2.003
+      "minute_gap": 9.017
     },
     {
-      "game_id": "21900015",
+      "game_id": "20000005",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 5.997
+      "minute_gap": 7.587
     },
     {
-      "game_id": "21900018",
+      "game_id": "20000015",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 6.347
+      "minute_gap": 10.333
     },
     {
-      "game_id": "21900023",
+      "game_id": "20000017",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 12.423
+      "minute_gap": 7.483
     },
     {
-      "game_id": "21900026",
+      "game_id": "20000028",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 11.45
+      "minute_gap": 4.433
     },
     {
-      "game_id": "21900040",
+      "game_id": "20000029",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 9.45
+    },
+    {
+      "game_id": "20000033",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 12.483
+    },
+    {
+      "game_id": "20000034",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 15.003
+    },
+    {
+      "game_id": "20000037",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 12.71
+    },
+    {
+      "game_id": "20000049",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 0.803
+    },
+    {
+      "game_id": "20000055",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 10.95
+    },
+    {
+      "game_id": "20000056",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 6.817
+    },
+    {
+      "game_id": "20000058",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 11.8
+    },
+    {
+      "game_id": "20000080",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 4.483
+    },
+    {
+      "game_id": "20000081",
+      "source": "historical",
       "reason": "minutes",
       "minute_gap": 2.0
     },
     {
-      "game_id": "21900046",
+      "game_id": "20000087",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 7.603
+      "minute_gap": 6.02
     },
     {
-      "game_id": "21900051",
+      "game_id": "20000089",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 4.0
+      "minute_gap": 4.133
     },
     {
-      "game_id": "21900058",
+      "game_id": "20000091",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 17.433
+      "minute_gap": 9.333
     },
     {
-      "game_id": "21900064",
+      "game_id": "20000101",
+      "source": "historical",
       "reason": "minutes",
-      "minute_gap": 1.583
-    },
-    {
-      "game_id": "21900077",
-      "reason": "minutes",
-      "minute_gap": 2.62
-    },
-    {
-      "game_id": "21900080",
-      "reason": "minutes",
-      "minute_gap": 9.087
-    },
-    {
-      "game_id": "21900082",
-      "reason": "minutes",
-      "minute_gap": 12.46
-    },
-    {
-      "game_id": "21900083",
-      "reason": "minutes",
-      "minute_gap": 3.037
-    },
-    {
-      "game_id": "21900091",
-      "reason": "minutes",
-      "minute_gap": 2.0
-    },
-    {
-      "game_id": "21900094",
-      "reason": "minutes",
-      "minute_gap": 5.433
-    },
-    {
-      "game_id": "21900097",
-      "reason": "minutes",
-      "minute_gap": 15.237
-    },
-    {
-      "game_id": "21900105",
-      "reason": "minutes",
-      "minute_gap": 7.717
-    },
-    {
-      "game_id": "21900111",
-      "reason": "minutes",
-      "minute_gap": 2.9
+      "minute_gap": 10.2
     }
   ],
-  "generated": "2026-07-14T21:21:25.503646+00:00",
+  "generated": "2026-07-14T22:11:16.026783+00:00",
+  "regular_season_coverage": "1996-97 through 2025-26; validated games only",
   "regular_checkpoint_player_lines": {
-    "q1": 64542,
-    "q2": 92344,
-    "q3": 94788
+    "q1": 267413,
+    "q2": 412977,
+    "q3": 425563
   },
   "sample_only": false,
-  "sorted_cache": "C:\\Users\\Dave\\Downloads\\nba-onoff-publish\\derived\\contextual_causal\\game_similarity\\regular_pbp_sorted.parquet",
-  "regular_season_coverage": "2019-20 through 2025-26"
+  "sorted_cache": "C:\\Users\\Dave\\Downloads\\nba-onoff-publish\\derived\\contextual_causal\\game_similarity\\regular_pbp_sorted.parquet"
 }
