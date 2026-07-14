@@ -25,7 +25,7 @@
 </head>
 <body>
 <div class="hero">
-  <div class="mode">Replay prototype</div>
+  <div class="mode">Historical replay</div>
   <h1>Tonight's Lines Lab</h1>
   <p class="sub">See an unusual line develop, then place it against NBA history.</p>
   <div class="nav"><a href="index.html">Home</a><a href="game-similarity.html">Player Game Similarity</a><a class="active" href="live-games.html">Tonight's Lines</a><a href="game-search.html">Game Search</a></div>
@@ -46,11 +46,12 @@
 </section>
 
 <script>
-const VERSION='20260714-live-v1';
+const VERSION='20260714-checkpoints-v2';
 const G={name:0,pid:1,date:2,season:3,opp:4,min:5,pts:6,reb:7,ast:8,stl:9,blk:10,tov:11,fga:12,fg3a:13,fg2a:14,fg3_pct:15,fg2_pct:16,fta:17,ft_pct:18,ts:19,pm:20,onoff:21,tpts:22,opts:23,wl:24,gid:25};
 const BASE_WEIGHTS={min:.8,pts:1,reb:1,ast:1,stl:1,blk:1,tov:1,fga:1,fg3a:1,fg2a:1,fg3_pct:1,fg2_pct:1,fta:1,ft_pct:1,ts_game:1,plus_minus_actual:0,on_off_actual:0};
-let replay,manifest,current=0,selected=null,timer=null;
+let replay,finalManifest,current=0,selected=null,timer=null;
 const shardCache=new Map();
+const checkpointManifestCache=new Map();
 
 function valid(g,stat){
   const map={ts_game:G.ts,plus_minus_actual:G.pm,on_off_actual:G.onoff}; const idx=map[stat]??G[stat]; const v=g[idx];
@@ -73,7 +74,7 @@ function render(){
   document.querySelectorAll('.checkpoint').forEach((b,i)=>b.classList.toggle('active',i===current));
   document.getElementById('context').innerHTML=cp.key==='final'
     ? '<strong>Final line:</strong> comparisons are apples-to-apples against completed historical games.'
-    : '<strong>Line so far:</strong> this is provisionally compared with completed historical lines in neighboring playing-time bands. True checkpoint-to-checkpoint history is the next research layer.';
+    : `<strong>${cp.label} line:</strong> comparisons are now apples-to-apples against historical ${cp.label.toLowerCase()} lines, not final box scores.`;
   const groups={[replay.away.team]:[],[replay.home.team]:[]}; cp.players.forEach(g=>groups[teamFor(g)].push(g));
   document.getElementById('teams').innerHTML=[replay.away.team,replay.home.team].map(team=>{
     const score=team===replay.away.team?cp.away_score:cp.home_score;
@@ -84,19 +85,28 @@ function render(){
   selected=null; document.getElementById('compare').style.display='none';
 }
 
-async function loadShards(minutes){
-  const band=manifest.search_shards.findIndex(s=>minutes>=s.min&&minutes<s.max);
-  const shards=manifest.search_shards.filter((_,i)=>band<0||Math.abs(i-band)<=1);
+async function manifestFor(cp){
+  if(cp.key==='final')return finalManifest;
+  if(checkpointManifestCache.has(cp.key))return checkpointManifestCache.get(cp.key);
+  const response=await fetch(`data/game_similarity/checkpoints/${cp.key}/manifest.json?v=${VERSION}`);
+  if(!response.ok)throw new Error(`checkpoint metadata HTTP ${response.status}`);
+  const value=await response.json();checkpointManifestCache.set(cp.key,value);return value;
+}
+
+async function loadShards(minutes,searchManifest,cp){
+  const band=searchManifest.search_shards.findIndex(s=>minutes>=s.min&&minutes<s.max);
+  const shards=searchManifest.search_shards.filter((_,i)=>band<0||Math.abs(i-band)<=1);
+  const base=cp.key==='final'?'data/game_similarity/search':`data/game_similarity/checkpoints/${cp.key}`;
   return (await Promise.all(shards.map(async shard=>{
-    if(shardCache.has(shard.file))return shardCache.get(shard.file);
-    const r=await fetch(`data/game_similarity/search/${shard.file}?v=${VERSION}`); if(!r.ok)throw new Error(`HTTP ${r.status}`);
-    const rows=await r.json(); shardCache.set(shard.file,rows); return rows;
+    const cacheKey=`${cp.key}/${shard.file}`;if(shardCache.has(cacheKey))return shardCache.get(cacheKey);
+    const r=await fetch(`${base}/${shard.file}?v=${VERSION}`); if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const rows=await r.json(); shardCache.set(cacheKey,rows); return rows;
   }))).flat();
 }
 
-function similarity(query,cand){
+function similarity(query,cand,searchManifest){
   let sum=0,used=0;
-  manifest.sim_stats.forEach((stat,i)=>{const w=BASE_WEIGHTS[stat]||0;if(!w||!valid(query,stat)||!valid(cand,stat))return;const qi=(query[G[stat]??({ts_game:G.ts,plus_minus_actual:G.pm,on_off_actual:G.onoff}[stat])]-manifest.means[i])/manifest.stds[i];const ci=(cand[G[stat]??({ts_game:G.ts,plus_minus_actual:G.pm,on_off_actual:G.onoff}[stat])]-manifest.means[i])/manifest.stds[i];sum+=w*(qi-ci)**2;used+=w});
+  searchManifest.sim_stats.forEach((stat,i)=>{const w=BASE_WEIGHTS[stat]||0;if(!w||!valid(query,stat)||!valid(cand,stat))return;const qi=(query[G[stat]??({ts_game:G.ts,plus_minus_actual:G.pm,on_off_actual:G.onoff}[stat])]-searchManifest.means[i])/searchManifest.stds[i];const ci=(cand[G[stat]??({ts_game:G.ts,plus_minus_actual:G.pm,on_off_actual:G.onoff}[stat])]-searchManifest.means[i])/searchManifest.stds[i];sum+=w*(qi-ci)**2;used+=w});
   if(!used)return null;const dist=Math.sqrt(sum/used);return{dist,sim:Math.round(100*Math.exp(-dist*.5))};
 }
 function percentile(rows,idx,value){if(!rows.length)return 0;return Math.round(100*rows.reduce((n,g)=>n+(g[idx]<=value),0)/rows.length)}
@@ -111,9 +121,10 @@ async function comparePlayer(playerId,button){
   document.getElementById('search-status').textContent='Searching history…';document.getElementById('summary').innerHTML='';document.getElementById('matches').innerHTML='';
   panel.scrollIntoView({behavior:'smooth',block:'start'});
   try{
-    const candidates=await loadShards(query[G.min]);
-    const eligible=candidates.filter(g=>g[G.pid]!==query[G.pid]&&g[G.date]<replay.date);
-    const ranked=[];eligible.forEach(c=>{const s=similarity(query,c);if(s)ranked.push({c,...s})});ranked.sort((a,b)=>a.dist-b.dist);const top=ranked.slice(0,10);
+    const searchManifest=await manifestFor(cp);
+    const candidates=await loadShards(query[G.min],searchManifest,cp);
+    const eligible=candidates.filter(g=>g[G.gid]!==replay.game_id&&g[G.date]<replay.date);
+    const ranked=[];eligible.forEach(c=>{const s=similarity(query,c,searchManifest);if(s)ranked.push({c,...s})});ranked.sort((a,b)=>a.dist-b.dist);const top=ranked.slice(0,10);
     const separation=top.length>=10?100-top[9].sim:0;
     document.getElementById('summary').innerHTML=`
       <div class="metric"><strong>${ordinal(percentile(eligible,G.pts,query[G.pts]))}</strong><span>Points percentile</span></div>
@@ -121,7 +132,8 @@ async function comparePlayer(playerId,button){
       <div class="metric"><strong>${ordinal(percentile(eligible,G.ast,query[G.ast]))}</strong><span>Assist percentile</span></div>
       <div class="metric"><strong>${separation}</strong><span>10th-neighbor gap</span></div>`;
     document.getElementById('matches').innerHTML=top.slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>${r.c[G.name]}</td><td>${r.c[G.date]}</td><td>${r.c[G.opp]}</td><td>${Math.round(r.c[G.min])}</td><td>${r.c[G.pts]}</td><td>${r.c[G.reb]}</td><td>${r.c[G.ast]}</td><td>${r.c[G.stl]}</td><td>${r.c[G.blk]}</td><td>${pct(r.c[G.ts])}</td><td class="sim">${r.sim}%</td></tr>`).join('');
-    document.getElementById('compare-note').textContent=`Compared with ${eligible.length.toLocaleString()} completed player-games in nearby five-minute bands. No era adjustment. “10th-neighbor gap” is 100 minus the similarity of the tenth-closest line; it is an experimental local-separation measure, not a percentile.`;
+    const scope=cp.key==='final'?'completed regular-season and playoff player-games':`${cp.label.toLowerCase()} player-lines from ${searchManifest.game_count.toLocaleString()} validated playoff games`;
+    document.getElementById('compare-note').textContent=`Compared with ${eligible.length.toLocaleString()} ${scope} in nearby five-minute bands. Same-player games are eligible; the replay game itself and all later games are excluded. No era adjustment. “10th-neighbor gap” is 100 minus the similarity of the tenth-closest line; it is an experimental local-separation measure, not a percentile.`;
     document.getElementById('search-status').textContent='';
   }catch(e){document.getElementById('search-status').textContent='Could not load history: '+e.message;}
 }
@@ -134,7 +146,7 @@ function buildControls(){
 }
 
 async function init(){
-  try{const [r,m]=await Promise.all([fetch(`data/live_replay/42300113.json?v=${VERSION}`),fetch(`data/game_similarity/manifest.json?v=${VERSION}`)]);if(!r.ok||!m.ok)throw new Error('metadata unavailable');[replay,manifest]=await Promise.all([r.json(),m.json()]);buildControls();render()}catch(e){document.getElementById('score').textContent='Could not load replay: '+e.message}
+  try{const [r,m]=await Promise.all([fetch(`data/live_replay/42300113.json?v=${VERSION}`),fetch(`data/game_similarity/manifest.json?v=${VERSION}`)]);if(!r.ok||!m.ok)throw new Error('metadata unavailable');[replay,finalManifest]=await Promise.all([r.json(),m.json()]);buildControls();render()}catch(e){document.getElementById('score').textContent='Could not load replay: '+e.message}
 }
 init();
 </script>

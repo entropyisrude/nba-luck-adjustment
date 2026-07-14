@@ -172,7 +172,7 @@ def build() -> dict[str, object]:
         "home": {"team": home_abbr, "score": final_home},
         "away": {"team": away_abbr, "score": final_away},
         "checkpoints": checkpoints,
-        "note": "Historical replay reconstructed from official play-by-play; partial lines are compared with final historical lines at similar minutes.",
+        "note": "Historical replay reconstructed from official play-by-play; Q1, halftime, and Q3 lines are compared with the same historical checkpoints.",
     }
 
 

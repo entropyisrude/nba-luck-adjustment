@@ -1,0 +1,15 @@
+{
+  "input_pbp_games": 2355,
+  "eligible_games": 2355,
+  "validated_games": 2311,
+  "missing_stints": [],
+  "missing_final_box": [],
+  "stat_mismatch_games": 44,
+  "stat_mismatch_fields": 161,
+  "generated": "2026-07-14T20:38:13.790560+00:00",
+  "checkpoint_player_lines": {
+    "q1": 26099,
+    "q2": 38022,
+    "q3": 39512
+  }
+}
