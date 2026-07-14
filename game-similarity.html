@@ -258,7 +258,7 @@ async function selectPlayer(name) {
     const bucketName = player.bucket.toString(16).padStart(2, '0');
     let bucketGames = playerBucketCache.get(bucketName);
     if (!bucketGames) {
-      const resp = await fetch(`data/game_similarity/players/${bucketName}.json?v=20260714-shards-v2`);
+      const resp = await fetch(`data/game_similarity/players/${bucketName}.json?v=20260714-shards-v3`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       bucketGames = await resp.json();
       playerBucketCache.set(bucketName, bucketGames);
@@ -327,7 +327,7 @@ async function computeSimilarity() {
   for (let start = 0; start < files.length; start += batchSize) {
     const batchFiles = files.slice(start, start + batchSize);
     const chunks = await Promise.all(batchFiles.map(async filename => {
-      const resp = await fetch(`data/game_similarity/search/${filename}?v=20260714-shards-v2`);
+      const resp = await fetch(`data/game_similarity/search/${filename}?v=20260714-shards-v3`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${filename}`);
       return resp.json();
     }));
@@ -429,6 +429,7 @@ async function renderResults() {
     const rankText = sim === 100 ? '—' : (i + 1);
     
     const pct = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] * 100).toFixed(1) + '%' : '—';
+    const value = (stat) => statIsValid(c, stat) ? c[G_IDX[stat]] : '—';
     const num = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] > 0 ? '+' + c[G_IDX[stat]] : c[G_IDX[stat]]) : '—';
     const dec = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] > 0 ? '+' + c[G_IDX[stat]].toFixed(1) : c[G_IDX[stat]].toFixed(1)) : '—';
     const score = c[G_IDX.t_pts] == null || c[G_IDX.o_pts] == null ? '' : ` ${c[G_IDX.t_pts]}-${c[G_IDX.o_pts]}`;
@@ -446,12 +447,12 @@ async function renderResults() {
       <td>${c[G_IDX.stl]}</td>
       <td>${c[G_IDX.blk]}</td>
       <td>${c[G_IDX.tov]}</td>
-      <td>${c[G_IDX.fga]}</td>
-      <td>${c[G_IDX.fg3a]}</td>
-      <td>${c[G_IDX.fg2a]}</td>
+      <td>${value('fga')}</td>
+      <td>${value('fg3a')}</td>
+      <td>${value('fg2a')}</td>
       <td>${pct('fg3_pct')}</td>
       <td>${pct('fg2_pct')}</td>
-      <td>${c[G_IDX.fta]}</td>
+      <td>${value('fta')}</td>
       <td>${pct('ft_pct')}</td>
       <td>${pct('ts_game')}</td>
       <td>${num('plus_minus_actual')}</td>
@@ -474,8 +475,8 @@ async function init() {
   buildWeightsUI();
   try {
     const [catalogResp, manifestResp] = await Promise.all([
-      fetch('data/game_similarity_players.json?v=20260714-shards-v2'),
-      fetch('data/game_similarity/manifest.json?v=20260714-shards-v2'),
+      fetch('data/game_similarity_players.json?v=20260714-shards-v3'),
+      fetch('data/game_similarity/manifest.json?v=20260714-shards-v3'),
     ]);
     if (!catalogResp.ok || !manifestResp.ok) throw new Error('Could not load search metadata');
     const [catalog, manifest] = await Promise.all([catalogResp.json(), manifestResp.json()]);

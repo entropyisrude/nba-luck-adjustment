@@ -71,14 +71,58 @@ def rounded(value: object) -> float:
     return round(number(value), 3)
 
 
+def nullable_number(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return round(result, 3) if math.isfinite(result) else None
+
+
+def shooting_box_is_valid(row: list[object]) -> bool:
+    required = (PTS, FGM, FGA, FG2M, FG2A, FG3M, FG3A, FTM, FTA)
+    if any(row[index] is None for index in required):
+        return False
+    pts, fgm, fga = (number(row[index]) for index in (PTS, FGM, FGA))
+    fg2m, fg2a, fg3m, fg3a = (number(row[index]) for index in (FG2M, FG2A, FG3M, FG3A))
+    ftm, fta = (number(row[index]) for index in (FTM, FTA))
+    return (
+        min(fgm, fga, fg2m, fg2a, fg3m, fg3a, ftm, fta) >= 0
+        and fgm <= fga and fg2m <= fg2a and fg3m <= fg3a and ftm <= fta
+        and abs(fga - fg2a - fg3a) < 1e-6
+        and abs(fgm - fg2m - fg3m) < 1e-6
+        and abs(pts - (2 * fg2m + 3 * fg3m + ftm)) < 1e-6
+    )
+
+
+def made_attempted_rate(made: object, attempted: object) -> float | None:
+    made_value = nullable_number(made)
+    attempted_value = nullable_number(attempted)
+    if made_value is None or attempted_value is None or attempted_value <= 0:
+        return None
+    if made_value < 0 or made_value > attempted_value:
+        return None
+    return round(made_value / attempted_value, 3)
+
+
 def compact(row: list[object]) -> list[object]:
+    shooting_valid = shooting_box_is_valid(row)
+    fga = nullable_number(row[FGA]) if shooting_valid else None
+    fg3a = nullable_number(row[FG3A]) if shooting_valid else None
+    fg2a = nullable_number(row[FG2A]) if shooting_valid else None
+    fta = nullable_number(row[FTA]) if shooting_valid else None
+    denominator = 2 * (number(row[FGA]) + 0.44 * number(row[FTA])) if shooting_valid else 0
+    ts_game = round(number(row[PTS]) / denominator, 3) if denominator > 0 else None
     return [
         row[NAME], row[PID], row[DATE], row[SEASON], row[OPP], rounded(row[MIN]),
         rounded(row[PTS]), rounded(row[REB]), rounded(row[AST]), rounded(row[STL]),
-        rounded(row[BLK]), rounded(row[TOV]), rounded(row[FGA]), rounded(row[FG3A]),
-        rounded(row[FG2A]), rounded(row[FG3_PCT]), rounded(row[FG2_PCT]),
-        rounded(row[FTA]), rounded(row[FT_PCT]), rounded(row[TS_GAME]),
-        rounded(row[PLUS_MINUS_ACTUAL]), rounded(row[ON_OFF_ACTUAL]),
+        rounded(row[BLK]), rounded(row[TOV]), fga, fg3a, fg2a,
+        made_attempted_rate(row[FG3M], row[FG3A]) if shooting_valid else None,
+        made_attempted_rate(row[FG2M], row[FG2A]) if shooting_valid else None,
+        fta, made_attempted_rate(row[FTM], row[FTA]) if shooting_valid else None,
+        ts_game, nullable_number(row[PLUS_MINUS_ACTUAL]), nullable_number(row[ON_OFF_ACTUAL]),
         None if row[TEAM_PTS] is None else rounded(row[TEAM_PTS]),
         None if row[OPP_PTS] is None else rounded(row[OPP_PTS]),
         row[WIN_LOSS], str(row[GAME_ID]),
@@ -104,7 +148,17 @@ def build(min_minutes: float) -> dict[str, object]:
     means: list[float] = []
     stds: list[float] = []
     for stat in SIM_STATS:
-        values = [number(game[positions[stat]]) for game in games]
+        values = []
+        for game in games:
+            value = game[positions[stat]]
+            if value is None:
+                continue
+            if stat in {"plus_minus_actual", "on_off_actual"} and (
+                game[positions["team_pts_actual"]] is None
+                or game[positions["opp_pts_actual"]] is None
+            ):
+                continue
+            values.append(float(value))
         mean = sum(values) / len(values)
         variance = sum((value - mean) ** 2 for value in values) / len(values)
         means.append(mean)
