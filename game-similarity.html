@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Game Similarity Machine — NBA Stats</title>
+<title>Player Game Similarity — NBA Stats</title>
 <style>
   body{font-family:"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:20px;
     background:linear-gradient(180deg,#eef5ff 0%,#f8fbff 30%,#f2f6fb 100%);color:#192231}
@@ -58,6 +58,8 @@
     font-size:.85em;color:#445}
   .filter-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
   .checkbox-group{display:flex;gap:12px;background:#f0f5fb;padding:4px 12px;border-radius:8px}
+  .method-note{margin:14px 0 0;padding:10px 12px;border-left:3px solid #3a7bd5;
+    background:#f4f8ff;color:#536b87;font-size:.8em;line-height:1.45}
 
   /* Results */
   #results-section{display:none}
@@ -92,8 +94,8 @@
 <body>
 
 <div class="hero-banner">
-  <h1>Game Similarity Machine</h1>
-  <p class="timestamp">1979-80 through 2025-26 &nbsp;|&nbsp; 350,000+ individual game lines</p>
+  <h1>Player Game Similarity</h1>
+  <p class="timestamp" id="coverage-note">1979-80 through 2025-26 &nbsp;|&nbsp; Raw box-score matching &nbsp;|&nbsp; No era adjustment</p>
   <div class="hero-nav">
     <div class="hero-nav-row">
       <span class="hero-nav-label">Home</span>
@@ -102,7 +104,7 @@
     <div class="hero-nav-row">
       <span class="hero-nav-label">Tools</span>
       <a href="player-similarity.html">Player Similarity</a>
-      <a href="game-similarity.html" style="background:rgba(255,255,255,.15)">Game Similarity</a>
+      <a href="game-similarity.html" style="background:rgba(255,255,255,.15)">Player Game Similarity</a>
       <a href="game-search.html">Game Search</a>
     </div>
   </div>
@@ -139,13 +141,15 @@
           <label><input type="checkbox" id="type-playoff" checked> Playoffs</label>
         </div>
         <label><input type="checkbox" id="excl-player" checked> Exclude other games by same player</label>
-        <label><input type="checkbox" id="same-era"> Same era (±8 yrs)</label>
         <label>Show: <select id="n-results" style="padding:3px 6px;border:1px solid #c8d8ec;border-radius:5px;font-size:.9em">
           <option value="10" selected>10</option>
           <option value="20">20</option>
           <option value="50">50</option>
         </select></label>
       </div>
+      <p class="method-note"><strong>No era adjustment.</strong> Games are compared using their actual box-score values.
+        Global standard deviations only put unlike units—such as points and shooting percentages—on comparable distance scales.
+        Shooting-efficiency fields are omitted for individual historical rows whose underlying attempts are missing or invalid.</p>
     </div>
   </section>
 
@@ -167,6 +171,7 @@ let players = {}; // name -> pid
 let gamesByPlayer = {}; // pid -> [game_indices]
 
 const WEIGHT_DIMS = [
+  { id:'minutes', label:'Minutes', stats:['min'], val:0.8 },
   { id:'scoring', label:'Scoring (PTS,FGA)', stats:['pts','fga'], val:1.0 },
   { id:'rebounding', label:'Rebounding', stats:['reb'], val:1.0 },
   { id:'playmaking', label:'Playmaking (AST,TOV)', stats:['ast','tov'], val:1.0 },
@@ -248,7 +253,7 @@ function selectPlayer(name) {
   
   gameSelect.innerHTML = pGames.map(idx => {
     const g = data.games[idx];
-    const type = g[G_IDX.gid].startsWith('004') ? ' (PO)' : '';
+    const type = isPlayoffGame(g) ? ' (PO)' : '';
     return `<option value="${idx}">${g[G_IDX.date]} vs ${g[G_IDX.opp]}${type} — ${g[G_IDX.pts]}p/${g[G_IDX.reb]}r/${g[G_IDX.ast]}a (${Math.round(g[G_IDX.min])}m)</option>`;
   }).join('');
   
@@ -256,7 +261,19 @@ function selectPlayer(name) {
   runBtn.disabled = false;
 }
 
-runBtn.addEventListener('click', renderResults);
+runBtn.addEventListener('click', () => {
+  runBtn.disabled = true;
+  runBtn.textContent = 'Searching…';
+  // Allow the button state to paint before scanning the full database.
+  requestAnimationFrame(() => setTimeout(() => {
+    try {
+      renderResults();
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = 'Find Similar Games';
+    }
+  }, 0));
+});
 
 // ─── Similarity ──────────────────────────────────────────────────────────────
 
@@ -268,25 +285,23 @@ function computeSimilarity() {
   const inclReg = document.getElementById('type-reg').checked;
   const inclPO = document.getElementById('type-playoff').checked;
   const exclPlayer = document.getElementById('excl-player').checked;
-  const sameEra = document.getElementById('same-era').checked;
   const nResults = parseInt(document.getElementById('n-results').value) || 10;
-  
-  const queryYear = parseInt(query[G_IDX.season]);
   const stats = data.sim_stats;
   
-  // Normalized query vector
-  const queryZ = stats.map((s, i) => (query[G_IDX[s]] - data.means[i]) / data.stds[i]);
+  // This is scale normalization only, not era adjustment. Means/stds are global.
+  const queryZ = stats.map((s, i) => statIsValid(query, s)
+    ? (query[G_IDX[s]] - data.means[i]) / data.stds[i]
+    : null);
 
   const results = data.games.map((cand, idx) => {
     if (idx === queryIdx) return null;
     
     // Type Filter
-    const isPO = cand[G_IDX.gid].startsWith('004');
+    const isPO = isPlayoffGame(cand);
     if (isPO && !inclPO) return null;
     if (!isPO && !inclReg) return null;
     
     if (exclPlayer && cand[G_IDX.pid] === query[G_IDX.pid]) return null;
-    if (sameEra && Math.abs(parseInt(cand[G_IDX.season]) - queryYear) > 8) return null;
     
     let sumSq = 0;
     let nUsed = 0;
@@ -294,11 +309,13 @@ function computeSimilarity() {
     stats.forEach((s, i) => {
       const w = weights[s] || 0;
       if (w === 0) return;
+      if (queryZ[i] == null || !statIsValid(cand, s)) return;
       const cz = (cand[G_IDX[s]] - data.means[i]) / data.stds[i];
       sumSq += w * (queryZ[i] - cz) ** 2;
       nUsed += w;
     });
     
+    if (nUsed === 0) return null;
     const dist = Math.sqrt(sumSq / nUsed);
     const sim = Math.round(100 * Math.exp(-dist * 0.5));
     return { cand, sim, dist };
@@ -306,6 +323,31 @@ function computeSimilarity() {
 
   results.sort((a, b) => a.dist - b.dist);
   return { query, results: results.slice(0, nResults) };
+}
+
+function isPlayoffGame(g) {
+  // Regular-season NBA game IDs begin with 2; historical playoff IDs use
+  // several 4xx/5xx prefixes rather than only the modern 004 prefix.
+  return !String(g[G_IDX.gid]).startsWith('2');
+}
+
+function statIsValid(g, stat) {
+  const v = g[G_IDX[stat]];
+  if (v == null || !Number.isFinite(Number(v))) return false;
+
+  // A few historical source rows retain points but have unavailable shooting
+  // inputs encoded as zeros. Keep their counting stats, not fake efficiency.
+  const shootingInputsMissing = g[G_IDX.pts] > 0 && g[G_IDX.fga] === 0 && g[G_IDX.fta] === 0;
+  if (shootingInputsMissing && ['fga','fg3a','fg2a','fg3_pct','fg2_pct','fta','ft_pct','ts_game'].includes(stat)) return false;
+
+  if (stat === 'fg3_pct') return g[G_IDX.fg3a] > 0 && v >= 0 && v <= 1;
+  if (stat === 'fg2_pct') return g[G_IDX.fg2a] > 0 && v >= 0 && v <= 1;
+  if (stat === 'ft_pct') return g[G_IDX.fta] > 0 && v >= 0 && v <= 1;
+  if (stat === 'ts_game') return (g[G_IDX.fga] + 0.44 * g[G_IDX.fta]) > 0 && v >= 0 && v <= 1.5;
+  if (stat === 'plus_minus_actual' || stat === 'on_off_actual') {
+    return g[G_IDX.t_pts] != null && g[G_IDX.o_pts] != null;
+  }
+  return true;
 }
 
 function renderResults() {
@@ -351,16 +393,17 @@ function renderResults() {
     const rowClass = sim === 100 ? 'query-row' : '';
     const rankText = sim === 100 ? '—' : (i + 1);
     
-    const pct = (v) => (v * 100).toFixed(1) + '%';
-    const num = (v) => v > 0 ? '+' + v : v;
-    const dec = (v) => v > 0 ? '+' + v.toFixed(1) : v.toFixed(1);
+    const pct = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] * 100).toFixed(1) + '%' : '—';
+    const num = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] > 0 ? '+' + c[G_IDX[stat]] : c[G_IDX[stat]]) : '—';
+    const dec = (stat) => statIsValid(c, stat) ? (c[G_IDX[stat]] > 0 ? '+' + c[G_IDX[stat]].toFixed(1) : c[G_IDX[stat]].toFixed(1)) : '—';
+    const score = c[G_IDX.t_pts] == null || c[G_IDX.o_pts] == null ? '' : ` ${c[G_IDX.t_pts]}-${c[G_IDX.o_pts]}`;
     
     return `<tr class="${rowClass}">
       <td class="rank">${rankText}</td>
       <td style="font-weight:600">${c[G_IDX.name]}</td>
       <td class="muted">${c[G_IDX.date]}</td>
       <td>${c[G_IDX.opp]}</td>
-      <td class="score-cell"><span class="${wlClass}">${c[G_IDX.wl]}</span> ${c[G_IDX.t_pts]}-${c[G_IDX.o_pts]}</td>
+      <td class="score-cell"><span class="${wlClass}">${c[G_IDX.wl]}</span>${score}</td>
       <td>${Math.round(c[G_IDX.min])}</td>
       <td>${c[G_IDX.pts]}</td>
       <td>${c[G_IDX.reb]}</td>
@@ -371,14 +414,14 @@ function renderResults() {
       <td>${c[G_IDX.fga]}</td>
       <td>${c[G_IDX.fg3a]}</td>
       <td>${c[G_IDX.fg2a]}</td>
-      <td>${pct(c[G_IDX.fg3_pct])}</td>
-      <td>${pct(c[G_IDX.fg2_pct])}</td>
+      <td>${pct('fg3_pct')}</td>
+      <td>${pct('fg2_pct')}</td>
       <td>${c[G_IDX.fta]}</td>
-      <td>${pct(c[G_IDX.ft_pct])}</td>
-      <td>${pct(c[G_IDX.ts_game])}</td>
-      <td>${num(c[G_IDX.plus_minus_actual])}</td>
-      <td>${dec(c[G_IDX.on_off_actual])}</td>
-      <td class="sim-score">${sim}</td>
+      <td>${pct('ft_pct')}</td>
+      <td>${pct('ts_game')}</td>
+      <td>${num('plus_minus_actual')}</td>
+      <td>${dec('on_off_actual')}</td>
+      <td class="sim-score">${sim}%</td>
     </tr>`;
   };
 
@@ -396,6 +439,15 @@ async function init() {
   try {
     const resp = await fetch('data/game_similarity_index.json');
     data = await resp.json();
+    // Minutes are already stored in every row. The original index omitted them
+    // from its distance metadata, so add their global scale at load time.
+    if (!data.sim_stats.includes('min')) {
+      data.sim_stats.unshift('min');
+      data.means.unshift(36.27641717238579);
+      data.stds.unshift(4.317040155288068);
+    }
+    document.getElementById('coverage-note').textContent =
+      `1979-80 through 2025-26 | ${data.games.length.toLocaleString()} player-game lines | Raw values, no era adjustment`;
     
     // Index players and their games
     data.games.forEach((g, i) => {
