@@ -46,7 +46,7 @@
 </section>
 
 <script>
-const VERSION='20260714-checkpoints-v2';
+const VERSION='20260714-checkpoints-v3';
 const G={name:0,pid:1,date:2,season:3,opp:4,min:5,pts:6,reb:7,ast:8,stl:9,blk:10,tov:11,fga:12,fg3a:13,fg2a:14,fg3_pct:15,fg2_pct:16,fta:17,ft_pct:18,ts:19,pm:20,onoff:21,tpts:22,opts:23,wl:24,gid:25};
 const BASE_WEIGHTS={min:.8,pts:1,reb:1,ast:1,stl:1,blk:1,tov:1,fga:1,fg3a:1,fg2a:1,fg3_pct:1,fg2_pct:1,fta:1,ft_pct:1,ts_game:1,plus_minus_actual:0,on_off_actual:0};
 let replay,finalManifest,current=0,selected=null,timer=null;
@@ -74,7 +74,7 @@ function render(){
   document.querySelectorAll('.checkpoint').forEach((b,i)=>b.classList.toggle('active',i===current));
   document.getElementById('context').innerHTML=cp.key==='final'
     ? '<strong>Final line:</strong> comparisons are apples-to-apples against completed historical games.'
-    : `<strong>${cp.label} line:</strong> comparisons are now apples-to-apples against historical ${cp.label.toLowerCase()} lines, not final box scores.`;
+    : `<strong>${cp.label} line:</strong> comparisons are apples-to-apples against historical regular-season and playoff ${cp.label.toLowerCase()} lines, not final box scores.`;
   const groups={[replay.away.team]:[],[replay.home.team]:[]}; cp.players.forEach(g=>groups[teamFor(g)].push(g));
   document.getElementById('teams').innerHTML=[replay.away.team,replay.home.team].map(team=>{
     const score=team===replay.away.team?cp.away_score:cp.home_score;
@@ -132,8 +132,9 @@ async function comparePlayer(playerId,button){
       <div class="metric"><strong>${ordinal(percentile(eligible,G.ast,query[G.ast]))}</strong><span>Assist percentile</span></div>
       <div class="metric"><strong>${separation}</strong><span>10th-neighbor gap</span></div>`;
     document.getElementById('matches').innerHTML=top.slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>${r.c[G.name]}</td><td>${r.c[G.date]}</td><td>${r.c[G.opp]}</td><td>${Math.round(r.c[G.min])}</td><td>${r.c[G.pts]}</td><td>${r.c[G.reb]}</td><td>${r.c[G.ast]}</td><td>${r.c[G.stl]}</td><td>${r.c[G.blk]}</td><td>${pct(r.c[G.ts])}</td><td class="sim">${r.sim}%</td></tr>`).join('');
-    const scope=cp.key==='final'?'completed regular-season and playoff player-games':`${cp.label.toLowerCase()} player-lines from ${searchManifest.game_count.toLocaleString()} validated playoff games`;
-    document.getElementById('compare-note').textContent=`Compared with ${eligible.length.toLocaleString()} ${scope} in nearby five-minute bands. Same-player games are eligible; the replay game itself and all later games are excluded. No era adjustment. “10th-neighbor gap” is 100 minus the similarity of the tenth-closest line; it is an experimental local-separation measure, not a percentile.`;
+    const scope=cp.key==='final'?'completed regular-season and playoff player-games':`${cp.label.toLowerCase()} player-lines from ${searchManifest.regular_game_count.toLocaleString()} validated regular-season and ${searchManifest.playoff_game_count.toLocaleString()} validated playoff games`;
+    const bands=cp.key==='final'?'nearby five-minute bands':'nearby one-minute bands';
+    document.getElementById('compare-note').textContent=`Compared with ${eligible.length.toLocaleString()} ${scope} in ${bands}. Same-player games are eligible; the replay game itself and all later games are excluded. No era adjustment. “10th-neighbor gap” is 100 minus the similarity of the tenth-closest line; it is an experimental local-separation measure, not a percentile.`;
     document.getElementById('search-status').textContent='';
   }catch(e){document.getElementById('search-status').textContent='Could not load history: '+e.message;}
 }

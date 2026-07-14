@@ -1,0 +1,125 @@
+{
+  "pbp_games_seen": 8289,
+  "eligible_regular_games": 7758,
+  "validated_regular_games": 5084,
+  "unsupported_legacy_schema_games": 264,
+  "missing_stints": 267,
+  "missing_final_box": 0,
+  "team_mapping_failures": 10,
+  "stat_mismatch_games": 901,
+  "stat_mismatch_fields": 5889,
+  "minute_mismatch_games": 1763,
+  "largest_accepted_minute_gap": 0.747,
+  "largest_rejected_minute_gap": 32.987,
+  "failure_examples": [
+    {
+      "game_id": "21900012",
+      "reason": "minutes",
+      "minute_gap": 7.7
+    },
+    {
+      "game_id": "21900014",
+      "reason": "minutes",
+      "minute_gap": 2.003
+    },
+    {
+      "game_id": "21900015",
+      "reason": "minutes",
+      "minute_gap": 5.997
+    },
+    {
+      "game_id": "21900018",
+      "reason": "minutes",
+      "minute_gap": 6.347
+    },
+    {
+      "game_id": "21900023",
+      "reason": "minutes",
+      "minute_gap": 12.423
+    },
+    {
+      "game_id": "21900026",
+      "reason": "minutes",
+      "minute_gap": 11.45
+    },
+    {
+      "game_id": "21900040",
+      "reason": "minutes",
+      "minute_gap": 2.0
+    },
+    {
+      "game_id": "21900046",
+      "reason": "minutes",
+      "minute_gap": 7.603
+    },
+    {
+      "game_id": "21900051",
+      "reason": "minutes",
+      "minute_gap": 4.0
+    },
+    {
+      "game_id": "21900058",
+      "reason": "minutes",
+      "minute_gap": 17.433
+    },
+    {
+      "game_id": "21900064",
+      "reason": "minutes",
+      "minute_gap": 1.583
+    },
+    {
+      "game_id": "21900077",
+      "reason": "minutes",
+      "minute_gap": 2.62
+    },
+    {
+      "game_id": "21900080",
+      "reason": "minutes",
+      "minute_gap": 9.087
+    },
+    {
+      "game_id": "21900082",
+      "reason": "minutes",
+      "minute_gap": 12.46
+    },
+    {
+      "game_id": "21900083",
+      "reason": "minutes",
+      "minute_gap": 3.037
+    },
+    {
+      "game_id": "21900091",
+      "reason": "minutes",
+      "minute_gap": 2.0
+    },
+    {
+      "game_id": "21900094",
+      "reason": "minutes",
+      "minute_gap": 5.433
+    },
+    {
+      "game_id": "21900097",
+      "reason": "minutes",
+      "minute_gap": 15.237
+    },
+    {
+      "game_id": "21900105",
+      "reason": "minutes",
+      "minute_gap": 7.717
+    },
+    {
+      "game_id": "21900111",
+      "reason": "minutes",
+      "minute_gap": 2.9
+    }
+  ],
+  "generated": "2026-07-14T21:21:25.503646+00:00",
+  "regular_checkpoint_player_lines": {
+    "q1": 64542,
+    "q2": 92344,
+    "q3": 94788
+  },
+  "sample_only": false,
+  "sorted_cache": "C:\\Users\\Dave\\Downloads\\nba-onoff-publish\\derived\\contextual_causal\\game_similarity\\regular_pbp_sorted.parquet",
+  "regular_season_coverage": "2019-20 through 2025-26"
+}
