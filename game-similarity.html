@@ -437,7 +437,7 @@ function renderResults() {
 
 async function init() {
   try {
-    const resp = await fetch('data/game_similarity_index.json');
+    const resp = await fetch('data/game_similarity_index.json?v=20260714-player-game-v1');
     data = await resp.json();
     // Minutes are already stored in every row. The original index omitted them
     // from its distance metadata, so add their global scale at load time.
