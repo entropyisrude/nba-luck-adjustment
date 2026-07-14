@@ -424,7 +424,10 @@ async function renderResults() {
   const body = document.getElementById('results-tbody');
   
   const formatRow = (c, i, sim) => {
-    const wlClass = c[G_IDX.wl] === 'W' ? 'win' : 'loss';
+    const wl = c[G_IDX.t_pts] != null && c[G_IDX.o_pts] != null
+      ? (c[G_IDX.t_pts] > c[G_IDX.o_pts] ? 'W' : 'L')
+      : c[G_IDX.wl];
+    const wlClass = wl === 'W' ? 'win' : 'loss';
     const rowClass = sim === 100 ? 'query-row' : '';
     const rankText = sim === 100 ? '—' : (i + 1);
     
@@ -439,7 +442,7 @@ async function renderResults() {
       <td style="font-weight:600">${c[G_IDX.name]}</td>
       <td class="muted">${c[G_IDX.date]}</td>
       <td>${c[G_IDX.opp]}</td>
-      <td class="score-cell"><span class="${wlClass}">${c[G_IDX.wl]}</span>${score}</td>
+      <td class="score-cell"><span class="${wlClass}">${wl}</span>${score}</td>
       <td>${Math.round(c[G_IDX.min])}</td>
       <td>${c[G_IDX.pts]}</td>
       <td>${c[G_IDX.reb]}</td>
