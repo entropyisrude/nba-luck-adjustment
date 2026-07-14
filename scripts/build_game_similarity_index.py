@@ -18,6 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "data" / "game_similarity_index.json"
 DEFAULT_CATALOG_OUTPUT = ROOT / "data" / "game_similarity_players.json"
+DEFAULT_SHARD_DIR = ROOT / "data" / "game_similarity"
+PLAYER_BUCKETS = 64
+SEASONS_PER_SEARCH_SHARD = 6
 CHUNK_DIRS = (
     ROOT / "data" / "player_game_chunks",
     ROOT / "data" / "player_game_playoff_chunks",
@@ -121,19 +124,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--catalog-output", type=Path, default=DEFAULT_CATALOG_OUTPUT)
+    parser.add_argument("--shard-dir", type=Path, default=DEFAULT_SHARD_DIR)
+    parser.add_argument("--monolith", action="store_true", help="Also write the legacy monolithic index")
     parser.add_argument("--min-minutes", type=float, default=30.0)
     args = parser.parse_args()
     payload = build(args.min_minutes)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
     games = payload["games"]
     player_ids: dict[str, object] = {}
     for game in games:
         player_ids[str(game[0])] = game[1]
-    players = sorted(player_ids.items(), key=lambda row: row[0].lower())
+    players = sorted(
+        ((name, pid, int(pid) % PLAYER_BUCKETS) for name, pid in player_ids.items()),
+        key=lambda row: row[0].lower(),
+    )
     catalog = {
         "generated": payload["generated"],
         "first_season": min(str(game[3]) for game in games),
@@ -146,7 +149,53 @@ def main() -> None:
         json.dumps(catalog, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
-    print(f"Wrote {len(payload['games']):,} games to {args.output}")
+
+    args.shard_dir.mkdir(parents=True, exist_ok=True)
+    season_dir = args.shard_dir / "seasons"
+    player_dir = args.shard_dir / "players"
+    season_dir.mkdir(exist_ok=True)
+    player_dir.mkdir(exist_ok=True)
+    for stale_path in season_dir.glob("*.json"):
+        stale_path.unlink()
+    season_files: list[str] = []
+    seasons = sorted({str(game[3]) for game in games})
+    for start in range(0, len(seasons), SEASONS_PER_SEARCH_SHARD):
+        shard_seasons = seasons[start:start + SEASONS_PER_SEARCH_SHARD]
+        filename = f"{shard_seasons[0].replace('-', '_')}__{shard_seasons[-1].replace('-', '_')}.json"
+        season_games = [game for game in games if str(game[3]) in shard_seasons]
+        (season_dir / filename).write_text(
+            json.dumps(season_games, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        season_files.append(filename)
+    for bucket in range(PLAYER_BUCKETS):
+        bucket_games = [game for game in games if int(game[1]) % PLAYER_BUCKETS == bucket]
+        (player_dir / f"{bucket:02x}.json").write_text(
+            json.dumps(bucket_games, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+    manifest = {
+        "generated": payload["generated"],
+        "schema": payload["schema"],
+        "sim_stats": payload["sim_stats"],
+        "means": payload["means"],
+        "stds": payload["stds"],
+        "season_files": season_files,
+        "player_buckets": PLAYER_BUCKETS,
+        "game_count": len(games),
+    }
+    (args.shard_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    if args.monolith:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        print(f"Wrote {len(payload['games']):,} games to {args.output}")
+    print(f"Wrote {len(season_files)} search shards and {PLAYER_BUCKETS} player buckets to {args.shard_dir}")
     print(f"Wrote {len(players):,} players to {args.catalog_output}")
 
 

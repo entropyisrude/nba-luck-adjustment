@@ -166,10 +166,10 @@
 </div>
 
 <script>
-let data = null; // {sim_stats, means, stds, games}
-let dataLoadPromise = null;
-let players = {}; // name -> pid
-let gamesByPlayer = {}; // pid -> [game_indices]
+let data = null; // shard manifest: {sim_stats, means, stds, season_files}
+let players = {}; // name -> {pid, bucket}
+let selectedPlayerGames = [];
+const playerBucketCache = new Map();
 
 const WEIGHT_DIMS = [
   { id:'minutes', label:'Minutes', stats:['min'], val:0.8 },
@@ -251,19 +251,27 @@ async function selectPlayer(name) {
   acDropdown.style.display = 'none';
   playerInput.disabled = true;
   gameSelect.disabled = true;
-  gameSelect.innerHTML = '<option>Loading full game database…</option>';
+  gameSelect.innerHTML = '<option>Loading player games…</option>';
   try {
-    await ensureGameData();
+    const player = players[name];
+    const bucketName = player.bucket.toString(16).padStart(2, '0');
+    let bucketGames = playerBucketCache.get(bucketName);
+    if (!bucketGames) {
+      const resp = await fetch(`data/game_similarity/players/${bucketName}.json?v=20260714-shards-v1`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      bucketGames = await resp.json();
+      playerBucketCache.set(bucketName, bucketGames);
+    }
+    selectedPlayerGames = bucketGames
+      .filter(g => g[G_IDX.pid] === player.pid)
+      .sort((a, b) => b[G_IDX.date].localeCompare(a[G_IDX.date]));
   } catch (e) {
-    gameSelect.innerHTML = '<option>Could not load game database</option>';
+    gameSelect.innerHTML = '<option>Could not load player games</option>';
     playerInput.disabled = false;
     return;
   }
-  const pid = players[name];
-  const pGames = gamesByPlayer[pid].sort((a,b) => data.games[b][G_IDX.date].localeCompare(data.games[a][G_IDX.date]));
-  
-  gameSelect.innerHTML = pGames.map(idx => {
-    const g = data.games[idx];
+
+  gameSelect.innerHTML = selectedPlayerGames.map((g, idx) => {
     const type = isPlayoffGame(g) ? ' (PO)' : '';
     return `<option value="${idx}">${g[G_IDX.date]} vs ${g[G_IDX.opp]}${type} — ${g[G_IDX.pts]}p/${g[G_IDX.reb]}r/${g[G_IDX.ast]}a (${Math.round(g[G_IDX.min])}m)</option>`;
   }).join('');
@@ -273,25 +281,26 @@ async function selectPlayer(name) {
   playerInput.disabled = false;
 }
 
-runBtn.addEventListener('click', () => {
+runBtn.addEventListener('click', async () => {
   runBtn.disabled = true;
   runBtn.textContent = 'Searching…';
-  // Allow the button state to paint before scanning the full database.
-  requestAnimationFrame(() => setTimeout(() => {
-    try {
-      renderResults();
-    } finally {
-      runBtn.disabled = false;
-      runBtn.textContent = 'Find Similar Games';
-    }
-  }, 0));
+  try {
+    await renderResults();
+  } catch (e) {
+    document.getElementById('loading-msg').style.display = '';
+    document.getElementById('loading-msg').textContent = 'Error searching games: ' + e.message;
+    console.error(e);
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = 'Find Similar Games';
+  }
 });
 
 // ─── Similarity ──────────────────────────────────────────────────────────────
 
-function computeSimilarity() {
+async function computeSimilarity() {
   const queryIdx = parseInt(gameSelect.value);
-  const query = data.games[queryIdx];
+  const query = selectedPlayerGames[queryIdx];
   const weights = getWeights();
   
   const inclReg = document.getElementById('type-reg').checked;
@@ -305,35 +314,42 @@ function computeSimilarity() {
     ? (query[G_IDX[s]] - data.means[i]) / data.stds[i]
     : null);
 
-  const results = data.games.map((cand, idx) => {
-    if (idx === queryIdx) return null;
-    
-    // Type Filter
-    const isPO = isPlayoffGame(cand);
-    if (isPO && !inclPO) return null;
-    if (!isPO && !inclReg) return null;
-    
-    if (exclPlayer && cand[G_IDX.pid] === query[G_IDX.pid]) return null;
-    
-    let sumSq = 0;
-    let nUsed = 0;
-    
-    stats.forEach((s, i) => {
-      const w = weights[s] || 0;
-      if (w === 0) return;
-      if (queryZ[i] == null || !statIsValid(cand, s)) return;
-      const cz = (cand[G_IDX[s]] - data.means[i]) / data.stds[i];
-      sumSq += w * (queryZ[i] - cz) ** 2;
-      nUsed += w;
-    });
-    
-    if (nUsed === 0) return null;
-    const dist = Math.sqrt(sumSq / nUsed);
-    const sim = Math.round(100 * Math.exp(-dist * 0.5));
-    return { cand, sim, dist };
-  }).filter(Boolean);
+  let results = [];
+  const files = data.season_files;
+  const batchSize = files.length;
+  for (let start = 0; start < files.length; start += batchSize) {
+    const batchFiles = files.slice(start, start + batchSize);
+    const chunks = await Promise.all(batchFiles.map(async filename => {
+      const resp = await fetch(`data/game_similarity/seasons/${filename}?v=20260714-shards-v1`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${filename}`);
+      return resp.json();
+    }));
+    for (const candidates of chunks) {
+      for (const cand of candidates) {
+        if (cand[G_IDX.gid] === query[G_IDX.gid] && cand[G_IDX.pid] === query[G_IDX.pid]) continue;
+        const isPO = isPlayoffGame(cand);
+        if ((isPO && !inclPO) || (!isPO && !inclReg)) continue;
+        if (exclPlayer && cand[G_IDX.pid] === query[G_IDX.pid]) continue;
 
-  results.sort((a, b) => a.dist - b.dist);
+        let sumSq = 0;
+        let nUsed = 0;
+        stats.forEach((s, i) => {
+          const w = weights[s] || 0;
+          if (w === 0 || queryZ[i] == null || !statIsValid(cand, s)) return;
+          const cz = (cand[G_IDX[s]] - data.means[i]) / data.stds[i];
+          sumSq += w * (queryZ[i] - cz) ** 2;
+          nUsed += w;
+        });
+        if (!nUsed) continue;
+        const dist = Math.sqrt(sumSq / nUsed);
+        results.push({ cand, sim: Math.round(100 * Math.exp(-dist * 0.5)), dist });
+      }
+    }
+    results.sort((a, b) => a.dist - b.dist);
+    results = results.slice(0, Math.max(nResults * 3, 100));
+    runBtn.textContent = `Searching… ${Math.min(start + batchSize, files.length)}/${files.length}`;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  }
   return { query, results: results.slice(0, nResults) };
 }
 
@@ -362,8 +378,8 @@ function statIsValid(g, stat) {
   return true;
 }
 
-function renderResults() {
-  const { query, results } = computeSimilarity();
+async function renderResults() {
+  const { query, results } = await computeSimilarity();
   const section = document.getElementById('results-section');
   section.style.display = 'block';
   
@@ -447,53 +463,17 @@ function renderResults() {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
-async function ensureGameData() {
-  if (data) return data;
-  if (dataLoadPromise) return dataLoadPromise;
-  const loading = document.getElementById('loading-msg');
-  loading.style.display = '';
-  loading.textContent = 'Loading the full comparison database (about 12 MB compressed)…';
-  dataLoadPromise = (async () => {
-    const resp = await fetch('data/game_similarity_index.json?v=20260714-player-game-v1');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    data = await resp.json();
-    // Minutes are already stored in every row. The original index omitted them
-    // from its distance metadata, so add their global scale at load time.
-    if (!data.sim_stats.includes('min')) {
-      data.sim_stats.unshift('min');
-      data.means.unshift(36.27641717238579);
-      data.stds.unshift(4.317040155288068);
-    }
-    document.getElementById('coverage-note').textContent =
-      `1979-80 through 2025-26 | ${data.games.length.toLocaleString()} player-game lines | Raw values, no era adjustment`;
-    
-    // Index players and their games
-    data.games.forEach((g, i) => {
-      const name = g[G_IDX.name];
-      const pid = g[G_IDX.pid];
-      if (!players[name]) players[name] = pid;
-      if (!gamesByPlayer[pid]) gamesByPlayer[pid] = [];
-      gamesByPlayer[pid].push(i);
-    });
-    
-    loading.style.display = 'none';
-    return data;
-  })().catch(e => {
-    dataLoadPromise = null;
-    loading.textContent = 'Error loading game data: ' + e.message;
-    console.error(e);
-    throw e;
-  });
-  return dataLoadPromise;
-}
-
 async function init() {
   buildWeightsUI();
   try {
-    const resp = await fetch('data/game_similarity_players.json?v=20260714-player-game-v1');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const catalog = await resp.json();
-    catalog.players.forEach(([name, pid]) => { players[name] = pid; });
+    const [catalogResp, manifestResp] = await Promise.all([
+      fetch('data/game_similarity_players.json?v=20260714-shards-v1'),
+      fetch('data/game_similarity/manifest.json?v=20260714-shards-v1'),
+    ]);
+    if (!catalogResp.ok || !manifestResp.ok) throw new Error('Could not load search metadata');
+    const [catalog, manifest] = await Promise.all([catalogResp.json(), manifestResp.json()]);
+    data = manifest;
+    catalog.players.forEach(([name, pid, bucket]) => { players[name] = {pid, bucket}; });
     document.getElementById('coverage-note').textContent =
       `${catalog.first_season} through ${catalog.last_season} | ${catalog.game_count.toLocaleString()} player-game lines | Raw values, no era adjustment`;
     playerInput.disabled = false;
