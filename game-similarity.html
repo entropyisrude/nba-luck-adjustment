@@ -110,16 +110,16 @@
   </div>
 </div>
 
-<div id="loading-msg">Loading game database (this may take a few seconds)...</div>
+<div id="loading-msg">Loading player list...</div>
 
-<div id="app" style="display:none">
+<div id="app">
 
   <section>
     <div class="card">
       <div class="search-row">
         <div class="autocomplete-wrap">
           <label>Step 1: Pick Player</label>
-          <input id="player-input" type="text" placeholder="e.g. Michael Jordan" autocomplete="off">
+          <input id="player-input" type="text" placeholder="e.g. Michael Jordan" autocomplete="off" disabled>
           <div id="ac-dropdown"></div>
         </div>
         <div style="flex:1.5">
@@ -167,6 +167,7 @@
 
 <script>
 let data = null; // {sim_stats, means, stds, games}
+let dataLoadPromise = null;
 let players = {}; // name -> pid
 let gamesByPlayer = {}; // pid -> [game_indices]
 
@@ -245,9 +246,19 @@ const G_IDX = {
   t_pts: 22, o_pts: 23, wl: 24, gid: 25
 };
 
-function selectPlayer(name) {
+async function selectPlayer(name) {
   playerInput.value = name;
   acDropdown.style.display = 'none';
+  playerInput.disabled = true;
+  gameSelect.disabled = true;
+  gameSelect.innerHTML = '<option>Loading full game database…</option>';
+  try {
+    await ensureGameData();
+  } catch (e) {
+    gameSelect.innerHTML = '<option>Could not load game database</option>';
+    playerInput.disabled = false;
+    return;
+  }
   const pid = players[name];
   const pGames = gamesByPlayer[pid].sort((a,b) => data.games[b][G_IDX.date].localeCompare(data.games[a][G_IDX.date]));
   
@@ -259,6 +270,7 @@ function selectPlayer(name) {
   
   gameSelect.disabled = false;
   runBtn.disabled = false;
+  playerInput.disabled = false;
 }
 
 runBtn.addEventListener('click', () => {
@@ -435,9 +447,15 @@ function renderResults() {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
-async function init() {
-  try {
+async function ensureGameData() {
+  if (data) return data;
+  if (dataLoadPromise) return dataLoadPromise;
+  const loading = document.getElementById('loading-msg');
+  loading.style.display = '';
+  loading.textContent = 'Loading the full comparison database (about 12 MB compressed)…';
+  dataLoadPromise = (async () => {
     const resp = await fetch('data/game_similarity_index.json?v=20260714-player-game-v1');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     data = await resp.json();
     // Minutes are already stored in every row. The original index omitted them
     // from its distance metadata, so add their global scale at load time.
@@ -458,11 +476,30 @@ async function init() {
       gamesByPlayer[pid].push(i);
     });
     
-    buildWeightsUI();
+    loading.style.display = 'none';
+    return data;
+  })().catch(e => {
+    dataLoadPromise = null;
+    loading.textContent = 'Error loading game data: ' + e.message;
+    console.error(e);
+    throw e;
+  });
+  return dataLoadPromise;
+}
+
+async function init() {
+  buildWeightsUI();
+  try {
+    const resp = await fetch('data/game_similarity_players.json?v=20260714-player-game-v1');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const catalog = await resp.json();
+    catalog.players.forEach(([name, pid]) => { players[name] = pid; });
+    document.getElementById('coverage-note').textContent =
+      `${catalog.first_season} through ${catalog.last_season} | ${catalog.game_count.toLocaleString()} player-game lines | Raw values, no era adjustment`;
+    playerInput.disabled = false;
     document.getElementById('loading-msg').style.display = 'none';
-    document.getElementById('app').style.display = '';
-  } catch(e) {
-    document.getElementById('loading-msg').textContent = 'Error loading data: ' + e.message;
+  } catch (e) {
+    document.getElementById('loading-msg').textContent = 'Error loading player list: ' + e.message;
     console.error(e);
   }
 }

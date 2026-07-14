@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "data" / "game_similarity_index.json"
+DEFAULT_CATALOG_OUTPUT = ROOT / "data" / "game_similarity_players.json"
 CHUNK_DIRS = (
     ROOT / "data" / "player_game_chunks",
     ROOT / "data" / "player_game_playoff_chunks",
@@ -119,6 +120,7 @@ def build(min_minutes: float) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--catalog-output", type=Path, default=DEFAULT_CATALOG_OUTPUT)
     parser.add_argument("--min-minutes", type=float, default=30.0)
     args = parser.parse_args()
     payload = build(args.min_minutes)
@@ -127,7 +129,25 @@ def main() -> None:
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
+    games = payload["games"]
+    player_ids: dict[str, object] = {}
+    for game in games:
+        player_ids[str(game[0])] = game[1]
+    players = sorted(player_ids.items(), key=lambda row: row[0].lower())
+    catalog = {
+        "generated": payload["generated"],
+        "first_season": min(str(game[3]) for game in games),
+        "last_season": max(str(game[3]) for game in games),
+        "game_count": len(games),
+        "players": players,
+    }
+    args.catalog_output.parent.mkdir(parents=True, exist_ok=True)
+    args.catalog_output.write_text(
+        json.dumps(catalog, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
     print(f"Wrote {len(payload['games']):,} games to {args.output}")
+    print(f"Wrote {len(players):,} players to {args.catalog_output}")
 
 
 if __name__ == "__main__":
