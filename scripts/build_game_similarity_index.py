@@ -20,7 +20,7 @@ DEFAULT_OUTPUT = ROOT / "data" / "game_similarity_index.json"
 DEFAULT_CATALOG_OUTPUT = ROOT / "data" / "game_similarity_players.json"
 DEFAULT_SHARD_DIR = ROOT / "data" / "game_similarity"
 PLAYER_BUCKETS = 64
-SEASONS_PER_SEARCH_SHARD = 6
+MINUTE_BANDS = [(start, start + 5) for start in range(5, 45, 5)] + [(45, 1000)]
 CHUNK_DIRS = (
     ROOT / "data" / "player_game_chunks",
     ROOT / "data" / "player_game_playoff_chunks",
@@ -126,7 +126,7 @@ def main() -> None:
     parser.add_argument("--catalog-output", type=Path, default=DEFAULT_CATALOG_OUTPUT)
     parser.add_argument("--shard-dir", type=Path, default=DEFAULT_SHARD_DIR)
     parser.add_argument("--monolith", action="store_true", help="Also write the legacy monolithic index")
-    parser.add_argument("--min-minutes", type=float, default=30.0)
+    parser.add_argument("--min-minutes", type=float, default=5.0)
     args = parser.parse_args()
     payload = build(args.min_minutes)
     games = payload["games"]
@@ -151,23 +151,22 @@ def main() -> None:
     )
 
     args.shard_dir.mkdir(parents=True, exist_ok=True)
-    season_dir = args.shard_dir / "seasons"
+    search_dir = args.shard_dir / "search"
     player_dir = args.shard_dir / "players"
-    season_dir.mkdir(exist_ok=True)
+    search_dir.mkdir(exist_ok=True)
     player_dir.mkdir(exist_ok=True)
-    for stale_path in season_dir.glob("*.json"):
+    for stale_path in search_dir.glob("*.json"):
         stale_path.unlink()
-    season_files: list[str] = []
-    seasons = sorted({str(game[3]) for game in games})
-    for start in range(0, len(seasons), SEASONS_PER_SEARCH_SHARD):
-        shard_seasons = seasons[start:start + SEASONS_PER_SEARCH_SHARD]
-        filename = f"{shard_seasons[0].replace('-', '_')}__{shard_seasons[-1].replace('-', '_')}.json"
-        season_games = [game for game in games if str(game[3]) in shard_seasons]
-        (season_dir / filename).write_text(
-            json.dumps(season_games, ensure_ascii=False, separators=(",", ":")),
+    search_shards: list[dict[str, object]] = []
+    for low, high in MINUTE_BANDS:
+        label = f"{low:02d}_{'plus' if high >= 1000 else f'{high:02d}'}"
+        filename = label + ".json"
+        band_games = [game for game in games if low <= float(game[5]) < high]
+        (search_dir / filename).write_text(
+            json.dumps(band_games, ensure_ascii=False, separators=(",", ":")),
             encoding="utf-8",
         )
-        season_files.append(filename)
+        search_shards.append({"file": filename, "min": low, "max": high})
     for bucket in range(PLAYER_BUCKETS):
         bucket_games = [game for game in games if int(game[1]) % PLAYER_BUCKETS == bucket]
         (player_dir / f"{bucket:02x}.json").write_text(
@@ -180,7 +179,7 @@ def main() -> None:
         "sim_stats": payload["sim_stats"],
         "means": payload["means"],
         "stds": payload["stds"],
-        "season_files": season_files,
+        "search_shards": search_shards,
         "player_buckets": PLAYER_BUCKETS,
         "game_count": len(games),
     }
@@ -195,7 +194,7 @@ def main() -> None:
             encoding="utf-8",
         )
         print(f"Wrote {len(payload['games']):,} games to {args.output}")
-    print(f"Wrote {len(season_files)} search shards and {PLAYER_BUCKETS} player buckets to {args.shard_dir}")
+    print(f"Wrote {len(search_shards)} search shards and {PLAYER_BUCKETS} player buckets to {args.shard_dir}")
     print(f"Wrote {len(players):,} players to {args.catalog_output}")
 
 
