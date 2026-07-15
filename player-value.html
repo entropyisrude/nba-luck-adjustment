@@ -119,13 +119,17 @@
       the workload assumption &mdash; the same convention as Projected NERD, and the same
       caveat: a player coming off an injury-shortened season will show an understated WAR here
       even if his rate of play (NERD) is fine.</p>
-      <p>The league's implied <strong>price per marginal win</strong> is a cap-share pivot: total
-      2026-27 cap commitments across every rated, rostered player, divided by the total WAR those
-      same players are projected to produce. Multiply a player's WAR by that rate to get his
-      <strong>market value</strong> &mdash; what his production would cost at the league's own
-      going rate &mdash; and compare it to his actual cap hit. <strong>Surplus</strong> = market
-      value &minus; cap hit: positive means he's outproducing his contract, negative means the
-      opposite.</p>
+      <p>The league's implied <strong>price per marginal win</strong> is a cap-share pivot, netted
+      against replacement cost: total 2026-27 cap commitments across every rated, rostered player,
+      minus $2.7M per player for the real salary a replacement-level roster spot still costs (the
+      empirical average of this dataset's actual minimum contracts) &mdash; that floor buys zero
+      marginal wins by definition, so leaving it in would overstate the price of a win with dollars
+      that never bought one. The remainder is divided by the total WAR those same players are
+      projected to produce. A player's <strong>market value</strong> is his WAR at that marginal
+      rate, plus the same $2.7M baseline added back (so it's fairly comparable to his full cap
+      hit) &mdash; what his production would cost at the league's own going rate &mdash; compared
+      to his actual cap hit. <strong>Surplus</strong> = market value &minus; cap hit: positive
+      means he's outproducing his contract, negative means the opposite.</p>
       <details>
         <summary>Caveats</summary>
         <p>Rookie-scale players (tagged <span class="tag-rk">RK</span>) will show large positive
@@ -134,9 +138,12 @@
         informative result of this kind of analysis, not a bug. This is a single-season,
         current-cap-year snapshot: it only uses each player's 2026-27 cap hit (no years
         remaining, guarantees, or option structure yet &mdash; that's a planned follow-up), and
-        the league-average price-per-win is a simple cap-share, not a market regression, so it
-        doesn't separately account for the going rate a max-level free agent commands versus a
-        minimum-salary veteran. Players with no NBA history before 2026-27 (this year's rookie
+        the league-average price-per-win is a simple cap-share (net of the replacement floor),
+        not a market regression, so it doesn't separately account for the going rate a max-level
+        free agent commands versus a minimum-salary veteran &mdash; max-contract rules cap what
+        stars can earn well below their production, so their surplus will look enormous by this
+        measure, similar to (but structurally different from) the rookie-scale effect. Players
+        with no NBA history before 2026-27 (this year's rookie
         class) aren't rated yet and are left out of the table entirely, same as Projected NERD.
         Only signed <em>active roster</em> contracts are counted &mdash; cap holds, dead money,
         and speculative pending transactions are excluded.</p>
@@ -257,11 +264,22 @@
       }
     }
 
-    // league-wide $/win: fixed regardless of on-page filters
+    // league-wide $/win: fixed regardless of on-page filters. A chunk of every team's
+    // payroll pays for replacement-level roster occupancy (even a replacement-level
+    // player still costs a real salary) and buys zero marginal wins above replacement
+    // by definition -- netting that fixed cost out of total spend before dividing by
+    // total WAR is what makes this a MARGINAL price per win rather than an average
+    // price that's inflated by dollars that never bought any win at all. REPL_SALARY is
+    // the empirical average of this dataset's actual minimum/rest-of-season contracts
+    // (23 ROS-tagged deals, avg $2.70M).
+    const REPL_SALARY = 2.7e6;
     const totalCap = allRows.reduce((s,r)=>s+r.capHit, 0);
     const totalWAR = allRows.reduce((s,r)=>s+r.war, 0);
-    const DOLLARS_PER_WIN = totalCap / totalWAR;
-    allRows.forEach(r=>{ r.marketValue = r.war * DOLLARS_PER_WIN; r.surplus = r.marketValue - r.capHit; });
+    const DOLLARS_PER_WIN = (totalCap - allRows.length * REPL_SALARY) / totalWAR;
+    // Per-player market value adds the same baseline back so it's fairly comparable to
+    // a player's FULL cap hit (which also includes that baseline) -- without this, every
+    // player would show as overpaid by roughly REPL_SALARY regardless of production.
+    allRows.forEach(r=>{ r.marketValue = r.war * DOLLARS_PER_WIN + REPL_SALARY; r.surplus = r.marketValue - r.capHit; });
 
     document.getElementById('stat-dpw').textContent = '$' + (DOLLARS_PER_WIN/1e6).toFixed(2) + 'M';
     document.getElementById('stat-n').textContent = allRows.length.toLocaleString();
