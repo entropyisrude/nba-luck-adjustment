@@ -338,9 +338,22 @@ def assemble_design(st: pd.DataFrame):
         rows += [2 * r + 1, 2 * r + 1]
         cols += [aidx[:, k], P + hidx[:, k]]
         vals += [np.ones(n), np.ones(n)]
+    # home-court column (index 2P, UNPENALIZED in the solves): +0.5 on
+    # home-offense rows, -0.5 on away-offense rows, so its coefficient is
+    # the full home-minus-away offense gap (~HCA margin per 100). Omitting
+    # it leaks a small directional bias into players with >50% home
+    # exposure (playoff teams earn extra home games). Zeroed for the
+    # 2019-20 bubble playoffs — neutral site, "home" is just a label there.
+    d = st["date"].to_numpy()
+    bubble = ((d >= np.datetime64("2020-07-01"))
+              & (d <= np.datetime64("2020-10-15")))
+    hflag = np.where(bubble, 0.0, 0.5)
+    rows += [2 * r, 2 * r + 1]
+    cols += [np.full(n, 2 * P), np.full(n, 2 * P)]
+    vals += [hflag, -hflag]
     X = sparse.csr_matrix((np.concatenate(vals),
                            (np.concatenate(rows), np.concatenate(cols))),
-                          shape=(2 * n, 2 * P))
+                          shape=(2 * n, 2 * P + 1))
 
     poss = st["poss"].to_numpy()
     y = np.empty(2 * n)
@@ -356,6 +369,10 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
     poss = st["poss"].to_numpy()
     dates = st["date"].to_numpy()
     name_map = load_player_names()
+
+    # penalty diagonal: ridge on player columns, home-court column free
+    pen = np.ones(2 * P + 1)
+    pen[2 * P] = 0.0
 
     results = []
     for sy in range(1996, 2026):
@@ -390,8 +407,9 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
         # naive "read variances off A^-1" shortcut is wrong here.
         # c is estimated from the residuals: E[r^2 * poss] = c.
         poss_rows = np.repeat(poss[used], 2)
-        A = XtX + SE_ALPHA * np.eye(2 * P)
+        A = XtX + SE_ALPHA * np.diag(pen)
         beta0 = np.linalg.solve(A, Xty)
+        hca = float(beta0[2 * P])
         resid = (ys - ybar) - Xs @ beta0
         decay_rows = ws / poss_rows
         c_hat = float((decay_rows * resid ** 2 * poss_rows).sum()
@@ -404,10 +422,10 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
         dg = np.diag(Cov)
         cov_od = Cov[np.arange(P), P + np.arange(P)]
         se_o_arr = SE_CALIBRATION["o"] * np.sqrt(np.maximum(dg[:P], 0.0))
-        se_d_arr = SE_CALIBRATION["d"] * np.sqrt(np.maximum(dg[P:], 0.0))
+        se_d_arr = SE_CALIBRATION["d"] * np.sqrt(np.maximum(dg[P:2 * P], 0.0))
         # rapm = (O_i - om) - (D_i - dm) -> var = varO + varD - 2cov(O,D)
         se_t_arr = SE_CALIBRATION["rapm"] * np.sqrt(
-            np.maximum(dg[:P] + dg[P:] - 2.0 * cov_od, 0.0))
+            np.maximum(dg[:P] + dg[P:2 * P] - 2.0 * cov_od, 0.0))
         del A, A_inv, M, Xm, Cov
 
         # per-player possession bookkeeping
@@ -425,9 +443,9 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
                 np.add.at(po_poss, idxs, np.where(is_po, wsel, 0.0))
 
         for alpha in ALPHAS:
-            beta = np.linalg.solve(XtX + alpha * np.eye(2 * P), Xty)
+            beta = np.linalg.solve(XtX + alpha * np.diag(pen), Xty)
             O = beta[:P]
-            D = beta[P:]
+            D = beta[P:2 * P]
             om, dm = O.mean(), D.mean()
             active = raw_season > 0
             for i in np.nonzero(active)[0]:
@@ -446,7 +464,8 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
                     "se_rapm": round(float(se_t_arr[i]), 3) if alpha == SE_ALPHA else None,
                 })
         print(f"  {label}: {int(used.sum())} stints in window, "
-              f"{int(active.sum())} active players, c_hat={c_hat:.0f}")
+              f"{int(active.sum())} active players, c_hat={c_hat:.0f}, "
+              f"hca={hca:+.2f}")
     return pd.DataFrame(results)
 
 

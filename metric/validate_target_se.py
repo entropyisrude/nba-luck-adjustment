@@ -76,8 +76,10 @@ def main() -> None:
       f"{G} games, alpha={SE_ALPHA}, reps={args.reps}")
 
     rng = np.random.default_rng(args.seed)
-    eye = SE_ALPHA * np.eye(2 * P)
-    betas = np.empty((args.reps, 2 * P), dtype=np.float32)
+    pen = np.ones(2 * P + 1)   # home-court column (index 2P) unpenalized
+    pen[2 * P] = 0.0
+    ridge = SE_ALPHA * np.diag(pen)
+    betas = np.empty((args.reps, 2 * P + 1), dtype=np.float32)
     for b in range(args.reps):
         mult = np.bincount(rng.integers(0, G, G), minlength=G).astype(float)
         wr = np.repeat(ws_base * mult[ginv], 2)
@@ -86,15 +88,15 @@ def main() -> None:
         yw = (ys - ybar) * np.sqrt(wr)
         XtX = (Xw.T @ Xw).toarray()
         Xty = Xw.T @ yw
-        betas[b] = np.linalg.solve(XtX + eye, Xty)
+        betas[b] = np.linalg.solve(XtX + ridge, Xty)
         if (b + 1) % 10 == 0:
             p(f"  replicate {b + 1}/{args.reps}")
 
     boot = pd.DataFrame({
         "player_id": players,
         "boot_se_o": betas[:, :P].std(axis=0, ddof=1),
-        "boot_se_d": betas[:, P:].std(axis=0, ddof=1),
-        "boot_se_rapm": (betas[:, :P] - betas[:, P:]).std(axis=0, ddof=1),
+        "boot_se_d": betas[:, P:2 * P].std(axis=0, ddof=1),
+        "boot_se_rapm": (betas[:, :P] - betas[:, P:2 * P]).std(axis=0, ddof=1),
     })
 
     tgt = pd.read_parquet(OUT_DIR / f"rapm_target_hl{DECAY_HALFLIFE_DAYS}.parquet")
