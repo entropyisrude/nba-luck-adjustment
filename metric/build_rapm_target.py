@@ -19,8 +19,12 @@ it to force re-preparation).
 
 Output: one parquet/csv per run in OUT_DIR with rows (target_season,
 player_id, player_name, alpha, orapm, drapm, rapm, w_poss, poss_season,
-po_share). orapm = points added per 100 possessions on offense vs average;
-drapm = points prevented per 100 on defense vs average; rapm = sum.
+po_share, se_o, se_d, se_rapm). orapm = points added per 100 possessions on
+offense vs average; drapm = points prevented per 100 on defense vs average;
+rapm = sum. se_* are analytic sandwich standard errors (alpha = SE_ALPHA
+rows only, None elsewhere): Cov(beta) = A^-1 (X'W S W X) A^-1 with the
+decay component of W treated as an importance weight — validated against a
+game-block bootstrap by metric/validate_target_se.py.
 
 Usage: python metric/build_rapm_target.py [--prepare-only]
 """
@@ -59,6 +63,16 @@ TOTAL_TOL = 3.0            # pts; games whose stint totals are further off get n
 DECAY_HALFLIFE_DAYS = 550  # ~1.5 seasons
 WINDOW_DAYS = 6 * 365      # decay is ~1/16 by then; hard cutoff for tractability
 ALPHAS = [150, 500, 2000]
+SE_ALPHA = 500       # alpha the analytic standard errors are computed at
+                     # (the one build_box_prior.py consumes as its target)
+# The analytic sandwich runs ~25% conservative: stint calibration anchors
+# each game's scores to fixed official totals, so within-game residuals are
+# NEGATIVELY correlated and partially cancel in the solve — c_hat, estimated
+# from marginal per-stint residuals, can't see that cancellation. Factors
+# measured vs 150-rep game-block bootstraps (validate_target_se.py):
+# 2024-25 O/D/total 0.761/0.788/0.779, 2010-11 0.757/0.769/0.751 —
+# era-stable, so one global constant per component.
+SE_CALIBRATION = {"o": 0.76, "d": 0.78, "rapm": 0.77}
 MIN_SECONDS = 1.0
 
 HCOLS = [f"home_p{i}" for i in range(1, 6)]
@@ -290,7 +304,11 @@ def season_label(start_year: int) -> str:
     return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 
-def build_targets(st: pd.DataFrame) -> pd.DataFrame:
+def assemble_design(st: pd.DataFrame):
+    """Filter stints and build the global sparse joint design + per-100
+    outcome vector. Shared by the target build and the SE validation
+    bootstrap (metric/validate_target_se.py) so both see the identical
+    design. Returns (st, X, y, players, hidx, aidx)."""
     st = st.dropna(subset=HCOLS + ACOLS).copy()
     st = st[st["seconds"] >= MIN_SECONDS].reset_index(drop=True)
     st["poss"] = np.maximum(st["seconds"].to_numpy() / 24.0, 0.1)
@@ -328,7 +346,14 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
     y = np.empty(2 * n)
     y[0::2] = st["home_pts_adj"].to_numpy() / poss * 100.0
     y[1::2] = st["away_pts_adj"].to_numpy() / poss * 100.0
+    return st, X, y, players, hidx, aidx
 
+
+def build_targets(st: pd.DataFrame) -> pd.DataFrame:
+    st, X, y, players, hidx, aidx = assemble_design(st)
+    P = len(players)
+    n = len(st)
+    poss = st["poss"].to_numpy()
     dates = st["date"].to_numpy()
     name_map = load_player_names()
 
@@ -354,6 +379,36 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
 
         XtX = (Xw.T @ Xw).toarray()
         Xty = Xw.T @ yw
+
+        # ---- analytic sandwich SEs at SE_ALPHA -------------------------
+        # Cov(beta) = A^-1 M A^-1,  A = X'WX + aI,  M = X'W S W X with
+        # S = diag(var(y_i)). A stint's per-100 outcome over poss_i
+        # possessions has var(y_i) = c / poss_i. The decay part of the
+        # weight is an IMPORTANCE weight (old stints are downweighted for
+        # staleness, not noisiness), so it enters M squared instead of
+        # cancelling like a pure precision weight would — this is why the
+        # naive "read variances off A^-1" shortcut is wrong here.
+        # c is estimated from the residuals: E[r^2 * poss] = c.
+        poss_rows = np.repeat(poss[used], 2)
+        A = XtX + SE_ALPHA * np.eye(2 * P)
+        beta0 = np.linalg.solve(A, Xty)
+        resid = (ys - ybar) - Xs @ beta0
+        decay_rows = ws / poss_rows
+        c_hat = float((decay_rows * resid ** 2 * poss_rows).sum()
+                      / decay_rows.sum())
+        Xm = Xs.multiply(np.sqrt(ws ** 2 / poss_rows)[:, None]).tocsr()
+        M = (Xm.T @ Xm).toarray()
+        A_inv = np.linalg.inv(A)
+        Cov = A_inv @ M @ A_inv
+        Cov *= c_hat
+        dg = np.diag(Cov)
+        cov_od = Cov[np.arange(P), P + np.arange(P)]
+        se_o_arr = SE_CALIBRATION["o"] * np.sqrt(np.maximum(dg[:P], 0.0))
+        se_d_arr = SE_CALIBRATION["d"] * np.sqrt(np.maximum(dg[P:], 0.0))
+        # rapm = (O_i - om) - (D_i - dm) -> var = varO + varD - 2cov(O,D)
+        se_t_arr = SE_CALIBRATION["rapm"] * np.sqrt(
+            np.maximum(dg[:P] + dg[P:] - 2.0 * cov_od, 0.0))
+        del A, A_inv, M, Xm, Cov
 
         # per-player possession bookkeeping
         w_on = np.zeros(P)
@@ -386,9 +441,12 @@ def build_targets(st: pd.DataFrame) -> pd.DataFrame:
                     "w_poss": round(float(w_on[i]), 1),
                     "poss_season": round(float(raw_season[i]), 1),
                     "po_share": round(float(po_poss[i] / w_on[i]) if w_on[i] > 0 else 0.0, 4),
+                    "se_o": round(float(se_o_arr[i]), 3) if alpha == SE_ALPHA else None,
+                    "se_d": round(float(se_d_arr[i]), 3) if alpha == SE_ALPHA else None,
+                    "se_rapm": round(float(se_t_arr[i]), 3) if alpha == SE_ALPHA else None,
                 })
         print(f"  {label}: {int(used.sum())} stints in window, "
-              f"{int(active.sum())} active players")
+              f"{int(active.sum())} active players, c_hat={c_hat:.0f}")
     return pd.DataFrame(results)
 
 
