@@ -58,50 +58,65 @@ def main() -> None:
 
     counts = pd.read_parquet(COUNTS)
     st["gid_n"] = st["game_id"].astype(str).str.lstrip("0")
-    st = st.merge(counts[["gid_n", "stint_index", "n_home", "n_away"]],
+    st = st.merge(counts[["gid_n", "stint_index", "n_home", "n_away",
+                          "pts_home", "pts_away"]],
                   on=["gid_n", "stint_index"], how="left")
     miss = st["n_home"].isna()
-    print(f"stints without possession counts: {int(miss.sum())} "
+    print(f"stints without walker rows: {int(miss.sum())} "
           f"of {n} ({miss.mean() * 100:.2f}%) -> weight 0")
-    st[["n_home", "n_away"]] = st[["n_home", "n_away"]].fillna(0.0)
+    for c in ("n_home", "n_away", "pts_home", "pts_away"):
+        st[c] = st[c].fillna(0.0)
 
-    # zero-count sides that nonetheless scored points (attach misses)
-    zh = (st["n_home"] == 0) & (st["home_pts"] > 0)
-    za = (st["n_away"] == 0) & (st["away_pts"] > 0)
-    print(f"zero-count sides with points: home {int(zh.sum())}, "
-          f"away {int(za.sum())} (dropped via zero weight)")
+    # ATOMICITY CHECK: with points travelling with their possession, a
+    # zero-count side must be zero-point by construction
+    zh = (st["n_home"] == 0) & (st["pts_home"] > 0)
+    za = (st["n_away"] == 0) & (st["pts_away"] > 0)
+    print(f"atomicity violations (n=0, pts>0): home {int(zh.sum())}, "
+          f"away {int(za.sum())} (should be 0)")
 
-    # SHARED per-stint denominator: possessions alternate within a stint,
-    # so true per-side counts differ by at most ~1 — any larger measured
-    # asymmetry is boundary-attach noise. Independent per-side
-    # denominators DECOUPLE the O and D rows' error structure and blow up
-    # individual O/D splits (observed: +/-14-point swings) while totals
-    # stay pinned. The shared count keeps the entire pace correction (the
-    # confirmed seconds/24 overbooking) with the validated coupled-noise
-    # design of the stint target.
+    # LUCK: the prepared stints' (_adj - raw) delta is pure luck
+    # (3PT+FT+MR; chaining and calibration shift raw and adj equally and
+    # cancel). Spread it over the walker's possessions at lineup-pair
+    # level within each game — solve-exact (identical design rows).
+    hk = pd.Series(
+        [",".join(map(str, r)) for r in
+         np.sort(st[[f"home_p{i}" for i in range(1, 6)]].to_numpy(), 1)],
+        index=st.index)
+    ak = pd.Series(
+        [",".join(map(str, r)) for r in
+         np.sort(st[[f"away_p{i}" for i in range(1, 6)]].to_numpy(), 1)],
+        index=st.index)
+    st["_luck_h"] = st["home_pts_adj"] - st["home_pts"]
+    st["_luck_a"] = st["away_pts_adj"] - st["away_pts"]
+    grp = st.groupby(["gid_n", hk, ak])
+    for side in ("h", "a"):
+        lg = grp[f"_luck_{side}"].transform("sum")
+        ng = grp[f"n_{'home' if side == 'h' else 'away'}"].transform("sum")
+        nn = st[f"n_{'home' if side == 'h' else 'away'}"]
+        share = np.where(ng > 0, lg * nn / ng.replace(0, np.nan), 0.0)
+        st[f"pts_adj_{side}"] = (st[f"pts_{'home' if side == 'h' else 'away'}"]
+                                 + np.nan_to_num(share))
+    lost_luck = float(st.loc[grp["n_home"].transform("sum") == 0,
+                             "_luck_h"].abs().sum()
+                      + st.loc[grp["n_away"].transform("sum") == 0,
+                               "_luck_a"].abs().sum())
+    print(f"luck dropped on zero-possession lineup-pairs: "
+          f"{lost_luck:.0f} abs pts")
+
+    # per-side rows with the walker's own points: pts and n are the SAME
+    # possessions, so per-side denominators are safe (bounded y, no seam)
     n_home = st["n_home"].to_numpy(dtype=float)
     n_away = st["n_away"].to_numpy(dtype=float)
-    n_pair_raw = (n_home + n_away) / 2.0
-    if "--game-smooth" in sys.argv:
-        # option (b): distribute each game's counted pairs across its
-        # stints by seconds share — kills within-game lineup-pace level
-        # variation AND its small-stint integer noise (the channel that
-        # destabilized O/D splits), keeps the cross-game pace correction
-        st["_np"] = n_pair_raw
-        gp = st.groupby("gid_n")["_np"].transform("sum")
-        gs = st.groupby("gid_n")["seconds"].transform("sum")
-        n_pair = (gp * st["seconds"] / gs).to_numpy(dtype=float)
-        print("using GAME-SMOOTHED denominators (pairs x seconds share)")
-    else:
-        n_pair = n_pair_raw
-    n_rows = np.repeat(n_pair, 2)
+    n_rows = np.empty(2 * n)
+    n_rows[0::2] = n_home
+    n_rows[1::2] = n_away
     y = np.zeros(2 * n)
-    hp = st["home_pts_adj"].to_numpy(dtype=float)
-    ap = st["away_pts_adj"].to_numpy(dtype=float)
-    y[0::2] = np.divide(hp, n_pair, out=np.zeros(n),
-                        where=n_pair > 0) * 100.0
-    y[1::2] = np.divide(ap, n_pair, out=np.zeros(n),
-                        where=n_pair > 0) * 100.0
+    hp = st["pts_adj_h"].to_numpy(dtype=float)
+    ap = st["pts_adj_a"].to_numpy(dtype=float)
+    y[0::2] = np.divide(hp, n_home, out=np.zeros(n),
+                        where=n_home > 0) * 100.0
+    y[1::2] = np.divide(ap, n_away, out=np.zeros(n),
+                        where=n_away > 0) * 100.0
 
     dates = st["date"].to_numpy()
     sy_arr = (st["season_year"].to_numpy() if "season_year" in st.columns
@@ -163,7 +178,7 @@ def main() -> None:
         po_poss = np.zeros(P)
         used_st = used.reshape(-1, 2)
         for parity, (o_of_row, d_of_row, nn) in enumerate(
-                [(hidx, aidx, n_pair), (aidx, hidx, n_pair)]):
+                [(hidx, aidx, n_home), (aidx, hidx, n_away)]):
             row_used = used_st[:, parity]
             wsel = (nn * decay)[row_used]
             nposs = nn[row_used]

@@ -1,36 +1,29 @@
-"""Count TRUE possessions per stint per side, full window 1996-2026.
+"""Count possessions AND their points per stint per side, 1996-2026.
 
-Replaces the seconds/24 approximation in the RAPM target. Since every
-possession within a stint shares the same ten players, per-(stint, side)
-possession COUNTS + the existing chained/calibrated/luck-adjusted stint
-points are solve-exact equivalent to one-row-per-possession design rows
-(sufficient statistics). This script produces the counts.
+One pass through the play-by-play per game: possessions and the points
+scored on them are recorded together, atomically — a possession that
+straddles a substitution carries its points WITH it to whichever stint it
+lands in. This removes the seam that broke the first possession target
+(points measured from stint score windows + counts measured separately
+disagreed at stint edges, producing impossible stint-lines like 5 points
+on 1 possession).
 
-Method:
-  * 2019-20+ games: the PBP `possession` field directly (team holding the
-    ball; flips on def rebound / turnover / made score; fixed across
-    OREBs). Each maximal run of one value = one possession, assigned to
-    the stint covering its START elapsed time.
-  * pre-2019 games (field 100% null): an event state machine over a
-    schema-NORMALIZED event stream — possession ends on: turnover; made
-    FG (unless an and-1 free throw follows); made final free throw of a
-    trip (technicals ignored); a rebound by the NON-shooting team after a
-    miss (rebound side inferred from rebounding team vs last-miss team —
-    old-schema rebounds carry no off/def subtype); period change closes
-    the in-flight possession.
-  * VALIDATION GATE: the state machine also runs on a ~5% sample of
-    field-era games and is compared game-by-game against the field
-    counts. If median absolute disagreement exceeds ~2 possessions/side,
-    do NOT trust the pre-2019 counts.
+Boundary source:
+  * 2019-20+ games: the PBP `possession` field (team holding the ball).
+  * pre-2019: event state machine (turnover; made FG unless an and-1
+    trip follows; made final FT; rebound by the non-shooting team;
+    period change). Validated vs the field on a 2019+ sample.
+Points: accumulate on make events (3 if three, else 2) and made free
+throws (1) into the current possession's run. Technical FT points go to
+a pending credit flushed into the shooting team's next possession.
 
 Output: nba-metric-data/stint_possession_counts.parquet
-        (game_id native format + gid_n, stint_index, n_home, n_away)
+        (game_id, gid_n, stint_index, n_home, n_away, pts_home, pts_away)
 
 Usage: python metric/count_stint_possessions.py
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -46,24 +39,9 @@ RS_DB = ROOT / "data" / "nba_analytics.duckdb"
 PO_STINTS = ROOT / "data" / "stints_playoffs.csv"
 OUT = Path(r"C:\Users\Dave\Downloads\nba-metric-data\stint_possession_counts.parquet")
 
-FT_OF = re.compile(r"(\d) of (\d)")
-
-
-def elapsed_of(clock: pd.Series, period: pd.Series):
-    m = clock.str.extract(r"PT(\d+)M([\d.]+)S")
-    clock_s = (pd.to_numeric(m[0], errors="coerce") * 60
-               + pd.to_numeric(m[1], errors="coerce"))
-    per = period.astype(float)
-    plen = np.where(per <= 4, 720.0, 300.0)
-    prior = np.where(per <= 4, (per - 1) * 720.0,
-                     2880.0 + (per - 5) * 300.0)
-    return prior + (plen - clock_s)
-
 
 def load_events() -> pd.DataFrame:
-    """All parsing pushed into SQL so pandas only holds compact columns
-    (~10M rows of numerics) — the naive load with description strings was
-    getting OOM-killed alongside the user's other jobs."""
+    """All parsing in SQL; pandas holds compact numerics only."""
     con = duckdb.connect()
     q = f"""
     WITH raw AS (
@@ -77,6 +55,7 @@ def load_events() -> pd.DataFrame:
              TRY_CAST(teamId AS BIGINT) AS team,
              lower(coalesce(CAST(shotResult AS VARCHAR), '')) AS sr,
              lower(coalesce(description, '')) AS descr,
+             TRY_CAST(shotValue AS DOUBLE) AS sv,
              coalesce(orderNumber, actionNumber) AS ord,
              TRY_CAST(possession AS DOUBLE) AS possession
       FROM read_parquet('{PBP.as_posix()}')
@@ -99,6 +78,7 @@ def load_events() -> pd.DataFrame:
                 WHEN atype = 'turnover' THEN 'tov'
                 WHEN atype = 'rebound' THEN 'reb'
                 ELSE 'other' END AS kind,
+           CASE WHEN atype = '3pt' OR sv = 3 THEN 3.0 ELSE 2.0 END AS mval,
            CASE WHEN regexp_extract(st || ' ' || descr,
                                     '(\\d) of (\\d)', 1) = ''
                 THEN TRUE
@@ -111,7 +91,7 @@ def load_events() -> pd.DataFrame:
            (contains(st, 'technical') OR contains(descr, 'technical'))
                AS ft_tech
     FROM raw
-    WHERE clock_s IS NOT NULL
+    WHERE clock_s IS NOT NULL AND period IS NOT NULL
     ORDER BY gid_n, period, elapsed, ord
     """
     ev = con.execute(q).df()
@@ -122,64 +102,88 @@ def load_events() -> pd.DataFrame:
     return ev
 
 
-def segments_from_field(g: pd.DataFrame) -> list[tuple[float, float]]:
-    """Vectorized runs of the 2019+ possession field."""
-    p = pd.to_numeric(g["possession"], errors="coerce").to_numpy()
-    e = g["elapsed"].to_numpy()
-    ok = np.isfinite(p) & (p > 0)
-    p, e = p[ok], e[ok]
-    if not len(p):
-        return []
-    flips = np.flatnonzero(np.diff(p) != 0) + 1
-    starts = np.concatenate([[0], flips])
-    return [(e[s], p[s]) for s in starts]
+def walk_game(g: pd.DataFrame, use_field: bool):
+    """Unified walker -> list of (start_elapsed, team, points).
 
-
-def segments_from_events(g: pd.DataFrame) -> list[tuple[float, float]]:
-    """Normalized-event state machine -> (start_elapsed, team) segments."""
+    Boundary detection differs by era; POINT ACCUMULATION is shared and
+    travels with the possession — the atomic pairing that matters.
+    """
     kind = g["kind"].to_numpy()
     team = g["team"].to_numpy(dtype=float)
     e = g["elapsed"].to_numpy()
     per = g["period"].to_numpy()
+    mval = g["mval"].to_numpy(dtype=float)
     ft_final = g["ft_final"].to_numpy()
     ft_made = g["ft_made"].to_numpy()
     ft_tech = g["ft_tech"].to_numpy()
+    fld = pd.to_numeric(g["possession"], errors="coerce").to_numpy() \
+        if use_field else None
     n = len(g)
 
-    segs: list[tuple[float, float]] = []
-    offense = np.nan     # team currently in possession (nan = unknown)
+    segs: list[tuple[float, float, float]] = []
+    offense = np.nan
     start = e[0] if n else 0.0
-    last_miss = np.nan   # team whose miss awaits a rebound
+    run = 0.0                 # points in the current possession
+    last_miss = np.nan
+    pending: dict[float, float] = {}   # technical-FT credits by team
 
     def close(tm: float, at_e: float, next_off: float = np.nan) -> None:
-        nonlocal offense, start, last_miss
+        nonlocal offense, start, run, last_miss
         if np.isfinite(tm):
-            segs.append((start if np.isfinite(offense) else at_e, tm))
+            segs.append((start if np.isfinite(offense) else at_e, tm, run))
         offense = next_off
         start = at_e
+        run = pending.pop(next_off, 0.0) if np.isfinite(next_off) else 0.0
         last_miss = np.nan
 
     for i in range(n):
         if i > 0 and per[i] != per[i - 1]:
-            # period change closes any in-flight possession
             tm = offense if np.isfinite(offense) else last_miss
             if np.isfinite(tm):
-                segs.append((start, tm))
-            offense, last_miss, start = np.nan, np.nan, e[i]
+                segs.append((start, tm, run))
+            offense, last_miss, run, start = np.nan, np.nan, 0.0, e[i]
 
         k = kind[i]
         t = team[i]
+
+        if use_field:
+            f = fld[i]
+            if np.isfinite(f) and f > 0:
+                if not np.isfinite(offense):
+                    offense, start = f, e[i]
+                    run = pending.pop(f, 0.0)
+                elif f != offense:
+                    segs.append((start, offense, run))
+                    offense, start = f, e[i]
+                    run = pending.pop(f, 0.0)
+            # points accumulate below regardless of flip logic
+
         if not np.isfinite(t):
             continue
-        if not np.isfinite(offense) and k in ("make", "miss", "ft", "tov"):
+        if not use_field and not np.isfinite(offense) \
+                and k in ("make", "miss", "ft", "tov"):
             offense = t
+            run += pending.pop(t, 0.0)
 
+        # ---- shared point accumulation ---------------------------------
+        if k == "make":
+            if np.isfinite(offense) and t == offense:
+                run += mval[i]
+            else:
+                pending[t] = pending.get(t, 0.0) + mval[i]
+        elif k == "ft" and ft_made[i]:
+            if ft_tech[i] or not (np.isfinite(offense) and t == offense):
+                pending[t] = pending.get(t, 0.0) + 1.0
+            else:
+                run += 1.0
+
+        if use_field:
+            continue
+
+        # ---- pre-2019 boundary state machine ---------------------------
         if k == "tov":
             close(t, e[i])
         elif k == "make":
-            # and-1 lookahead: an FT by the same team shortly after, before
-            # any other possession-relevant event, means the possession
-            # continues through the trip
             and1 = False
             j = i + 1
             while j < n and per[j] == per[i] and e[j] - e[i] <= 15.0:
@@ -203,15 +207,13 @@ def segments_from_events(g: pd.DataFrame) -> list[tuple[float, float]]:
         elif k == "reb":
             if np.isfinite(last_miss):
                 if t != last_miss:
-                    # defensive rebound: shooter's possession ends,
-                    # rebounder's begins
                     close(last_miss, e[i], next_off=t)
                 else:
-                    last_miss = np.nan   # OREB: possession continues
+                    last_miss = np.nan
 
     tm = offense if np.isfinite(offense) else last_miss
     if np.isfinite(tm):
-        segs.append((start, tm))
+        segs.append((start, tm, run))
     return segs
 
 
@@ -239,39 +241,48 @@ def main() -> None:
     stints["gid_n"] = stints["game_id"].astype(str).str.lstrip("0")
     print(f"stints: {len(stints)} in {stints['gid_n'].nunique()} games")
 
-    seg_rows: list[tuple[str, float, float]] = []
-    val_rows: list[tuple[str, float, int, int]] = []
+    seg_rows: list[tuple[str, float, float, float]] = []
+    val_rows: list[tuple[str, float, int, int, float, float]] = []
     n_done = 0
     for gid, g in ev.groupby("gid_n", sort=False):
-        if gid in field_games:
-            segs = segments_from_field(g)
-            if hash(gid) % 20 == 0:      # ~5% validation sample
-                sm = segments_from_events(g)
-                f_ct = pd.Series([t for _, t in segs]).value_counts()
-                s_ct = pd.Series([t for _, t in sm]).value_counts()
-                for tm in set(f_ct.index) | set(s_ct.index):
-                    val_rows.append((gid, tm, int(f_ct.get(tm, 0)),
-                                     int(s_ct.get(tm, 0))))
-        else:
-            segs = segments_from_events(g)
-        seg_rows.extend((gid, s, t) for s, t in segs)
+        use_field = gid in field_games
+        segs = walk_game(g, use_field)
+        seg_rows.extend((gid, s, t, p) for s, t, p in segs)
+        if use_field and (hash(gid) % 20 == 0):
+            sm = walk_game(g, False)
+            fd = pd.DataFrame(segs, columns=["s", "t", "p"])
+            sd = pd.DataFrame(sm, columns=["s", "t", "p"])
+            fct = fd.groupby("t").agg(n=("p", "size"), pts=("p", "sum"))
+            sct = sd.groupby("t").agg(n=("p", "size"), pts=("p", "sum"))
+            for tm in set(fct.index) | set(sct.index):
+                val_rows.append((
+                    gid, tm,
+                    int(fct["n"].get(tm, 0)), int(sct["n"].get(tm, 0)),
+                    float(fct["pts"].get(tm, 0.0)),
+                    float(sct["pts"].get(tm, 0.0))))
         n_done += 1
         if n_done % 5000 == 0:
             print(f"  {n_done} games...", flush=True)
 
-    segs = pd.DataFrame(seg_rows, columns=["gid_n", "elapsed", "team"])
+    segs = pd.DataFrame(seg_rows, columns=["gid_n", "elapsed", "team",
+                                           "pts"])
     print(f"segments: {len(segs)} possessions "
-          f"({len(segs) / segs['gid_n'].nunique() / 2:.1f}/side/game)")
+          f"({len(segs) / segs['gid_n'].nunique() / 2:.1f}/side/game), "
+          f"pts/side/game "
+          f"{segs.groupby('gid_n')['pts'].sum().median() / 2:.1f}")
 
     if val_rows:
-        v = pd.DataFrame(val_rows, columns=["gid_n", "team", "n_field",
-                                            "n_sm"])
-        v["diff"] = (v["n_sm"] - v["n_field"]).abs()
-        print(f"\nSTATE-MACHINE VALIDATION vs possession field "
+        v = pd.DataFrame(val_rows, columns=["gid_n", "team", "n_f", "n_s",
+                                            "p_f", "p_s"])
+        print(f"\nSTATE-MACHINE VALIDATION vs field "
               f"({v['gid_n'].nunique()} games sampled):")
-        print(f"  median |diff|/side: {v['diff'].median():.1f}   "
-              f"p90: {v['diff'].quantile(0.9):.1f}   "
-              f"mean field count/side: {v['n_field'].mean():.1f}")
+        print(f"  counts: median |diff|/side "
+              f"{(v['n_s'] - v['n_f']).abs().median():.1f}  "
+              f"p90 {(v['n_s'] - v['n_f']).abs().quantile(0.9):.1f}")
+        print(f"  points: median |diff|/side "
+              f"{(v['p_s'] - v['p_f']).abs().median():.1f}  "
+              f"p90 {(v['p_s'] - v['p_f']).abs().quantile(0.9):.1f}  "
+              f"(mean pts/side {v['p_f'].mean():.1f})")
 
     n0 = len(segs)
     segs = segs.dropna(subset=["elapsed"])
@@ -282,11 +293,8 @@ def main() -> None:
                                             errors="coerce")
     stints["end_elapsed"] = pd.to_numeric(stints["end_elapsed"],
                                           errors="coerce")
-    n0 = len(stints)
     stints = stints.dropna(subset=["start_elapsed"])
-    if len(stints) < n0:
-        print(f"  dropped {n0 - len(stints)} stints with null "
-              f"start_elapsed")
+
     # merge_asof with by= requires GLOBAL sort on the time key alone
     segs = segs.sort_values("elapsed", kind="stable")
     st = stints.sort_values("start_elapsed", kind="stable")
@@ -297,41 +305,41 @@ def main() -> None:
         direction="backward")
     merged = merged.dropna(subset=["stint_index"])
     in_win = merged["elapsed"] <= merged["end_elapsed"] + 1.0
-    print(f"stint attach: {in_win.mean() * 100:.1f}% of possessions inside "
-          f"the matched stint window (rest kept on nearest stint)")
+    print(f"stint attach: {in_win.mean() * 100:.1f}% inside matched "
+          f"window (rest kept on nearest stint)")
 
     merged["side"] = np.where(merged["team"] == merged["home_id"], "h",
                      np.where(merged["team"] == merged["away_id"], "a",
                               "?"))
     bad = int((merged["side"] == "?").sum())
     if bad:
-        print(f"  {bad} possessions with team not matching home/away "
-              f"-> dropped")
+        print(f"  {bad} possessions with unmatched team -> dropped")
         merged = merged[merged["side"] != "?"]
 
     counts = (merged.groupby(["gid_n", "stint_index", "side"])
-              .size().unstack(fill_value=0).reset_index())
-    counts = counts.rename(columns={"h": "n_home", "a": "n_away"})
-    for c in ("n_home", "n_away"):
+              .agg(n=("pts", "size"), pts=("pts", "sum"))
+              .unstack(fill_value=0))
+    counts.columns = [f"{a}_{'home' if b == 'h' else 'away'}"
+                      for a, b in counts.columns]
+    counts = counts.rename(columns={"n_home": "n_home", "n_away": "n_away",
+                                    "pts_home": "pts_home",
+                                    "pts_away": "pts_away"}).reset_index()
+    for c in ("n_home", "n_away", "pts_home", "pts_away"):
         if c not in counts.columns:
-            counts[c] = 0
+            counts[c] = 0.0
 
     gid_map = stints.drop_duplicates("gid_n")[["gid_n", "game_id"]]
     counts = counts.merge(gid_map, on="gid_n", how="left")
     counts["stint_index"] = counts["stint_index"].astype(int)
-    out = counts[["game_id", "gid_n", "stint_index", "n_home", "n_away"]]
+    out = counts[["game_id", "gid_n", "stint_index",
+                  "n_home", "n_away", "pts_home", "pts_away"]]
     out.to_parquet(OUT, index=False)
-    print(f"\nwrote {len(out)} stint-count rows -> {OUT}")
+    print(f"\nwrote {len(out)} stint rows -> {OUT}")
 
-    per_game = merged.groupby("gid_n").size() / 2
-    print(f"possessions/side/game overall: median {per_game.median():.1f}, "
-          f"p10 {per_game.quantile(0.1):.1f}, "
-          f"p90 {per_game.quantile(0.9):.1f}")
-    yr2 = merged["gid_n"].str[1:3]
-    by_era = (merged.groupby(yr2).size()
-              / merged.groupby(yr2)["gid_n"].nunique() / 2).round(1)
-    print("possessions/side/game by season code:",
-          dict(by_era))
+    per_game = merged.groupby("gid_n").agg(n=("pts", "size"),
+                                           p=("pts", "sum"))
+    print(f"per game: possessions/side median {per_game['n'].median()/2:.1f}"
+          f"  points/side median {per_game['p'].median()/2:.1f}")
 
 
 if __name__ == "__main__":
