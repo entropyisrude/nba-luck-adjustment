@@ -94,32 +94,72 @@ def fit_predict_w(df: pd.DataFrame, features: list[str],
     return df, (pd.concat(coefs, ignore_index=True) if coefs else None)
 
 
-def score(df: pd.DataFrame, ev: pd.DataFrame) -> dict:
-    """Fixed scoring protocol for every cell (comparable populations)."""
-    v = df[(df["poss_season"] >= MIN_FIT_POSS) & df["loso"].notna()]
+def _wsd(a, w) -> float:
+    a, w = np.asarray(a, float), np.asarray(w, float)
+    m = np.average(a, weights=w)
+    return float(np.sqrt(np.average((a - m) ** 2, weights=w)))
+
+
+def score(df: pd.DataFrame, ev: pd.DataFrame, protocol: str = "old") -> dict:
+    """Scoring protocols:
+    'old' — poss>=1000 rows, poss-weighted (the v1 fit's home turf);
+    'se'  — all SE rows, 1/(se_o^2+se_d^2)-weighted (the se fit's turf).
+    Each also reports a CALIBRATED-SUM total: prediction components
+    rescaled to the target components' spreads before summing, so the
+    total can't be dragged by a components-scale artifact."""
+    if protocol == "old":
+        v = df[(df["poss_season"] >= MIN_FIT_POSS) & df["loso"].notna()]
+        wv = v["poss_season"]
+    else:
+        v = df[df["se_o"].notna() & df["se_d"].notna() & df["loso"].notna()]
+        wv = 1.0 / (v["se_o"] ** 2 + v["se_d"] ** 2)
+    cal = (v["loso_o"] / _wsd(v["loso_o"], wv) * _wsd(v["orapm"], wv)
+           + v["loso_d"] / _wsd(v["loso_d"], wv) * _wsd(v["drapm"], wv))
     out = {
-        "loso": wcorr(v["loso"], v["rapm"], v["poss_season"]),
-        "loso_o": wcorr(v["loso_o"], v["orapm"], v["poss_season"]),
-        "loso_d": wcorr(v["loso_d"], v["drapm"], v["poss_season"]),
+        "loso": wcorr(v["loso"], v["rapm"], wv),
+        "loso_cal": wcorr(cal, v["rapm"], wv),
+        "loso_o": wcorr(v["loso_o"], v["orapm"], wv),
+        "loso_d": wcorr(v["loso_d"], v["drapm"], wv),
         "n_loso": len(v),
     }
     j = df.merge(ev.rename(columns={"player_id": "pid"}),
                  left_on=["pid", "season_year"],
                  right_on=["pid", "prev_year"], suffixes=("", "_ev"))
     j = j[(j["ev_poss"] >= 1000) & j["loso"].notna()]
-    out["nxt"] = wcorr(j["loso"], j["ev_o"] + j["ev_d"], j["ev_poss"])
-    out["nxt_o"] = wcorr(j["loso_o"], j["ev_o"], j["ev_poss"])
-    out["nxt_d"] = wcorr(j["loso_d"], j["ev_d"], j["ev_poss"])
+    if protocol == "se":
+        j = j[j["se_o"].notna() & j["se_d"].notna()]
+        wj = 1.0 / (j["se_o"] ** 2 + j["se_d"] ** 2)
+    else:
+        wj = j["ev_poss"]
+    calj = (j["loso_o"] / _wsd(j["loso_o"], wj) * _wsd(j["ev_o"], wj)
+            + j["loso_d"] / _wsd(j["loso_d"], wj) * _wsd(j["ev_d"], wj))
+    out["nxt"] = wcorr(j["loso"], j["ev_o"] + j["ev_d"], wj)
+    out["nxt_cal"] = wcorr(calj, j["ev_o"] + j["ev_d"], wj)
+    out["nxt_o"] = wcorr(j["loso_o"], j["ev_o"], wj)
+    out["nxt_d"] = wcorr(j["loso_d"], j["ev_d"], wj)
     out["n_nxt"] = len(j)
     return out
 
 
 def main() -> None:
+    global MIN_FIT_POSS
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--target", default=str(TARGET),
+                    help="alternate RAPM target parquet")
+    ap.add_argument("--min-poss", type=float, default=MIN_FIT_POSS,
+                    help="fit/scoring possession floor (new possession "
+                         "targets count both sides: use ~1700 to match "
+                         "the old 1000)")
+    args = ap.parse_args()
+    MIN_FIT_POSS = args.min_poss
+
     enc = sys.stdout.encoding or "utf-8"
     def p(s: str) -> None:
         print(s.encode(enc, errors="replace").decode(enc), flush=True)
 
-    tgt = pd.read_parquet(TARGET)
+    p(f"target: {args.target}  (min_poss {MIN_FIT_POSS})")
+    tgt = pd.read_parquet(args.target)
     tgt = tgt[tgt["alpha"] == TARGET_ALPHA].copy()
     tgt["season_year"] = tgt["target_season"].str[:4].astype(int)
     tgt = tgt.rename(columns={"player_id": "pid"})
@@ -154,17 +194,23 @@ def main() -> None:
         "atomic + old-w": (ATOMS, poss_w, poss_w, cut_ok),
         "atomic + se-w": (ATOMS, w_se_o, w_se_d, se_ok),
     }
-    p(f"\n{'cell':>16}  {'LOSO':>6} {'O':>6} {'D':>6}   "
-      f"{'next-ssn':>8} {'O':>6} {'D':>6}")
     coef_keep = None
+    fits = {}
     for name, (feats, wo, wd, fm) in cells.items():
-        fit, coefs = fit_predict_w(df, feats, wo, wd, fm)
-        s = score(fit, ev)
-        p(f"{name:>16}  {s['loso']:6.4f} {s['loso_o']:6.4f} "
-          f"{s['loso_d']:6.4f}   {s['nxt']:8.4f} {s['nxt_o']:6.4f} "
-          f"{s['nxt_d']:6.4f}  (n={s['n_loso']}/{s['n_nxt']})")
+        fits[name], coefs = fit_predict_w(df, feats, wo, wd, fm)
         if name == "atomic + se-w":
             coef_keep = coefs
+    for proto in ("old", "se"):
+        p(f"\nprotocol: {proto}"
+          f" ({'poss-weighted, >=1000' if proto == 'old' else '1/se^2-weighted, no cutoff'})")
+        p(f"{'cell':>16}  {'LOSO':>6} {'cal':>6} {'O':>6} {'D':>6}   "
+          f"{'next':>6} {'cal':>6} {'O':>6} {'D':>6}")
+        for name in cells:
+            s = score(fits[name], ev, protocol=proto)
+            p(f"{name:>16}  {s['loso']:6.4f} {s['loso_cal']:6.4f} "
+              f"{s['loso_o']:6.4f} {s['loso_d']:6.4f}   {s['nxt']:6.4f} "
+              f"{s['nxt_cal']:6.4f} {s['nxt_o']:6.4f} {s['nxt_d']:6.4f}"
+              f"  (n={s['n_loso']}/{s['n_nxt']})")
 
     OUT_COEF.parent.mkdir(parents=True, exist_ok=True)
     coef_keep.to_csv(OUT_COEF, index=False)

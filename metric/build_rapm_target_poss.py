@@ -71,18 +71,37 @@ def main() -> None:
     print(f"zero-count sides with points: home {int(zh.sum())}, "
           f"away {int(za.sum())} (dropped via zero weight)")
 
+    # SHARED per-stint denominator: possessions alternate within a stint,
+    # so true per-side counts differ by at most ~1 — any larger measured
+    # asymmetry is boundary-attach noise. Independent per-side
+    # denominators DECOUPLE the O and D rows' error structure and blow up
+    # individual O/D splits (observed: +/-14-point swings) while totals
+    # stay pinned. The shared count keeps the entire pace correction (the
+    # confirmed seconds/24 overbooking) with the validated coupled-noise
+    # design of the stint target.
     n_home = st["n_home"].to_numpy(dtype=float)
     n_away = st["n_away"].to_numpy(dtype=float)
-    n_rows = np.empty(2 * n)
-    n_rows[0::2] = n_home
-    n_rows[1::2] = n_away
+    n_pair_raw = (n_home + n_away) / 2.0
+    if "--game-smooth" in sys.argv:
+        # option (b): distribute each game's counted pairs across its
+        # stints by seconds share — kills within-game lineup-pace level
+        # variation AND its small-stint integer noise (the channel that
+        # destabilized O/D splits), keeps the cross-game pace correction
+        st["_np"] = n_pair_raw
+        gp = st.groupby("gid_n")["_np"].transform("sum")
+        gs = st.groupby("gid_n")["seconds"].transform("sum")
+        n_pair = (gp * st["seconds"] / gs).to_numpy(dtype=float)
+        print("using GAME-SMOOTHED denominators (pairs x seconds share)")
+    else:
+        n_pair = n_pair_raw
+    n_rows = np.repeat(n_pair, 2)
     y = np.zeros(2 * n)
     hp = st["home_pts_adj"].to_numpy(dtype=float)
     ap = st["away_pts_adj"].to_numpy(dtype=float)
-    y[0::2] = np.divide(hp, n_home, out=np.zeros(n),
-                        where=n_home > 0) * 100.0
-    y[1::2] = np.divide(ap, n_away, out=np.zeros(n),
-                        where=n_away > 0) * 100.0
+    y[0::2] = np.divide(hp, n_pair, out=np.zeros(n),
+                        where=n_pair > 0) * 100.0
+    y[1::2] = np.divide(ap, n_pair, out=np.zeros(n),
+                        where=n_pair > 0) * 100.0
 
     dates = st["date"].to_numpy()
     sy_arr = (st["season_year"].to_numpy() if "season_year" in st.columns
@@ -144,7 +163,7 @@ def main() -> None:
         po_poss = np.zeros(P)
         used_st = used.reshape(-1, 2)
         for parity, (o_of_row, d_of_row, nn) in enumerate(
-                [(hidx, aidx, n_home), (aidx, hidx, n_away)]):
+                [(hidx, aidx, n_pair), (aidx, hidx, n_pair)]):
             row_used = used_st[:, parity]
             wsel = (nn * decay)[row_used]
             nposs = nn[row_used]
