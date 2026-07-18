@@ -6,7 +6,7 @@ process noise Q per elapsed season (missed years still age and diffuse).
 Each played season provides two observations:
 
   * single-season luck-adjusted RAPM evidence (variance ~ c / possessions),
-  * the LOSO box prior for that season (variance sigma_b^2).
+  * the denominator-aware atomic prior for that season (variance sigma_b^2).
 
 The one-step-ahead prediction (state after drift, BEFORE seeing that
 season's observations) is the honest deliverable: it predicts season t using
@@ -35,16 +35,20 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_metric_v0 import build_design, normal_eqs
-from build_rapm_target import prepare, load_player_names
+from build_rapm_target import (DECAY_HALFLIFE_DAYS, WINDOW_DAYS,
+                               load_player_names)
+from counted_production_design import (exposure_arrays, load_design,
+                                       normal_eqs)
 from build_aging_curves import load_ages
 
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
 # --filtered-prior swaps in the Phase 4b game-filtered box prior
-PRIOR_PATH = METRIC_DATA / "priors" / "box_prior.parquet"
+PRIOR_PATH = METRIC_DATA / "priors" / "box_prior_atomic_denominator.parquet"
+PRIOR_MODEL = "atomic_denominator"
+EVIDENCE_MODEL = "canonical_counted_possessions_v1"
 FILTERED_PRIOR_PATH = METRIC_DATA / "game_kalman" / "filtered_prior.parquet"
 CURVES_PATH = METRIC_DATA / "aging" / "aging_curves.csv"
-EVID_CACHE = METRIC_DATA / "evidence_season.parquet"
+EVID_CACHE = METRIC_DATA / "evidence_season_canonical_counted.parquet"
 OUT_DIR = METRIC_DATA / "kalman"
 
 EVID_ALPHA = 150
@@ -94,11 +98,10 @@ def build_evidence() -> pd.DataFrame:
     if EVID_CACHE.exists():
         print(f"Using cached {EVID_CACHE}")
         return pd.read_parquet(EVID_CACHE)
-    st = prepare()
-    st["date"] = pd.to_datetime(st["date"])
-    st, X, y, poss, players, pidx, hidx, aidx = build_design(st)
-    P = len(players)
-    syears = st["season_year"].to_numpy()
+    design = load_design()
+    X, y, poss = design["X"], design["y"], design["poss"]
+    players, P = design["players"], design["P"]
+    dates, syears = design["dates"], design["seasons"]
     rows = []
     for sy in range(1996, 2026):
         sel = syears == sy
@@ -109,12 +112,9 @@ def build_evidence() -> pd.DataFrame:
         be = np.linalg.solve(XtX + EVID_ALPHA * np.eye(2 * P), Xty)
         O, D = be[:P], be[P:]
         om, dm = O.mean(), D.mean()
-        raw = np.zeros(P)
-        psel = poss[used]
-        insel = sel[used]
-        for k in range(5):
-            for idxs in (hidx[used, k], aidx[used, k]):
-                np.add.at(raw, idxs, np.where(insel, psel, 0.0))
+        end = dates[sel].max()
+        raw, _ = exposure_arrays(
+            design, sy, end, DECAY_HALFLIFE_DAYS, WINDOW_DAYS)
         for i in np.nonzero(raw > 0)[0]:
             rows.append({"player_id": int(players[i]), "season_year": sy,
                          "ev_o": float(O[i] - om), "ev_d": float(-(D[i] - dm)),
@@ -235,13 +235,17 @@ def main() -> None:
     # scoreboard: predicted (pre-observation) state vs that season's evidence
     firsts = panel.groupby("player_id")["season_year"].min().rename("fy")
 
-    def score(f):
+    def score(f, min_year=None, max_year=None):
         """primary (>=1000 poss, star-weighted) + fringe (200-1000) boards."""
         j = f.merge(panel[["player_id", "season_year", "ev_o", "ev_d",
                            "ev_poss"]], on=["player_id", "season_year"])
         # exclude each player's first season (prediction == prior init)
         j = j.merge(firsts, on="player_id")
         j = j[j["season_year"] > j["fy"]]
+        if min_year is not None:
+            j = j[j["season_year"] >= min_year]
+        if max_year is not None:
+            j = j[j["season_year"] <= max_year]
         j["pred"] = j["pred_o"] + j["pred_d"]
         j["evid"] = j["ev_o"] + j["ev_d"]
         main_ = j[j["ev_poss"] >= MIN_EVID_POSS]
@@ -256,8 +260,10 @@ def main() -> None:
         for c in C_GRID:
             for sb in SB_GRID:
                 f = run_filter(panel, drift_o, drift_d, q, c, sb)
-                s, sf, bias, n, nf = score(f)
-                print(f"  q={q:<5} c={c:<7.0f} sb={sb:<3}: {s:.4f} (n={n})",
+                s, sf, bias, n, nf = score(f, max_year=2018)
+                st, sft, biast, nt, nft = score(f, min_year=2019)
+                print(f"  q={q:<5} c={c:<7.0f} sb={sb:<3}: "
+                      f"dev {s:.4f} (n={n}); 2019+ {st:.4f} (n={nt})",
                       flush=True)
                 if best is None or s > best[0]:
                     best = (s, q, c, sb, f)
@@ -267,7 +273,7 @@ def main() -> None:
     # stage 2: exposure-dependent level shift below the prior's fit range.
     # Guard: primary board must hold (>= legacy - 0.002); among survivors
     # minimize |fringe bias| (the margin backtest cares about levels).
-    _, sf0, bias0, _, nf = score(f)
+    _, sf0, bias0, _, nf = score(f, max_year=2018)
     print(f"\nExposure shift (legacy fringe wcorr {sf0:.4f}, "
           f"bias {bias0:+.2f}, n={nf}):")
     best2 = (s, sf0, abs(bias0), 0.0, 0.0, f)
@@ -277,7 +283,7 @@ def main() -> None:
                 continue
             f2 = run_filter(panel, drift_o, drift_d, q, c, sb,
                             shift_total=shift, full_poss=fp)
-            s2, sf2, bias2, n2, _ = score(f2)
+            s2, sf2, bias2, n2, _ = score(f2, max_year=2018)
             tag = ""
             if s2 >= s - 0.002 and abs(bias2) < best2[2]:
                 best2 = (s2, sf2, abs(bias2), shift, fp, f2)
@@ -287,9 +293,14 @@ def main() -> None:
     s, sf, _, shift, fp, f = best2
     print(f"\nSelected: shift={shift} full_poss={fp} -> "
           f"primary {s:.4f}, fringe {sf:.4f}")
+    st, sft, biast, nt, nft = score(f, min_year=2019)
+    print(f"2019+ confirmation: primary {st:.4f}, fringe {sft:.4f}, "
+          f"fringe bias {biast:+.2f} (n={nt}/{nft})")
 
     names = load_player_names()
     f["player_name"] = f["player_id"].map(names)
+    f["prior_model"] = PRIOR_MODEL
+    f["evidence_model"] = EVIDENCE_MODEL
     f["pred_total"] = f["pred_o"] + f["pred_d"]
     f["filt_total"] = f["filt_o"] + f["filt_d"]
     OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -6,9 +6,10 @@ import csv
 import json
 from datetime import datetime
 from pathlib import Path
+import pandas as pd
 
 DATA_DIR = Path("data")
-ONOFF_PATH = DATA_DIR / "adjusted_onoff_playoffs.csv"
+ONOFF_PATH = Path("derived/contextual_causal/production_counted_onoff/adjusted_onoff_playoffs_canonical_counted.parquet")
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report_playoffs.html"
 OUTPUT_SITE_PATH = Path("onoff-playoffs.html")
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
@@ -84,9 +85,15 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
     game_ids: set[str] = set()
     team_game_minutes: dict[tuple[str, str, str], float] = {}
 
-    with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for r in reader:
+    if ONOFF_PATH.suffix == ".parquet":
+        source_rows = pd.read_parquet(ONOFF_PATH).to_dict("records")
+    else:
+        with ONOFF_PATH.open(newline="", encoding="utf-8") as f:
+            source_rows = list(csv.DictReader(f))
+    for r in source_rows:
+            r["date"] = str(r["date"])[:10]
+            r["game_id"] = str(r["game_id"])
+            r["team_id"] = str(int(r["team_id"]))
             pid = r.get("player_id")
             try:
                 pid_int = int(pid) if pid is not None else None
@@ -134,6 +141,10 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
                 "on_pts_against_adj": 0.0,
                 "off_pts_for_adj": 0.0,
                 "off_pts_against_adj": 0.0,
+                "on_off_poss": 0.0,
+                "on_def_poss": 0.0,
+                "off_off_poss": 0.0,
+                "off_def_poss": 0.0,
             }
 
         a = agg[key]
@@ -148,6 +159,10 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
         a["on_pts_against_adj"] += _f(r["on_pts_against_adj"])
         a["off_pts_for_adj"] += _f(r["off_pts_for_adj"])
         a["off_pts_against_adj"] += _f(r["off_pts_against_adj"])
+        a["on_off_poss"] += _f(r["on_off_poss"])
+        a["on_def_poss"] += _f(r["on_def_poss"])
+        a["off_off_poss"] += _f(r["off_off_poss"])
+        a["off_def_poss"] += _f(r["off_def_poss"])
 
     # Convert to list with raw totals (client will compute per-100 stats)
     out: list[dict] = []
@@ -170,6 +185,10 @@ def _load_season_totals() -> tuple[list[dict], str, int]:
             "on_pts_against_adj": round(a["on_pts_against_adj"], 2),
             "off_pts_for_adj": round(a["off_pts_for_adj"], 2),
             "off_pts_against_adj": round(a["off_pts_against_adj"], 2),
+            "on_off_poss": round(a["on_off_poss"], 4),
+            "on_def_poss": round(a["on_def_poss"], 4),
+            "off_off_poss": round(a["off_off_poss"], 4),
+            "off_def_poss": round(a["off_def_poss"], 4),
         })
 
     return out, latest_date, len(game_ids)
@@ -428,7 +447,7 @@ def generate_onoff_report_playoffs() -> Path:
       </div>
     </section>
 
-    <p class="muted">Generated {generated_ts} | Source: data/adjusted_onoff_playoffs.csv</p>
+    <p class="muted">Generated {generated_ts} | Source: canonical counted-possession evidence (exact stint exposure; official-minutes allocation only for aggregate-resolution games).</p>
   </div>
   <script>
     const RAW_ROWS = {json.dumps(raw_rows)};
@@ -467,6 +486,10 @@ def generate_onoff_report_playoffs() -> Path:
             on_pts_against_adj: 0,
             off_pts_for_adj: 0,
             off_pts_against_adj: 0,
+            on_off_poss: 0,
+            on_def_poss: 0,
+            off_off_poss: 0,
+            off_def_poss: 0,
           }};
         }}
         const a = agg[key];
@@ -481,6 +504,10 @@ def generate_onoff_report_playoffs() -> Path:
         a.on_pts_against_adj += r.on_pts_against_adj;
         a.off_pts_for_adj += r.off_pts_for_adj;
         a.off_pts_against_adj += r.off_pts_against_adj;
+        a.on_off_poss += r.on_off_poss;
+        a.on_def_poss += r.on_def_poss;
+        a.off_off_poss += r.off_off_poss;
+        a.off_def_poss += r.off_def_poss;
       }}
 
       // Convert to array with computed stats
@@ -488,24 +515,23 @@ def generate_onoff_report_playoffs() -> Path:
         const onMin = a.minutes_on;
         const offMin = a.minutes_off;
 
-        const pm_adj = onMin > 0 ? (a.on_diff_adj * 48.0 / onMin) : 0;
-        const off_pm_adj = offMin > 0 ? (a.off_diff_adj * 48.0 / offMin) : 0;
+        const onPoss = (a.on_off_poss + a.on_def_poss) / 2.0;
+        const offPoss = (a.off_off_poss + a.off_def_poss) / 2.0;
+        const pm_adj = onPoss > 0 ? (a.on_diff_adj * 100.0 / onPoss) : 0;
+        const off_pm_adj = offPoss > 0 ? (a.off_diff_adj * 100.0 / offPoss) : 0;
         const onoff_adj = pm_adj - off_pm_adj;
 
-        const pm_actual = onMin > 0 ? (a.on_diff * 48.0 / onMin) : 0;
-        const off_pm_actual = offMin > 0 ? (a.off_diff * 48.0 / offMin) : 0;
+        const pm_actual = onPoss > 0 ? (a.on_diff * 100.0 / onPoss) : 0;
+        const off_pm_actual = offPoss > 0 ? (a.off_diff * 100.0 / offPoss) : 0;
         const onoff_actual = pm_actual - off_pm_actual;
 
         const pm_delta = pm_adj - pm_actual;
         const onoff_delta = onoff_adj - onoff_actual;
 
-        const poss_per_min = 100.0 / 48.0;
-        const on_poss = onMin * poss_per_min;
-        const off_poss = offMin * poss_per_min;
-        const on_ortg_adj = on_poss > 0 ? (a.on_pts_for_adj * 100.0 / on_poss) : 0;
-        const on_drtg_adj = on_poss > 0 ? (a.on_pts_against_adj * 100.0 / on_poss) : 0;
-        const off_ortg_adj = off_poss > 0 ? (a.off_pts_for_adj * 100.0 / off_poss) : 0;
-        const off_drtg_adj = off_poss > 0 ? (a.off_pts_against_adj * 100.0 / off_poss) : 0;
+        const on_ortg_adj = a.on_off_poss > 0 ? (a.on_pts_for_adj * 100.0 / a.on_off_poss) : 0;
+        const on_drtg_adj = a.on_def_poss > 0 ? (a.on_pts_against_adj * 100.0 / a.on_def_poss) : 0;
+        const off_ortg_adj = a.off_off_poss > 0 ? (a.off_pts_for_adj * 100.0 / a.off_off_poss) : 0;
+        const off_drtg_adj = a.off_def_poss > 0 ? (a.off_pts_against_adj * 100.0 / a.off_def_poss) : 0;
         const onoff_adj_off = on_ortg_adj - off_ortg_adj;
         const onoff_adj_def = off_drtg_adj - on_drtg_adj;
 
@@ -548,24 +574,23 @@ def generate_onoff_report_playoffs() -> Path:
       const onMin = r.minutes_on;
       const offMin = r.minutes_off;
 
-      const pm_adj = onMin > 0 ? (r.on_diff_adj * 48.0 / onMin) : 0;
-      const off_pm_adj = offMin > 0 ? (r.off_diff_adj * 48.0 / offMin) : 0;
+      const onPoss = (r.on_off_poss + r.on_def_poss) / 2.0;
+      const offPoss = (r.off_off_poss + r.off_def_poss) / 2.0;
+      const pm_adj = onPoss > 0 ? (r.on_diff_adj * 100.0 / onPoss) : 0;
+      const off_pm_adj = offPoss > 0 ? (r.off_diff_adj * 100.0 / offPoss) : 0;
       const onoff_adj = pm_adj - off_pm_adj;
 
-      const pm_actual = onMin > 0 ? (r.on_diff * 48.0 / onMin) : 0;
-      const off_pm_actual = offMin > 0 ? (r.off_diff * 48.0 / offMin) : 0;
+      const pm_actual = onPoss > 0 ? (r.on_diff * 100.0 / onPoss) : 0;
+      const off_pm_actual = offPoss > 0 ? (r.off_diff * 100.0 / offPoss) : 0;
       const onoff_actual = pm_actual - off_pm_actual;
 
       const pm_delta = pm_adj - pm_actual;
       const onoff_delta = onoff_adj - onoff_actual;
 
-      const poss_per_min = 100.0 / 48.0;
-      const on_poss = onMin * poss_per_min;
-      const off_poss = offMin * poss_per_min;
-      const on_ortg_adj = on_poss > 0 ? (r.on_pts_for_adj * 100.0 / on_poss) : 0;
-      const on_drtg_adj = on_poss > 0 ? (r.on_pts_against_adj * 100.0 / on_poss) : 0;
-      const off_ortg_adj = off_poss > 0 ? (r.off_pts_for_adj * 100.0 / off_poss) : 0;
-      const off_drtg_adj = off_poss > 0 ? (r.off_pts_against_adj * 100.0 / off_poss) : 0;
+      const on_ortg_adj = r.on_off_poss > 0 ? (r.on_pts_for_adj * 100.0 / r.on_off_poss) : 0;
+      const on_drtg_adj = r.on_def_poss > 0 ? (r.on_pts_against_adj * 100.0 / r.on_def_poss) : 0;
+      const off_ortg_adj = r.off_off_poss > 0 ? (r.off_pts_for_adj * 100.0 / r.off_off_poss) : 0;
+      const off_drtg_adj = r.off_def_poss > 0 ? (r.off_pts_against_adj * 100.0 / r.off_def_poss) : 0;
       const onoff_adj_off = on_ortg_adj - off_ortg_adj;
       const onoff_adj_def = off_drtg_adj - on_drtg_adj;
 

@@ -1,0 +1,19 @@
+{
+  "games": 35522,
+  "grade_a_games": 22457,
+  "grade_a_rate": 0.6321997635268285,
+  "pass_rates": {
+    "pass_teams": 0.9998873937278306,
+    "pass_score": 0.7428354259332245,
+    "pass_time": 0.7395135409042284,
+    "pass_lineups": 1.0,
+    "pass_player_minutes": 0.767636957378526,
+    "pass_player_pm": 0.6437419064241878
+  },
+  "thresholds": {
+    "score_points": 0.5,
+    "time_seconds": 1.0,
+    "player_minute_seconds": 75.0,
+    "player_plus_minus_points": 0.5
+  }
+}

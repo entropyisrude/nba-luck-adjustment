@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2-Man Audit</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d7e0ea;
+      --ink: #16202b;
+      --muted: #5a6776;
+      --accent: #0b5cab;
+      --good: #0f766e;
+      --warn: #9a6700;
+      --bad: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #e7f0ff 0%, transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    .hero, .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(22, 32, 43, 0.06);
+      margin-bottom: 16px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0b5cab 0%, #083b6d 100%);
+      color: #fff;
+      border-color: #0c4f91;
+    }
+    .muted { color: var(--muted); }
+    .hero .muted { color: rgba(255,255,255,0.88); }
+    h1, h2 { margin: 0 0 10px; }
+    p { margin: 0 0 12px; line-height: 1.5; }
+    a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .hero a { color: #fff; text-decoration: underline; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+    .stat .k { font-size: 12px; color: var(--muted); }
+    .stat .v { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+    }
+    th, td {
+      border-bottom: 1px solid #e8edf5;
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    th {
+      background: #f8fbff;
+      position: sticky;
+      top: 0;
+    }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .good { color: var(--good); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .bad { color: var(--bad); font-weight: 600; }
+    code {
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>2-Man External Audit</h1>
+      <p class="muted">
+        Side-by-side audit using your pasted NBA advanced lineup table for <code>2025-26</code> two-man units
+        at <code>200+</code> minutes. This compares those rows against the possession-based combo source
+        queried directly from <code>nba_analytics.duckdb</code>.
+      </p>
+      <p class="muted">
+        Main conclusion: the engine is closer than the old estimate-scaled artifact, but it is still not fully validated.
+        Pair detection is mostly there; rating and minute gaps still need explanation.
+      </p>
+      <p><a href="./lineup-review.html">Back to review hub</a></p>
+    </section>
+
+    <section class="card">
+      <div class="grid">
+        <div class="stat"><div class="k">Pairs Matched</div><div class="v">22 / 25</div></div>
+        <div class="stat"><div class="k">Mean Abs Min Gap</div><div class="v">67.1</div></div>
+        <div class="stat"><div class="k">Mean Abs PF/100 Gap</div><div class="v">2.5</div></div>
+        <div class="stat"><div class="k">Mean Abs PA/100 Gap</div><div class="v">2.2</div></div>
+        <div class="stat"><div class="k">Mean Abs Net Gap</div><div class="v">4.3</div></div>
+        <div class="stat"><div class="k">Worst Net Gap</div><div class="v" style="font-size:15px;">TOR Jamal Shead / Jamison Battle (-11.0)</div></div>
+      </div>
+    </section>
+
+    <section class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Players</th>
+            <th>Status</th>
+            <th class="num">Ext Min</th>
+            <th class="num">Our Min</th>
+            <th class="num">Min Gap</th>
+            <th class="num">Ext PF/100</th>
+            <th class="num">Our PF/100</th>
+            <th class="num">Ext PA/100</th>
+            <th class="num">Our PA/100</th>
+            <th class="num">Ext Net</th>
+            <th class="num">Our Net</th>
+            <th class="num">Net Gap</th>
+          </tr>
+        </thead>
+        <tbody>
+
+      <tr>
+        <td>OKC</td>
+        <td>Alex Caruso / Isaiah Hartenstein</td>
+        <td class="good">Matched</td>
+        <td class="num">211.0</td>
+        <td class="num">207.0</td>
+        <td class="num">-4.0</td>
+        <td class="num">123.1</td>
+        <td class="num">122.4</td>
+        <td class="num">90.1</td>
+        <td class="num">89.2</td>
+        <td class="num">33.1</td>
+        <td class="num">26.5</td>
+        <td class="num warn">-6.6</td>
+      </tr>
+      <tr>
+        <td>BOS</td>
+        <td>Derrick White / Hugo Gonzalez</td>
+        <td class="good">Matched</td>
+        <td class="num">499.0</td>
+        <td class="num">482.5</td>
+        <td class="num">-16.5</td>
+        <td class="num">120.4</td>
+        <td class="num">123.3</td>
+        <td class="num">92.5</td>
+        <td class="num">94.9</td>
+        <td class="num">27.9</td>
+        <td class="num">26.2</td>
+        <td class="num good">-1.7</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Grant Williams / Jeff Green</td>
+        <td class="bad">Missing</td>
+        <td class="num">245.0</td>
+        <td class="num"></td>
+        <td class="num"></td>
+        <td class="num">122.3</td>
+        <td class="num"></td>
+        <td class="num">94.4</td>
+        <td class="num"></td>
+        <td class="num">27.9</td>
+        <td class="num"></td>
+        <td class="num "></td>
+      </tr>
+      <tr>
+        <td>SAS</td>
+        <td>Victor Wembanyama / Dylan Harper</td>
+        <td class="good">Matched</td>
+        <td class="num">475.0</td>
+        <td class="num">404.9</td>
+        <td class="num">-70.1</td>
+        <td class="num">119.2</td>
+        <td class="num">118.3</td>
+        <td class="num">92.0</td>
+        <td class="num">94.8</td>
+        <td class="num">27.2</td>
+        <td class="num">22.8</td>
+        <td class="num warn">-4.4</td>
+      </tr>
+      <tr>
+        <td>NYK</td>
+        <td>Karl-Anthony Towns / Jose Alvarado</td>
+        <td class="good">Matched</td>
+        <td class="num">200.0</td>
+        <td class="num">129.4</td>
+        <td class="num">-70.6</td>
+        <td class="num">128.3</td>
+        <td class="num">122.9</td>
+        <td class="num">102.5</td>
+        <td class="num">92.7</td>
+        <td class="num">25.9</td>
+        <td class="num">24.4</td>
+        <td class="num good">-1.5</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Alex Caruso / Ajay Mitchell</td>
+        <td class="good">Matched</td>
+        <td class="num">365.0</td>
+        <td class="num">347.8</td>
+        <td class="num">-17.2</td>
+        <td class="num">120.3</td>
+        <td class="num">124.2</td>
+        <td class="num">95.6</td>
+        <td class="num">92.1</td>
+        <td class="num">24.7</td>
+        <td class="num">26.2</td>
+        <td class="num good">1.5</td>
+      </tr>
+      <tr>
+        <td>ATL</td>
+        <td>CJ McCollum / Dyson Daniels</td>
+        <td class="good">Matched</td>
+        <td class="num">487.0</td>
+        <td class="num">346.1</td>
+        <td class="num">-140.9</td>
+        <td class="num">119.6</td>
+        <td class="num">116.2</td>
+        <td class="num">95.7</td>
+        <td class="num">98.0</td>
+        <td class="num">23.9</td>
+        <td class="num">14.2</td>
+        <td class="num bad">-9.7</td>
+      </tr>
+      <tr>
+        <td>GSW</td>
+        <td>Jimmy Butler III / De'Anthony Melton</td>
+        <td class="good">Matched</td>
+        <td class="num">244.0</td>
+        <td class="num">243.9</td>
+        <td class="num">-0.1</td>
+        <td class="num">123.9</td>
+        <td class="num">124.3</td>
+        <td class="num">101.9</td>
+        <td class="num">101.9</td>
+        <td class="num">21.9</td>
+        <td class="num">21.5</td>
+        <td class="num good">-0.4</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Isaiah Hartenstein / Isaiah Joe</td>
+        <td class="good">Matched</td>
+        <td class="num">290.0</td>
+        <td class="num">253.0</td>
+        <td class="num">-37.0</td>
+        <td class="num">117.0</td>
+        <td class="num">116.1</td>
+        <td class="num">95.3</td>
+        <td class="num">98.7</td>
+        <td class="num">21.7</td>
+        <td class="num">15.3</td>
+        <td class="num warn">-6.4</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Alex Caruso / Shai Gilgeous-Alexander</td>
+        <td class="good">Matched</td>
+        <td class="num">526.0</td>
+        <td class="num">462.0</td>
+        <td class="num">-64.0</td>
+        <td class="num">120.9</td>
+        <td class="num">124.2</td>
+        <td class="num">99.6</td>
+        <td class="num">101.0</td>
+        <td class="num">21.3</td>
+        <td class="num">20.6</td>
+        <td class="num good">-0.7</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Jeff Green / Moussa Diabate</td>
+        <td class="bad">Missing</td>
+        <td class="num">298.0</td>
+        <td class="num"></td>
+        <td class="num"></td>
+        <td class="num">124.4</td>
+        <td class="num"></td>
+        <td class="num">103.2</td>
+        <td class="num"></td>
+        <td class="num">21.3</td>
+        <td class="num"></td>
+        <td class="num "></td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Shai Gilgeous-Alexander / Jalen Williams</td>
+        <td class="good">Matched</td>
+        <td class="num">665.0</td>
+        <td class="num">417.5</td>
+        <td class="num">-247.5</td>
+        <td class="num">120.9</td>
+        <td class="num">117.1</td>
+        <td class="num">100.0</td>
+        <td class="num">108.2</td>
+        <td class="num">20.9</td>
+        <td class="num">11.5</td>
+        <td class="num bad">-9.4</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Alex Caruso / Chet Holmgren</td>
+        <td class="good">Matched</td>
+        <td class="num">370.0</td>
+        <td class="num">338.9</td>
+        <td class="num">-31.1</td>
+        <td class="num">117.7</td>
+        <td class="num">117.0</td>
+        <td class="num">96.9</td>
+        <td class="num">99.6</td>
+        <td class="num">20.8</td>
+        <td class="num">16.2</td>
+        <td class="num warn">-4.6</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Jeff Green / Kon Knueppel</td>
+        <td class="bad">Missing</td>
+        <td class="num">293.0</td>
+        <td class="num"></td>
+        <td class="num"></td>
+        <td class="num">121.1</td>
+        <td class="num"></td>
+        <td class="num">100.3</td>
+        <td class="num"></td>
+        <td class="num">20.8</td>
+        <td class="num"></td>
+        <td class="num "></td>
+      </tr>
+      <tr>
+        <td>SAS</td>
+        <td>Devin Vassell / Victor Wembanyama</td>
+        <td class="good">Matched</td>
+        <td class="num">862.0</td>
+        <td class="num">741.0</td>
+        <td class="num">-121.0</td>
+        <td class="num">122.2</td>
+        <td class="num">119.8</td>
+        <td class="num">101.5</td>
+        <td class="num">101.2</td>
+        <td class="num">20.7</td>
+        <td class="num">18.5</td>
+        <td class="num good">-2.2</td>
+      </tr>
+      <tr>
+        <td>TOR</td>
+        <td>Jamal Shead / Jamison Battle</td>
+        <td class="good">Matched</td>
+        <td class="num">223.0</td>
+        <td class="num">200.2</td>
+        <td class="num">-22.8</td>
+        <td class="num">121.9</td>
+        <td class="num">119.8</td>
+        <td class="num">101.7</td>
+        <td class="num">103.9</td>
+        <td class="num">20.2</td>
+        <td class="num">9.2</td>
+        <td class="num bad">-11.0</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Alex Caruso / Isaiah Joe</td>
+        <td class="good">Matched</td>
+        <td class="num">350.0</td>
+        <td class="num">323.0</td>
+        <td class="num">-27.0</td>
+        <td class="num">121.3</td>
+        <td class="num">123.3</td>
+        <td class="num">101.6</td>
+        <td class="num">102.0</td>
+        <td class="num">19.7</td>
+        <td class="num">19.3</td>
+        <td class="num good">-0.4</td>
+      </tr>
+      <tr>
+        <td>DEN</td>
+        <td>Aaron Gordon / Nikola Jokic</td>
+        <td class="good">Matched</td>
+        <td class="num">456.0</td>
+        <td class="num">339.5</td>
+        <td class="num">-116.5</td>
+        <td class="num">127.4</td>
+        <td class="num">126.6</td>
+        <td class="num">107.9</td>
+        <td class="num">107.3</td>
+        <td class="num">19.6</td>
+        <td class="num">13.0</td>
+        <td class="num warn">-6.6</td>
+      </tr>
+      <tr>
+        <td>BOS</td>
+        <td>Anfernee Simons / Hugo Gonzalez</td>
+        <td class="good">Matched</td>
+        <td class="num">442.0</td>
+        <td class="num">442.1</td>
+        <td class="num">0.1</td>
+        <td class="num">122.7</td>
+        <td class="num">125.7</td>
+        <td class="num">103.0</td>
+        <td class="num">104.2</td>
+        <td class="num">19.6</td>
+        <td class="num">16.6</td>
+        <td class="num good">-3.0</td>
+      </tr>
+      <tr>
+        <td>OKC</td>
+        <td>Isaiah Hartenstein / Chet Holmgren</td>
+        <td class="good">Matched</td>
+        <td class="num">611.0</td>
+        <td class="num">561.1</td>
+        <td class="num">-49.9</td>
+        <td class="num">119.9</td>
+        <td class="num">117.0</td>
+        <td class="num">100.4</td>
+        <td class="num">101.3</td>
+        <td class="num">19.5</td>
+        <td class="num">15.0</td>
+        <td class="num warn">-4.5</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Grant Williams / Sion James</td>
+        <td class="good">Matched</td>
+        <td class="num">238.0</td>
+        <td class="num">193.8</td>
+        <td class="num">-44.2</td>
+        <td class="num">116.8</td>
+        <td class="num">121.3</td>
+        <td class="num">97.3</td>
+        <td class="num">98.0</td>
+        <td class="num">19.5</td>
+        <td class="num">17.3</td>
+        <td class="num good">-2.2</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Grant Williams / LaMelo Ball</td>
+        <td class="good">Matched</td>
+        <td class="num">250.0</td>
+        <td class="num">208.5</td>
+        <td class="num">-41.5</td>
+        <td class="num">125.7</td>
+        <td class="num">126.0</td>
+        <td class="num">106.5</td>
+        <td class="num">108.5</td>
+        <td class="num">19.3</td>
+        <td class="num">13.2</td>
+        <td class="num warn">-6.1</td>
+      </tr>
+      <tr>
+        <td>SAS</td>
+        <td>Julian Champagnie / Victor Wembanyama</td>
+        <td class="good">Matched</td>
+        <td class="num">1072.0</td>
+        <td class="num">916.9</td>
+        <td class="num">-155.1</td>
+        <td class="num">121.0</td>
+        <td class="num">119.5</td>
+        <td class="num">101.9</td>
+        <td class="num">102.6</td>
+        <td class="num">19.2</td>
+        <td class="num">16.3</td>
+        <td class="num good">-2.9</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>LaMelo Ball / Moussa Diabate</td>
+        <td class="good">Matched</td>
+        <td class="num">957.0</td>
+        <td class="num">807.3</td>
+        <td class="num">-149.7</td>
+        <td class="num">128.8</td>
+        <td class="num">122.3</td>
+        <td class="num">109.8</td>
+        <td class="num">111.2</td>
+        <td class="num">19.0</td>
+        <td class="num">12.6</td>
+        <td class="num warn">-6.4</td>
+      </tr>
+      <tr>
+        <td>CHA</td>
+        <td>Grant Williams / Ryan Kalkbrenner</td>
+        <td class="good">Matched</td>
+        <td class="num">272.0</td>
+        <td class="num">222.0</td>
+        <td class="num">-50.0</td>
+        <td class="num">116.9</td>
+        <td class="num">118.7</td>
+        <td class="num">97.9</td>
+        <td class="num">97.2</td>
+        <td class="num">19.0</td>
+        <td class="num">16.0</td>
+        <td class="num good">-3.0</td>
+      </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Read</h2>
+      <p class="muted">
+        This page validates only the raw two-man aggregate view. Missing rows mean the pair was not found under the
+        same team and normalized player names in our local analytics DB. Small rating gaps are fine. Repeated large
+        rating gaps or very large minute gaps are not.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

@@ -9,3 +9,5 @@ data/stints_*_inferred.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_pre2006.csv filter=lfs diff=lfs merge=lfs -text
 data/stints_backup_2006_onwards.csv filter=lfs diff=lfs merge=lfs -text
 data/onoff_daily_boxscores.html filter=lfs diff=lfs merge=lfs -text
+derived/contextual_causal/production_counted_evidence/*.parquet filter=lfs diff=lfs merge=lfs -text
+derived/contextual_causal/production_counted_onoff/*.parquet filter=lfs diff=lfs merge=lfs -text

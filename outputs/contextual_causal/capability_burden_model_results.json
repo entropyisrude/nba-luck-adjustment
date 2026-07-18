@@ -1,0 +1,105 @@
+{
+  "question": "Do prior-season capability vectors improve over generic context on the same rows?",
+  "coverage": {
+    "modern_rows_before_tracking_filter": 8257,
+    "rows_with_prior_tracking_200_minutes": 7034
+  },
+  "split": {
+    "train": "2022-23",
+    "validation": "2023-24",
+    "test": [
+      "2024-25",
+      "2025-26"
+    ],
+    "train_rows": 1966,
+    "validation_rows": 1526,
+    "test_rows": 3542,
+    "test_events": 530
+  },
+  "selected_alpha": {
+    "generic": 0.1,
+    "capability": 0.1
+  },
+  "validation": {
+    "generic": {
+      "0.1": {
+        "mae": 4.89825811210828,
+        "rmse": 6.322414452990844,
+        "correlation": 0.20391751135164796
+      },
+      "1.0": {
+        "mae": 4.898908814888759,
+        "rmse": 6.322976029070085,
+        "correlation": 0.2035331532855371
+      },
+      "10.0": {
+        "mae": 4.9010503404486485,
+        "rmse": 6.324429860959653,
+        "correlation": 0.2018675716269053
+      },
+      "100.0": {
+        "mae": 4.905891146470078,
+        "rmse": 6.3275331508263974,
+        "correlation": 0.19403873402953015
+      },
+      "1000.0": {
+        "mae": 4.950977128130767,
+        "rmse": 6.378881950145999,
+        "correlation": 0.14591589946107344
+      }
+    },
+    "capability": {
+      "0.1": {
+        "mae": 4.830138551401947,
+        "rmse": 6.259980091091028,
+        "correlation": 0.25280081399641585
+      },
+      "1.0": {
+        "mae": 4.833728132273422,
+        "rmse": 6.263979052410794,
+        "correlation": 0.2506671765803215
+      },
+      "10.0": {
+        "mae": 4.835920716231291,
+        "rmse": 6.266693730087748,
+        "correlation": 0.24737483474767272
+      },
+      "100.0": {
+        "mae": 4.850239060264704,
+        "rmse": 6.275716129386898,
+        "correlation": 0.23480456284148274
+      },
+      "1000.0": {
+        "mae": 4.922011818809171,
+        "rmse": 6.347887471094417,
+        "correlation": 0.1796719666115343
+      }
+    }
+  },
+  "test": {
+    "generic_context": {
+      "receiver": {
+        "mae": 4.835236835846243,
+        "rmse": 6.211518028065188,
+        "correlation": 0.2813952954359119
+      },
+      "event": {
+        "mae": 13.098661393915938,
+        "rmse": 16.454381020911633,
+        "correlation": 0.5436520045497567
+      }
+    },
+    "capability_response": {
+      "receiver": {
+        "mae": 4.791664105611313,
+        "rmse": 6.165950495564183,
+        "correlation": 0.311261774196952
+      },
+      "event": {
+        "mae": 13.225721757258206,
+        "rmse": 16.667504562287682,
+        "correlation": 0.5393843541495432
+      }
+    }
+  }
+}

@@ -1204,6 +1204,22 @@ def main() -> None:
                 2 AS source_priority
             FROM raw_hist_stints
         ),
+        preferred_game_source AS (
+            -- A lineup reconstruction is an indivisible whole-game artifact.
+            -- Choosing by (game_id, stint_index) can splice sources whose
+            -- boundaries and indices do not describe the same event timeline.
+            SELECT CAST(game_id AS VARCHAR) AS game_id_key,
+                   MIN(source_priority) AS source_priority
+            FROM stint_base
+            GROUP BY 1
+        ),
+        chosen_game_rows AS (
+            SELECT s.*
+            FROM stint_base s
+            JOIN preferred_game_source p
+              ON CAST(s.game_id AS VARCHAR) = p.game_id_key
+             AND s.source_priority = p.source_priority
+        ),
         deduped AS (
             SELECT *
             FROM (
@@ -1212,7 +1228,7 @@ def main() -> None:
                            PARTITION BY CAST(game_id AS VARCHAR), CAST(stint_index AS INTEGER)
                            ORDER BY source_priority ASC
                        ) AS rn
-                FROM stint_base
+                FROM chosen_game_rows
             )
             WHERE rn = 1
         )

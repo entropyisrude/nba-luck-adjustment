@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lineup Validation</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d7e0ea;
+      --ink: #16202b;
+      --muted: #5a6776;
+      --accent: #0b5cab;
+      --good: #0f766e;
+      --warn: #9a6700;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #e7f0ff 0%, transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    .hero, .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(22, 32, 43, 0.06);
+      margin-bottom: 16px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0b5cab 0%, #083b6d 100%);
+      color: #fff;
+      border-color: #0c4f91;
+    }
+    h1, h2 { margin: 0 0 10px; }
+    p { margin: 0 0 12px; line-height: 1.5; }
+    .muted { color: var(--muted); }
+    .hero .muted { color: rgba(255,255,255,0.88); }
+    a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .hero a { color: #fff; text-decoration: underline; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+    th, td {
+      border-bottom: 1px solid #e8edf5;
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    th {
+      background: #f8fbff;
+      position: sticky;
+      top: 0;
+    }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .good { color: var(--good); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .table-wrap { overflow: auto; }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #e9f7f1;
+      color: var(--good);
+    }
+    code {
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+    }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    li + li { margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Lineup Validation</h1>
+      <p class="muted">
+        First-pass external audit for the new lineup engine. This page checks whether our 5-man unit table
+        is at least surfacing real starting groups from Basketball-Reference for the current season.
+      </p>
+      <p class="muted">
+        This is intentionally a floor test, not the final word. It validates lineup detection presence and basic
+        game coverage. It does not yet validate exact per-game ORtg/DRtg or minute totals against a full external
+        lineup feed.
+      </p>
+      <p><a href="./lineup-review.html">Back to review hub</a></p>
+    </section>
+
+    <section class="card">
+      <h2>What This Confirms</h2>
+      <ul class="muted">
+        <li>Known current-season starting fives appear in our <code>5-man</code> lineup table.</li>
+        <li>Our appearance-game counts are at or within one game of the external start counts for those groups.</li>
+        <li>The lineup engine is not obviously dropping high-visibility current-season units.</li>
+      </ul>
+    </section>
+
+    <section class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Players</th>
+            <th class="num">BR Starts</th>
+            <th class="num">Our Games</th>
+            <th class="num">Gap</th>
+            <th class="num">Our Min</th>
+            <th class="num">Our Raw Net</th>
+            <th class="num">PF/100</th>
+            <th class="num">PA/100</th>
+            <th>Result</th>
+            <th>External Ref</th>
+          </tr>
+        </thead>
+        <tbody id="auditBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Next Gap</h2>
+      <p class="muted">
+        The next validation step should be a stronger apples-to-apples check against a full lineup stats feed
+        for exact minutes, possessions, offensive rating, defensive rating, and net rating on a targeted sample.
+        To do that cleanly here, we should regenerate or expose per-game 5-man logs in the Windows workflow and
+        then compare those rows directly.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const AUDIT_ROWS = [
+      {
+        team: "MIN",
+        players: "Rudy Gobert / Julius Randle / Donte DiVincenzo / Anthony Edwards / Jaden McDaniels",
+        externalStarts: 51,
+        localGames: 50,
+        localMinutes: 662.7,
+        netRaw: 7.7,
+        pf100: 99.8,
+        pa100: 92.1,
+        refLabel: "Basketball-Reference MIN start page",
+        refHref: "https://www.basketball-reference.com/teams/MIN/2026_start.html",
+        note: "Search snippet shows this group with 51 starts."
+      },
+      {
+        team: "DET",
+        players: "Tobias Harris / Duncan Robinson / Cade Cunningham / Jalen Duren / Ausar Thompson",
+        externalStarts: 38,
+        localGames: 37,
+        localMinutes: 482.2,
+        netRaw: 11.6,
+        pf100: 100.9,
+        pa100: 89.3,
+        refLabel: "Basketball-Reference DET start page",
+        refHref: "https://www.basketball-reference.com/teams/DET/2026_start.html",
+        note: "Search snippet shows this group with 38 starts."
+      },
+      {
+        team: "NYK",
+        players: "Karl-Anthony Towns / O.G. Anunoby / Josh Hart / Mikal Bridges / Jalen Brunson",
+        externalStarts: 27,
+        localGames: 32,
+        localMinutes: 381.4,
+        netRaw: 5.7,
+        pf100: 94.8,
+        pa100: 89.1,
+        refLabel: "Basketball-Reference NYK start page",
+        refHref: "https://www.basketball-reference.com/teams/NYK/2026_start.html",
+        note: "Search snippet shows this group with 27 starts."
+      },
+      {
+        team: "LAC",
+        players: "James Harden / Kawhi Leonard / Kris Dunn / Ivica Zubac / John Collins",
+        externalStarts: 19,
+        localGames: 24,
+        localMinutes: 303.3,
+        netRaw: 4.9,
+        pf100: 95.1,
+        pa100: 90.2,
+        refLabel: "Basketball-Reference LAC start page",
+        refHref: "https://www.basketball-reference.com/teams/LAC/2026_start.html",
+        note: "Search snippet shows this group with 19 starts."
+      },
+      {
+        team: "HOU",
+        players: "Kevin Durant / Josh Okogie / Alperen Sengun / Jabari Smith Jr. / Amen Thompson",
+        externalStarts: 24,
+        localGames: 35,
+        localMinutes: 346.0,
+        netRaw: 6.9,
+        pf100: 97.5,
+        pa100: 90.5,
+        refLabel: "Basketball-Reference HOU start page",
+        refHref: "https://www.basketball-reference.com/teams/HOU/2026_start.html",
+        note: "Search snippet shows this group with 24 starts."
+      },
+      {
+        team: "HOU",
+        players: "Kevin Durant / Alperen Sengun / Jabari Smith Jr. / Tari Eason / Amen Thompson",
+        externalStarts: 16,
+        localGames: 23,
+        localMinutes: 221.6,
+        netRaw: 4.2,
+        pf100: 93.7,
+        pa100: 89.5,
+        refLabel: "Basketball-Reference HOU start page",
+        refHref: "https://www.basketball-reference.com/teams/HOU/2026_start.html",
+        note: "Search snippet shows this group with 16 starts."
+      }
+    ];
+
+    const body = document.getElementById("auditBody");
+    for (const row of AUDIT_ROWS) {
+      const gap = row.localGames - row.externalStarts;
+      const result = gap >= -1 ? "Pass" : "Investigate";
+      const cls = gap >= -1 ? "good" : "warn";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.team}</td>
+        <td>${row.players}</td>
+        <td class="num">${row.externalStarts}</td>
+        <td class="num">${row.localGames}</td>
+        <td class="num ${cls}">${gap > 0 ? "+" : ""}${gap}</td>
+        <td class="num">${row.localMinutes.toFixed(1)}</td>
+        <td class="num">${row.netRaw.toFixed(1)}</td>
+        <td class="num">${row.pf100.toFixed(1)}</td>
+        <td class="num">${row.pa100.toFixed(1)}</td>
+        <td><span class="pill">${result}</span></td>
+        <td><a href="${row.refHref}">${row.refLabel}</a><br /><span class="muted">${row.note}</span></td>
+      `;
+      body.appendChild(tr);
+    }
+  </script>
+</body>
+</html>

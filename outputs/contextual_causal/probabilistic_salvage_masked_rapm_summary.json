@@ -1,0 +1,15 @@
+{
+  "masked_games": 180,
+  "score_consistent_imputed_games": 180,
+  "aggregate_fallback_games": 0,
+  "exposed_players": 680,
+  "omission_mae": 0.035283415724665396,
+  "aggregate_mae": 0.03212823739248351,
+  "multiple_imputation_mae": 0.019634006760398132,
+  "omission_p95_abs_error": 0.14165620780648927,
+  "aggregate_p95_abs_error": 0.13076553013585746,
+  "multiple_imputation_p95_abs_error": 0.07648401058556889,
+  "mean_between_imputation_sd": 0.0002616951215640804,
+  "validation_is_chronological_after_season": 2017,
+  "production_modified": false
+}

@@ -1,0 +1,459 @@
+{
+  "design": "within game and exact offensive five; defensive lineups share an exact four-man core",
+  "raw_swap_events": 60748,
+  "games": 4543,
+  "cv": {
+    "strict_rim_access": {
+      "5.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.2573817171298894,
+        "weighted_rmse_zero_contrast": 0.25200752648959224,
+        "rmse_improvement_pct": -2.1325516404840705,
+        "heldout_pearson": 0.028100379188078846,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.08277742642039487,
+          "weighted_rmse_zero_contrast": 0.07440808191657042,
+          "rmse_improvement_pct": -11.247897121187078,
+          "pearson": 0.06271655753438891
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.16173291824729147,
+          "weighted_rmse_zero_contrast": 0.15462731268453891,
+          "rmse_improvement_pct": -4.595310776207406,
+          "pearson": 0.039685401861597205
+        },
+        "ridge": 5.0
+      },
+      "20.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.2552327695376024,
+        "weighted_rmse_zero_contrast": 0.25200752648959224,
+        "rmse_improvement_pct": -1.2798201279688115,
+        "heldout_pearson": 0.02938117595111775,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.07999255364712356,
+          "weighted_rmse_zero_contrast": 0.07440808191657042,
+          "rmse_improvement_pct": -7.505195116862029,
+          "pearson": 0.07549738418310227
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.15944914322020629,
+          "weighted_rmse_zero_contrast": 0.15462731268453891,
+          "rmse_improvement_pct": -3.1183562929173902,
+          "pearson": 0.046513445758893344
+        },
+        "ridge": 20.0
+      },
+      "100.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.25273423001128936,
+        "weighted_rmse_zero_contrast": 0.25200752648959224,
+        "rmse_improvement_pct": -0.2883658007440948,
+        "heldout_pearson": 0.03277099617204439,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.0757766840340953,
+          "weighted_rmse_zero_contrast": 0.07440808191657042,
+          "rmse_improvement_pct": -1.839319173768561,
+          "pearson": 0.08946660700886747
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.15608718865291776,
+          "weighted_rmse_zero_contrast": 0.15462731268453891,
+          "rmse_improvement_pct": -0.944125551322994,
+          "pearson": 0.05204441880529892
+        },
+        "ridge": 100.0
+      }
+    },
+    "broad_rim_access": {
+      "5.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.2665260331988422,
+        "weighted_rmse_zero_contrast": 0.2608890144144426,
+        "rmse_improvement_pct": -2.1606961094362997,
+        "heldout_pearson": 0.029042828518116005,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.0855567028425567,
+          "weighted_rmse_zero_contrast": 0.07673194712846648,
+          "rmse_improvement_pct": -11.500758216542595,
+          "pearson": 0.07299857138346205
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.16802487462288698,
+          "weighted_rmse_zero_contrast": 0.16067376352076368,
+          "rmse_improvement_pct": -4.575178262487967,
+          "pearson": 0.04498980831755094
+        },
+        "ridge": 5.0
+      },
+      "20.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.2642266242921675,
+        "weighted_rmse_zero_contrast": 0.2608890144144426,
+        "rmse_improvement_pct": -1.2793217396355416,
+        "heldout_pearson": 0.030315583537081782,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.08261378685862694,
+          "weighted_rmse_zero_contrast": 0.07673194712846648,
+          "rmse_improvement_pct": -7.665437865551539,
+          "pearson": 0.08318914697960769
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.16565060788753327,
+          "weighted_rmse_zero_contrast": 0.16067376352076368,
+          "rmse_improvement_pct": -3.0974841552936283,
+          "pearson": 0.05026170889996903
+        },
+        "ridge": 20.0
+      },
+      "100.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.26165446001626397,
+        "weighted_rmse_zero_contrast": 0.2608890144144426,
+        "rmse_improvement_pct": -0.2933989395986547,
+        "heldout_pearson": 0.031837286232497194,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.07827189179272667,
+          "weighted_rmse_zero_contrast": 0.07673194712846648,
+          "rmse_improvement_pct": -2.0069146188639975,
+          "pearson": 0.09191805778364848
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.1622358188001218,
+          "weighted_rmse_zero_contrast": 0.16067376352076368,
+          "rmse_improvement_pct": -0.9721906334485331,
+          "pearson": 0.05312747055855931
+        },
+        "ridge": 100.0
+      }
+    },
+    "recorded_rim_attempt": {
+      "5.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.24348485644238002,
+        "weighted_rmse_zero_contrast": 0.23829455402799563,
+        "rmse_improvement_pct": -2.17810366483433,
+        "heldout_pearson": 0.023183778879872514,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.07827236325901463,
+          "weighted_rmse_zero_contrast": 0.0699972752953111,
+          "rmse_improvement_pct": -11.822014398120206,
+          "pearson": 0.05912258275561448
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.15373980863651557,
+          "weighted_rmse_zero_contrast": 0.14676313353794362,
+          "rmse_improvement_pct": -4.753697287860259,
+          "pearson": 0.02719342912082041
+        },
+        "ridge": 5.0
+      },
+      "20.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.24146535040336697,
+        "weighted_rmse_zero_contrast": 0.23829455402799563,
+        "rmse_improvement_pct": -1.3306205793518933,
+        "heldout_pearson": 0.023999721141383126,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.07568799807322803,
+          "weighted_rmse_zero_contrast": 0.0699972752953111,
+          "rmse_improvement_pct": -8.129920420342597,
+          "pearson": 0.06831885619658894
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.15162611785769034,
+          "weighted_rmse_zero_contrast": 0.14676313353794362,
+          "rmse_improvement_pct": -3.3134917485864834,
+          "pearson": 0.03041550042186927
+        },
+        "ridge": 20.0
+      },
+      "100.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.23911412917261088,
+        "weighted_rmse_zero_contrast": 0.23829455402799563,
+        "rmse_improvement_pct": -0.3439336446266372,
+        "heldout_pearson": 0.025357228570463786,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.0716864247393077,
+          "weighted_rmse_zero_contrast": 0.0699972752953111,
+          "rmse_improvement_pct": -2.413164565149506,
+          "pearson": 0.077683268779054
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.14843106877157863,
+          "weighted_rmse_zero_contrast": 0.14676313353794362,
+          "rmse_improvement_pct": -1.1364810722058971,
+          "pearson": 0.0321481608029221
+        },
+        "ridge": 100.0
+      }
+    },
+    "restricted_area_foul": {
+      "5.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.11662270656776651,
+        "weighted_rmse_zero_contrast": 0.11384655791665337,
+        "rmse_improvement_pct": -2.438500295411261,
+        "heldout_pearson": 0.008165651196569283,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.037250515830393974,
+          "weighted_rmse_zero_contrast": 0.033100745834149424,
+          "rmse_improvement_pct": -12.536786986724957,
+          "pearson": 0.04691113084145373
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.07326861524297866,
+          "weighted_rmse_zero_contrast": 0.06958294444532452,
+          "rmse_improvement_pct": -5.296802006632806,
+          "pearson": 0.016627921658536597
+        },
+        "ridge": 5.0
+      },
+      "20.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.11568298040180154,
+        "weighted_rmse_zero_contrast": 0.11384655791665337,
+        "rmse_improvement_pct": -1.6130680793112973,
+        "heldout_pearson": 0.007601947555412695,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.03615436969458148,
+          "weighted_rmse_zero_contrast": 0.033100745834149424,
+          "rmse_improvement_pct": -9.225241859298805,
+          "pearson": 0.04685577653221865
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.07226573042244447,
+          "weighted_rmse_zero_contrast": 0.06958294444532452,
+          "rmse_improvement_pct": -3.8555223532225957,
+          "pearson": 0.01688906695031043
+        },
+        "ridge": 20.0
+      },
+      "100.0": {
+        "eligible_events": 15527,
+        "heldout_events": 15430,
+        "players": 767,
+        "weighted_rmse_model": 0.11450004045136683,
+        "weighted_rmse_zero_contrast": 0.11384655791665337,
+        "rmse_improvement_pct": -0.5740028918501672,
+        "heldout_pearson": 0.007912778341618331,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 2167,
+          "weighted_rmse_model": 0.03427376700252509,
+          "weighted_rmse_zero_contrast": 0.033100745834149424,
+          "rmse_improvement_pct": -3.5437907479579422,
+          "pearson": 0.046290436572065406
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 3102,
+          "weighted_rmse_model": 0.07065327928998826,
+          "weighted_rmse_zero_contrast": 0.06958294444532452,
+          "rmse_improvement_pct": -1.5382143615735533,
+          "pearson": 0.016910264167771156
+        },
+        "ridge": 100.0
+      }
+    },
+    "rim_fg_pct": {
+      "5.0": {
+        "eligible_events": 1736,
+        "heldout_events": 1587,
+        "players": 589,
+        "weighted_rmse_model": 0.4214749646190482,
+        "weighted_rmse_zero_contrast": 0.40468143477083385,
+        "rmse_improvement_pct": -4.1498147444605005,
+        "heldout_pearson": 0.031103051168861886,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 77,
+          "weighted_rmse_model": 0.21088095223953415,
+          "weighted_rmse_zero_contrast": 0.18137620146807054,
+          "rmse_improvement_pct": -16.267156623994914,
+          "pearson": -0.046221191729289575
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 107,
+          "weighted_rmse_model": 0.30892325090718104,
+          "weighted_rmse_zero_contrast": 0.27317770064383384,
+          "rmse_improvement_pct": -13.085090832487767,
+          "pearson": -0.018812402541641696
+        },
+        "ridge": 5.0
+      },
+      "20.0": {
+        "eligible_events": 1736,
+        "heldout_events": 1587,
+        "players": 589,
+        "weighted_rmse_model": 0.4077784381527039,
+        "weighted_rmse_zero_contrast": 0.40468143477083385,
+        "rmse_improvement_pct": -0.7652941587557249,
+        "heldout_pearson": 0.023237082073357514,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 77,
+          "weighted_rmse_model": 0.19063900067500436,
+          "weighted_rmse_zero_contrast": 0.18137620146807054,
+          "rmse_improvement_pct": -5.106954017098242,
+          "pearson": -0.02571403112526293
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 107,
+          "weighted_rmse_model": 0.28153365669311575,
+          "weighted_rmse_zero_contrast": 0.27317770064383384,
+          "rmse_improvement_pct": -3.058798734153023,
+          "pearson": -0.00083582971140441
+        },
+        "ridge": 20.0
+      },
+      "100.0": {
+        "eligible_events": 1736,
+        "heldout_events": 1587,
+        "players": 589,
+        "weighted_rmse_model": 0.4045444595497829,
+        "weighted_rmse_zero_contrast": 0.40468143477083385,
+        "rmse_improvement_pct": 0.03384766615955881,
+        "heldout_pearson": 0.019872264940095877,
+        "heldout_player_fold_aggregate_min_5_events": {
+          "units": 77,
+          "weighted_rmse_model": 0.18219029793703476,
+          "weighted_rmse_zero_contrast": 0.18137620146807054,
+          "rmse_improvement_pct": -0.44884414954931007,
+          "pearson": -0.00980336542884128
+        },
+        "heldout_pair_fold_aggregate_min_2_events": {
+          "units": 107,
+          "weighted_rmse_model": 0.27334251862956777,
+          "weighted_rmse_zero_contrast": 0.27317770064383384,
+          "rmse_improvement_pct": -0.06033361630377598,
+          "pearson": 0.015831276013404002
+        },
+        "ridge": 100.0
+      }
+    }
+  },
+  "disjoint_game_split_replication": {
+    "strict_rim_access": {
+      "pooled_player": {
+        "units": 438,
+        "pearson": 0.0629175806971521,
+        "spearman": 0.08027276013869503,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player pooled across seasons"
+      },
+      "player_season": {
+        "units": 442,
+        "pearson": 0.06299125293628491,
+        "spearman": 0.05225795822756955,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player-season"
+      }
+    },
+    "broad_rim_access": {
+      "pooled_player": {
+        "units": 438,
+        "pearson": 0.07954189017704152,
+        "spearman": 0.09658947002825297,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player pooled across seasons"
+      },
+      "player_season": {
+        "units": 442,
+        "pearson": 0.07708823894815689,
+        "spearman": 0.058950129800140236,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player-season"
+      }
+    },
+    "recorded_rim_attempt": {
+      "pooled_player": {
+        "units": 438,
+        "pearson": 0.03515918908195108,
+        "spearman": 0.051853117050122105,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player pooled across seasons"
+      },
+      "player_season": {
+        "units": 442,
+        "pearson": 0.07883453174147723,
+        "spearman": 0.08826346999991175,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player-season"
+      }
+    },
+    "restricted_area_foul": {
+      "pooled_player": {
+        "units": 438,
+        "pearson": 0.032671249875580094,
+        "spearman": 0.05660057785550813,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player pooled across seasons"
+      },
+      "player_season": {
+        "units": 442,
+        "pearson": -0.01881526145840864,
+        "spearman": -0.0054953045639162075,
+        "ridge": 100.0,
+        "min_events_each_half": 10,
+        "unit": "player-season"
+      }
+    },
+    "rim_fg_pct": {
+      "pooled_player": {
+        "units": 1
+      },
+      "player_season": {
+        "units": 0
+      }
+    }
+  }
+}

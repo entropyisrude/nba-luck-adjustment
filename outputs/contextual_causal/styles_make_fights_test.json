@@ -1,0 +1,1942 @@
+{
+  "claim_tier": "predictive nonlinear matchup screen; 2025-26 confirmation",
+  "test_definition": "joint 3x3 offense-defense style cells versus separate marginal style bins",
+  "style_pairs": {
+    "rim_pressure_vs_rim_anchor": [
+      "o_rim",
+      "d_rim_anchor"
+    ],
+    "spacing_vs_defensive_size": [
+      "o_spacing",
+      "d_size"
+    ],
+    "offensive_glass_vs_defensive_glass": [
+      "o_oreb",
+      "d_dreb"
+    ],
+    "turnover_proneness_vs_disruption": [
+      "o_turnover",
+      "d_disruption"
+    ],
+    "foul_pressure_vs_foul_discipline": [
+      "o_foul_pressure",
+      "d_foul_rate"
+    ]
+  },
+  "primary_at_least_8_of_10_frozen_slots": {
+    "selection_season": 2024,
+    "confirmation_season": 2025,
+    "confirmation_rows": 2410,
+    "confirmation_games": 1205,
+    "pair_tests": {
+      "rim_pressure_vs_rim_anchor": {
+        "marginal_model": {
+          "alpha": 0.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "rim_pressure_vs_rim_anchor:off_low",
+            "rim_pressure_vs_rim_anchor:off_high",
+            "rim_pressure_vs_rim_anchor:def_low",
+            "rim_pressure_vs_rim_anchor:def_high"
+          ],
+          "coefficients": [
+            0.11604540077382694,
+            2.704959102023439,
+            0.44333695830269965,
+            0.2417426326322567,
+            0.8980188998436476,
+            0.735863017925786,
+            0.7230319153057546,
+            -0.0715590219010563,
+            -0.21239388192024322,
+            -0.25750529587090426,
+            -0.1435739064071585,
+            -0.3354798290170347,
+            0.3516202191268841,
+            -0.2495801073778675,
+            0.005619028232920752,
+            -0.5067885671543443,
+            0.2716106109312993,
+            -0.24659160400172805,
+            0.1335000069099779
+          ],
+          "final_train_thresholds": {
+            "rim_pressure_vs_rim_anchor": {
+              "offense": [
+                -0.08644667287681687,
+                0.11422407808946569
+              ],
+              "defense": [
+                -0.08589277625050022,
+                0.08658550971853636
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "rim_pressure_vs_rim_anchor:off_low",
+            "rim_pressure_vs_rim_anchor:off_high",
+            "rim_pressure_vs_rim_anchor:def_low",
+            "rim_pressure_vs_rim_anchor:def_high",
+            "rim_pressure_vs_rim_anchor:off_low_x_def_low",
+            "rim_pressure_vs_rim_anchor:off_low_x_def_high",
+            "rim_pressure_vs_rim_anchor:off_high_x_def_low",
+            "rim_pressure_vs_rim_anchor:off_high_x_def_high"
+          ],
+          "coefficients": [
+            0.06151911662319611,
+            2.663912911438988,
+            0.4386006761117111,
+            0.227859045467668,
+            0.8943469016530677,
+            0.7232162952868477,
+            0.7125511588768759,
+            -0.0659041872752821,
+            -0.21314065387723138,
+            -0.24096783329086516,
+            -0.13177906610689696,
+            -0.3243108386253326,
+            0.3398975310174921,
+            -0.25381944993131716,
+            0.008923975067546597,
+            -0.39118601393602814,
+            0.3277430479110228,
+            -0.11061149089142687,
+            0.15296073032345536,
+            -0.1544878101777542,
+            -0.13112437006547537,
+            -0.17794990480451583,
+            -0.029166187261969883
+          ],
+          "final_train_thresholds": {
+            "rim_pressure_vs_rim_anchor": {
+              "offense": [
+                -0.08644667287681687,
+                0.11422407808946569
+              ],
+              "defense": [
+                -0.08589277625050022,
+                0.08658550971853636
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.009490680332080448,
+          "game_cluster_95pct": [
+            -0.01731637020355059,
+            0.03684865149109148
+          ]
+        }
+      },
+      "spacing_vs_defensive_size": {
+        "marginal_model": {
+          "alpha": 0.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "spacing_vs_defensive_size:off_low",
+            "spacing_vs_defensive_size:off_high",
+            "spacing_vs_defensive_size:def_low",
+            "spacing_vs_defensive_size:def_high"
+          ],
+          "coefficients": [
+            0.1590328855442613,
+            2.6956879519636865,
+            0.4470066447846889,
+            0.23896005623669786,
+            0.898024276599047,
+            1.0245464858946476,
+            0.8809554195435617,
+            -0.08458762644461296,
+            -0.20047998296620761,
+            -0.2627166610202739,
+            -0.021534608295769347,
+            -0.41823398454308053,
+            0.335313711693906,
+            -0.2512138401395965,
+            0.0018358710737793392,
+            0.29998367368989015,
+            -0.1254509365788266,
+            -0.4760774067532566,
+            -0.17561492102913237
+          ],
+          "final_train_thresholds": {
+            "spacing_vs_defensive_size": {
+              "offense": [
+                -0.10120361892473362,
+                0.10721092291173012
+              ],
+              "defense": [
+                -0.08041695268252592,
+                0.08745199410508847
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "spacing_vs_defensive_size:off_low",
+            "spacing_vs_defensive_size:off_high",
+            "spacing_vs_defensive_size:def_low",
+            "spacing_vs_defensive_size:def_high",
+            "spacing_vs_defensive_size:off_low_x_def_low",
+            "spacing_vs_defensive_size:off_low_x_def_high",
+            "spacing_vs_defensive_size:off_high_x_def_low",
+            "spacing_vs_defensive_size:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -0.03381518018813107,
+            2.692283900629784,
+            0.4452062742258392,
+            0.23626099473468665,
+            0.8974028726594203,
+            1.0222249265397707,
+            0.8717278773093624,
+            -0.08544031504429232,
+            -0.20073655919369857,
+            -0.26287809252713873,
+            -0.021785022624944226,
+            -0.41499987892134776,
+            0.33501208215588485,
+            -0.25064505231466,
+            0.0012622285975904958,
+            0.5612042695378665,
+            0.20354756525988685,
+            -0.17455252716841116,
+            0.11826840894458585,
+            -0.36118056928931397,
+            -0.46423142087483354,
+            -0.5322172464471769,
+            -0.43723030594875717
+          ],
+          "final_train_thresholds": {
+            "spacing_vs_defensive_size": {
+              "offense": [
+                -0.10120361892473362,
+                0.10721092291173012
+              ],
+              "defense": [
+                -0.08041695268252592,
+                0.08745199410508847
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": -0.026568284708350376,
+          "game_cluster_95pct": [
+            -0.07159172985675255,
+            0.018302305826241854
+          ]
+        }
+      },
+      "offensive_glass_vs_defensive_glass": {
+        "marginal_model": {
+          "alpha": 0.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "offensive_glass_vs_defensive_glass:off_low",
+            "offensive_glass_vs_defensive_glass:off_high",
+            "offensive_glass_vs_defensive_glass:def_low",
+            "offensive_glass_vs_defensive_glass:def_high"
+          ],
+          "coefficients": [
+            0.18024118333952727,
+            2.6945378891428997,
+            0.44182109824841875,
+            0.23893774361547263,
+            0.8926842431289475,
+            1.024714305455116,
+            0.7231069695571555,
+            -0.21439238603317157,
+            -0.2179176590113628,
+            -0.25113091805516596,
+            -0.009345076659609583,
+            -0.326243537346098,
+            0.5082243929143213,
+            -0.2520812528198063,
+            -0.0002712627847523381,
+            -0.46343407516368784,
+            -0.07733695179337971,
+            0.2257020648499448,
+            -0.22565158235659885
+          ],
+          "final_train_thresholds": {
+            "offensive_glass_vs_defensive_glass": {
+              "offense": [
+                -0.0914764288430992,
+                0.07237421429059555
+              ],
+              "defense": [
+                -0.057153799197804965,
+                0.10421069786015805
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "offensive_glass_vs_defensive_glass:off_low",
+            "offensive_glass_vs_defensive_glass:off_high",
+            "offensive_glass_vs_defensive_glass:def_low",
+            "offensive_glass_vs_defensive_glass:def_high",
+            "offensive_glass_vs_defensive_glass:off_low_x_def_low",
+            "offensive_glass_vs_defensive_glass:off_low_x_def_high",
+            "offensive_glass_vs_defensive_glass:off_high_x_def_low",
+            "offensive_glass_vs_defensive_glass:off_high_x_def_high"
+          ],
+          "coefficients": [
+            0.23808638366275206,
+            2.654592171904336,
+            0.43778550945673533,
+            0.22714574253444517,
+            0.8906160447155904,
+            0.9923291336656087,
+            0.7109011539335316,
+            -0.1826106926531908,
+            -0.2169118590522005,
+            -0.2348622054481058,
+            -0.019218693540044938,
+            -0.3139361225132191,
+            0.4710208833269309,
+            -0.2566685428022015,
+            0.0024547685025513217,
+            -0.5379105469319857,
+            -0.20343931322582898,
+            -0.053613665167320634,
+            -0.19080689976147377,
+            0.41642929570803267,
+            -0.007970921455143472,
+            0.3564430179876558,
+            0.0371303538318549
+          ],
+          "final_train_thresholds": {
+            "offensive_glass_vs_defensive_glass": {
+              "offense": [
+                -0.0914764288430992,
+                0.07237421429059555
+              ],
+              "defense": [
+                -0.057153799197804965,
+                0.10421069786015805
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.04127522931410832,
+          "game_cluster_95pct": [
+            -0.002033180386846744,
+            0.08612347520928093
+          ]
+        }
+      },
+      "turnover_proneness_vs_disruption": {
+        "marginal_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "turnover_proneness_vs_disruption:off_low",
+            "turnover_proneness_vs_disruption:off_high",
+            "turnover_proneness_vs_disruption:def_low",
+            "turnover_proneness_vs_disruption:def_high"
+          ],
+          "coefficients": [
+            0.17250583783032072,
+            2.6702021025604665,
+            0.4419248126587426,
+            0.22784286617969446,
+            0.8965949051909436,
+            0.9829488469939732,
+            0.7038589302309335,
+            -0.07058085840787383,
+            -0.44499732905974276,
+            -0.24436201998236703,
+            -0.03361643409202948,
+            -0.29650842198414323,
+            0.3371525481530842,
+            -0.3277779601150011,
+            0.007746611794936713,
+            -0.23701097024520937,
+            0.41902068386257035,
+            -0.4646979869274393,
+            -0.23492392689422462
+          ],
+          "final_train_thresholds": {
+            "turnover_proneness_vs_disruption": {
+              "offense": [
+                -0.17245516971575947,
+                0.1202651735994256
+              ],
+              "defense": [
+                -0.1711569156966721,
+                0.11452108559214196
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "turnover_proneness_vs_disruption:off_low",
+            "turnover_proneness_vs_disruption:off_high",
+            "turnover_proneness_vs_disruption:def_low",
+            "turnover_proneness_vs_disruption:def_high",
+            "turnover_proneness_vs_disruption:off_low_x_def_low",
+            "turnover_proneness_vs_disruption:off_low_x_def_high",
+            "turnover_proneness_vs_disruption:off_high_x_def_low",
+            "turnover_proneness_vs_disruption:off_high_x_def_high"
+          ],
+          "coefficients": [
+            0.21679998481357324,
+            2.671432668771162,
+            0.4432644260189866,
+            0.22624169666048324,
+            0.8940130517153438,
+            0.9811378336807113,
+            0.7022697079351351,
+            -0.07111183377425762,
+            -0.42830606736959664,
+            -0.2461510721445325,
+            -0.03930226426903877,
+            -0.29436737361905524,
+            0.33650005638941266,
+            -0.3275337382982627,
+            0.006187703243452993,
+            -0.41842407564609463,
+            0.45222870917045077,
+            -0.509884365295691,
+            -0.33572175213196725,
+            0.5231630864747809,
+            0.10335290305661173,
+            -0.3720004516501399,
+            0.22503378027025378
+          ],
+          "final_train_thresholds": {
+            "turnover_proneness_vs_disruption": {
+              "offense": [
+                -0.17245516971575947,
+                0.1202651735994256
+              ],
+              "defense": [
+                -0.1711569156966721,
+                0.11452108559214196
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": -0.033256318449237376,
+          "game_cluster_95pct": [
+            -0.11489658514802936,
+            0.04852329804547749
+          ]
+        }
+      },
+      "foul_pressure_vs_foul_discipline": {
+        "marginal_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "foul_pressure_vs_foul_discipline:off_low",
+            "foul_pressure_vs_foul_discipline:off_high",
+            "foul_pressure_vs_foul_discipline:def_low",
+            "foul_pressure_vs_foul_discipline:def_high"
+          ],
+          "coefficients": [
+            -0.12868076124345693,
+            2.6633351783512107,
+            0.43974979794450175,
+            0.22449186934289814,
+            0.8922006903592506,
+            0.9964678430774795,
+            0.7203020734955332,
+            -0.06534418114179331,
+            -0.20535932109911964,
+            -0.24425360259897988,
+            -0.030364953538687862,
+            -0.3107344231139564,
+            0.33472098041767595,
+            -0.2538759419233547,
+            -0.05488239764013142,
+            0.05832202240541996,
+            0.05403840003455925,
+            0.05032806362104679,
+            0.223297083548601
+          ],
+          "final_train_thresholds": {
+            "foul_pressure_vs_foul_discipline": {
+              "offense": [
+                -0.075866477913448,
+                0.16738232342938966
+              ],
+              "defense": [
+                -0.13171182626247058,
+                0.10775707167674067
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "foul_pressure_vs_foul_discipline:off_low",
+            "foul_pressure_vs_foul_discipline:off_high",
+            "foul_pressure_vs_foul_discipline:def_low",
+            "foul_pressure_vs_foul_discipline:def_high",
+            "foul_pressure_vs_foul_discipline:off_low_x_def_low",
+            "foul_pressure_vs_foul_discipline:off_low_x_def_high",
+            "foul_pressure_vs_foul_discipline:off_high_x_def_low",
+            "foul_pressure_vs_foul_discipline:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -0.06922837290499546,
+            2.6637895427859553,
+            0.43910177565176617,
+            0.2247607628275657,
+            0.893561109107798,
+            0.9987029994155169,
+            0.7205467408147804,
+            -0.06596345728317647,
+            -0.20557397947315953,
+            -0.2550015714484042,
+            -0.03202931247752004,
+            -0.3089677522312318,
+            0.333782407015815,
+            -0.253725973818494,
+            -0.0582046139549123,
+            0.03617440881012885,
+            -0.12203037663296001,
+            -0.019435813393824303,
+            0.09391817784832036,
+            0.029232445882074794,
+            0.028734963772502054,
+            0.1957921272988617,
+            0.4069172335463575
+          ],
+          "final_train_thresholds": {
+            "foul_pressure_vs_foul_discipline": {
+              "offense": [
+                -0.075866477913448,
+                0.16738232342938966
+              ],
+              "defense": [
+                -0.13171182626247058,
+                0.10775707167674067
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": -0.011632090903623826,
+          "game_cluster_95pct": [
+            -0.049787663397742876,
+            0.02529039455913816
+          ]
+        }
+      }
+    },
+    "all_five_joint": {
+      "marginal_model": {
+        "alpha": 10000.0,
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_vs_rim_anchor:off_low",
+          "rim_pressure_vs_rim_anchor:off_high",
+          "rim_pressure_vs_rim_anchor:def_low",
+          "rim_pressure_vs_rim_anchor:def_high",
+          "spacing_vs_defensive_size:off_low",
+          "spacing_vs_defensive_size:off_high",
+          "spacing_vs_defensive_size:def_low",
+          "spacing_vs_defensive_size:def_high",
+          "offensive_glass_vs_defensive_glass:off_low",
+          "offensive_glass_vs_defensive_glass:off_high",
+          "offensive_glass_vs_defensive_glass:def_low",
+          "offensive_glass_vs_defensive_glass:def_high",
+          "turnover_proneness_vs_disruption:off_low",
+          "turnover_proneness_vs_disruption:off_high",
+          "turnover_proneness_vs_disruption:def_low",
+          "turnover_proneness_vs_disruption:def_high",
+          "foul_pressure_vs_foul_discipline:off_low",
+          "foul_pressure_vs_foul_discipline:off_high",
+          "foul_pressure_vs_foul_discipline:def_low",
+          "foul_pressure_vs_foul_discipline:def_high"
+        ],
+        "coefficients": [
+          0.3345599942378291,
+          2.675603011305629,
+          0.4389476574249776,
+          0.23585565721483576,
+          0.8964389987264797,
+          0.7421007886550895,
+          0.7548612011799424,
+          -0.15999287504469373,
+          -0.4513445121479969,
+          -0.22397047360491143,
+          -0.12688536510613324,
+          -0.3510416924346157,
+          0.44604352120167673,
+          -0.33061950582710237,
+          -0.05321989894432977,
+          -0.43534262870425555,
+          0.23465126509686485,
+          -0.08527502106103922,
+          0.15345887578640566,
+          0.2060447616705643,
+          0.016788191795955122,
+          -0.38035207067069443,
+          -0.20432309934665052,
+          -0.3591678046602567,
+          -0.11454725047203501,
+          0.2027582366795397,
+          -0.13543178495774974,
+          -0.23498441334934012,
+          0.4099935797152935,
+          -0.4627576735906115,
+          -0.2125870155206815,
+          0.06674460706188126,
+          0.035189400961445974,
+          0.06293226466068508,
+          0.23221222476985573
+        ],
+        "final_train_thresholds": {
+          "rim_pressure_vs_rim_anchor": {
+            "offense": [
+              -0.08644667287681687,
+              0.11422407808946569
+            ],
+            "defense": [
+              -0.08589277625050022,
+              0.08658550971853636
+            ]
+          },
+          "spacing_vs_defensive_size": {
+            "offense": [
+              -0.10120361892473362,
+              0.10721092291173012
+            ],
+            "defense": [
+              -0.08041695268252592,
+              0.08745199410508847
+            ]
+          },
+          "offensive_glass_vs_defensive_glass": {
+            "offense": [
+              -0.0914764288430992,
+              0.07237421429059555
+            ],
+            "defense": [
+              -0.057153799197804965,
+              0.10421069786015805
+            ]
+          },
+          "turnover_proneness_vs_disruption": {
+            "offense": [
+              -0.17245516971575947,
+              0.1202651735994256
+            ],
+            "defense": [
+              -0.1711569156966721,
+              0.11452108559214196
+            ]
+          },
+          "foul_pressure_vs_foul_discipline": {
+            "offense": [
+              -0.075866477913448,
+              0.16738232342938966
+            ],
+            "defense": [
+              -0.13171182626247058,
+              0.10775707167674067
+            ]
+          }
+        }
+      },
+      "joint_3x3_model": {
+        "alpha": 10000.0,
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_vs_rim_anchor:off_low",
+          "rim_pressure_vs_rim_anchor:off_high",
+          "rim_pressure_vs_rim_anchor:def_low",
+          "rim_pressure_vs_rim_anchor:def_high",
+          "rim_pressure_vs_rim_anchor:off_low_x_def_low",
+          "rim_pressure_vs_rim_anchor:off_low_x_def_high",
+          "rim_pressure_vs_rim_anchor:off_high_x_def_low",
+          "rim_pressure_vs_rim_anchor:off_high_x_def_high",
+          "spacing_vs_defensive_size:off_low",
+          "spacing_vs_defensive_size:off_high",
+          "spacing_vs_defensive_size:def_low",
+          "spacing_vs_defensive_size:def_high",
+          "spacing_vs_defensive_size:off_low_x_def_low",
+          "spacing_vs_defensive_size:off_low_x_def_high",
+          "spacing_vs_defensive_size:off_high_x_def_low",
+          "spacing_vs_defensive_size:off_high_x_def_high",
+          "offensive_glass_vs_defensive_glass:off_low",
+          "offensive_glass_vs_defensive_glass:off_high",
+          "offensive_glass_vs_defensive_glass:def_low",
+          "offensive_glass_vs_defensive_glass:def_high",
+          "offensive_glass_vs_defensive_glass:off_low_x_def_low",
+          "offensive_glass_vs_defensive_glass:off_low_x_def_high",
+          "offensive_glass_vs_defensive_glass:off_high_x_def_low",
+          "offensive_glass_vs_defensive_glass:off_high_x_def_high",
+          "turnover_proneness_vs_disruption:off_low",
+          "turnover_proneness_vs_disruption:off_high",
+          "turnover_proneness_vs_disruption:def_low",
+          "turnover_proneness_vs_disruption:def_high",
+          "turnover_proneness_vs_disruption:off_low_x_def_low",
+          "turnover_proneness_vs_disruption:off_low_x_def_high",
+          "turnover_proneness_vs_disruption:off_high_x_def_low",
+          "turnover_proneness_vs_disruption:off_high_x_def_high",
+          "foul_pressure_vs_foul_discipline:off_low",
+          "foul_pressure_vs_foul_discipline:off_high",
+          "foul_pressure_vs_foul_discipline:def_low",
+          "foul_pressure_vs_foul_discipline:def_high",
+          "foul_pressure_vs_foul_discipline:off_low_x_def_low",
+          "foul_pressure_vs_foul_discipline:off_low_x_def_high",
+          "foul_pressure_vs_foul_discipline:off_high_x_def_low",
+          "foul_pressure_vs_foul_discipline:off_high_x_def_high"
+        ],
+        "coefficients": [
+          0.37981662067344124,
+          2.6784166286642037,
+          0.43876904894886437,
+          0.23538269075712318,
+          0.8964335289284532,
+          0.7529076899114193,
+          0.7586921687649185,
+          -0.16551812773645588,
+          -0.4361170099010995,
+          -0.2419062331459776,
+          -0.13901409468836137,
+          -0.34296472795758104,
+          0.4493999353446477,
+          -0.3310960352669894,
+          -0.058427704488683535,
+          -0.3524035423740587,
+          0.2771035840631256,
+          0.0122267389611531,
+          0.20240862292653175,
+          -0.10413620935304763,
+          -0.12710830072302703,
+          -0.20255467295945184,
+          0.018386371291005205,
+          0.34920787979112006,
+          0.17922642338727654,
+          -0.2108518433808682,
+          -0.06810475752602627,
+          -0.1763206277972419,
+          -0.26951706671096154,
+          -0.35692028426525285,
+          -0.20568014795014655,
+          -0.4972346944267602,
+          -0.23119071849405656,
+          -0.05189492638202817,
+          -0.15286921201203482,
+          0.44991272240159363,
+          0.015680478823106414,
+          0.3623484459899049,
+          0.044888771563974465,
+          -0.40999738610232883,
+          0.45806987445442643,
+          -0.5101025472919346,
+          -0.3064046929756183,
+          0.5241905384073793,
+          0.10672915651969589,
+          -0.36670623235993344,
+          0.1983229260984983,
+          0.03800468593767316,
+          -0.14382046542927332,
+          -0.009314357273874843,
+          0.09678537723124585,
+          0.02062792167726909,
+          0.028217120653097522,
+          0.20223362092461486,
+          0.4143842769324252
+        ],
+        "final_train_thresholds": {
+          "rim_pressure_vs_rim_anchor": {
+            "offense": [
+              -0.08644667287681687,
+              0.11422407808946569
+            ],
+            "defense": [
+              -0.08589277625050022,
+              0.08658550971853636
+            ]
+          },
+          "spacing_vs_defensive_size": {
+            "offense": [
+              -0.10120361892473362,
+              0.10721092291173012
+            ],
+            "defense": [
+              -0.08041695268252592,
+              0.08745199410508847
+            ]
+          },
+          "offensive_glass_vs_defensive_glass": {
+            "offense": [
+              -0.0914764288430992,
+              0.07237421429059555
+            ],
+            "defense": [
+              -0.057153799197804965,
+              0.10421069786015805
+            ]
+          },
+          "turnover_proneness_vs_disruption": {
+            "offense": [
+              -0.17245516971575947,
+              0.1202651735994256
+            ],
+            "defense": [
+              -0.1711569156966721,
+              0.11452108559214196
+            ]
+          },
+          "foul_pressure_vs_foul_discipline": {
+            "offense": [
+              -0.075866477913448,
+              0.16738232342938966
+            ],
+            "defense": [
+              -0.13171182626247058,
+              0.10775707167674067
+            ]
+          }
+        }
+      },
+      "joint_vs_marginal": {
+        "rmse_improvement_pct": -0.052332554696610245,
+        "game_cluster_95pct": [
+          -0.1571024685022976,
+          0.056860207924405146
+        ]
+      }
+    }
+  },
+  "all_10_frozen_slots_sensitivity": {
+    "selection_season": 2024,
+    "confirmation_season": 2025,
+    "confirmation_rows": 230,
+    "confirmation_games": 115,
+    "pair_tests": {
+      "rim_pressure_vs_rim_anchor": {
+        "marginal_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "rim_pressure_vs_rim_anchor:off_low",
+            "rim_pressure_vs_rim_anchor:off_high",
+            "rim_pressure_vs_rim_anchor:def_low",
+            "rim_pressure_vs_rim_anchor:def_high"
+          ],
+          "coefficients": [
+            -1.5437132898244523,
+            2.0321958935834408,
+            0.1125767442135225,
+            0.0,
+            0.0,
+            0.8023773842032714,
+            0.6789586482364345,
+            -0.38207130344508233,
+            -0.3689487334366397,
+            -0.19928031579245664,
+            -0.4799671609618071,
+            0.0980588148615626,
+            0.09503968509203212,
+            0.13840033841612304,
+            -0.028504482451951526,
+            -0.7554569411035207,
+            0.3598378962197931,
+            -0.1290522147529702,
+            0.5340475208668538
+          ],
+          "final_train_thresholds": {
+            "rim_pressure_vs_rim_anchor": {
+              "offense": [
+                -0.1308353271925125,
+                0.10102424367762379
+              ],
+              "defense": [
+                -0.06104452756331107,
+                0.11286763378953053
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "rim_pressure_vs_rim_anchor:off_low",
+            "rim_pressure_vs_rim_anchor:off_high",
+            "rim_pressure_vs_rim_anchor:def_low",
+            "rim_pressure_vs_rim_anchor:def_high",
+            "rim_pressure_vs_rim_anchor:off_low_x_def_low",
+            "rim_pressure_vs_rim_anchor:off_low_x_def_high",
+            "rim_pressure_vs_rim_anchor:off_high_x_def_low",
+            "rim_pressure_vs_rim_anchor:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -1.5407436593832138,
+            2.040445951574451,
+            0.1065344513732026,
+            0.0,
+            0.0,
+            0.7890712280236034,
+            0.6757461546837451,
+            -0.38398872851140214,
+            -0.3637439514333265,
+            -0.20140929942886301,
+            -0.5493763251547603,
+            0.08147798821837945,
+            0.10267928039802642,
+            0.13305185916109297,
+            -0.02264340868062055,
+            -0.7353356012701707,
+            0.32422471185491447,
+            0.023137047670953845,
+            0.39068155077924327,
+            -0.6209031928132727,
+            0.5146072237224183,
+            -0.15122444177087413,
+            0.3089643126180667
+          ],
+          "final_train_thresholds": {
+            "rim_pressure_vs_rim_anchor": {
+              "offense": [
+                -0.1308353271925125,
+                0.10102424367762379
+              ],
+              "defense": [
+                -0.06104452756331107,
+                0.11286763378953053
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": -0.12307060166376615,
+          "game_cluster_95pct": [
+            -0.39296291259385774,
+            0.08487210800856754
+          ]
+        }
+      },
+      "spacing_vs_defensive_size": {
+        "marginal_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "spacing_vs_defensive_size:off_low",
+            "spacing_vs_defensive_size:off_high",
+            "spacing_vs_defensive_size:def_low",
+            "spacing_vs_defensive_size:def_high"
+          ],
+          "coefficients": [
+            -1.7938552401900645,
+            2.21223210459992,
+            0.11138302710885778,
+            0.0,
+            0.0,
+            1.3957720685082813,
+            0.8526644764778817,
+            -0.4804330219719451,
+            -0.37226110519847333,
+            -0.267036681599601,
+            -0.3289770323557962,
+            0.18341843594571994,
+            0.11353674543876933,
+            0.17942689986661103,
+            -0.048904552181937906,
+            0.6955243882403385,
+            0.3193010512357804,
+            -0.15359906245795915,
+            -0.09856719554318827
+          ],
+          "final_train_thresholds": {
+            "spacing_vs_defensive_size": {
+              "offense": [
+                -0.0989356862373584,
+                0.09500479846298528
+              ],
+              "defense": [
+                -0.07026235786132884,
+                0.0989448985692878
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 10000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "spacing_vs_defensive_size:off_low",
+            "spacing_vs_defensive_size:off_high",
+            "spacing_vs_defensive_size:def_low",
+            "spacing_vs_defensive_size:def_high",
+            "spacing_vs_defensive_size:off_low_x_def_low",
+            "spacing_vs_defensive_size:off_low_x_def_high",
+            "spacing_vs_defensive_size:off_high_x_def_low",
+            "spacing_vs_defensive_size:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -1.7335717327138742,
+            2.0267567118608634,
+            0.10295989481996067,
+            0.0,
+            0.0,
+            1.1257679177350732,
+            0.6471669017160152,
+            -0.34711454690328847,
+            -0.35027124637092355,
+            -0.1967197282943462,
+            -0.2793009699171846,
+            0.21386539916048658,
+            0.07817175342030645,
+            0.14338901945872548,
+            -0.02919997331872901,
+            0.39625429962809344,
+            0.3693313138871602,
+            -0.22467950564605715,
+            0.13958289586766726,
+            0.08831310722263223,
+            -0.19488532796118888,
+            0.5814898665935831,
+            -0.8026883630809061
+          ],
+          "final_train_thresholds": {
+            "spacing_vs_defensive_size": {
+              "offense": [
+                -0.0989356862373584,
+                0.09500479846298528
+              ],
+              "defense": [
+                -0.07026235786132884,
+                0.0989448985692878
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.43633855106356423,
+          "game_cluster_95pct": [
+            -0.13451204904395217,
+            0.9124680466287128
+          ]
+        }
+      },
+      "offensive_glass_vs_defensive_glass": {
+        "marginal_model": {
+          "alpha": 0.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "offensive_glass_vs_defensive_glass:off_low",
+            "offensive_glass_vs_defensive_glass:off_high",
+            "offensive_glass_vs_defensive_glass:def_low",
+            "offensive_glass_vs_defensive_glass:def_high"
+          ],
+          "coefficients": [
+            -1.6585127984980659,
+            2.2387249449839324,
+            0.11142626516760779,
+            1.34185959085803e-15,
+            -1.5634351094708543e-15,
+            1.4402009687364306,
+            0.7553275452367418,
+            -0.8445047722878867,
+            -0.40275226304573425,
+            -0.29367662090319907,
+            -0.31625573418168695,
+            0.19256194491259693,
+            0.19436576131784467,
+            0.1983520029701702,
+            -0.06223995767183603,
+            -0.3742061525709399,
+            0.5775293167052267,
+            0.1692315115363896,
+            -0.016429283899315195
+          ],
+          "final_train_thresholds": {
+            "offensive_glass_vs_defensive_glass": {
+              "offense": [
+                -0.1012473918903298,
+                0.064898740783855
+              ],
+              "defense": [
+                -0.01958725166348351,
+                0.13350218247498033
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "offensive_glass_vs_defensive_glass:off_low",
+            "offensive_glass_vs_defensive_glass:off_high",
+            "offensive_glass_vs_defensive_glass:def_low",
+            "offensive_glass_vs_defensive_glass:def_high",
+            "offensive_glass_vs_defensive_glass:off_low_x_def_low",
+            "offensive_glass_vs_defensive_glass:off_low_x_def_high",
+            "offensive_glass_vs_defensive_glass:off_high_x_def_low",
+            "offensive_glass_vs_defensive_glass:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -1.809604769523452,
+            2.225038813994451,
+            0.1390288858298344,
+            0.0,
+            0.0,
+            1.4110725106225133,
+            0.7334885895643901,
+            -0.7945304561420663,
+            -0.38644109957483647,
+            -0.2858550548486178,
+            -0.2922462314849876,
+            0.1753769939851979,
+            0.15628808510131012,
+            0.19559913115105107,
+            -0.04205336625093617,
+            -0.08890306312851089,
+            0.7808859961484557,
+            0.8891784297681009,
+            -0.3001465112812976,
+            -0.8614070193419593,
+            0.1545197137870096,
+            -1.589910476969713,
+            0.692312799320978
+          ],
+          "final_train_thresholds": {
+            "offensive_glass_vs_defensive_glass": {
+              "offense": [
+                -0.1012473918903298,
+                0.064898740783855
+              ],
+              "defense": [
+                -0.01958725166348351,
+                0.13350218247498033
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.20470575983841943,
+          "game_cluster_95pct": [
+            -0.42794619126347855,
+            0.7803060623200483
+          ]
+        }
+      },
+      "turnover_proneness_vs_disruption": {
+        "marginal_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "turnover_proneness_vs_disruption:off_low",
+            "turnover_proneness_vs_disruption:off_high",
+            "turnover_proneness_vs_disruption:def_low",
+            "turnover_proneness_vs_disruption:def_high"
+          ],
+          "coefficients": [
+            -1.6418127261787463,
+            2.2161424558904583,
+            0.11516825332434985,
+            0.0,
+            0.0,
+            1.4221112942245246,
+            0.7237014683693406,
+            -0.5129365423817567,
+            -0.35362519495446043,
+            -0.29540754000427144,
+            -0.3407463834968388,
+            0.23633122803851997,
+            0.13163972392884452,
+            0.834625684222226,
+            -0.07003787126358126,
+            0.3190868362478376,
+            0.20028451511129547,
+            0.7705713546865661,
+            -0.9817344400245533
+          ],
+          "final_train_thresholds": {
+            "turnover_proneness_vs_disruption": {
+              "offense": [
+                -0.22229985950791856,
+                0.08822974454458431
+              ],
+              "defense": [
+                -0.14695193124586858,
+                0.1189400431799195
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "turnover_proneness_vs_disruption:off_low",
+            "turnover_proneness_vs_disruption:off_high",
+            "turnover_proneness_vs_disruption:def_low",
+            "turnover_proneness_vs_disruption:def_high",
+            "turnover_proneness_vs_disruption:off_low_x_def_low",
+            "turnover_proneness_vs_disruption:off_low_x_def_high",
+            "turnover_proneness_vs_disruption:off_high_x_def_low",
+            "turnover_proneness_vs_disruption:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -1.3334955437473914,
+            2.208264393277762,
+            0.11662593225846465,
+            0.0,
+            0.0,
+            1.4225111902344503,
+            0.7298986866568968,
+            -0.5238768454056214,
+            -0.335536833522881,
+            -0.29547356069097713,
+            -0.35265816307589526,
+            0.24821394513910472,
+            0.13253226933500656,
+            0.8503668709665556,
+            -0.07040439375807457,
+            -0.2883347046445342,
+            -0.2237003627190129,
+            0.35048640290214783,
+            -1.5921752856295326,
+            1.062770428768926,
+            0.9368113891372621,
+            0.36602237810133464,
+            0.9903297449188067
+          ],
+          "final_train_thresholds": {
+            "turnover_proneness_vs_disruption": {
+              "offense": [
+                -0.22229985950791856,
+                0.08822974454458431
+              ],
+              "defense": [
+                -0.14695193124586858,
+                0.1189400431799195
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.280931261527384,
+          "game_cluster_95pct": [
+            -0.019265829612232777,
+            0.6195642650352967
+          ]
+        }
+      },
+      "foul_pressure_vs_foul_discipline": {
+        "marginal_model": {
+          "alpha": 100.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "foul_pressure_vs_foul_discipline:off_low",
+            "foul_pressure_vs_foul_discipline:off_high",
+            "foul_pressure_vs_foul_discipline:def_low",
+            "foul_pressure_vs_foul_discipline:def_high"
+          ],
+          "coefficients": [
+            -0.8337386879451417,
+            2.16521245257342,
+            0.10466790915827286,
+            0.0,
+            0.0,
+            1.4184981065487892,
+            0.7457058853469103,
+            -0.5304006124111197,
+            -0.37535890671442873,
+            -0.4355859367221561,
+            -0.30646623160543984,
+            0.18162414320239142,
+            0.12342513512534282,
+            0.18602476338343243,
+            -0.4469127918558961,
+            -1.0313498990414638,
+            -0.5824840975572649,
+            -0.8038391325492844,
+            0.2989456928146091
+          ],
+          "final_train_thresholds": {
+            "foul_pressure_vs_foul_discipline": {
+              "offense": [
+                -0.0013710478457420628,
+                0.2360908730645256
+              ],
+              "defense": [
+                -0.18496356327344354,
+                0.06873683164684967
+              ]
+            }
+          }
+        },
+        "joint_3x3_model": {
+          "alpha": 1000.0,
+          "features": [
+            "rapm_expectation",
+            "offense_is_home",
+            "missing_offense",
+            "missing_defense",
+            "o_rim",
+            "o_spacing",
+            "o_oreb",
+            "o_turnover",
+            "o_foul_pressure",
+            "d_rim_anchor",
+            "d_size",
+            "d_dreb",
+            "d_disruption",
+            "d_foul_rate",
+            "foul_pressure_vs_foul_discipline:off_low",
+            "foul_pressure_vs_foul_discipline:off_high",
+            "foul_pressure_vs_foul_discipline:def_low",
+            "foul_pressure_vs_foul_discipline:def_high",
+            "foul_pressure_vs_foul_discipline:off_low_x_def_low",
+            "foul_pressure_vs_foul_discipline:off_low_x_def_high",
+            "foul_pressure_vs_foul_discipline:off_high_x_def_low",
+            "foul_pressure_vs_foul_discipline:off_high_x_def_high"
+          ],
+          "coefficients": [
+            -0.803800765315493,
+            2.1321352918277268,
+            0.09670384677487201,
+            0.0,
+            0.0,
+            1.3792871667219107,
+            0.7427338320727512,
+            -0.5066364573167403,
+            -0.361177823078262,
+            -0.47272759631938915,
+            -0.28676252745926695,
+            0.1958599451696795,
+            0.11720186138618718,
+            0.18354678787614195,
+            -0.26965668953161176,
+            -0.9877938691427188,
+            -0.7126749442823904,
+            -1.6023791662819595,
+            0.9488895787889517,
+            1.2324724379849996,
+            -1.3328490048032324,
+            1.8552878050105523,
+            -1.3046157780712688
+          ],
+          "final_train_thresholds": {
+            "foul_pressure_vs_foul_discipline": {
+              "offense": [
+                -0.0013710478457420628,
+                0.2360908730645256
+              ],
+              "defense": [
+                -0.18496356327344354,
+                0.06873683164684967
+              ]
+            }
+          }
+        },
+        "joint_vs_marginal": {
+          "rmse_improvement_pct": 0.26168563069806083,
+          "game_cluster_95pct": [
+            -0.7453320529276153,
+            0.9279075317557323
+          ]
+        }
+      }
+    },
+    "all_five_joint": {
+      "marginal_model": {
+        "alpha": 10000.0,
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_vs_rim_anchor:off_low",
+          "rim_pressure_vs_rim_anchor:off_high",
+          "rim_pressure_vs_rim_anchor:def_low",
+          "rim_pressure_vs_rim_anchor:def_high",
+          "spacing_vs_defensive_size:off_low",
+          "spacing_vs_defensive_size:off_high",
+          "spacing_vs_defensive_size:def_low",
+          "spacing_vs_defensive_size:def_high",
+          "offensive_glass_vs_defensive_glass:off_low",
+          "offensive_glass_vs_defensive_glass:off_high",
+          "offensive_glass_vs_defensive_glass:def_low",
+          "offensive_glass_vs_defensive_glass:def_high",
+          "turnover_proneness_vs_disruption:off_low",
+          "turnover_proneness_vs_disruption:off_high",
+          "turnover_proneness_vs_disruption:def_low",
+          "turnover_proneness_vs_disruption:def_high",
+          "foul_pressure_vs_foul_discipline:off_low",
+          "foul_pressure_vs_foul_discipline:off_high",
+          "foul_pressure_vs_foul_discipline:def_low",
+          "foul_pressure_vs_foul_discipline:def_high"
+        ],
+        "coefficients": [
+          -1.4610004899428042,
+          1.9811046957792289,
+          0.09689595466785005,
+          0.0,
+          0.0,
+          0.7854380411815849,
+          0.6310791507938909,
+          -0.47567397951381,
+          -0.3113054785725935,
+          -0.18790817346301975,
+          -0.4895874439945132,
+          0.10000420826371466,
+          0.12710673486026844,
+          0.3758014399554085,
+          -0.17459402587159023,
+          -0.7193524200665684,
+          0.300600258283506,
+          -0.10125709809141108,
+          0.555324520207336,
+          0.3532562163625946,
+          0.3256021389707137,
+          -0.04746056666659846,
+          -0.08227714593811955,
+          -0.03544543737005944,
+          0.2169507516535416,
+          0.0828939540329222,
+          0.019743543366629143,
+          0.236476860698903,
+          0.07776224791557661,
+          0.3287848102956145,
+          -0.39466775098251056,
+          -0.5354795816427861,
+          -0.4367910325393986,
+          -0.41215770480141983,
+          0.02846013329047851
+        ],
+        "final_train_thresholds": {
+          "rim_pressure_vs_rim_anchor": {
+            "offense": [
+              -0.1308353271925125,
+              0.10102424367762379
+            ],
+            "defense": [
+              -0.06104452756331107,
+              0.11286763378953053
+            ]
+          },
+          "spacing_vs_defensive_size": {
+            "offense": [
+              -0.0989356862373584,
+              0.09500479846298528
+            ],
+            "defense": [
+              -0.07026235786132884,
+              0.0989448985692878
+            ]
+          },
+          "offensive_glass_vs_defensive_glass": {
+            "offense": [
+              -0.1012473918903298,
+              0.064898740783855
+            ],
+            "defense": [
+              -0.01958725166348351,
+              0.13350218247498033
+            ]
+          },
+          "turnover_proneness_vs_disruption": {
+            "offense": [
+              -0.22229985950791856,
+              0.08822974454458431
+            ],
+            "defense": [
+              -0.14695193124586858,
+              0.1189400431799195
+            ]
+          },
+          "foul_pressure_vs_foul_discipline": {
+            "offense": [
+              -0.0013710478457420628,
+              0.2360908730645256
+            ],
+            "defense": [
+              -0.18496356327344354,
+              0.06873683164684967
+            ]
+          }
+        }
+      },
+      "joint_3x3_model": {
+        "alpha": 10000.0,
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_vs_rim_anchor:off_low",
+          "rim_pressure_vs_rim_anchor:off_high",
+          "rim_pressure_vs_rim_anchor:def_low",
+          "rim_pressure_vs_rim_anchor:def_high",
+          "rim_pressure_vs_rim_anchor:off_low_x_def_low",
+          "rim_pressure_vs_rim_anchor:off_low_x_def_high",
+          "rim_pressure_vs_rim_anchor:off_high_x_def_low",
+          "rim_pressure_vs_rim_anchor:off_high_x_def_high",
+          "spacing_vs_defensive_size:off_low",
+          "spacing_vs_defensive_size:off_high",
+          "spacing_vs_defensive_size:def_low",
+          "spacing_vs_defensive_size:def_high",
+          "spacing_vs_defensive_size:off_low_x_def_low",
+          "spacing_vs_defensive_size:off_low_x_def_high",
+          "spacing_vs_defensive_size:off_high_x_def_low",
+          "spacing_vs_defensive_size:off_high_x_def_high",
+          "offensive_glass_vs_defensive_glass:off_low",
+          "offensive_glass_vs_defensive_glass:off_high",
+          "offensive_glass_vs_defensive_glass:def_low",
+          "offensive_glass_vs_defensive_glass:def_high",
+          "offensive_glass_vs_defensive_glass:off_low_x_def_low",
+          "offensive_glass_vs_defensive_glass:off_low_x_def_high",
+          "offensive_glass_vs_defensive_glass:off_high_x_def_low",
+          "offensive_glass_vs_defensive_glass:off_high_x_def_high",
+          "turnover_proneness_vs_disruption:off_low",
+          "turnover_proneness_vs_disruption:off_high",
+          "turnover_proneness_vs_disruption:def_low",
+          "turnover_proneness_vs_disruption:def_high",
+          "turnover_proneness_vs_disruption:off_low_x_def_low",
+          "turnover_proneness_vs_disruption:off_low_x_def_high",
+          "turnover_proneness_vs_disruption:off_high_x_def_low",
+          "turnover_proneness_vs_disruption:off_high_x_def_high",
+          "foul_pressure_vs_foul_discipline:off_low",
+          "foul_pressure_vs_foul_discipline:off_high",
+          "foul_pressure_vs_foul_discipline:def_low",
+          "foul_pressure_vs_foul_discipline:def_high",
+          "foul_pressure_vs_foul_discipline:off_low_x_def_low",
+          "foul_pressure_vs_foul_discipline:off_low_x_def_high",
+          "foul_pressure_vs_foul_discipline:off_high_x_def_low",
+          "foul_pressure_vs_foul_discipline:off_high_x_def_high"
+        ],
+        "coefficients": [
+          -1.4630231645273457,
+          1.9802731915956238,
+          0.09285967749543783,
+          0.0,
+          0.0,
+          0.7944457716744253,
+          0.611545869982044,
+          -0.49946671123051056,
+          -0.29281255182545274,
+          -0.21302573834665198,
+          -0.5500169955284637,
+          0.2111587301918504,
+          0.08260082080445226,
+          0.3748153343084729,
+          -0.048797494630474385,
+          -0.6828770658382725,
+          0.23469933879755048,
+          0.06119430988908756,
+          0.412003100806511,
+          -0.674566965195002,
+          0.6180042613453183,
+          -0.09788438850758016,
+          0.23404358934703445,
+          0.3510799450644062,
+          0.38818850754626055,
+          -0.15757049890700592,
+          0.06297344599406139,
+          0.05890658073011366,
+          -0.17535343054543182,
+          0.6442905281695783,
+          -0.8461032045135205,
+          -0.02393203839897276,
+          0.2321642758787859,
+          0.21188827217157233,
+          -0.08038742026434696,
+          -0.16390483816296517,
+          0.007852150321882233,
+          -0.5347301006826898,
+          0.40852398208641233,
+          0.14143078385364957,
+          0.030801540064080757,
+          0.275214970917981,
+          -0.45635133791138727,
+          0.361610088718886,
+          0.18665048134474263,
+          0.03392684374427795,
+          0.26233421465057255,
+          -0.4785225794097407,
+          -0.4235846162106811,
+          -0.5487428262480069,
+          0.24580086398783085,
+          0.231854007532992,
+          -0.6074444914453995,
+          0.528009159121281,
+          -0.6462311277988031
+        ],
+        "final_train_thresholds": {
+          "rim_pressure_vs_rim_anchor": {
+            "offense": [
+              -0.1308353271925125,
+              0.10102424367762379
+            ],
+            "defense": [
+              -0.06104452756331107,
+              0.11286763378953053
+            ]
+          },
+          "spacing_vs_defensive_size": {
+            "offense": [
+              -0.0989356862373584,
+              0.09500479846298528
+            ],
+            "defense": [
+              -0.07026235786132884,
+              0.0989448985692878
+            ]
+          },
+          "offensive_glass_vs_defensive_glass": {
+            "offense": [
+              -0.1012473918903298,
+              0.064898740783855
+            ],
+            "defense": [
+              -0.01958725166348351,
+              0.13350218247498033
+            ]
+          },
+          "turnover_proneness_vs_disruption": {
+            "offense": [
+              -0.22229985950791856,
+              0.08822974454458431
+            ],
+            "defense": [
+              -0.14695193124586858,
+              0.1189400431799195
+            ]
+          },
+          "foul_pressure_vs_foul_discipline": {
+            "offense": [
+              -0.0013710478457420628,
+              0.2360908730645256
+            ],
+            "defense": [
+              -0.18496356327344354,
+              0.06873683164684967
+            ]
+          }
+        }
+      },
+      "joint_vs_marginal": {
+        "rmse_improvement_pct": 0.19344954535128744,
+        "game_cluster_95pct": [
+          -0.46650020378754375,
+          0.6345563761476019
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lineup Project Review</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d7e0ea;
+      --ink: #16202b;
+      --muted: #5a6776;
+      --accent: #0b5cab;
+      --accent-2: #083b6d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #e7f0ff 0%, transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    .hero {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(8, 59, 109, 0.18);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 720px;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 6px 20px rgba(22, 32, 43, 0.05);
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a:hover { text-decoration: underline; }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+    li + li { margin-top: 6px; }
+    .foot {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    code {
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+      color: #213042;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Lineup Project Review</h1>
+      <p>
+        This is a local launcher for the current lineup/combo work. Start with Combo Search,
+        then use the existing game and span screeners to compare how the new unit-level work fits
+        into the rest of the site.
+      </p>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Primary Review Target</h2>
+        <p>The new lineup/combo interface built on top of lineup stints and possession facts.</p>
+        <p><a href="./combo-search.html">Open Combo Search</a></p>
+        <p><a href="./lineup-validation.html">Open Validation Audit</a></p>
+        <p><a href="./lineup-2man-audit.html">Open 2-Man NBA Audit</a></p>
+      </section>
+
+      <section class="card">
+        <h2>Related Screeners</h2>
+        <ul>
+          <li><a href="./game-search.html">Game Search</a></li>
+          <li><a href="./player-span-search.html">Player Span Search</a></li>
+          <li><a href="./game-search-playoffs.html">Game Search: Playoffs</a></li>
+          <li><a href="./player-span-search-playoffs.html">Player Span Search: Playoffs</a></li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>What To Test</h2>
+        <ul>
+          <li>Switch between 2-man, 3-man, 4-man, and 5-man units</li>
+          <li>Try <code>Season Combos</code> versus <code>Game Logs</code></li>
+          <li>Filter by team and include/exclude player names</li>
+          <li>Sort by adjusted net, raw net, and luck delta</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Data Artifacts</h2>
+        <ul>
+          <li><a href="./data/combo_search.html">Data Copy Of Combo Search</a></li>
+          <li><a href="./data/combo_chunks/2025_26.js">Sample Combo Chunk</a></li>
+          <li><a href="./data/onoff_report.html">Current On/Off Report</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <p class="foot">
+      File location: <code>C:\Users\Dave\Downloads\nba-onoff-publish\lineup-review.html</code>
+    </p>
+  </div>
+</body>
+</html>

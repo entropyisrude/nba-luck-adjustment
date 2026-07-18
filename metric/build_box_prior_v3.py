@@ -51,10 +51,20 @@ def fit_predict_w(df: pd.DataFrame, features: list[str],
     """Era-bucketed weighted ridge with SEPARATE O/D observation weights.
     Returns df with prior_o/d, loso_o/d columns + coefficient frame."""
     df = df.copy()
+    imputation = []
     for c in features:
         if df[c].isna().any():
+            n_missing = int(df[c].isna().sum())
             df[c] = df[c].fillna(df.groupby("era")[c].transform("mean"))
-            df[c] = df[c].fillna(df[c].mean())
+            # Some tracking fields are wholly unavailable in early eras, so
+            # both the era mean and (in sparse development caches) the global
+            # mean can themselves be NaN.  Zero is the neutral fallback for
+            # these rate/differential atoms; keeping the row is preferable to
+            # deleting an entire historical era from the fit.
+            df[c] = df[c].fillna(df[c].mean()).fillna(0.0)
+            imputation.append((c, n_missing))
+    if imputation:
+        df.attrs["imputation_counts"] = dict(imputation)
     Xall = df[features].to_numpy(dtype=float)
     wq = np.where(fit_mask, w_o + w_d, 0.0)
     mu = np.average(Xall, axis=0, weights=np.maximum(wq, 1e-12))
@@ -184,7 +194,13 @@ def main() -> None:
 
     poss_w = df["poss_season"].clip(lower=0).to_numpy()
     cut_ok = (df["poss_season"] >= MIN_FIT_POSS).to_numpy()
-    se_ok = df["se_o"].notna().to_numpy() & df["se_d"].notna().to_numpy()
+    # Zero/non-finite analytic SEs are invalid uncertainty estimates, not
+    # infinite-confidence observations.  A single zero previously produced
+    # an infinite weight and poisoned every standardized feature.
+    se_ok = (np.isfinite(df["se_o"].to_numpy())
+             & np.isfinite(df["se_d"].to_numpy())
+             & (df["se_o"].to_numpy() > 0)
+             & (df["se_d"].to_numpy() > 0))
     w_se_o = np.where(se_ok, 1.0 / df["se_o"].fillna(np.inf) ** 2, 0.0)
     w_se_d = np.where(se_ok, 1.0 / df["se_d"].fillna(np.inf) ** 2, 0.0)
 

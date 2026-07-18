@@ -1,0 +1,783 @@
+{
+  "claim_tier": "predictive/quasi-experimental screen, not causally identified player value",
+  "estimand": "incremental held-out signal beyond prior-season blocks in matched adjacent-stint defender substitutions",
+  "feature_timing": "immediately preceding season",
+  "outcomes": {
+    "recorded_rim_attempt": {
+      "train_seasons": [
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_seasons": [
+        2024,
+        2025
+      ],
+      "train_events": 20742,
+      "test_events": 14630,
+      "test_games": 2141,
+      "blocks_only": {
+        "features": [
+          "blk_75"
+        ],
+        "alpha": 1000.0,
+        "coefficients": [
+          -0.0079577127702194
+        ],
+        "test_rmse": 0.362052474077391
+      },
+      "incremental_model_comparisons": {
+        "blocks_plus_height": {
+          "features": [
+            "blk_75",
+            "height"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.00759895500023875,
+            -0.00114360426122537
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.004426352847275439,
+          "game_cluster_95pct": [
+            -0.00945341058280369,
+            0.00022589352536267411
+          ]
+        },
+        "blocks_plus_contests": {
+          "features": [
+            "blk_75",
+            "contest_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.003969459330845413,
+            -0.0069669516209979335
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.008250595101499947,
+          "game_cluster_95pct": [
+            -0.03494195627293306,
+            0.017920003905755315
+          ]
+        },
+        "blocks_plus_fouls": {
+          "features": [
+            "blk_75",
+            "pf_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.006578771632829754,
+            -0.003735130370208986
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.013049454950775363,
+          "game_cluster_95pct": [
+            -0.0338271205466939,
+            0.0066697453822847415
+          ]
+        },
+        "blocks_plus_contest_foul_ratio": {
+          "features": [
+            "blk_75",
+            "contest_foul_ratio"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.00682194477391612,
+            -0.003148692400422345
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.0021420174593167474,
+          "game_cluster_95pct": [
+            -0.015597348315798398,
+            0.012419193067596255
+          ]
+        },
+        "blocks_plus_block_foul_ratio": {
+          "features": [
+            "blk_75",
+            "block_foul_ratio"
+          ],
+          "alpha": 0.0,
+          "coefficients": [
+            -0.012134388323638943,
+            0.0040866158817124566
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.004035254860146331,
+          "game_cluster_95pct": [
+            -0.014386708271276194,
+            0.0062046697627651795
+          ]
+        },
+        "blocks_plus_rim_role": {
+          "features": [
+            "blk_75",
+            "rim_dfga_pg"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.007479560121414751,
+            -0.001463360317260066
+          ],
+          "rmse_improvement_pct_vs_blocks": 0.004995614822445038,
+          "game_cluster_95pct": [
+            -0.003355342244259485,
+            0.013377001812574226
+          ]
+        },
+        "blocks_plus_prior_rim_fg": {
+          "features": [
+            "blk_75",
+            "rim_dfg_pct"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.007359098185214594,
+            0.0015841872079374623
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.0024637524213222406,
+          "game_cluster_95pct": [
+            -0.010633668883764935,
+            0.005263060569785921
+          ]
+        },
+        "blocks_plus_prior_rim_suppression": {
+          "features": [
+            "blk_75",
+            "rim_dfg_pct_diff"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.006946404428183601,
+            -0.002478202094324162
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.0036042893681642596,
+          "game_cluster_95pct": [
+            -0.016202163996770214,
+            0.008152313075922568
+          ]
+        },
+        "blocks_plus_height_contests_fouls": {
+          "features": [
+            "blk_75",
+            "height",
+            "contest_75",
+            "pf_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.0036092486439924043,
+            0.0007968399828881419,
+            -0.00636144421318149,
+            -0.0025917070412927942
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.014329675334079361,
+          "game_cluster_95pct": [
+            -0.04622952640120692,
+            0.017023280647954733
+          ]
+        },
+        "blocks_plus_compact_context": {
+          "features": [
+            "blk_75",
+            "height",
+            "contest_75",
+            "pf_75",
+            "rim_dfga_pg",
+            "rim_dfg_pct_diff"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.002527991697417609,
+            0.0017420420848465342,
+            -0.005706040566869974,
+            -0.0035441844121976143,
+            -0.0022006063823371566,
+            -0.001671915140720495
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.006797378908696139,
+          "game_cluster_95pct": [
+            -0.040038641016258425,
+            0.02609564216276364
+          ]
+        }
+      },
+      "comparable_blocker_test_0_25sd": {
+        "events": 3585,
+        "games": 1609,
+        "block_difference_tolerance_sd": 0.25,
+        "features": {
+          "block_foul_ratio": {
+            "incremental_slope_per_sd": -0.009222177318839498,
+            "cluster_95pct": [
+              -0.039749601950637245,
+              0.02130524731295825
+            ],
+            "p_value": 0.5537869767421404
+          },
+          "contest_75": {
+            "incremental_slope_per_sd": -0.005426469273376635,
+            "cluster_95pct": [
+              -0.023004343084372214,
+              0.012151404537618942
+            ],
+            "p_value": 0.5451385255568073
+          },
+          "contest_foul_ratio": {
+            "incremental_slope_per_sd": -0.006341026810444278,
+            "cluster_95pct": [
+              -0.01889946929238898,
+              0.006217415671500424
+            ],
+            "p_value": 0.3223560623633782
+          },
+          "height": {
+            "incremental_slope_per_sd": 0.003690246594036057,
+            "cluster_95pct": [
+              -0.009410788777461312,
+              0.016791281965533426
+            ],
+            "p_value": 0.5808971620814194
+          },
+          "pf_75": {
+            "incremental_slope_per_sd": 0.006018427579587951,
+            "cluster_95pct": [
+              -0.0038303665809581574,
+              0.01586722174013406
+            ],
+            "p_value": 0.23103380824047903
+          },
+          "rim_dfg_pct": {
+            "incremental_slope_per_sd": 0.0021374887243394815,
+            "cluster_95pct": [
+              -0.008406944734543866,
+              0.012681922183222831
+            ],
+            "p_value": 0.6911394293077102
+          },
+          "rim_dfg_pct_diff": {
+            "incremental_slope_per_sd": -0.003067012418717521,
+            "cluster_95pct": [
+              -0.013889396605862867,
+              0.007755371768427824
+            ],
+            "p_value": 0.5785906551550434
+          },
+          "rim_dfga_pg": {
+            "incremental_slope_per_sd": -0.007933781067812777,
+            "cluster_95pct": [
+              -0.018270208624756222,
+              0.0024026464891306696
+            ],
+            "p_value": 0.1324832953531853
+          }
+        }
+      },
+      "comparable_blocker_test_0_50sd": {
+        "events": 6807,
+        "games": 2000,
+        "block_difference_tolerance_sd": 0.5,
+        "features": {
+          "block_foul_ratio": {
+            "incremental_slope_per_sd": -0.00014432969624268387,
+            "cluster_95pct": [
+              -0.021251951265055743,
+              0.020963291872570376
+            ],
+            "p_value": 0.9893071973737905
+          },
+          "contest_75": {
+            "incremental_slope_per_sd": -0.00041854627374734305,
+            "cluster_95pct": [
+              -0.013528038389078699,
+              0.012690945841584013
+            ],
+            "p_value": 0.9501043814948279
+          },
+          "contest_foul_ratio": {
+            "incremental_slope_per_sd": 0.00030388769143676524,
+            "cluster_95pct": [
+              -0.009052599459111906,
+              0.009660374841985436
+            ],
+            "p_value": 0.94924308659957
+          },
+          "height": {
+            "incremental_slope_per_sd": 0.006643835650851682,
+            "cluster_95pct": [
+              -0.0027245750722342515,
+              0.016012246373937618
+            ],
+            "p_value": 0.16454224212059987
+          },
+          "pf_75": {
+            "incremental_slope_per_sd": 0.00016306406401468142,
+            "cluster_95pct": [
+              -0.007151509774409651,
+              0.007477637902439015
+            ],
+            "p_value": 0.9651486812181822
+          },
+          "rim_dfg_pct": {
+            "incremental_slope_per_sd": -0.001137999173266842,
+            "cluster_95pct": [
+              -0.009030038861488966,
+              0.006754040514955281
+            ],
+            "p_value": 0.7774692025569717
+          },
+          "rim_dfg_pct_diff": {
+            "incremental_slope_per_sd": 0.0005349976288729757,
+            "cluster_95pct": [
+              -0.007625285382184621,
+              0.008695280639930572
+            ],
+            "p_value": 0.8977552650740858
+          },
+          "rim_dfga_pg": {
+            "incremental_slope_per_sd": -0.005157363377908437,
+            "cluster_95pct": [
+              -0.012921512368397801,
+              0.0026067856125809273
+            ],
+            "p_value": 0.19294612920432253
+          }
+        }
+      },
+      "top_15pct_selector_head_to_head_vs_blocks": {
+        "size_plus_blocks": {
+          "candidate_minus_blocks_rate_difference": -0.0051776485692228025,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.015456082096348873,
+            0.004882283395235322
+          ],
+          "candidate_games": 1354
+        },
+        "contests": {
+          "candidate_minus_blocks_rate_difference": -0.006986846456622274,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.01896982621176008,
+            0.005046814057296917
+          ],
+          "candidate_games": 1237
+        },
+        "anchor_composite": {
+          "candidate_minus_blocks_rate_difference": 0.0027938696192760966,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.010139401610589568,
+            0.016202987713942768
+          ],
+          "candidate_games": 1289
+        },
+        "block_contest_discipline": {
+          "candidate_minus_blocks_rate_difference": -0.0008315297037111407,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.012844329231467617,
+            0.011325247743060518
+          ],
+          "candidate_games": 1446
+        },
+        "rim_role": {
+          "candidate_minus_blocks_rate_difference": 0.005103736698356506,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.010018759922767968,
+            0.02016839981350738
+          ],
+          "candidate_games": 1709
+        }
+      }
+    },
+    "rim_fg_pct": {
+      "train_seasons": [
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_seasons": [
+        2024,
+        2025
+      ],
+      "train_events": 3323,
+      "test_events": 1949,
+      "test_games": 1189,
+      "blocks_only": {
+        "features": [
+          "blk_75"
+        ],
+        "alpha": 1000.0,
+        "coefficients": [
+          -0.008524218135584044
+        ],
+        "test_rmse": 0.5903739608221525
+      },
+      "incremental_model_comparisons": {
+        "blocks_plus_height": {
+          "features": [
+            "blk_75",
+            "height"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.006897052586054597,
+            -0.0068261775051483625
+          ],
+          "rmse_improvement_pct_vs_blocks": 0.008264064102703195,
+          "game_cluster_95pct": [
+            -0.03815109949026896,
+            0.05455171874370612
+          ]
+        },
+        "blocks_plus_contests": {
+          "features": [
+            "blk_75",
+            "contest_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.00039833375223301693,
+            -0.018346734632171964
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.09416359453591205,
+          "game_cluster_95pct": [
+            -0.21187764834750766,
+            0.026022140364592564
+          ]
+        },
+        "blocks_plus_fouls": {
+          "features": [
+            "blk_75",
+            "pf_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.004634224106361504,
+            -0.012446404392603281
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.08404158614232493,
+          "game_cluster_95pct": [
+            -0.2035797290516761,
+            0.036427325800501544
+          ]
+        },
+        "blocks_plus_contest_foul_ratio": {
+          "features": [
+            "blk_75",
+            "contest_foul_ratio"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.007576475663747351,
+            -0.003655611633524283
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.00803033850829138,
+          "game_cluster_95pct": [
+            -0.034878655975875694,
+            0.018860323194104234
+          ]
+        },
+        "blocks_plus_block_foul_ratio": {
+          "features": [
+            "blk_75",
+            "block_foul_ratio"
+          ],
+          "alpha": 100.0,
+          "coefficients": [
+            -0.033656171804641616,
+            0.02501108941785889
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.03732993200462609,
+          "game_cluster_95pct": [
+            -0.1365806803819486,
+            0.06631285272014341
+          ]
+        },
+        "blocks_plus_rim_role": {
+          "features": [
+            "blk_75",
+            "rim_dfga_pg"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.009677588910262151,
+            0.0042143020268900185
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.007127410461826855,
+          "game_cluster_95pct": [
+            -0.046872867474294644,
+            0.03246326303502768
+          ]
+        },
+        "blocks_plus_prior_rim_fg": {
+          "features": [
+            "blk_75",
+            "rim_dfg_pct"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.004576953673705409,
+            0.01433962371033544
+          ],
+          "rmse_improvement_pct_vs_blocks": 0.0668879930871058,
+          "game_cluster_95pct": [
+            -0.057760137648978915,
+            0.1939371751317387
+          ]
+        },
+        "blocks_plus_prior_rim_suppression": {
+          "features": [
+            "blk_75",
+            "rim_dfg_pct_diff"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            -0.004410279645228911,
+            -0.013581724732458642
+          ],
+          "rmse_improvement_pct_vs_blocks": 0.057235900130225836,
+          "game_cluster_95pct": [
+            -0.05732995856567891,
+            0.17265296462601237
+          ]
+        },
+        "blocks_plus_height_contests_fouls": {
+          "features": [
+            "blk_75",
+            "height",
+            "contest_75",
+            "pf_75"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            0.0017582788860158432,
+            -0.0027121289880347836,
+            -0.01506070430390773,
+            -0.009488469104441703
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.14477756104589456,
+          "game_cluster_95pct": [
+            -0.30507551144048295,
+            0.027543588633515588
+          ]
+        },
+        "blocks_plus_compact_context": {
+          "features": [
+            "blk_75",
+            "height",
+            "contest_75",
+            "pf_75",
+            "rim_dfga_pg",
+            "rim_dfg_pct_diff"
+          ],
+          "alpha": 1000.0,
+          "coefficients": [
+            0.00292317872666105,
+            -0.0025364180708086536,
+            -0.013615517737814864,
+            -0.008475441463033636,
+            0.005319781111233354,
+            -0.011949046701762125
+          ],
+          "rmse_improvement_pct_vs_blocks": -0.09293687804845518,
+          "game_cluster_95pct": [
+            -0.28980886563683583,
+            0.11207077161443407
+          ]
+        }
+      },
+      "comparable_blocker_test_0_25sd": {
+        "events": 484,
+        "games": 418,
+        "block_difference_tolerance_sd": 0.25,
+        "features": {
+          "block_foul_ratio": {
+            "incremental_slope_per_sd": -0.07113470111266461,
+            "cluster_95pct": [
+              -0.21704622205149487,
+              0.07477681982616564
+            ],
+            "p_value": 0.33931453381382826
+          },
+          "contest_75": {
+            "incremental_slope_per_sd": 0.03199348256541381,
+            "cluster_95pct": [
+              -0.036985813376362024,
+              0.10097277850718964
+            ],
+            "p_value": 0.3633203315849365
+          },
+          "contest_foul_ratio": {
+            "incremental_slope_per_sd": 0.003726228427869737,
+            "cluster_95pct": [
+              -0.0454447472815628,
+              0.05289720413730228
+            ],
+            "p_value": 0.8819259804932371
+          },
+          "height": {
+            "incremental_slope_per_sd": -0.04227501260295603,
+            "cluster_95pct": [
+              -0.09660787935266263,
+              0.012057854146750563
+            ],
+            "p_value": 0.12725964691000943
+          },
+          "pf_75": {
+            "incremental_slope_per_sd": 0.015361514296609088,
+            "cluster_95pct": [
+              -0.031299941145393625,
+              0.06202296973861181
+            ],
+            "p_value": 0.5187692068820866
+          },
+          "rim_dfg_pct": {
+            "incremental_slope_per_sd": 0.03978611475811914,
+            "cluster_95pct": [
+              -0.009510778197992717,
+              0.089083007714231
+            ],
+            "p_value": 0.11368816289716709
+          },
+          "rim_dfg_pct_diff": {
+            "incremental_slope_per_sd": -0.042242557408355814,
+            "cluster_95pct": [
+              -0.09387516108350716,
+              0.009390046266795536
+            ],
+            "p_value": 0.10881998907075281
+          },
+          "rim_dfga_pg": {
+            "incremental_slope_per_sd": -0.020416591745832578,
+            "cluster_95pct": [
+              -0.06551626743025303,
+              0.02468308393858788
+            ],
+            "p_value": 0.37493122268795886
+          }
+        }
+      },
+      "comparable_blocker_test_0_50sd": {
+        "events": 916,
+        "games": 700,
+        "block_difference_tolerance_sd": 0.5,
+        "features": {
+          "block_foul_ratio": {
+            "incremental_slope_per_sd": -0.025554482199975928,
+            "cluster_95pct": [
+              -0.12819262190954778,
+              0.07708365750959593
+            ],
+            "p_value": 0.6255605200459684
+          },
+          "contest_75": {
+            "incremental_slope_per_sd": 0.0330515662548758,
+            "cluster_95pct": [
+              -0.020808667955721186,
+              0.08691180046547278
+            ],
+            "p_value": 0.22907679593355867
+          },
+          "contest_foul_ratio": {
+            "incremental_slope_per_sd": 0.011574026238374066,
+            "cluster_95pct": [
+              -0.025602649720730362,
+              0.04875070219747849
+            ],
+            "p_value": 0.5417388274213675
+          },
+          "height": {
+            "incremental_slope_per_sd": -0.03389911047500225,
+            "cluster_95pct": [
+              -0.07410964381357601,
+              0.006311422863571524
+            ],
+            "p_value": 0.09846747373212053
+          },
+          "pf_75": {
+            "incremental_slope_per_sd": 0.004467441207708672,
+            "cluster_95pct": [
+              -0.030478344383114975,
+              0.03941322679853232
+            ],
+            "p_value": 0.802154137373047
+          },
+          "rim_dfg_pct": {
+            "incremental_slope_per_sd": 0.024146010266432344,
+            "cluster_95pct": [
+              -0.011394815546804674,
+              0.05968683607966936
+            ],
+            "p_value": 0.18299955742732987
+          },
+          "rim_dfg_pct_diff": {
+            "incremental_slope_per_sd": -0.02488429476127181,
+            "cluster_95pct": [
+              -0.061323765750062625,
+              0.011555176227519004
+            ],
+            "p_value": 0.18075057970784325
+          },
+          "rim_dfga_pg": {
+            "incremental_slope_per_sd": 0.006141075747446625,
+            "cluster_95pct": [
+              -0.027465784092970725,
+              0.03974793558786398
+            ],
+            "p_value": 0.7202312756943061
+          }
+        }
+      },
+      "top_15pct_selector_head_to_head_vs_blocks": {
+        "size_plus_blocks": {
+          "candidate_minus_blocks_rate_difference": -0.005120809203491859,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.05327395872348886,
+            0.04319900364046866
+          ],
+          "candidate_games": 326
+        },
+        "contests": {
+          "candidate_minus_blocks_rate_difference": 0.02415108438990002,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.03352483613085428,
+            0.08182606386994332
+          ],
+          "candidate_games": 279
+        },
+        "anchor_composite": {
+          "candidate_minus_blocks_rate_difference": 0.005410604704287461,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.053935086373559066,
+            0.06754409917711697
+          ],
+          "candidate_games": 300
+        },
+        "block_contest_discipline": {
+          "candidate_minus_blocks_rate_difference": 0.009600817401813275,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.03624861926622609,
+            0.05763679384622715
+          ],
+          "candidate_games": 356
+        },
+        "rim_role": {
+          "candidate_minus_blocks_rate_difference": 0.05833263704439402,
+          "negative_means_candidate_selects_better_defenders": true,
+          "game_cluster_95pct": [
+            -0.007247151027177572,
+            0.12507629657723557
+          ],
+          "candidate_games": 475
+        }
+      }
+    }
+  }
+}

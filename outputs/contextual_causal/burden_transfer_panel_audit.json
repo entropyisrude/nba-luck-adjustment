@@ -1,0 +1,52 @@
+{
+  "panel_rows": 30394,
+  "events": 2950,
+  "receiver_players": 1686,
+  "analysis_eligible_rows": 23426,
+  "analysis_eligible_events": 2950,
+  "events_without_any_eligible_receiver": 0,
+  "duplicate_event_receiver_rows": 0,
+  "missing_baseline_rows": 2108,
+  "eligible_delta_summary": {
+    "delta_minutes": {
+      "mean": 2.0401525668524143,
+      "median": 1.9000000000000004,
+      "std": 7.280925983332728
+    },
+    "delta_fga": {
+      "mean": 1.3339022474011375,
+      "median": 1.0,
+      "std": 3.996475298713155
+    },
+    "delta_fta": {
+      "mean": 0.3860524325840641,
+      "median": -0.10000000000000009,
+      "std": 2.4230093636859635
+    },
+    "delta_fg3a": {
+      "mean": 0.35446085545974554,
+      "median": 0.0,
+      "std": 2.0707726918743217
+    },
+    "delta_ast": {
+      "mean": 0.4210435867622327,
+      "median": 0.10000000000000009,
+      "std": 1.9838414456159643
+    },
+    "delta_tov": {
+      "mean": 0.2403532603171893,
+      "median": 0.09999999999999998,
+      "std": 1.3067584035753907
+    },
+    "delta_pts": {
+      "mean": 1.547475569811863,
+      "median": 0.9000000000000004,
+      "std": 6.4783804324217495
+    },
+    "delta_creation_load": {
+      "mean": 2.375683958198664,
+      "median": 1.8499999999999979,
+      "std": 6.207657625777779
+    }
+  }
+}

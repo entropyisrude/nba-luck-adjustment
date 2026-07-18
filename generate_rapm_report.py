@@ -540,6 +540,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    canonical = Path("derived/contextual_causal/production_counted_evidence/canonical_counted_stints_production.parquet")
+    if canonical.exists():
+        from metric.counted_public_rapm import CountedPublicRapm
+        model = CountedPublicRapm()
+        rapm = model.regular_dict(min_minutes=args.min_minutes)
+        player_map = update_player_info_map()
+        apply_player_names(rapm, player_map)
+        RAPM_JSON.write_text(json.dumps(rapm, separators=(",", ":")), encoding="utf-8")
+        embed_rapm_html(rapm, player_map)
+        print("Rebuilt regular-season RAPM from canonical counted possessions.")
+        return
+
     stint_paths = [DATA_DIR / name.strip() for name in args.stints_files.split(",") if name.strip()]
     poss_paths = [DATA_DIR / name.strip() for name in args.possessions_files.split(",") if name.strip()]
 

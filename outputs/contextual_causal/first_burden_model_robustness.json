@@ -1,0 +1,101 @@
+{
+  "paired_cluster_bootstrap": {
+    "events": 530,
+    "event_mae_improvement": 2.486312517131836,
+    "event_mae_improvement_95ci": [
+      1.9676591967709802,
+      3.0280359879857897
+    ],
+    "event_rmse_improvement": 3.248726805741075,
+    "event_rmse_improvement_95ci": [
+      2.6291049175580503,
+      3.8771536795830666
+    ],
+    "probability_contextual_better_mae": 1.0,
+    "probability_contextual_better_rmse": 1.0
+  },
+  "subgroups": {
+    "2024-25": {
+      "events": 275,
+      "contextual": {
+        "mae": 13.42278233525114,
+        "rmse": 17.320720864785333,
+        "correlation": 0.6048876376922929
+      },
+      "proportional": {
+        "mae": 15.883732184811214,
+        "rmse": 20.2532758749985,
+        "correlation": 0.19880216029725617
+      }
+    },
+    "2025-26": {
+      "events": 255,
+      "contextual": {
+        "mae": 13.167053821091962,
+        "rmse": 16.576468440817386,
+        "correlation": 0.6328057950216331
+      },
+      "proportional": {
+        "mae": 15.68071823462472,
+        "rmse": 20.174556052178716,
+        "correlation": 0.08417613724783245
+      }
+    },
+    "non_back_to_back": {
+      "events": 366,
+      "contextual": {
+        "mae": 13.280443559525482,
+        "rmse": 16.661206350233595,
+        "correlation": 0.5993979634999806
+      },
+      "proportional": {
+        "mae": 15.397067192455868,
+        "rmse": 19.57407705887489,
+        "correlation": 0.15312372643540742
+      }
+    },
+    "back_to_back": {
+      "events": 164,
+      "contextual": {
+        "mae": 13.342814169427966,
+        "rmse": 17.6294322232901,
+        "correlation": 0.6604540218063087
+      },
+      "proportional": {
+        "mae": 16.654164074472803,
+        "rmse": 21.578138314747022,
+        "correlation": 0.11751185919044389
+      }
+    },
+    "primary_creator_rank_1": {
+      "events": 296,
+      "contextual": {
+        "mae": 12.70660411103348,
+        "rmse": 15.865459109232564,
+        "correlation": 0.6384572842993661
+      },
+      "proportional": {
+        "mae": 15.487973696884882,
+        "rmse": 19.279264193241037,
+        "correlation": 0.13800643077468838
+      }
+    },
+    "secondary_creator_rank_2": {
+      "events": 234,
+      "contextual": {
+        "mae": 14.050038673959845,
+        "rmse": 18.264879599793186,
+        "correlation": 0.5818334584769792
+      },
+      "proportional": {
+        "mae": 16.16311660843787,
+        "rmse": 21.3409109944962,
+        "correlation": 0.025358185704118057
+      }
+    }
+  },
+  "event_calibration": {
+    "slope_actual_on_prediction": 1.6950678015495995,
+    "intercept": -15.919149464017423
+  }
+}

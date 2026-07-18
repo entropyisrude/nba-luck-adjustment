@@ -1,0 +1,47 @@
+{
+  "claim_level": "higher-credibility realized first-game absence shocks; announcement timing remains unverified",
+  "input_screening_rows": 18333,
+  "strict_rows": 2950,
+  "strict_games": 2673,
+  "strict_players": 306,
+  "parameters": {
+    "minimum_season_start": 2010,
+    "minimum_prior_minutes": 28.0,
+    "maximum_days_since_appearance": 7,
+    "end_of_season_exclusion_days": 7,
+    "requires_immediately_previous_team_game_played": true
+  },
+  "failed_filter_counts_nonexclusive": {
+    "eligible_modern_data": 6494,
+    "eligible_rotation_role": 2225,
+    "eligible_recent_appearance": 7682,
+    "eligible_first_missed_game": 12620,
+    "eligible_not_shutdown_window": 1942
+  },
+  "strict_by_tier": {
+    "strict_b2b": 885,
+    "strict_non_b2b": 2065
+  },
+  "strict_by_season": {
+    "2010-11": 111,
+    "2011-12": 110,
+    "2012-13": 135,
+    "2013-14": 127,
+    "2014-15": 151,
+    "2015-16": 149,
+    "2016-17": 141,
+    "2017-18": 161,
+    "2018-19": 180,
+    "2019-20": 149,
+    "2020-21": 247,
+    "2021-22": 243,
+    "2022-23": 290,
+    "2023-24": 226,
+    "2024-25": 275,
+    "2025-26": 255
+  },
+  "strict_by_creator_rank": {
+    "1.0": 1617,
+    "2.0": 1333
+  }
+}

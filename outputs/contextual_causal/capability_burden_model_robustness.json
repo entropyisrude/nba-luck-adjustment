@@ -1,0 +1,37 @@
+{
+  "events": 530,
+  "rows": 3542,
+  "bootstrap_replicates": 5000,
+  "receiver_mae": {
+    "improvement_capability_over_generic": 0.043976770204388574,
+    "cluster_bootstrap_95ci": [
+      0.005807127996983064,
+      0.08263344661341826
+    ],
+    "probability_improvement_positive": 0.987
+  },
+  "receiver_rmse": {
+    "improvement_capability_over_generic": 0.046024697088180244,
+    "cluster_bootstrap_95ci": [
+      0.003033663691599699,
+      0.08855134914918324
+    ],
+    "probability_improvement_positive": 0.9812
+  },
+  "event_total_mae": {
+    "improvement_capability_over_generic": -0.13006754973824086,
+    "cluster_bootstrap_95ci": [
+      -0.43426051652327874,
+      0.17427927232066853
+    ],
+    "probability_improvement_positive": 0.2012
+  },
+  "event_total_rmse": {
+    "improvement_capability_over_generic": -0.21237181645051031,
+    "cluster_bootstrap_95ci": [
+      -0.5059701526547273,
+      0.08735074870603347
+    ],
+    "probability_improvement_positive": 0.0818
+  }
+}

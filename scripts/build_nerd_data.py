@@ -118,7 +118,10 @@ def main() -> None:
     proj = build_projections(k, team)
     rows += proj
     print(f"projection rows for {PROJECT_TO}-{str(PROJECT_TO+1)[-2:]}: {len(proj)}")
-    payload = json.dumps({"cols": COLS, "rows": rows}, separators=(",", ":"),
+    payload = json.dumps({"model": "atomic_denominator",
+                          "evidence": "canonical_counted_possessions_v1",
+                          "cols": COLS,
+                          "rows": rows}, separators=(",", ":"),
                          ensure_ascii=False)
     OUT.write_text("window.NERD_DATA = " + payload + ";\n", encoding="utf-8")
     print(f"wrote {OUT} ({len(rows)} rows, {OUT.stat().st_size/1e6:.2f} MB)")

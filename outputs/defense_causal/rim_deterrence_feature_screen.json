@@ -1,0 +1,1467 @@
+{
+  "design": "prior-season features predicting same-game adjacent-stint matched contrasts; exact offensive five; leave-one-season-out",
+  "outcomes": {
+    "strict_rim_access": {
+      "events": 27643,
+      "zero_rmse": 0.3939759634799167,
+      "univariate_ranked": {
+        "age": {
+          "rmse": 0.3939024067739999,
+          "improvement_pct_vs_zero": 0.018670353710692478,
+          "pearson": 0.006748611090216154
+        },
+        "contest_75": {
+          "rmse": 0.39393130997463366,
+          "improvement_pct_vs_zero": 0.011334068426060995,
+          "pearson": 0.0166915650449398
+        },
+        "contest_foul_ratio": {
+          "rmse": 0.3939392144166398,
+          "improvement_pct_vs_zero": 0.00932774247248691,
+          "pearson": 0.01321968584040545
+        },
+        "rim_dfga_pg": {
+          "rmse": 0.3939455318632199,
+          "improvement_pct_vs_zero": 0.007724231810490867,
+          "pearson": 0.00797635450334867
+        },
+        "chg_75": {
+          "rmse": 0.39394801546438524,
+          "improvement_pct_vs_zero": 0.0070938377267015795,
+          "pearson": 0.01464311398528061
+        },
+        "blk_75": {
+          "rmse": 0.39395614327086614,
+          "improvement_pct_vs_zero": 0.005030816823314854,
+          "pearson": 0.009340782011265954
+        },
+        "rim_dfg_diff_shrunk": {
+          "rmse": 0.39395859420317314,
+          "improvement_pct_vs_zero": 0.004408714833803451,
+          "pearson": 0.007718275818651963
+        },
+        "dreb_75": {
+          "rmse": 0.3939625278035313,
+          "improvement_pct_vs_zero": 0.00341027819735773,
+          "pearson": 0.006240293737705477
+        },
+        "rim_dfg_pct_expected": {
+          "rmse": 0.3939634149760165,
+          "improvement_pct_vs_zero": 0.003185093778146353,
+          "pearson": 0.0051148981786741645
+        },
+        "block_foul_ratio": {
+          "rmse": 0.3939644870169693,
+          "improvement_pct_vs_zero": 0.0029129855654286274,
+          "pearson": 0.0068963842860632184
+        },
+        "boxout_75": {
+          "rmse": 0.3939667695679598,
+          "improvement_pct_vs_zero": 0.0023336225580150582,
+          "pearson": 0.007351045473049961
+        },
+        "oreb_75": {
+          "rmse": 0.3939725652978873,
+          "improvement_pct_vs_zero": 0.0008625353687508053,
+          "pearson": 0.0035465973217406834
+        },
+        "rim_dfg_pct_diff": {
+          "rmse": 0.3939743282470426,
+          "improvement_pct_vs_zero": 0.00041505904564420604,
+          "pearson": 0.004126001760994698
+        },
+        "mpg": {
+          "rmse": 0.3939743476604934,
+          "improvement_pct_vs_zero": 0.00041013147326074417,
+          "pearson": -0.0011152716668577463
+        },
+        "fouls_drawn_75": {
+          "rmse": 0.3939800147734766,
+          "improvement_pct_vs_zero": -0.001028309829909091,
+          "pearson": 0.0013967080564402106
+        },
+        "rim_dfg_pct": {
+          "rmse": 0.39398224733596365,
+          "improvement_pct_vs_zero": -0.0015949846258189737,
+          "pearson": 0.001726357102925076
+        },
+        "screen_75": {
+          "rmse": 0.39398410838752096,
+          "improvement_pct_vs_zero": -0.0020673615548361113,
+          "pearson": 0.003159918814708166
+        },
+        "loose_75": {
+          "rmse": 0.39398644751669026,
+          "improvement_pct_vs_zero": -0.0026610853822051084,
+          "pearson": 0.0017639414277983848
+        },
+        "pf_75": {
+          "rmse": 0.39398878116371056,
+          "improvement_pct_vs_zero": -0.003253417716297946,
+          "pearson": -0.00736840929247117
+        },
+        "height": {
+          "rmse": 0.39399395393064596,
+          "improvement_pct_vs_zero": -0.0045663828245556815,
+          "pearson": -0.0024436211774986724
+        },
+        "defl_75": {
+          "rmse": 0.39399515095263177,
+          "improvement_pct_vs_zero": -0.004870214046959198,
+          "pearson": -0.005480778457794175
+        },
+        "stl_75": {
+          "rmse": 0.39399880876852006,
+          "improvement_pct_vs_zero": -0.005798650354593704,
+          "pearson": -0.008933404122397823
+        }
+      },
+      "ridge_all": {
+        "rmse": 0.3940703120691628,
+        "improvement_pct_vs_zero": -0.02394780341743452,
+        "pearson": 0.006847659564739483,
+        "chosen_alphas": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0
+        ]
+      },
+      "shallow_nonlinear_all": {
+        "rmse": 0.3940160648025695,
+        "improvement_pct_vs_zero": -0.010178621634326923,
+        "pearson": 0.010086374575774543
+      }
+    },
+    "recorded_rim_attempt": {
+      "events": 27643,
+      "zero_rmse": 0.367809129518585,
+      "univariate_ranked": {
+        "age": {
+          "rmse": 0.3677378847247478,
+          "improvement_pct_vs_zero": 0.01937004498243633,
+          "pearson": 0.0023859870483059985
+        },
+        "contest_75": {
+          "rmse": 0.3677717779945397,
+          "improvement_pct_vs_zero": 0.010155137827660976,
+          "pearson": 0.01682787135688534
+        },
+        "rim_dfga_pg": {
+          "rmse": 0.3677810359872641,
+          "improvement_pct_vs_zero": 0.007638073409899082,
+          "pearson": 0.006170434239539253
+        },
+        "blk_75": {
+          "rmse": 0.36778466011070926,
+          "improvement_pct_vs_zero": 0.006652746196866843,
+          "pearson": 0.012108335902858744
+        },
+        "dreb_75": {
+          "rmse": 0.3677872081100391,
+          "improvement_pct_vs_zero": 0.005959995765902892,
+          "pearson": 0.009014857590494045
+        },
+        "rim_dfg_diff_shrunk": {
+          "rmse": 0.36778894701558823,
+          "improvement_pct_vs_zero": 0.0054872218705370734,
+          "pearson": 0.008701307585646736
+        },
+        "chg_75": {
+          "rmse": 0.3677890024700523,
+          "improvement_pct_vs_zero": 0.005472144902729514,
+          "pearson": 0.011539873448728435
+        },
+        "contest_foul_ratio": {
+          "rmse": 0.36779064252943533,
+          "improvement_pct_vs_zero": 0.005026245317474309,
+          "pearson": 0.010422528170111654
+        },
+        "block_foul_ratio": {
+          "rmse": 0.36780020540658925,
+          "improvement_pct_vs_zero": 0.0024262888763670887,
+          "pearson": 0.006907788051207816
+        },
+        "rim_dfg_pct_diff": {
+          "rmse": 0.367803222521155,
+          "improvement_pct_vs_zero": 0.0016059953263702909,
+          "pearson": 0.005372753815113753
+        },
+        "fouls_drawn_75": {
+          "rmse": 0.36780434552846125,
+          "improvement_pct_vs_zero": 0.0013006719354780039,
+          "pearson": 0.003222724664077738
+        },
+        "rim_dfg_pct_expected": {
+          "rmse": 0.3678047202123689,
+          "improvement_pct_vs_zero": 0.0011988028198017808,
+          "pearson": 0.002167825782894659
+        },
+        "rim_dfg_pct": {
+          "rmse": 0.3678080273958831,
+          "improvement_pct_vs_zero": 0.0002996452816095285,
+          "pearson": 0.003813428437440926
+        },
+        "mpg": {
+          "rmse": 0.3678103542071186,
+          "improvement_pct_vs_zero": -0.00033296849786257354,
+          "pearson": -0.003263300676440057
+        },
+        "oreb_75": {
+          "rmse": 0.36781128689145764,
+          "improvement_pct_vs_zero": -0.0005865468525545481,
+          "pearson": 0.0018807053539023249
+        },
+        "boxout_75": {
+          "rmse": 0.36781203407448626,
+          "improvement_pct_vs_zero": -0.0007896910838134374,
+          "pearson": 0.0031619289129579528
+        },
+        "stl_75": {
+          "rmse": 0.36781597955441464,
+          "improvement_pct_vs_zero": -0.0018623887445556875,
+          "pearson": 9.865525913448641e-05
+        },
+        "pf_75": {
+          "rmse": 0.36781747546043336,
+          "improvement_pct_vs_zero": -0.0022690958920046356,
+          "pearson": 0.0030532431417375377
+        },
+        "screen_75": {
+          "rmse": 0.36781853407554216,
+          "improvement_pct_vs_zero": -0.002556912322826399,
+          "pearson": 0.0019325863229653158
+        },
+        "height": {
+          "rmse": 0.36782078086616155,
+          "improvement_pct_vs_zero": -0.003167770085465982,
+          "pearson": -0.0036052756004516535
+        },
+        "defl_75": {
+          "rmse": 0.3678276722724621,
+          "improvement_pct_vs_zero": -0.005041406639727519,
+          "pearson": -0.0033209652348592015
+        },
+        "loose_75": {
+          "rmse": 0.3678278285221247,
+          "improvement_pct_vs_zero": -0.005083887820878097,
+          "pearson": -0.012210714144871734
+        }
+      },
+      "ridge_all": {
+        "rmse": 0.3678327075119507,
+        "improvement_pct_vs_zero": -0.006410388289301849,
+        "pearson": 0.008136302861677564,
+        "chosen_alphas": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0
+        ]
+      },
+      "shallow_nonlinear_all": {
+        "rmse": 0.367697736694162,
+        "improvement_pct_vs_zero": 0.03028549741785902,
+        "pearson": 0.02052572108631034
+      }
+    },
+    "restricted_area_foul": {
+      "events": 27643,
+      "zero_rmse": 0.2118938086828169,
+      "univariate_ranked": {
+        "contest_foul_ratio": {
+          "rmse": 0.21188252270390737,
+          "improvement_pct_vs_zero": 0.005326242885383969,
+          "pearson": 0.010802521382431892
+        },
+        "block_foul_ratio": {
+          "rmse": 0.21188380755349379,
+          "improvement_pct_vs_zero": 0.00471987803007945,
+          "pearson": 0.007369563953582495
+        },
+        "pf_75": {
+          "rmse": 0.21188724349718197,
+          "improvement_pct_vs_zero": 0.003098337641738169,
+          "pearson": 0.007209763917541404
+        },
+        "boxout_75": {
+          "rmse": 0.21188800687077314,
+          "improvement_pct_vs_zero": 0.0027380753028327653,
+          "pearson": 0.009254975687177968
+        },
+        "blk_75": {
+          "rmse": 0.21188968974290562,
+          "improvement_pct_vs_zero": 0.0019438698737328508,
+          "pearson": 0.002995946178513489
+        },
+        "contest_75": {
+          "rmse": 0.21189119124687364,
+          "improvement_pct_vs_zero": 0.0012352583397934325,
+          "pearson": 0.004846354137403958
+        },
+        "mpg": {
+          "rmse": 0.21189376412173253,
+          "improvement_pct_vs_zero": 2.1029913355175012e-05,
+          "pearson": 0.0005641755504822534
+        },
+        "dreb_75": {
+          "rmse": 0.21189500862662047,
+          "improvement_pct_vs_zero": -0.0005662948865836626,
+          "pearson": 0.0032018751576166054
+        },
+        "rim_dfga_pg": {
+          "rmse": 0.21189506371245478,
+          "improvement_pct_vs_zero": -0.0005922917926115545,
+          "pearson": 0.002326160329606359
+        },
+        "screen_75": {
+          "rmse": 0.21189571660280343,
+          "improvement_pct_vs_zero": -0.0009004132770051854,
+          "pearson": 0.0006581916832023552
+        },
+        "fouls_drawn_75": {
+          "rmse": 0.21189607676279668,
+          "improvement_pct_vs_zero": -0.0010703852056259677,
+          "pearson": -0.006344639389598922
+        },
+        "rim_dfg_pct_expected": {
+          "rmse": 0.21189619711564134,
+          "improvement_pct_vs_zero": -0.0011271838659565603,
+          "pearson": 0.0006144715897458218
+        },
+        "oreb_75": {
+          "rmse": 0.2118991907449064,
+          "improvement_pct_vs_zero": -0.0025399808153636627,
+          "pearson": -0.0017148248733320174
+        },
+        "chg_75": {
+          "rmse": 0.21189940161186932,
+          "improvement_pct_vs_zero": -0.0026394962114206777,
+          "pearson": -0.0007406879717979522
+        },
+        "height": {
+          "rmse": 0.21189952093246053,
+          "improvement_pct_vs_zero": -0.0026958077157246407,
+          "pearson": -0.0053948200827573884
+        },
+        "rim_dfg_diff_shrunk": {
+          "rmse": 0.21190294648741367,
+          "improvement_pct_vs_zero": -0.004312445301524193,
+          "pearson": -0.007710054994849086
+        },
+        "rim_dfg_pct_diff": {
+          "rmse": 0.2119063387922432,
+          "improvement_pct_vs_zero": -0.005913391006640012,
+          "pearson": -0.00912454032332096
+        },
+        "stl_75": {
+          "rmse": 0.21190663614647826,
+          "improvement_pct_vs_zero": -0.006053722730792188,
+          "pearson": -0.010797467033515893
+        },
+        "defl_75": {
+          "rmse": 0.211907851390968,
+          "improvement_pct_vs_zero": -0.006627238539147484,
+          "pearson": -0.012163312451913932
+        },
+        "rim_dfg_pct": {
+          "rmse": 0.21190858718775346,
+          "improvement_pct_vs_zero": -0.006974486431876592,
+          "pearson": -0.010968910808811877
+        },
+        "age": {
+          "rmse": 0.2119274426695622,
+          "improvement_pct_vs_zero": -0.015873038931335515,
+          "pearson": -0.019637959200830737
+        },
+        "loose_75": {
+          "rmse": 0.21193285202991363,
+          "improvement_pct_vs_zero": -0.018425902738461453,
+          "pearson": -0.01065174954314278
+        }
+      },
+      "ridge_all": {
+        "rmse": 0.2119989376800373,
+        "improvement_pct_vs_zero": -0.04961400140659489,
+        "pearson": -0.001085287583346518,
+        "chosen_alphas": [
+          1.0,
+          1000.0,
+          1.0,
+          1000.0
+        ]
+      },
+      "shallow_nonlinear_all": {
+        "rmse": 0.21197825069044723,
+        "improvement_pct_vs_zero": -0.039851097186494044,
+        "pearson": -0.005823620147866452
+      }
+    },
+    "rim_fg_pct": {
+      "events": 3999,
+      "zero_rmse": 0.5809296309275974,
+      "univariate_ranked": {
+        "rim_dfg_pct": {
+          "rmse": 0.5806421771607458,
+          "improvement_pct_vs_zero": 0.04948168444990353,
+          "pearson": 0.03454587757323248
+        },
+        "rim_dfg_pct_diff": {
+          "rmse": 0.5806562535874982,
+          "improvement_pct_vs_zero": 0.04705859807198065,
+          "pearson": 0.03485052921993886
+        },
+        "rim_dfg_diff_shrunk": {
+          "rmse": 0.5807449238001775,
+          "improvement_pct_vs_zero": 0.03179509489384946,
+          "pearson": 0.030345906444679778
+        },
+        "height": {
+          "rmse": 0.5808424626206129,
+          "improvement_pct_vs_zero": 0.015004968303189425,
+          "pearson": 0.021862051319780335
+        },
+        "contest_foul_ratio": {
+          "rmse": 0.5808996043030387,
+          "improvement_pct_vs_zero": 0.005168719748516182,
+          "pearson": 0.011476678359478623
+        },
+        "boxout_75": {
+          "rmse": 0.5809119256848237,
+          "improvement_pct_vs_zero": 0.003047743105377698,
+          "pearson": 0.02363128533187805
+        },
+        "fouls_drawn_75": {
+          "rmse": 0.5809257790571059,
+          "improvement_pct_vs_zero": 0.0006630528529671942,
+          "pearson": 0.016138676427673238
+        },
+        "age": {
+          "rmse": 0.5809300462747288,
+          "improvement_pct_vs_zero": -7.149697816011269e-05,
+          "pearson": -0.012709030429812248
+        },
+        "blk_75": {
+          "rmse": 0.581022169633771,
+          "improvement_pct_vs_zero": -0.015929417479676466,
+          "pearson": 0.006571115434852494
+        },
+        "stl_75": {
+          "rmse": 0.5810315602404023,
+          "improvement_pct_vs_zero": -0.01754589667635198,
+          "pearson": 0.009886626574037913
+        },
+        "dreb_75": {
+          "rmse": 0.581035990240708,
+          "improvement_pct_vs_zero": -0.018308467574756904,
+          "pearson": -0.0017400216820999577
+        },
+        "contest_75": {
+          "rmse": 0.5810434301337813,
+          "improvement_pct_vs_zero": -0.019589155058619134,
+          "pearson": -4.526853456042276e-05
+        },
+        "defl_75": {
+          "rmse": 0.5811208061947776,
+          "improvement_pct_vs_zero": -0.0329085068142998,
+          "pearson": -0.0012361213747984477
+        },
+        "oreb_75": {
+          "rmse": 0.5811257479377325,
+          "improvement_pct_vs_zero": -0.03375916801178214,
+          "pearson": 0.0011816849214970602
+        },
+        "rim_dfga_pg": {
+          "rmse": 0.5811720856126926,
+          "improvement_pct_vs_zero": -0.04173563753462339,
+          "pearson": -0.014380696546992526
+        },
+        "block_foul_ratio": {
+          "rmse": 0.5811760854189637,
+          "improvement_pct_vs_zero": -0.0424241557402949,
+          "pearson": -0.0030480245051570003
+        },
+        "rim_dfg_pct_expected": {
+          "rmse": 0.581224102648084,
+          "improvement_pct_vs_zero": -0.05068974016979588,
+          "pearson": -0.02020294948531103
+        },
+        "pf_75": {
+          "rmse": 0.5812750206908882,
+          "improvement_pct_vs_zero": -0.05945466454160275,
+          "pearson": -0.02843481509504612
+        },
+        "chg_75": {
+          "rmse": 0.5813094824963236,
+          "improvement_pct_vs_zero": -0.06538684696109076,
+          "pearson": -0.03143349288477925
+        },
+        "loose_75": {
+          "rmse": 0.581310821269583,
+          "improvement_pct_vs_zero": -0.06561730056304782,
+          "pearson": -0.02616347385850996
+        },
+        "screen_75": {
+          "rmse": 0.5813126514110029,
+          "improvement_pct_vs_zero": -0.06593233724261349,
+          "pearson": -0.009344723760458758
+        },
+        "mpg": {
+          "rmse": 0.5814669458538319,
+          "improvement_pct_vs_zero": -0.09249225682919082,
+          "pearson": -0.050559707881601475
+        }
+      },
+      "ridge_all": {
+        "rmse": 0.5824313498438028,
+        "improvement_pct_vs_zero": -0.25850272326573,
+        "pearson": -0.012490746880946337,
+        "chosen_alphas": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0
+        ]
+      },
+      "shallow_nonlinear_all": {
+        "rmse": 0.585770991971396,
+        "improvement_pct_vs_zero": -0.8333816672542849,
+        "pearson": -0.015418260734826335
+      }
+    }
+  },
+  "top_15pct_selector_validation": {
+    "strict_rim_access": {
+      "height": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2639,
+          "games": 1374,
+          "rate_difference": -0.006476094775143405,
+          "cluster_95pct": [
+            -0.023940023525059844,
+            0.009100256574902774
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2714,
+          "games": 1357,
+          "rate_difference": -0.01392452598140237,
+          "cluster_95pct": [
+            -0.02764479039552793,
+            5.922741017727134e-05
+          ]
+        },
+        "all_four_seasons": {
+          "events": 5353,
+          "games": 2731,
+          "rate_difference": -0.010194445564215433,
+          "cluster_95pct": [
+            -0.02073780883067869,
+            0.0005351069035427956
+          ]
+        }
+      },
+      "blocks": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2272,
+          "games": 1215,
+          "rate_difference": -0.02529287978670346,
+          "cluster_95pct": [
+            -0.04290733185879475,
+            -0.008873022408434619
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2890,
+          "games": 1387,
+          "rate_difference": -0.012479011600403555,
+          "cluster_95pct": [
+            -0.027445655814260107,
+            0.0020341239681013128
+          ]
+        },
+        "all_four_seasons": {
+          "events": 5162,
+          "games": 2602,
+          "rate_difference": -0.018229992819282555,
+          "cluster_95pct": [
+            -0.029412991867791703,
+            -0.007656889407693151
+          ]
+        }
+      },
+      "contest_volume": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 1975,
+          "games": 1129,
+          "rate_difference": -0.010990365289407028,
+          "cluster_95pct": [
+            -0.02957005580504985,
+            0.005439100684607303
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2382,
+          "games": 1237,
+          "rate_difference": -0.019936302145491937,
+          "cluster_95pct": [
+            -0.03536384283089052,
+            -0.0032975827656070472
+          ]
+        },
+        "all_four_seasons": {
+          "events": 4357,
+          "games": 2366,
+          "rate_difference": -0.01581306352189886,
+          "cluster_95pct": [
+            -0.027484815601998645,
+            -0.0027932249126141648
+          ]
+        }
+      },
+      "defensive_rebounds": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2722,
+          "games": 1372,
+          "rate_difference": -0.017538389320987724,
+          "cluster_95pct": [
+            -0.0326599782477998,
+            -0.002438916798705337
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3122,
+          "games": 1432,
+          "rate_difference": -0.006360142027129726,
+          "cluster_95pct": [
+            -0.020803265727361266,
+            0.0073277083758038885
+          ]
+        },
+        "all_four_seasons": {
+          "events": 5844,
+          "games": 2804,
+          "rate_difference": -0.01168577814049696,
+          "cluster_95pct": [
+            -0.02167815093221934,
+            -0.0016909469343832392
+          ]
+        }
+      },
+      "boxouts": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 1996,
+          "games": 1174,
+          "rate_difference": -0.0176044083906076,
+          "cluster_95pct": [
+            -0.03510224819400934,
+            -0.00020982802805244113
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2210,
+          "games": 1200,
+          "rate_difference": -0.00329571479727383,
+          "cluster_95pct": [
+            -0.020885465119012233,
+            0.014011795436383862
+          ]
+        },
+        "all_four_seasons": {
+          "events": 4206,
+          "games": 2374,
+          "rate_difference": -0.010304732843980452,
+          "cluster_95pct": [
+            -0.022337952161536525,
+            0.0022166844222056923
+          ]
+        }
+      },
+      "low_personal_fouls": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 3265,
+          "games": 1516,
+          "rate_difference": 0.003749491374768674,
+          "cluster_95pct": [
+            -0.0104925342426069,
+            0.016558241220018945
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3691,
+          "games": 1565,
+          "rate_difference": -0.006140502390601677,
+          "cluster_95pct": [
+            -0.018760035751544252,
+            0.0067110712942413915
+          ]
+        },
+        "all_four_seasons": {
+          "events": 6956,
+          "games": 3081,
+          "rate_difference": -0.001366340452811967,
+          "cluster_95pct": [
+            -0.011183052259468562,
+            0.007883866042308958
+          ]
+        }
+      },
+      "fouls_drawn": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 4042,
+          "games": 1674,
+          "rate_difference": -0.0024721983194249965,
+          "cluster_95pct": [
+            -0.014284877078941799,
+            0.010378571846092047
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3951,
+          "games": 1598,
+          "rate_difference": -0.009070625549795068,
+          "cluster_95pct": [
+            -0.020978638180359523,
+            0.0028625920865142556
+          ]
+        },
+        "all_four_seasons": {
+          "events": 7993,
+          "games": 3272,
+          "rate_difference": -0.005700268034842534,
+          "cluster_95pct": [
+            -0.01408378530389445,
+            0.002541894663659865
+          ]
+        }
+      },
+      "block_foul_ratio": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2771,
+          "games": 1290,
+          "rate_difference": -0.016498233731470104,
+          "cluster_95pct": [
+            -0.0322712261631868,
+            -0.0008763447667818964
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3352,
+          "games": 1500,
+          "rate_difference": -0.008382772221312682,
+          "cluster_95pct": [
+            -0.02168865220370067,
+            0.004165863964855435
+          ]
+        },
+        "all_four_seasons": {
+          "events": 6123,
+          "games": 2790,
+          "rate_difference": -0.012160881672773455,
+          "cluster_95pct": [
+            -0.02333155948547891,
+            -0.0006239585172013602
+          ]
+        }
+      },
+      "contest_foul_ratio": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2891,
+          "games": 1429,
+          "rate_difference": -0.013938143036705106,
+          "cluster_95pct": [
+            -0.028049986775220775,
+            0.002079776586771384
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3156,
+          "games": 1459,
+          "rate_difference": -0.01685452550141475,
+          "cluster_95pct": [
+            -0.03153368491130881,
+            -0.0039212524676540215
+          ]
+        },
+        "all_four_seasons": {
+          "events": 6047,
+          "games": 2888,
+          "rate_difference": -0.015406792269338488,
+          "cluster_95pct": [
+            -0.0256768137098318,
+            -0.004484461211780051
+          ]
+        }
+      },
+      "rim_defended_volume": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 3792,
+          "games": 1667,
+          "rate_difference": -0.009386843683444552,
+          "cluster_95pct": [
+            -0.0226752007468866,
+            0.003946759905864759
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 4413,
+          "games": 1709,
+          "rate_difference": -0.011905996531542564,
+          "cluster_95pct": [
+            -0.02333603463427911,
+            -0.00048244922507562207
+          ]
+        },
+        "all_four_seasons": {
+          "events": 8205,
+          "games": 3376,
+          "rate_difference": -0.010723030237508589,
+          "cluster_95pct": [
+            -0.019814542196386228,
+            -0.0022589009233534886
+          ]
+        }
+      },
+      "prior_rim_dfg_pct": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 3246,
+          "games": 1408,
+          "rate_difference": -0.012401405708666319,
+          "cluster_95pct": [
+            -0.026325740683923637,
+            0.0011348906000553099
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3792,
+          "games": 1565,
+          "rate_difference": -0.008177781097787442,
+          "cluster_95pct": [
+            -0.02061329984618564,
+            0.005007397005598842
+          ]
+        },
+        "all_four_seasons": {
+          "events": 7038,
+          "games": 2973,
+          "rate_difference": -0.010175530271337328,
+          "cluster_95pct": [
+            -0.01898483245676649,
+            -0.0010742106792518383
+          ]
+        }
+      },
+      "prior_rim_dfg_pct_diff": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 3185,
+          "games": 1384,
+          "rate_difference": -0.011428547607743648,
+          "cluster_95pct": [
+            -0.024740617773831935,
+            0.0023945277212686768
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3680,
+          "games": 1526,
+          "rate_difference": -0.006050013273514725,
+          "cluster_95pct": [
+            -0.01873449207201134,
+            0.00598819728949389
+          ]
+        },
+        "all_four_seasons": {
+          "events": 6865,
+          "games": 2910,
+          "rate_difference": -0.00860483090534618,
+          "cluster_95pct": [
+            -0.017588021295666653,
+            0.001380830333391109
+          ]
+        }
+      },
+      "sample_shrunk_rim_dfg_diff": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 3571,
+          "games": 1504,
+          "rate_difference": -0.007927503348981856,
+          "cluster_95pct": [
+            -0.02172449900325004,
+            0.005158594617899666
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3993,
+          "games": 1603,
+          "rate_difference": -0.0009568628275986295,
+          "cluster_95pct": [
+            -0.013223805433686463,
+            0.0114274742614525
+          ]
+        },
+        "all_four_seasons": {
+          "events": 7564,
+          "games": 3107,
+          "rate_difference": -0.004342696883392278,
+          "cluster_95pct": [
+            -0.013919089416958776,
+            0.004804197377794182
+          ]
+        }
+      },
+      "size_plus_blocks": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2073,
+          "games": 1154,
+          "rate_difference": -0.027158273478838674,
+          "cluster_95pct": [
+            -0.04482929869602919,
+            -0.011141436477130028
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2727,
+          "games": 1354,
+          "rate_difference": -0.017548946439058376,
+          "cluster_95pct": [
+            -0.03232674801931514,
+            -0.0016761251657475878
+          ]
+        },
+        "all_four_seasons": {
+          "events": 4800,
+          "games": 2508,
+          "rate_difference": -0.021765802459356883,
+          "cluster_95pct": [
+            -0.033403096175209264,
+            -0.009467106979379252
+          ]
+        }
+      },
+      "anchor_composite": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2411,
+          "games": 1312,
+          "rate_difference": -0.030417027643500436,
+          "cluster_95pct": [
+            -0.046646327310161065,
+            -0.014456768081385681
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 2484,
+          "games": 1289,
+          "rate_difference": -0.010397524212314931,
+          "cluster_95pct": [
+            -0.026082184378352094,
+            0.004641255180493847
+          ]
+        },
+        "all_four_seasons": {
+          "events": 4895,
+          "games": 2601,
+          "rate_difference": -0.02051575726581244,
+          "cluster_95pct": [
+            -0.0311079758537299,
+            -0.009996231787803676
+          ]
+        }
+      },
+      "block_contest_discipline": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 2195,
+          "games": 1197,
+          "rate_difference": -0.017763446198818592,
+          "cluster_95pct": [
+            -0.03574411266277304,
+            -0.0010690486695327588
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 3130,
+          "games": 1446,
+          "rate_difference": -0.014186638099151397,
+          "cluster_95pct": [
+            -0.027945863664710347,
+            -0.0009452886093678989
+          ]
+        },
+        "all_four_seasons": {
+          "events": 5325,
+          "games": 2643,
+          "rate_difference": -0.015707533113805305,
+          "cluster_95pct": [
+            -0.02735699835646124,
+            -0.005938107379437044
+          ]
+        }
+      }
+    },
+    "rim_fg_pct": {
+      "height": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 411,
+          "games": 343,
+          "rate_difference": -0.03945388608667287,
+          "cluster_95pct": [
+            -0.08816396473069489,
+            0.007495360884567727
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 361,
+          "games": 317,
+          "rate_difference": -0.02707971545180379,
+          "cluster_95pct": [
+            -0.0852281161821316,
+            0.03296794735286384
+          ]
+        },
+        "all_four_seasons": {
+          "events": 772,
+          "games": 660,
+          "rate_difference": -0.03376091907444546,
+          "cluster_95pct": [
+            -0.0732130224903724,
+            0.006554047715038739
+          ]
+        }
+      },
+      "blocks": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 368,
+          "games": 309,
+          "rate_difference": -0.010111940021503459,
+          "cluster_95pct": [
+            -0.06473822759319073,
+            0.04315139430824856
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 386,
+          "games": 325,
+          "rate_difference": -0.057196671187856006,
+          "cluster_95pct": [
+            -0.11690268480241951,
+            -0.0020211534824650774
+          ]
+        },
+        "all_four_seasons": {
+          "events": 754,
+          "games": 634,
+          "rate_difference": -0.033424364604569344,
+          "cluster_95pct": [
+            -0.07329921793604953,
+            0.006903382234293061
+          ]
+        }
+      },
+      "contest_volume": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 315,
+          "games": 276,
+          "rate_difference": -0.043038504215272895,
+          "cluster_95pct": [
+            -0.0945580856574697,
+            0.011577054533682725
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 320,
+          "games": 279,
+          "rate_difference": -0.03304558679795599,
+          "cluster_95pct": [
+            -0.09176273760328019,
+            0.0270752919772793
+          ]
+        },
+        "all_four_seasons": {
+          "events": 635,
+          "games": 555,
+          "rate_difference": -0.038073942671328666,
+          "cluster_95pct": [
+            -0.07988592508739917,
+            -0.0013338534326666563
+          ]
+        }
+      },
+      "defensive_rebounds": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 417,
+          "games": 352,
+          "rate_difference": -0.017759458486633028,
+          "cluster_95pct": [
+            -0.07019731018327373,
+            0.03969545116089851
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 420,
+          "games": 365,
+          "rate_difference": -0.013877581884211542,
+          "cluster_95pct": [
+            -0.07431299797618136,
+            0.04146405153328303
+          ]
+        },
+        "all_four_seasons": {
+          "events": 837,
+          "games": 717,
+          "rate_difference": -0.015854568234227467,
+          "cluster_95pct": [
+            -0.05584956555472475,
+            0.022422957272669533
+          ]
+        }
+      },
+      "boxouts": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 326,
+          "games": 287,
+          "rate_difference": -0.036078359587200605,
+          "cluster_95pct": [
+            -0.09416051742171888,
+            0.0221402319510953
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 305,
+          "games": 273,
+          "rate_difference": -0.016533019866433556,
+          "cluster_95pct": [
+            -0.08054374252320597,
+            0.053710180443095695
+          ]
+        },
+        "all_four_seasons": {
+          "events": 631,
+          "games": 560,
+          "rate_difference": -0.02677516869026807,
+          "cluster_95pct": [
+            -0.06727372926458731,
+            0.017620672116818205
+          ]
+        }
+      },
+      "low_personal_fouls": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 495,
+          "games": 414,
+          "rate_difference": -0.014316482265677924,
+          "cluster_95pct": [
+            -0.06210345018613365,
+            0.033933250163791506
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 479,
+          "games": 402,
+          "rate_difference": 0.008514131858077756,
+          "cluster_95pct": [
+            -0.04214716091628889,
+            0.05980727044123941
+          ]
+        },
+        "all_four_seasons": {
+          "events": 974,
+          "games": 816,
+          "rate_difference": -0.0034429191247190715,
+          "cluster_95pct": [
+            -0.03764301017322738,
+            0.03381917735154975
+          ]
+        }
+      },
+      "fouls_drawn": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 593,
+          "games": 484,
+          "rate_difference": -0.024334522807464308,
+          "cluster_95pct": [
+            -0.07230155708407922,
+            0.023467509207134994
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 545,
+          "games": 458,
+          "rate_difference": -0.019103283246505075,
+          "cluster_95pct": [
+            -0.06923218359178658,
+            0.030240651834543417
+          ]
+        },
+        "all_four_seasons": {
+          "events": 1138,
+          "games": 942,
+          "rate_difference": -0.021907328952166134,
+          "cluster_95pct": [
+            -0.05310233151130635,
+            0.013125632232355916
+          ]
+        }
+      },
+      "block_foul_ratio": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 445,
+          "games": 366,
+          "rate_difference": -0.020222927264828425,
+          "cluster_95pct": [
+            -0.0756480212485006,
+            0.03664436222384222
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 432,
+          "games": 371,
+          "rate_difference": -0.07727021722917574,
+          "cluster_95pct": [
+            -0.1325860292803779,
+            -0.02315655025984116
+          ]
+        },
+        "all_four_seasons": {
+          "events": 877,
+          "games": 737,
+          "rate_difference": -0.047381181964790985,
+          "cluster_95pct": [
+            -0.08450231933675081,
+            -0.010279879305356213
+          ]
+        }
+      },
+      "contest_foul_ratio": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 464,
+          "games": 393,
+          "rate_difference": 0.02405003997115419,
+          "cluster_95pct": [
+            -0.023936570091534576,
+            0.07403713342554256
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 438,
+          "games": 377,
+          "rate_difference": -0.022214860292777933,
+          "cluster_95pct": [
+            -0.07122476783885277,
+            0.027480283813238193
+          ]
+        },
+        "all_four_seasons": {
+          "events": 902,
+          "games": 770,
+          "rate_difference": 0.0022537404405061886,
+          "cluster_95pct": [
+            -0.03440441380834627,
+            0.03686559885250475
+          ]
+        }
+      },
+      "rim_defended_volume": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 595,
+          "games": 488,
+          "rate_difference": -0.006069675625476507,
+          "cluster_95pct": [
+            -0.05163950131250792,
+            0.04000069171034404
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 577,
+          "games": 475,
+          "rate_difference": 0.001135965856538023,
+          "cluster_95pct": [
+            -0.04774257475377984,
+            0.050124074335717264
+          ]
+        },
+        "all_four_seasons": {
+          "events": 1172,
+          "games": 963,
+          "rate_difference": -0.002577144111164608,
+          "cluster_95pct": [
+            -0.03459064589997481,
+            0.031857685685184656
+          ]
+        }
+      },
+      "prior_rim_dfg_pct": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 473,
+          "games": 400,
+          "rate_difference": -0.03601363747647415,
+          "cluster_95pct": [
+            -0.08373135363694849,
+            0.016965142870388708
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 479,
+          "games": 398,
+          "rate_difference": -0.05778732548928305,
+          "cluster_95pct": [
+            -0.1035428855864135,
+            -0.006293608234838154
+          ]
+        },
+        "all_four_seasons": {
+          "events": 952,
+          "games": 798,
+          "rate_difference": -0.04679256473928777,
+          "cluster_95pct": [
+            -0.08117678793621211,
+            -0.012427607135282872
+          ]
+        }
+      },
+      "prior_rim_dfg_pct_diff": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 470,
+          "games": 393,
+          "rate_difference": -0.04082669569927116,
+          "cluster_95pct": [
+            -0.0924036222592579,
+            0.007680593205261621
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 481,
+          "games": 390,
+          "rate_difference": -0.06087930788701989,
+          "cluster_95pct": [
+            -0.11113401124125852,
+            -0.007598833957486048
+          ]
+        },
+        "all_four_seasons": {
+          "events": 951,
+          "games": 783,
+          "rate_difference": -0.05084786503690147,
+          "cluster_95pct": [
+            -0.0880449469570492,
+            -0.016191266527424527
+          ]
+        }
+      },
+      "sample_shrunk_rim_dfg_diff": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 566,
+          "games": 475,
+          "rate_difference": -0.004582418396550103,
+          "cluster_95pct": [
+            -0.048365341792681336,
+            0.03863770205428257
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 510,
+          "games": 423,
+          "rate_difference": -0.04267291132846156,
+          "cluster_95pct": [
+            -0.09321191724641446,
+            0.005853361762141934
+          ]
+        },
+        "all_four_seasons": {
+          "events": 1076,
+          "games": 898,
+          "rate_difference": -0.022347681327015975,
+          "cluster_95pct": [
+            -0.055911413423347725,
+            0.012026590962319625
+          ]
+        }
+      },
+      "size_plus_blocks": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 328,
+          "games": 278,
+          "rate_difference": -0.019789616899836826,
+          "cluster_95pct": [
+            -0.08398815905153402,
+            0.03306950144851787
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 373,
+          "games": 326,
+          "rate_difference": -0.06231748039134786,
+          "cluster_95pct": [
+            -0.12001430417821084,
+            -0.0026741226625691577
+          ]
+        },
+        "all_four_seasons": {
+          "events": 701,
+          "games": 604,
+          "rate_difference": -0.0420026357431493,
+          "cluster_95pct": [
+            -0.08201319012110106,
+            -6.278436187901102e-05
+          ]
+        }
+      },
+      "anchor_composite": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 404,
+          "games": 345,
+          "rate_difference": -0.004453304797395918,
+          "cluster_95pct": [
+            -0.05919700787294222,
+            0.04756002613206913
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 342,
+          "games": 300,
+          "rate_difference": -0.05178606648356856,
+          "cluster_95pct": [
+            -0.11743244464028615,
+            0.011516335166883149
+          ]
+        },
+        "all_four_seasons": {
+          "events": 746,
+          "games": 645,
+          "rate_difference": -0.025698244354531687,
+          "cluster_95pct": [
+            -0.06476826144678516,
+            0.013012156633646786
+          ]
+        }
+      },
+      "block_contest_discipline": {
+        "discovery_2022_23_and_2023_24": {
+          "events": 376,
+          "games": 327,
+          "rate_difference": 0.0246934693698017,
+          "cluster_95pct": [
+            -0.0304016698239812,
+            0.07821022094465394
+          ]
+        },
+        "validation_2024_25_and_2025_26": {
+          "events": 422,
+          "games": 356,
+          "rate_difference": -0.04759585378604272,
+          "cluster_95pct": [
+            -0.10425462797405961,
+            0.006487987488495895
+          ]
+        },
+        "all_four_seasons": {
+          "events": 798,
+          "games": 683,
+          "rate_difference": -0.012670564579046403,
+          "cluster_95pct": [
+            -0.049031816206055505,
+            0.02688054268421308
+          ]
+        }
+      }
+    }
+  }
+}

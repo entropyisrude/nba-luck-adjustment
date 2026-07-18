@@ -82,27 +82,10 @@ def compute_rapm(stints_df: pd.DataFrame, alpha: float, min_minutes: int = 50,
 
 
 def generate_rapm_report_playoffs() -> None:
-    if not STINTS_PATH.exists():
-        print(f"Error: {STINTS_PATH} not found")
-        return
-
-    print("Loading stints...")
-    stints = pd.read_csv(STINTS_PATH, dtype={"game_id": str})
-    stints["date"] = pd.to_datetime(stints["date"])
-    import rapm_luck
-    stints = rapm_luck.apply_to_stints(stints)
-
-    # Derive the playoff year from the game-id prefix (4YY = season starting in
-    # year YY, playoffs the following spring). Stint dates are synthetic and one
-    # year early for every playoff run before 2019-20, so date.year mislabels
-    # every pre-2019 season.
-    def _playoff_year(gid: str) -> int:
-        yy = int(str(gid).lstrip("0")[1:3])
-        return (1900 + yy if yy >= 90 else 2000 + yy) + 1
-
-    stints["playoff_year"] = stints["game_id"].map(_playoff_year)
-
-    playoff_years = sorted(stints["playoff_year"].unique())
+    from metric.counted_public_rapm import CountedPublicRapm
+    model = CountedPublicRapm()
+    season_years = sorted(set(model.seasons[model.game_types == "playoffs"]))
+    playoff_years = [int(y) + 1 for y in season_years]
     latest_label = playoff_season_label(max(playoff_years))
     print(f"Playoff years: {playoff_years[0]}–{playoff_years[-1]}  ({len(playoff_years)} seasons)")
 
@@ -112,11 +95,15 @@ def generate_rapm_report_playoffs() -> None:
     era_abbrs = load_era_team_abbrs()
     for yr in playoff_years:
         label = playoff_season_label(yr)
-        df = stints[stints["playoff_year"] == yr].copy()
         for alpha in ALPHAS:
             print(f"  {label} alpha={alpha} ...", end=" ")
-            rows = compute_rapm(df, alpha, MIN_MINUTES_SEASON,
-                                era_abbrs=era_abbrs, season_year=yr - 1)
+            rows = model.fit("playoffs", [yr - 1], alpha, MIN_MINUTES_SEASON)
+            for row in rows:
+                era = era_abbrs.get((int(row.get("team_id") or 0), yr - 1))
+                if era:
+                    row["team_abbr"] = era
+                for col in ("rapm", "orapm", "drapm", "rapm_raw", "orapm_raw", "drapm_raw"):
+                    row[col] = round(float(row[col]), 2)
             data[f"{label}_a{alpha}"] = rows
             print(len(rows), "players")
         data[label] = data[f"{label}_a{DEFAULT_ALPHA}"]
@@ -276,7 +263,7 @@ def generate_rapm_report_playoffs() -> None:
 
     <section class="explain">
       <h3>Playoff RAPM</h3>
-      <p>RAPM computed from playoff stint data only — separate from the regular season model. Each season is estimated independently; the multi-year leaderboard uses minutes-weighted averaging across seasons.</p>
+      <p>RAPM computed from canonical counted playoff possessions only — separate from the regular season model. Each season is estimated independently; the multi-year leaderboard uses minutes-weighted averaging across seasons.</p>
       <p>Playoff samples are much smaller than regular season (~15–20 games vs 82), so estimates are noisier. The luck adjustment — 3PT, free-throw, and mid-range make/miss variance muted at 75% of each shooter's deviation from his own expectation — matters most here, damping hot/cold shooting runs.</p>
       <p><strong>Alpha:</strong> Ridge regularization strength. α=500 (default) applies strong shrinkage, which is especially useful for small playoff samples. α=10 shrinks less and can show more separation among players with large samples.</p>
     </section>
@@ -376,7 +363,7 @@ def generate_rapm_report_playoffs() -> None:
       </div>
     </section>
 
-    <p class="muted" style="padding: 0 4px;">Generated {generated_ts} &nbsp;·&nbsp; Source: data/stints_playoffs.csv</p>
+    <p class="muted" style="padding: 0 4px;">Generated {generated_ts} &nbsp;·&nbsp; Source: canonical counted-possession production evidence</p>
   </div>
 
   <script>

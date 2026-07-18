@@ -9,11 +9,13 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
+import pandas as pd
 
 DATA_DIR = Path("data")
 ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 ONOFF_PRE2006_PATH = DATA_DIR / "adjusted_onoff_pre2006.csv"
 ONOFF_HIST_PATH = DATA_DIR / "adjusted_onoff_historical_pbp.csv"
+CANONICAL_ONOFF_PATH = Path("derived/contextual_causal/production_counted_onoff/adjusted_onoff_regular_canonical_counted.parquet")
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
@@ -103,6 +105,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         nonlocal latest_date
         if not path.exists():
             return
+        if path.suffix == ".parquet":
+            for r in pd.read_parquet(path).to_dict("records"):
+                ingest_row(r)
+            return
         with path.open(newline="", encoding="utf-8") as f:
             first = f.readline()
             if first.startswith("version https://git-lfs.github.com"):
@@ -110,27 +116,32 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
             f.seek(0)
             reader = csv.DictReader(f)
             for r in reader:
-                pid = r.get("player_id")
-                try:
-                    pid_int = int(pid) if pid is not None else None
-                except Exception:
-                    pid_int = None
-                if pid_int is not None and pid_int in name_map:
-                    r["player_name"] = name_map[pid_int]
-                rows.append(r)
-                d = str(r["date"])
-                if d > latest_date:
-                    latest_date = d
-                gid = str(r["game_id"])
-                tid = str(r["team_id"])
-                game_ids.add(gid)
-                key = (d, gid, tid)
-                # summed player minutes / 5 gives team minutes for that game.
-                team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
+                ingest_row(r)
 
-    ingest(ONOFF_PRE2006_PATH)
-    ingest(ONOFF_HIST_PATH)
-    ingest(ONOFF_PATH)
+    def ingest_row(r: dict) -> None:
+        nonlocal latest_date
+        pid = r.get("player_id")
+        try:
+            pid_int = int(pid) if pid is not None else None
+        except Exception:
+            pid_int = None
+        if pid_int is not None and pid_int in name_map:
+            r["player_name"] = name_map[pid_int]
+        rows.append(r)
+        d = str(r["date"])[:10]
+        r["date"] = d
+        if d > latest_date:
+            latest_date = d
+        gid = str(r["game_id"])
+        tid = str(int(r["team_id"])) if r.get("team_id") is not None else ""
+        r["game_id"], r["team_id"] = gid, tid
+        game_ids.add(gid)
+        key = (d, gid, tid)
+        team_game_minutes[key] = team_game_minutes.get(key, 0.0) + _f(r["minutes_on"]) / 5.0
+
+    if not CANONICAL_ONOFF_PATH.exists():
+        raise FileNotFoundError(f"Missing canonical counted input: {CANONICAL_ONOFF_PATH}")
+    ingest(CANONICAL_ONOFF_PATH)
 
     agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
@@ -161,6 +172,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 "on_pts_against_adj_total": 0.0,
                 "off_pts_for_adj_total": 0.0,
                 "off_pts_against_adj_total": 0.0,
+                "on_off_poss_total": 0.0,
+                "on_def_poss_total": 0.0,
+                "off_off_poss_total": 0.0,
+                "off_def_poss_total": 0.0,
             }
 
         a = agg[key]
@@ -175,6 +190,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
         a["on_pts_against_adj_total"] += _f(r["on_pts_against_adj"])
         a["off_pts_for_adj_total"] += _f(r["off_pts_for_adj"])
         a["off_pts_against_adj_total"] += _f(r["off_pts_against_adj"])
+        a["on_off_poss_total"] += _f(r["on_off_poss"])
+        a["on_def_poss_total"] += _f(r["on_def_poss"])
+        a["off_off_poss_total"] += _f(r["off_off_poss"])
+        a["off_def_poss_total"] += _f(r["off_def_poss"])
 
     out: list[dict] = []
     team_ids = sorted({k[1] for k in agg.keys()}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
@@ -197,6 +216,10 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
                 "on_pts_against_adj_total": a["on_pts_against_adj_total"],
                 "off_pts_for_adj_total": a["off_pts_for_adj_total"],
                 "off_pts_against_adj_total": a["off_pts_against_adj_total"],
+                "on_off_poss_total": a["on_off_poss_total"],
+                "on_def_poss_total": a["on_def_poss_total"],
+                "off_off_poss_total": a["off_off_poss_total"],
+                "off_def_poss_total": a["off_def_poss_total"],
             }
         )
 
@@ -346,67 +369,42 @@ def _finalize_records(raw_rows: list[dict], pbp_map: dict[tuple[str, str, str], 
         on_min = _f(r["minutes_total"])
         off_min = _f(r["minutes_off_total"])
 
-        pbp = pbp_map.get((season, team_id, player_id))
-        if pbp:
-            pm_actual_100 = _f(pbp["pm_actual_100"])
-            onoff_actual_100 = _f(pbp["onoff_actual_100"])
-            on_poss = _f(pbp["on_poss"])
-            off_poss = _f(pbp["off_poss"])
-            source = "pbpstats"
-        else:
-            pm_actual_100 = (_f(r["on_diff_total"]) * 48.0 / on_min) if on_min > 0 else 0.0
-            if off_min > 0:
-                off_actual_100 = _f(r["off_diff_total"]) * 48.0 / off_min
-                onoff_actual_100 = pm_actual_100 - off_actual_100
-            else:
-                onoff_actual_100 = 0.0
-            on_poss = 0.0
-            off_poss = 0.0
-            source = "minutes"
+        on_off_poss = _f(r["on_off_poss_total"])
+        on_def_poss = _f(r["on_def_poss_total"])
+        off_off_poss = _f(r["off_off_poss_total"])
+        off_def_poss = _f(r["off_def_poss_total"])
+        on_poss = (on_off_poss + on_def_poss) / 2.0
+        off_poss = (off_off_poss + off_def_poss) / 2.0
+        pm_actual_100 = _f(r["on_diff_total"]) * 100.0 / on_poss if on_poss > 0 else 0.0
+        off_actual_100 = _f(r["off_diff_total"]) * 100.0 / off_poss if off_poss > 0 else 0.0
+        onoff_actual_100 = pm_actual_100 - off_actual_100 if off_poss > 0 else 0.0
+        source = "canonical_counted"
 
         if on_poss > 0:
             pm_adj_100 = _f(r["on_diff_adj_total"]) * 100.0 / on_poss
         else:
-            pm_adj_100 = (_f(r["on_diff_adj_total"]) * 48.0 / on_min) if on_min > 0 else 0.0
+            pm_adj_100 = 0.0
 
         if off_poss > 0:
             off_adj_100 = _f(r["off_diff_adj_total"]) * 100.0 / off_poss
             onoff_adj_100 = pm_adj_100 - off_adj_100
         else:
-            if off_min > 0:
-                off_adj_100 = _f(r["off_diff_adj_total"]) * 48.0 / off_min
-                onoff_adj_100 = pm_adj_100 - off_adj_100
-            else:
-                onoff_adj_100 = 0.0
+            onoff_adj_100 = 0.0
 
         pm_delta_100 = pm_adj_100 - pm_actual_100
         onoff_delta_100 = onoff_adj_100 - onoff_actual_100
 
-        # Break adjusted on-off into offensive and defensive components.
-        # IMPORTANT: Do NOT use pbpstats possession counts for adjusted stats.
-        # For traded players, pbpstats may return season-long possessions mapped
-        # to their current team, while our adjusted point totals are team-specific.
-        # Instead, always estimate possessions from minutes using a consistent rate.
+        # Break adjusted on-off into offensive and defensive components using
+        # their own exact counted denominators.
         on_for_adj = _f(r["on_pts_for_adj_total"])
         on_against_adj = _f(r["on_pts_against_adj_total"])
         off_for_adj = _f(r["off_pts_for_adj_total"])
         off_against_adj = _f(r["off_pts_against_adj_total"])
 
-        # Use consistent possessions-per-minute rate (100 poss per 48 min)
-        poss_per_min = 100.0 / 48.0  # ~2.08 poss/min
-        if on_min > 0:
-            on_poss_est = on_min * poss_per_min
-            on_ortg_adj = on_for_adj * 100.0 / on_poss_est
-            on_drtg_adj = on_against_adj * 100.0 / on_poss_est
-        else:
-            on_ortg_adj = on_drtg_adj = 0.0
-
-        if off_min > 0:
-            off_poss_est = off_min * poss_per_min
-            off_ortg_adj = off_for_adj * 100.0 / off_poss_est
-            off_drtg_adj = off_against_adj * 100.0 / off_poss_est
-        else:
-            off_ortg_adj = off_drtg_adj = 0.0
+        on_ortg_adj = on_for_adj * 100.0 / on_off_poss if on_off_poss > 0 else 0.0
+        on_drtg_adj = on_against_adj * 100.0 / on_def_poss if on_def_poss > 0 else 0.0
+        off_ortg_adj = off_for_adj * 100.0 / off_off_poss if off_off_poss > 0 else 0.0
+        off_drtg_adj = off_against_adj * 100.0 / off_def_poss if off_def_poss > 0 else 0.0
 
         # Offensive: team adj ORtg per 100 when ON minus when OFF (positive = helps offense)
         onoff_adj_off_100 = on_ortg_adj - off_ortg_adj
@@ -450,12 +448,7 @@ def generate_onoff_report() -> Path:
         tid = str(r["team_id"])
         if tid not in season_to_team_ids[s]:
             season_to_team_ids[s].append(tid)
-    # Query pbpstats for recent seasons where it has data. Seasons that time out
-    # or return errors fall back gracefully to the minutes-based CSV calculation.
-    PBPSTATS_FROM = "1996-97"
-    pbp_seasons = {s: tids for s, tids in season_to_team_ids.items() if s >= PBPSTATS_FROM}
-    pbp_map = _build_pbp_maps(pbp_seasons, latest_season)
-    records = _finalize_records(raw_rows, pbp_map)
+    records = _finalize_records(raw_rows, {})
 
     team_values = sorted({r["team_id"] for r in records}, key=lambda x: TEAM_ID_TO_ABBR.get(x, x))
     season_values = sorted({r["season"] for r in records}, reverse=True)
@@ -752,7 +745,7 @@ def generate_onoff_report() -> Path:
       </div>
     </section>
 
-    <p class=\"muted\">Generated {generated_ts} | Source: `data/adjusted_onoff.csv` + `data/adjusted_onoff_pre2006.csv` + pbpstats possession totals.</p>
+    <p class=\"muted\">Generated {generated_ts} | Source: canonical counted-possession evidence (exact stint exposure; official-minutes allocation only for aggregate-resolution games).</p>
   </div>
   <script>
     const ROWS = {json.dumps(records)};

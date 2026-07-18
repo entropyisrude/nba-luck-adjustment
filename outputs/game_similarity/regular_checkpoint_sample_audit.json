@@ -1,0 +1,59 @@
+{
+  "pbp_games_seen": 25,
+  "eligible_regular_games": 25,
+  "validated_regular_games": 20,
+  "historical_pbp_games_seen": 25,
+  "historical_validated_games": 20,
+  "modern_pbp_games_seen": 0,
+  "modern_validated_games": 0,
+  "unsupported_legacy_schema_games": 0,
+  "missing_stints": 0,
+  "missing_final_box": 0,
+  "team_mapping_failures": 0,
+  "stat_mismatch_games": 0,
+  "stat_mismatch_fields": 0,
+  "minute_mismatch_games": 5,
+  "largest_accepted_minute_gap": 0.51,
+  "largest_rejected_minute_gap": 10.333,
+  "failure_examples": [
+    {
+      "game_id": "20000002",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 9.487
+    },
+    {
+      "game_id": "20000003",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 9.017
+    },
+    {
+      "game_id": "20000005",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 7.587
+    },
+    {
+      "game_id": "20000015",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 10.333
+    },
+    {
+      "game_id": "20000017",
+      "source": "historical",
+      "reason": "minutes",
+      "minute_gap": 7.483
+    }
+  ],
+  "generated": "2026-07-14T21:48:04.781420+00:00",
+  "regular_season_coverage": "1996-97 through 2025-26; validated games only",
+  "regular_checkpoint_player_lines": {
+    "q1": 216,
+    "q2": 354,
+    "q3": 370
+  },
+  "sample_only": true,
+  "sorted_cache": "C:\\Users\\Dave\\Downloads\\nba-onoff-publish\\derived\\contextual_causal\\game_similarity\\regular_pbp_sorted.parquet"
+}

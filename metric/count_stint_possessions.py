@@ -38,6 +38,19 @@ PBP = Path(r"C:\Users\Dave\Downloads\nba-metric-data\PlayByPlay.parquet")
 RS_DB = ROOT / "data" / "nba_analytics.duckdb"
 PO_STINTS = ROOT / "data" / "stints_playoffs.csv"
 OUT = Path(r"C:\Users\Dave\Downloads\nba-metric-data\stint_possession_counts.parquet")
+PREPARED = Path(r"C:\Users\Dave\Downloads\nba-metric-data\prepared_stints.parquet")
+AUDIT = ROOT / "outputs" / "contextual_causal" / "nerd_possession_game_audit.parquet"
+
+# A game is evidence only if the reconstructed possessions actually live
+# inside known lineup windows and their points reconcile to the prepared,
+# official-score-calibrated stint totals.  Coverage is intentionally valued
+# over sample size here: a full possession assigned to a guessed lineup is a
+# much larger error than omitting the game.
+MIN_ATTACH_RATE = 0.995
+POINT_TOL = 0.5
+# One unmatched terminal possession per regulation period is legitimate
+# under a segment count (the period ends before the other side answers).
+MAX_POSS_GAP = 4
 
 
 def load_events() -> pd.DataFrame:
@@ -52,7 +65,8 @@ def load_events() -> pd.DataFrame:
                AS clock_s,
              lower(trim(actionType)) AS atype,
              lower(coalesce(subType, '')) AS st,
-             TRY_CAST(teamId AS BIGINT) AS team,
+             COALESCE(TRY_CAST(teamId AS BIGINT),
+                      TRY_CAST(playerteamId AS BIGINT)) AS team,
              lower(coalesce(CAST(shotResult AS VARCHAR), '')) AS sr,
              lower(coalesce(description, '')) AS descr,
              TRY_CAST(shotValue AS DOUBLE) AS sv,
@@ -303,20 +317,77 @@ def main() -> None:
                   "home_id", "away_id"]],
         left_on="elapsed", right_on="start_elapsed", by="gid_n",
         direction="backward")
-    merged = merged.dropna(subset=["stint_index"])
-    in_win = merged["elapsed"] <= merged["end_elapsed"] + 1.0
-    print(f"stint attach: {in_win.mean() * 100:.1f}% inside matched "
-          f"window (rest kept on nearest stint)")
+    merged["has_stint"] = merged["stint_index"].notna()
+    merged["in_win"] = (merged["has_stint"]
+                         & (merged["elapsed"]
+                            <= merged["end_elapsed"] + 1.0))
+    print(f"stint attach: {merged['in_win'].mean() * 100:.1f}% inside "
+          f"a known lineup window; all other possessions are rejected")
 
     merged["side"] = np.where(merged["team"] == merged["home_id"], "h",
                      np.where(merged["team"] == merged["away_id"], "a",
                               "?"))
-    bad = int((merged["side"] == "?").sum())
+    bad = int((merged["in_win"] & (merged["side"] == "?")).sum())
     if bad:
         print(f"  {bad} possessions with unmatched team -> dropped")
-        merged = merged[merged["side"] != "?"]
+    valid = merged[merged["in_win"] & (merged["side"] != "?")].copy()
 
-    counts = (merged.groupby(["gid_n", "stint_index", "side"])
+    # Strict game-level trust gate.  The expected totals come from the same
+    # prepared stint source used by the RAPM design; calibrated games equal
+    # the official box score, while incomplete lineup reconstructions fail
+    # either point reconciliation or the attach-rate check.
+    if not PREPARED.exists():
+        raise FileNotFoundError(f"prepared stint cache missing: {PREPARED}")
+    prep = pd.read_parquet(
+        PREPARED, columns=["game_id", "home_pts", "away_pts"])
+    prep["gid_n"] = prep["game_id"].astype(str).str.lstrip("0")
+    expected = (prep.groupby("gid_n")
+                .agg(expected_home=("home_pts", "sum"),
+                     expected_away=("away_pts", "sum"))
+                .reset_index())
+    all_game = (merged.groupby("gid_n")
+                .agg(possessions_seen=("pts", "size"),
+                     possessions_attached=("in_win", "sum"))
+                .reset_index())
+    attached = (valid.groupby(["gid_n", "side"])
+                .agg(n=("pts", "size"), pts=("pts", "sum"))
+                .unstack(fill_value=0))
+    attached.columns = [f"{a}_{'home' if b == 'h' else 'away'}"
+                        for a, b in attached.columns]
+    attached = attached.reset_index()
+    audit = all_game.merge(attached, on="gid_n", how="left")
+    audit = audit.merge(expected, on="gid_n", how="left")
+    for c in ("n_home", "n_away", "pts_home", "pts_away"):
+        if c not in audit.columns:
+            audit[c] = 0.0
+        audit[c] = audit[c].fillna(0.0)
+    audit["attach_rate"] = (audit["possessions_attached"]
+                            / audit["possessions_seen"].clip(lower=1))
+    audit["home_point_error"] = audit["pts_home"] - audit["expected_home"]
+    audit["away_point_error"] = audit["pts_away"] - audit["expected_away"]
+    audit["possession_gap"] = (audit["n_home"] - audit["n_away"]).abs()
+    audit["pass_attach"] = audit["attach_rate"] >= MIN_ATTACH_RATE
+    audit["pass_points"] = (
+        audit["home_point_error"].abs().le(POINT_TOL)
+        & audit["away_point_error"].abs().le(POINT_TOL))
+    audit["pass_balance"] = audit["possession_gap"] <= MAX_POSS_GAP
+    audit["trusted"] = (audit["pass_attach"] & audit["pass_points"]
+                        & audit["pass_balance"])
+    audit["season_code"] = audit["gid_n"].str[1:3]
+    AUDIT.parent.mkdir(parents=True, exist_ok=True)
+    audit.to_parquet(AUDIT, index=False)
+    audit.to_csv(AUDIT.with_suffix(".csv"), index=False)
+    trusted_games = set(audit.loc[audit["trusted"], "gid_n"])
+    print(f"trusted games: {len(trusted_games)} of {len(audit)} "
+          f"({len(trusted_games) / max(len(audit), 1) * 100:.1f}%)")
+    print("rejections:", {
+        "attach": int((~audit["pass_attach"]).sum()),
+        "points": int((~audit["pass_points"]).sum()),
+        "balance": int((~audit["pass_balance"]).sum()),
+    })
+    valid = valid[valid["gid_n"].isin(trusted_games)].copy()
+
+    counts = (valid.groupby(["gid_n", "stint_index", "side"])
               .agg(n=("pts", "size"), pts=("pts", "sum"))
               .unstack(fill_value=0))
     counts.columns = [f"{a}_{'home' if b == 'h' else 'away'}"
@@ -336,8 +407,8 @@ def main() -> None:
     out.to_parquet(OUT, index=False)
     print(f"\nwrote {len(out)} stint rows -> {OUT}")
 
-    per_game = merged.groupby("gid_n").agg(n=("pts", "size"),
-                                           p=("pts", "sum"))
+    per_game = valid.groupby("gid_n").agg(n=("pts", "size"),
+                                          p=("pts", "sum"))
     print(f"per game: possessions/side median {per_game['n'].median()/2:.1f}"
           f"  points/side median {per_game['p'].median()/2:.1f}")
 

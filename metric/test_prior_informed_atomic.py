@@ -157,17 +157,42 @@ def main() -> None:
             b0[P + i] = -r.pd_          # D prior sign-flips
             n_centered += 1
 
+        # per-player penalty from the target's own SEs: players whose
+        # O/D split the lineup data barely identifies (large SE — the
+        # sandwich covariance sees within-stack collinearity that raw
+        # possession counts cannot) get pulled harder toward their
+        # profile; well-identified players keep their evidence.
+        se_rows = tgt[(tgt["alpha"] == 500)
+                      & (tgt["target_season"] == label)]
+        se_o_map = dict(zip(se_rows["player_id"], se_rows["se_o"]))
+        se_d_map = dict(zip(se_rows["player_id"], se_rows["se_d"]))
+        med_o = float(np.nanmedian(se_rows["se_o"]))
+        med_d = float(np.nanmedian(se_rows["se_d"]))
+        pen_pp = np.ones(2 * P + 1)
+        pen_pp[2 * P] = 0.0
+        for j, pl in enumerate(players):
+            so = se_o_map.get(int(pl))
+            sd_ = se_d_map.get(int(pl))
+            ro = np.clip((so / med_o) ** 2, 0.25, 25.0) \
+                if so and np.isfinite(so) else 1.0
+            rd = np.clip((sd_ / med_d) ** 2, 0.25, 25.0) \
+                if sd_ and np.isfinite(sd_) else 1.0
+            pen_pp[j] = ro
+            pen_pp[P + j] = rd
+
         raw = tgt[(tgt["alpha"] == 500)
                   & (tgt["target_season"] == label)].set_index("player_id")
         want = NAMES_2025 if sy == 2025 else NAMES_2024
         p(f"\n===== {label}: {n_centered} players prior-centered =====")
-        for alpha in SOLVE_ALPHAS:
-            beta = np.linalg.solve(XtX + alpha * np.diag(pen),
-                                   Xty + alpha * (pen * b0))
+        for alpha, use_pp in [(4000, False), (2000, True), (4000, True)]:
+            pv = pen_pp if use_pp else pen
+            tag = "per-player SE pen" if use_pp else "uniform"
+            beta = np.linalg.solve(XtX + alpha * np.diag(pv),
+                                   Xty + alpha * (pv * b0))
             O = beta[:P]
             D = beta[P:2 * P]
             om, dm = O.mean(), D.mean()
-            p(f"\nalpha={alpha} (prior-informed):")
+            p(f"\nalpha={alpha} ({tag}):")
             p(f"{'player':>24} {'rawO':>6} {'rawD':>6} | "
               f"{'priO':>6} {'priD':>6} | {'PI_O':>6} {'PI_D':>6}")
             for nm in want:

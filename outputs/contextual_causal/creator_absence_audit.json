@@ -1,0 +1,63 @@
+{
+  "claim_level": "realized-absence candidates; absence timing and unexpectedness are unverified",
+  "competition_scope": "NBA regular season only (game IDs beginning with 2)",
+  "parameters": {
+    "lookback_appearances": 10,
+    "recency_days": 30,
+    "minimum_prior_appearances": 5,
+    "minimum_prior_minutes": 24.0,
+    "maximum_creator_rank": 2
+  },
+  "player_games": {
+    "rows": 736410,
+    "games": 35546,
+    "players": 2859,
+    "date_min": "1996-11-01",
+    "date_max": "2026-04-12",
+    "duplicate_player_game_team_rows": 0
+  },
+  "game_team_rows": {
+    "rows": 71092,
+    "games": 35546,
+    "date_min": "1996-11-01",
+    "date_max": "2026-04-12",
+    "duplicate_game_team_rows": 0
+  },
+  "candidate_events": {
+    "rows": 18333,
+    "games": 14046,
+    "players": 596,
+    "by_season": {
+      "1996-97": 410,
+      "1997-98": 481,
+      "1998-99": 245,
+      "1999-00": 321,
+      "2000-01": 391,
+      "2001-02": 481,
+      "2002-03": 423,
+      "2003-04": 494,
+      "2004-05": 584,
+      "2005-06": 499,
+      "2006-07": 628,
+      "2007-08": 538,
+      "2008-09": 496,
+      "2009-10": 503,
+      "2010-11": 524,
+      "2011-12": 504,
+      "2012-13": 524,
+      "2013-14": 620,
+      "2014-15": 766,
+      "2015-16": 528,
+      "2016-17": 649,
+      "2017-18": 740,
+      "2018-19": 677,
+      "2019-20": 544,
+      "2020-21": 917,
+      "2021-22": 1024,
+      "2022-23": 957,
+      "2023-24": 769,
+      "2024-25": 1055,
+      "2025-26": 1041
+    }
+  }
+}

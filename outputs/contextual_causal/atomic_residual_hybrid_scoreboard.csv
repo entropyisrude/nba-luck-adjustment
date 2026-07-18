@@ -1,0 +1,2 @@
+selected_group,features,alpha,dev_same_r,dev_next_r,selection_score,test_same_r,test_next_r,n_test_same,n_test_next
+compact,"usg,ast_pct,mpg,ts,efg,fg3_rate,pct_unassisted,fouls_drawn_75,blocked_75",10.0,0.6114419929333775,0.5228074777656602,0.5671247353495188,0.5572786903359408,0.4602850077250255,2397,2130

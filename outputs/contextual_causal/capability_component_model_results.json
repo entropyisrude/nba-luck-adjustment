@@ -1,0 +1,314 @@
+{
+  "coverage": {
+    "modern_rows_before_tracking_filter": 8257,
+    "rows_with_prior_tracking_200_minutes": 7034
+  },
+  "test_rows": 3542,
+  "test_events": 530,
+  "targets": {
+    "delta_minutes": {
+      "selected_alpha": {
+        "generic": 0.1,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 6.917293488081451,
+        "capability": 6.925486380250656
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 5.160247826953871,
+          "rmse": 6.682162218726888,
+          "correlation": 0.2806018859118676
+        },
+        "capability": {
+          "mae": 5.141948599181817,
+          "rmse": 6.67233184313049,
+          "correlation": 0.28070623805417544
+        },
+        "rmse_improvement": 0.009830375596398433,
+        "mae_improvement": 0.018299227772053506
+      },
+      "test_event": {
+        "generic": {
+          "mae": 15.62737801669081,
+          "rmse": 20.026935280614005,
+          "correlation": 0.4434811354251788
+        },
+        "capability": {
+          "mae": 15.656100003714565,
+          "rmse": 20.002149226533408,
+          "correlation": 0.4306469846386315
+        },
+        "rmse_improvement": 0.024786054080596642,
+        "mae_improvement": -0.02872198702375428
+      }
+    },
+    "delta_fga": {
+      "selected_alpha": {
+        "generic": 0.1,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 4.06023215980097,
+        "capability": 4.064577628962378
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 3.0862124623298004,
+          "rmse": 3.9857135567111346,
+          "correlation": 0.23751408387205244
+        },
+        "capability": {
+          "mae": 3.0460285276144003,
+          "rmse": 3.9624674626375582,
+          "correlation": 0.25888226821044025
+        },
+        "rmse_improvement": 0.023246094073576362,
+        "mae_improvement": 0.04018393471540005
+      },
+      "test_event": {
+        "generic": {
+          "mae": 7.684992910972103,
+          "rmse": 9.8195447049344,
+          "correlation": 0.51644731416756
+        },
+        "capability": {
+          "mae": 7.829467191732754,
+          "rmse": 10.012207565482788,
+          "correlation": 0.4743989977064215
+        },
+        "rmse_improvement": -0.19266286054838844,
+        "mae_improvement": -0.14447428076065094
+      }
+    },
+    "delta_fta": {
+      "selected_alpha": {
+        "generic": 10.0,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 2.4279356750560614,
+        "capability": 2.4159596856185703
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 1.836955761862845,
+          "rmse": 2.508098643007645,
+          "correlation": 0.15976092313713786
+        },
+        "capability": {
+          "mae": 1.8142155374125608,
+          "rmse": 2.5165620142131258,
+          "correlation": 0.16811411847251403
+        },
+        "rmse_improvement": -0.008463371205480907,
+        "mae_improvement": 0.02274022445028412
+      },
+      "test_event": {
+        "generic": {
+          "mae": 5.071862778488833,
+          "rmse": 6.481874722559288,
+          "correlation": 0.2625417122121381
+        },
+        "capability": {
+          "mae": 5.274903350872027,
+          "rmse": 6.770200181582916,
+          "correlation": 0.20278318393309128
+        },
+        "rmse_improvement": -0.2883254590236275,
+        "mae_improvement": -0.20304057238319384
+      }
+    },
+    "delta_fg3a": {
+      "selected_alpha": {
+        "generic": 100.0,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 2.2722524292111177,
+        "capability": 2.2716470568795324
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 1.7210235536986247,
+          "rmse": 2.2952311426928165,
+          "correlation": 0.14695288960397077
+        },
+        "capability": {
+          "mae": 1.6971252846731235,
+          "rmse": 2.2749952127283612,
+          "correlation": 0.19727821946705246
+        },
+        "rmse_improvement": 0.020235929964455224,
+        "mae_improvement": 0.023898269025501184
+      },
+      "test_event": {
+        "generic": {
+          "mae": 4.917474781613448,
+          "rmse": 6.2076649487841715,
+          "correlation": 0.3148777200688799
+        },
+        "capability": {
+          "mae": 4.833992060779187,
+          "rmse": 6.152384090250292,
+          "correlation": 0.3281706104691774
+        },
+        "rmse_improvement": 0.05528085853387932,
+        "mae_improvement": 0.08348272083426078
+      }
+    },
+    "delta_ast": {
+      "selected_alpha": {
+        "generic": 0.1,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 2.1945974639745467,
+        "capability": 2.159439599204683
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 1.620214317313117,
+          "rmse": 2.121844194000865,
+          "correlation": 0.17397056069104336
+        },
+        "capability": {
+          "mae": 1.6302507046429588,
+          "rmse": 2.1061397000582436,
+          "correlation": 0.257137291781022
+        },
+        "rmse_improvement": 0.01570449394262141,
+        "mae_improvement": -0.010036387329841912
+      },
+      "test_event": {
+        "generic": {
+          "mae": 4.558997289673768,
+          "rmse": 5.747036024026815,
+          "correlation": 0.32998394651684626
+        },
+        "capability": {
+          "mae": 4.924052690285994,
+          "rmse": 6.169982226228195,
+          "correlation": 0.3007117902276943
+        },
+        "rmse_improvement": -0.42294620220138057,
+        "mae_improvement": -0.36505540061222597
+      }
+    },
+    "delta_tov": {
+      "selected_alpha": {
+        "generic": 100.0,
+        "capability": 100.0
+      },
+      "validation_rmse": {
+        "generic": 1.264505536746554,
+        "capability": 1.2670293116987985
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 0.9968893170527178,
+          "rmse": 1.3008294397143683,
+          "correlation": 0.277610049490267
+        },
+        "capability": {
+          "mae": 0.9966273791812441,
+          "rmse": 1.3029390795054843,
+          "correlation": 0.2740372465041962
+        },
+        "rmse_improvement": -0.0021096397911160025,
+        "mae_improvement": 0.0002619378714736609
+      },
+      "test_event": {
+        "generic": {
+          "mae": 2.8723744909712385,
+          "rmse": 3.610735156938767,
+          "correlation": 0.3417698345896462
+        },
+        "capability": {
+          "mae": 2.877880356520258,
+          "rmse": 3.6355159713767606,
+          "correlation": 0.34680109323297315
+        },
+        "rmse_improvement": -0.024780814437993737,
+        "mae_improvement": -0.00550586554901944
+      }
+    },
+    "delta_pts": {
+      "selected_alpha": {
+        "generic": 0.1,
+        "capability": 10.0
+      },
+      "validation_rmse": {
+        "generic": 6.816737602564097,
+        "capability": 6.8122516316827095
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 5.277007957432971,
+          "rmse": 6.7389698753089196,
+          "correlation": 0.2240774165796793
+        },
+        "capability": {
+          "mae": 5.232590635361093,
+          "rmse": 6.728294229848441,
+          "correlation": 0.22200552522588102
+        },
+        "rmse_improvement": 0.010675645460478833,
+        "mae_improvement": 0.04441732207187865
+      },
+      "test_event": {
+        "generic": {
+          "mae": 13.638006988292439,
+          "rmse": 16.865687243821316,
+          "correlation": 0.31792889266318075
+        },
+        "capability": {
+          "mae": 13.26986221007058,
+          "rmse": 16.571394104484735,
+          "correlation": 0.3048270627023261
+        },
+        "rmse_improvement": 0.2942931393365811,
+        "mae_improvement": 0.3681447782218594
+      }
+    },
+    "delta_creation_load": {
+      "selected_alpha": {
+        "generic": 0.1,
+        "capability": 0.1
+      },
+      "validation_rmse": {
+        "generic": 6.322414452990844,
+        "capability": 6.259980091091028
+      },
+      "test_receiver": {
+        "generic": {
+          "mae": 4.835236835846243,
+          "rmse": 6.211518028065188,
+          "correlation": 0.2813952954359119
+        },
+        "capability": {
+          "mae": 4.791664105611313,
+          "rmse": 6.165950495564183,
+          "correlation": 0.311261774196952
+        },
+        "rmse_improvement": 0.045567532501005203,
+        "mae_improvement": 0.04357273023492958
+      },
+      "test_event": {
+        "generic": {
+          "mae": 13.098661393915938,
+          "rmse": 16.454381020911633,
+          "correlation": 0.5436520045497567
+        },
+        "capability": {
+          "mae": 13.225721757258206,
+          "rmse": 16.667504562287682,
+          "correlation": 0.5393843541495432
+        },
+        "rmse_improvement": -0.21312354137604927,
+        "mae_improvement": -0.12706036334226845
+      }
+    }
+  }
+}

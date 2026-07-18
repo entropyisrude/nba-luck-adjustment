@@ -1,0 +1,2 @@
+selected_group,features,alpha,dev_same_r,dev_next_r,selection_score,test_same_r,test_next_r,n_test_same,n_test_next
+other_fouls_only,other_fouls_drawn_75,1.0,0.6040994074866515,0.5169978985320165,0.560548653009334,0.559538922527868,0.47079609423,2397,2130

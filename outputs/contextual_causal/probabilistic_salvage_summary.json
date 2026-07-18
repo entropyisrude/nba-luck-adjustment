@@ -1,0 +1,19 @@
+{
+  "canonical_games": 35185,
+  "unresolved_games": 337,
+  "unresolved_candidates": 719,
+  "games_with_multiple_candidates": 253,
+  "validation_games": 180,
+  "validation_candidate_rows": 267,
+  "validation_cutoff_season": 2017,
+  "temperature": 1.0,
+  "probability_method": "transparent_evidence_score",
+  "learned_best_agreement": 0.9709441853016539,
+  "heuristic_best_agreement": 0.9717381209235967,
+  "weighted_expected_agreement": 0.9709652404024653,
+  "oracle_agreement": 0.9733611245778011,
+  "prediction_mae": 0.01868553499005673,
+  "mean_unresolved_predicted_agreement": 0.979813708996965,
+  "single_candidate_games": 84,
+  "production_modified": false
+}

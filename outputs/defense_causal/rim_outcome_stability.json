@@ -1,0 +1,78 @@
+{
+  "interpretation": "Team-defense stability is a screening diagnostic for reproducible signal, not player causality.",
+  "team_seasons": 150,
+  "split_half_same_season": {
+    "first_chance_rim_frequency_hc6": {
+      "n": 150,
+      "pearson": 0.8159038880217487,
+      "spearman": 0.8148966620738699
+    },
+    "first_chance_rim_fg_pct": {
+      "n": 150,
+      "pearson": 0.5859799476444888,
+      "spearman": 0.5628237368985174
+    },
+    "second_chance_rim_per_oreb_possession": {
+      "n": 150,
+      "pearson": 0.532150228821198,
+      "spearman": 0.537202197081497
+    },
+    "second_chance_rim_fg_pct": {
+      "n": 150,
+      "pearson": 0.19208069241554693,
+      "spearman": 0.19499815102030568
+    },
+    "explicit_putback_per_oreb_possession": {
+      "n": 150,
+      "pearson": 0.41895086598961623,
+      "spearman": 0.4364170045346082
+    },
+    "unknown_shooting_foul_frequency_hc6": {
+      "n": 150,
+      "pearson": 0.574823427864662,
+      "spearman": 0.5621849859993777
+    },
+    "high_confidence_rim_foul_per_rim_attempt": {
+      "n": 150,
+      "pearson": 0.38465205173599687,
+      "spearman": 0.4038991989860692
+    }
+  },
+  "next_season": {
+    "first_chance_rim_frequency_hc6": {
+      "n": 120,
+      "pearson": 0.6548921419465972,
+      "spearman": 0.6322800194457947
+    },
+    "first_chance_rim_fg_pct": {
+      "n": 120,
+      "pearson": 0.5135176652924598,
+      "spearman": 0.46284972168109484
+    },
+    "second_chance_rim_per_oreb_possession": {
+      "n": 120,
+      "pearson": 0.33869285452982917,
+      "spearman": 0.318245427617986
+    },
+    "second_chance_rim_fg_pct": {
+      "n": 120,
+      "pearson": 0.21991612697625654,
+      "spearman": 0.16613364169015254
+    },
+    "explicit_putback_per_oreb_possession": {
+      "n": 120,
+      "pearson": 0.21118342201145437,
+      "spearman": 0.21700118063754426
+    },
+    "unknown_shooting_foul_frequency_hc6": {
+      "n": 120,
+      "pearson": 0.23926239143549538,
+      "spearman": 0.2326203208556149
+    },
+    "high_confidence_rim_foul_per_rim_attempt": {
+      "n": 120,
+      "pearson": 0.11266366692828049,
+      "spearman": 0.10208921846611575
+    }
+  }
+}

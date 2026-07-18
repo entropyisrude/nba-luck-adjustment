@@ -44,7 +44,9 @@ PBP schema-era handling (verified against the parquet, not assumed):
     schema can't split OOB into pass/dribble, so the old schema's OOB
     subtypes are classified dead too).
 
-Output: nba-metric-data/features_atomic_season.parquet
+Outputs:
+  nba-metric-data/features_atomic_season.parquet (preserved raw-rate artifact)
+  nba-metric-data/features_atomic_denominator_season.parquet
 Usage:  set PYTHONIOENCODING=utf-8 & python metric/build_atomic_features.py
 """
 from __future__ import annotations
@@ -66,6 +68,7 @@ METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
 PBP = METRIC_DATA / "PlayByPlay.parquet"
 BASE_CACHE = METRIC_DATA / "features_box_season.parquet"
 OUT = METRIC_DATA / "features_atomic_season.parquet"
+OUT_DENOM = METRIC_DATA / "features_atomic_denominator_season.parquet"
 
 BAD_PASS = {"Bad Pass", "Stolen Pass Turnover",
             "bad pass", "badpass"}
@@ -411,7 +414,10 @@ def opportunity_rates(sh: pd.DataFrame) -> pd.DataFrame:
         dreb_n=("dreb", "sum"), dreb_d=("opp_opps", "sum")).reset_index()
     agg["oreb_opp_rate"] = agg["oreb_n"] / agg["oreb_d"].clip(lower=1)
     agg["dreb_opp_rate"] = agg["dreb_n"] / agg["dreb_d"].clip(lower=1)
-    return agg[["pid", "season_year", "oreb_opp_rate", "dreb_opp_rate"]]
+    return agg[["pid", "season_year", "oreb_opp_rate", "dreb_opp_rate",
+                "oreb_d", "dreb_d"]].rename(columns={
+                    "oreb_d": "oreb_opp_rate__denom",
+                    "dreb_d": "dreb_opp_rate__denom"})
 
 
 # --------------------------------------------------------------------------
@@ -431,8 +437,10 @@ def duckdb_extras() -> pd.DataFrame:
     d = con.execute(f"""
         SELECT CAST(player_id AS BIGINT) pid,
                CAST(substr(season,1,4) AS INTEGER) season_year, {sums},
-               sum(rim_dfg_pct_diff * rim_dfga) rim_wsum,
-               sum(CASE WHEN rim_dfg_pct_diff IS NOT NULL THEN rim_dfga END) rim_w
+               max(CASE WHEN rim_dfg_pct_diff IS NOT NULL
+                        THEN rim_dfg_pct_diff END) rim_dfg_diff_season,
+               max(CASE WHEN rim_dfg_pct_diff IS NOT NULL
+                        THEN rim_dfga END) rim_w
         FROM player_game_facts
         WHERE CAST(game_id AS VARCHAR) LIKE '2%'
         GROUP BY 1, 2
@@ -447,10 +455,15 @@ def duckdb_extras() -> pd.DataFrame:
     for c, out in ren.items():
         cov = d[f"mins_{c}"] * 2.08
         d[out] = np.where(cov > 0, d[c] / cov.clip(lower=1) * 75.0, np.nan)
-    d["rim_dfg_diff"] = np.where(d["rim_w"] > 0,
-                                 d["rim_wsum"] / d["rim_w"].clip(lower=1),
-                                 np.nan)
-    return d[["pid", "season_year"] + list(ren.values()) + ["rim_dfg_diff"]]
+        d[out + "__denom"] = cov
+    # These two rim fields are season aggregates repeated on every game row in
+    # player_game_facts.  MAX recovers the one true season value; summing would
+    # leave the rate unchanged but falsely multiply its reliability by games.
+    d["rim_dfg_diff"] = d["rim_dfg_diff_season"]
+    d["rim_dfg_diff__denom"] = d["rim_w"]
+    rate_cols = list(ren.values()) + ["rim_dfg_diff"]
+    denom_cols = [c + "__denom" for c in rate_cols]
+    return d[["pid", "season_year"] + rate_cols + denom_cols]
 
 
 # --------------------------------------------------------------------------
@@ -541,6 +554,24 @@ def main() -> None:
     keep = ["pid", "season_year", "games", "mins", "poss"] + ATOMS
     df[keep].to_parquet(OUT, index=False)
     print(f"\nwrote {len(df)} player-season rows -> {OUT}")
+
+    # Preserve the raw-rate artifact above and write a versioned companion with
+    # the natural exposure for every stochastic atom. Bio measurements are
+    # intentionally left without denominators and are never EB-shrunk.
+    bio = {"height", "age", "wing_rel"}
+    special = {"oreb_opp_rate", "dreb_opp_rate", "off_boxout_75",
+               "def_boxout_75", "rim_dfg_diff", "contested_2pt_75",
+               "contested_3pt_75", "defl_75", "charges_drawn_75"}
+    for atom in ATOMS:
+        dc = atom + "__denom"
+        if atom not in bio and atom not in special:
+            df[dc] = df["poss"]
+    denom_cols = [a + "__denom" for a in ATOMS if a not in bio]
+    missing = [c for c in denom_cols if c not in df.columns]
+    if missing:
+        raise RuntimeError(f"missing atomic denominators: {missing}")
+    df[keep + denom_cols].to_parquet(OUT_DENOM, index=False)
+    print(f"wrote denominator-aware rows -> {OUT_DENOM}")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Phase 3 of the all-in-one metric: the Bayesian combination (metric v0).
 
 Prior-informed RAPM: the Phase 1 multi-year decayed ridge is re-solved with
-each player's shrinkage center set to his Phase 2 box prior instead of zero,
+each player's shrinkage center set to the denominator-aware atomic box prior,
 
     (X'WX + aI) beta = X'Wy + a * beta0
 
@@ -33,12 +33,15 @@ import pandas as pd
 from scipy import sparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_rapm_target import (prepare, load_player_names, season_label,
-                               HCOLS, ACOLS, DECAY_HALFLIFE_DAYS, WINDOW_DAYS,
-                               MIN_SECONDS)
+from build_rapm_target import (load_player_names, season_label,
+                               DECAY_HALFLIFE_DAYS, WINDOW_DAYS)
+from counted_production_design import (exposure_arrays, load_design,
+                                       normal_eqs)
 
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
-PRIOR_PATH = METRIC_DATA / "priors" / "box_prior.parquet"
+PRIOR_PATH = METRIC_DATA / "priors" / "box_prior_atomic_denominator.parquet"
+PRIOR_MODEL = "atomic_denominator"
+EVIDENCE_MODEL = "canonical_counted_possessions_v1"
 KALMAN_PATH = METRIC_DATA / "kalman" / "kalman_states.parquet"
 TARGET_PATH = METRIC_DATA / "targets" / "rapm_target_hl550.parquet"
 BBREF_DIR = METRIC_DATA / "benchmarks" / "bbref_advanced"
@@ -48,51 +51,7 @@ OUT_DIR = METRIC_DATA / "metric"
 ALPHA_GRID = [500, 2000, 4000, 8000]
 EVID_ALPHA = 150          # single-season evidence solves (validation only)
 MIN_EVID_POSS = 1000
-
-
-def build_design(st: pd.DataFrame):
-    st = st.dropna(subset=HCOLS + ACOLS).copy()
-    st = st[st["seconds"] >= MIN_SECONDS].reset_index(drop=True)
-    st["poss"] = np.maximum(st["seconds"].to_numpy() / 24.0, 0.1)
-    st["season_year"] = st["date"].dt.year - (st["date"].dt.month < 10)
-
-    players = np.unique(st[HCOLS + ACOLS].to_numpy().astype(int).ravel())
-    pidx = {p: i for i, p in enumerate(players)}
-    P = len(players)
-    lookup = np.vectorize(pidx.get)
-    hidx = lookup(st[HCOLS].to_numpy().astype(int))
-    aidx = lookup(st[ACOLS].to_numpy().astype(int))
-
-    n = len(st)
-    rows, cols, vals = [], [], []
-    r = np.arange(n)
-    for k in range(5):
-        rows += [2 * r, 2 * r]
-        cols += [hidx[:, k], P + aidx[:, k]]
-        vals += [np.ones(n), np.ones(n)]
-        rows += [2 * r + 1, 2 * r + 1]
-        cols += [aidx[:, k], P + hidx[:, k]]
-        vals += [np.ones(n), np.ones(n)]
-    X = sparse.csr_matrix((np.concatenate(vals),
-                           (np.concatenate(rows), np.concatenate(cols))),
-                          shape=(2 * n, 2 * P))
-    poss = st["poss"].to_numpy()
-    y = np.empty(2 * n)
-    y[0::2] = st["home_pts_adj"].to_numpy() / poss * 100.0
-    y[1::2] = st["away_pts_adj"].to_numpy() / poss * 100.0
-    return st, X, y, poss, players, pidx, hidx, aidx
-
-
-def normal_eqs(X, y, w_st):
-    used = w_st > 0
-    row_mask = np.repeat(used, 2)
-    Xs = X[row_mask]
-    ys = y[row_mask]
-    ws = np.repeat(w_st[used], 2)
-    ybar = np.average(ys, weights=ws)
-    Xw = Xs.multiply(np.sqrt(ws)[:, None]).tocsr()
-    yw = (ys - ybar) * np.sqrt(ws)
-    return (Xw.T @ Xw).toarray(), Xw.T @ yw, used
+DEV_EVID_END = 2018       # posterior strength selection; 2019+ untouched
 
 
 def main() -> None:
@@ -105,16 +64,14 @@ def main() -> None:
                          "with box-prior fallback")
     args = ap.parse_args()
 
-    st = prepare()
-    st["date"] = pd.to_datetime(st["date"])
-    st, X, y, poss, players, pidx, hidx, aidx = build_design(st)
-    P = len(players)
-    n = len(st)
-    print(f"Design: {n} stints, {P} players  (centers: {args.centers})")
+    design = load_design()
+    X, y, poss = design["X"], design["y"], design["poss"]
+    players, pidx, P = design["players"], design["pidx"], design["P"]
+    print(f"Design: {X.shape[0]:,} directed observations, {P} players "
+          f"(centers: {args.centers}; canonical counted evidence)")
 
-    dates = st["date"].to_numpy()
-    syears = st["season_year"].to_numpy()
-    is_po = st["is_playoff"].to_numpy() == 1
+    dates = design["dates"]
+    syears = design["seasons"]
     names = load_player_names()
 
     prior = pd.read_parquet(PRIOR_PATH)
@@ -142,9 +99,9 @@ def main() -> None:
             continue
         end = dates[sel].max()
         age_days = (end - dates).astype("timedelta64[D]").astype(float)
-        w_st = poss * np.exp(-np.log(2) * age_days / DECAY_HALFLIFE_DAYS)
-        w_st[(age_days < 0) | (age_days > WINDOW_DAYS)] = 0.0
-        XtX, Xty, used = normal_eqs(X, y, w_st)
+        row_weight = poss * np.exp(-np.log(2) * age_days / DECAY_HALFLIFE_DAYS)
+        row_weight[(age_days < 0) | (age_days > WINDOW_DAYS)] = 0.0
+        XtX, Xty, used = normal_eqs(X, y, row_weight)
 
         beta0 = np.zeros(2 * P)
         n_prior = 0
@@ -157,16 +114,8 @@ def main() -> None:
             if pdv is not None:
                 beta0[P + i] = -pdv   # drapm is sign-flipped vs the D coefficient
 
-        # season possession bookkeeping
-        raw_season = np.zeros(P)
-        w_on = np.zeros(P)
-        psel = poss[used]
-        insel = sel[used]
-        wsel = w_st[used]
-        for k in range(5):
-            for idxs in (hidx[used, k], aidx[used, k]):
-                np.add.at(raw_season, idxs, np.where(insel, psel, 0.0))
-                np.add.at(w_on, idxs, wsel)
+        raw_season, w_on = exposure_arrays(
+            design, sy, end, DECAY_HALFLIFE_DAYS, WINDOW_DAYS)
         active = raw_season > 0
 
         sol = {}
@@ -181,6 +130,8 @@ def main() -> None:
             p = int(players[i])
             row = {"season_year": sy, "target_season": label, "player_id": p,
                    "player_name": names.get(p, str(p)),
+                   "prior_model": PRIOR_MODEL,
+                   "evidence_model": EVIDENCE_MODEL,
                    "poss_season": round(float(raw_season[i]), 1),
                    "w_poss": round(float(w_on[i]), 1),
                    "prior_o": round(float(beta0[i]), 3),
@@ -214,20 +165,24 @@ def main() -> None:
     j = out.merge(ev_next, on=["player_id", "next_year"])
     j = j[j["evid_poss"] >= MIN_EVID_POSS]
 
-    def wc(col):
-        w = j["evid_poss"]
-        a, b = j[col], j["evid"]
+    def wc(frame, col):
+        w = frame["evid_poss"]
+        a, b = frame[col], frame["evid"]
         am, bm = np.average(a, weights=w), np.average(b, weights=w)
         cov = np.average((a - am) * (b - bm), weights=w)
         return cov / np.sqrt(np.average((a - am) ** 2, weights=w)
                              * np.average((b - bm) ** 2, weights=w))
 
     j["prior_total"] = j["prior_o"] + j["prior_d"]
+    dev = j[j.next_year <= DEV_EVID_END]
+    test = j[j.next_year > DEV_EVID_END]
     print(f"\nPredicting next-season single-season RAPM evidence "
           f"(n={len(j)}, >= {MIN_EVID_POSS} poss):")
-    print(f"  box prior only:      {wc('prior_total'):.3f}")
+    print(f"  atomic prior only: dev {wc(dev, 'prior_total'):.3f}; "
+          f"2019+ {wc(test, 'prior_total'):.3f}")
     for alpha in ALPHA_GRID:
-        print(f"  posterior alpha={alpha:<5}: {wc(f'm{alpha}'):.3f}")
+        print(f"  posterior alpha={alpha:<5}: dev {wc(dev, f'm{alpha}'):.3f}; "
+              f"2019+ {wc(test, f'm{alpha}'):.3f}")
 
     # obs-only baselines from Phase 1 outputs
     tgt = pd.read_parquet(TARGET_PATH)
@@ -273,7 +228,7 @@ def main() -> None:
         return cov / np.sqrt(np.average((a - am) ** 2, weights=w)
                              * np.average((b - bm) ** 2, weights=w))
 
-    best = max(ALPHA_GRID, key=lambda a: wc(f"m{a}"))
+    best = max(ALPHA_GRID, key=lambda a: wc(dev, f"m{a}"))
     print(f"\nBenchmarks on matched rows:")
     print(f"  vs BPM   (n={len(jb)}): ours {wc2(jb, f'm{best}'):.3f}  BPM {wc2(jb, 'BPM'):.3f}")
     print(f"  vs RAPTOR(n={len(jr)}): ours {wc2(jr, f'm{best}'):.3f}  RAPTOR {wc2(jr, 'raptor_total'):.3f}")

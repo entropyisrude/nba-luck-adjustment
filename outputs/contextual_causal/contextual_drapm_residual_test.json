@@ -1,0 +1,1247 @@
+{
+  "claim_tier": "predictive residual structure; not causal identification",
+  "unit": "offense-team game aggregated from lineup stints",
+  "outcome": "luck-adjusted points per 100 centered on target-season league environment",
+  "baseline": "possession-weighted frozen preseason offensive RAPM minus defensive RAPM",
+  "feature_timing": "immediately preceding season",
+  "interactions_preregistered": {
+    "rim_pressure_x_rim_anchor": [
+      "o_rim",
+      "d_rim_anchor"
+    ],
+    "spacing_x_defensive_size": [
+      "o_spacing",
+      "d_size"
+    ],
+    "offensive_rebounding_x_defensive_rebounding": [
+      "o_oreb",
+      "d_dreb"
+    ],
+    "turnover_proneness_x_disruption": [
+      "o_turnover",
+      "d_disruption"
+    ],
+    "foul_pressure_x_defensive_foul_rate": [
+      "o_foul_pressure",
+      "d_foul_rate"
+    ]
+  },
+  "rating_shape_interactions_second_family": {
+    "star_concentration_x_weak_link": [
+      "offense_star_concentration",
+      "defense_weak_link"
+    ],
+    "star_concentration_x_anchor": [
+      "offense_star_concentration",
+      "defense_anchor"
+    ],
+    "offense_concentration_x_defense_spread": [
+      "offense_star_concentration",
+      "defense_rating_spread"
+    ]
+  },
+  "primary_at_least_8_of_10_frozen_slots": {
+    "rows": 12196,
+    "games": 6098,
+    "train_rows_through_2023": 7342,
+    "test_rows": 4854,
+    "test_games": 2427,
+    "models": {
+      "frozen_rapm": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -5.2218379186837564e-15,
+          2.642514445102882,
+          0.4488854841341263,
+          0.4078890591097128,
+          0.8600472627953872
+        ],
+        "test_rmse": 8.327853367710656,
+        "by_season_rmse": {
+          "2024": 8.190688430800453,
+          "2025": 8.464189827903391
+        }
+      },
+      "rapm_plus_additive_traits": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.436592857378168e-15,
+          2.573214022189381,
+          0.4418213357690329,
+          0.2632042004415201,
+          0.8559672926475141,
+          1.090667434104701,
+          0.7184757835648289,
+          -0.053883155005693524,
+          -0.26546474228233935,
+          -0.2019718237051605,
+          -0.0033708433001038355,
+          -0.20345292389476582,
+          0.2954718049265306,
+          -0.24696193585392148,
+          0.09133130404416694
+        ],
+        "test_rmse": 8.320157534452255,
+        "by_season_rmse": {
+          "2024": 8.168796519005339,
+          "2025": 8.470348598713478
+        }
+      },
+      "additive_plus_rim_pressure_x_rim_anchor": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_x_rim_anchor"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.435436753113449e-15,
+          2.5713943301267856,
+          0.4419388501566803,
+          0.2655829760074567,
+          0.8587666190949226,
+          1.0836726163445978,
+          0.7167786588704581,
+          -0.05596506620272302,
+          -0.2658212535045029,
+          -0.20038133118922302,
+          -0.009203205764294271,
+          -0.20155278081762384,
+          0.297057416270556,
+          -0.24749042360032222,
+          0.09244451930655345,
+          0.08017070158899862
+        ],
+        "test_rmse": 8.321165072147554,
+        "by_season_rmse": {
+          "2024": 8.169915132784183,
+          "2025": 8.471248223604622
+        }
+      },
+      "additive_plus_spacing_x_defensive_size": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "spacing_x_defensive_size"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.435704845457594e-15,
+          2.5722128294922633,
+          0.4416952474981115,
+          0.2662097424716983,
+          0.8589405914692491,
+          1.0895231517070263,
+          0.7232331296715676,
+          -0.055447662559187295,
+          -0.26505318638049735,
+          -0.20123604527300606,
+          -0.0032933596608453897,
+          -0.19592694021321896,
+          0.295612066698104,
+          -0.24749967046434912,
+          0.09339406442286777,
+          -0.08951956898561583
+        ],
+        "test_rmse": 8.322534868220288,
+        "by_season_rmse": {
+          "2024": 8.17230300801954,
+          "2025": 8.471626244184272
+        }
+      },
+      "additive_plus_offensive_rebounding_x_defensive_rebounding": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "offensive_rebounding_x_defensive_rebounding"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.437091215110749e-15,
+          2.5753128960833997,
+          0.4410390870041879,
+          0.2630851684425307,
+          0.8552380222568403,
+          1.0922165864726836,
+          0.7194509006839416,
+          -0.04525583178386397,
+          -0.2650213385774373,
+          -0.20324226141551766,
+          -0.0052769262272052316,
+          -0.20319571641848358,
+          0.29885363738454473,
+          -0.24645647245357932,
+          0.09197933605183528,
+          -0.0522114602778284
+        ],
+        "test_rmse": 8.320401583668268,
+        "by_season_rmse": {
+          "2024": 8.169653066339002,
+          "2025": 8.469995837022225
+        }
+      },
+      "additive_plus_turnover_proneness_x_disruption": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "turnover_proneness_x_disruption"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.437873583629176e-15,
+          2.572552712884178,
+          0.4428387803497035,
+          0.26315637186511387,
+          0.8560749001804149,
+          1.0891866148140925,
+          0.7173550025592835,
+          -0.05426448546266039,
+          -0.26356980354186255,
+          -0.20246490259625327,
+          -0.004936037736070103,
+          -0.2030533262347007,
+          0.2960560877836861,
+          -0.23883611270620503,
+          0.09007567866772408,
+          0.10047923766618624
+        ],
+        "test_rmse": 8.321155243351111,
+        "by_season_rmse": {
+          "2024": 8.166907184688325,
+          "2025": 8.474158945485396
+        }
+      },
+      "additive_plus_foul_pressure_x_defensive_foul_rate": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "foul_pressure_x_defensive_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.439497359868946e-15,
+          2.5725242197416165,
+          0.4421607177514522,
+          0.26087908822256484,
+          0.852491525438255,
+          1.088544848197421,
+          0.7162497808679283,
+          -0.05169488147906555,
+          -0.2665431807858766,
+          -0.192771705923408,
+          -0.006540289715026213,
+          -0.20392967769078602,
+          0.2959376168445246,
+          -0.2470238560089214,
+          0.0671913399719277,
+          0.11034362077074991
+        ],
+        "test_rmse": 8.321090152863253,
+        "by_season_rmse": {
+          "2024": 8.170899116191768,
+          "2025": 8.470141276043814
+        }
+      },
+      "additive_plus_all_contexts": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_x_rim_anchor",
+          "spacing_x_defensive_size",
+          "offensive_rebounding_x_defensive_rebounding",
+          "turnover_proneness_x_disruption",
+          "foul_pressure_x_defensive_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -4.4403806272776975e-15,
+          2.5727509015661405,
+          0.44203615244386474,
+          0.26509669231683725,
+          0.8561833116539649,
+          1.0831207030128531,
+          0.7196640985912276,
+          -0.041812210775419204,
+          -0.263737126721206,
+          -0.19312820046632578,
+          -0.015390321484332059,
+          -0.19474185331091512,
+          0.30303102899611173,
+          -0.23840425195056358,
+          0.0688299120763945,
+          0.05814297106108912,
+          -0.08328062162591508,
+          -0.0798344593742018,
+          0.1079764673311489,
+          0.11367743442275367
+        ],
+        "test_rmse": 8.325638775499677,
+        "by_season_rmse": {
+          "2024": 8.174277763715807,
+          "2025": 8.475831612465305
+        }
+      }
+    },
+    "comparisons": {
+      "additive_vs_frozen_rapm": {
+        "rmse_improvement_pct": 0.09241076804065163,
+        "game_cluster_95pct": [
+          -0.18428184278637572,
+          0.3676427754526941
+        ]
+      },
+      "all_contexts_vs_frozen_rapm": {
+        "rmse_improvement_pct": 0.02659259371169398,
+        "game_cluster_95pct": [
+          -0.2570297799896415,
+          0.3266509980331877
+        ]
+      },
+      "all_contexts_vs_additive": {
+        "rmse_improvement_pct": -0.06587905366843838,
+        "game_cluster_95pct": [
+          -0.14607073758433786,
+          0.012236357491091528
+        ]
+      },
+      "additive_plus_rim_pressure_x_rim_anchor_vs_additive": {
+        "rmse_improvement_pct": -0.012109598780152275,
+        "game_cluster_95pct": [
+          -0.043984049285674676,
+          0.020241485203455197
+        ]
+      },
+      "additive_plus_spacing_x_defensive_size_vs_additive": {
+        "rmse_improvement_pct": -0.028573182156566013,
+        "game_cluster_95pct": [
+          -0.06742351297544635,
+          0.009563337984529451
+        ]
+      },
+      "additive_plus_offensive_rebounding_x_defensive_rebounding_vs_additive": {
+        "rmse_improvement_pct": -0.002933228307311353,
+        "game_cluster_95pct": [
+          -0.022648161440534387,
+          0.017801626791326665
+        ]
+      },
+      "additive_plus_turnover_proneness_x_disruption_vs_additive": {
+        "rmse_improvement_pct": -0.011991466444283283,
+        "game_cluster_95pct": [
+          -0.04893368023887734,
+          0.025371556733922985
+        ]
+      },
+      "additive_plus_foul_pressure_x_defensive_foul_rate_vs_additive": {
+        "rmse_improvement_pct": -0.011209143662682663,
+        "game_cluster_95pct": [
+          -0.05396761489786239,
+          0.029919047800064356
+        ]
+      }
+    }
+  },
+  "sensitivity_all_10_frozen_slots": {
+    "rows": 1392,
+    "games": 696,
+    "train_rows_through_2023": 964,
+    "test_rows": 428,
+    "test_games": 214,
+    "models": {
+      "frozen_rapm": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.787286283745389,
+          0.14192862365617923,
+          0.0,
+          0.0
+        ],
+        "test_rmse": 8.53946494017277,
+        "by_season_rmse": {
+          "2024": 7.491763971165828,
+          "2025": 9.323271103046281
+        }
+      },
+      "rapm_plus_additive_traits": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7883365241481544,
+          0.133437905784625,
+          0.0,
+          0.0,
+          1.0913727376188187,
+          0.6489590714659087,
+          -0.23530535414747125,
+          -0.16355600324769662,
+          -0.12642631040620297,
+          -0.2146668947962739,
+          -0.06748983836563849,
+          0.06286889488411086,
+          0.08083475678132959,
+          0.09244095358304295
+        ],
+        "test_rmse": 8.483842048046126,
+        "by_season_rmse": {
+          "2024": 7.450700465981398,
+          "2025": 9.257357431420715
+        }
+      },
+      "additive_plus_rim_pressure_x_rim_anchor": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_x_rim_anchor"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7871471087514392,
+          0.13288871539716743,
+          0.0,
+          0.0,
+          1.089223361452365,
+          0.6494736588785922,
+          -0.23568812406596718,
+          -0.1640992652344426,
+          -0.12573208939165592,
+          -0.2149893614068588,
+          -0.06664251671606469,
+          0.06314687156048363,
+          0.08145013549578643,
+          0.09335277660266215,
+          0.017255222838311674
+        ],
+        "test_rmse": 8.48427319150759,
+        "by_season_rmse": {
+          "2024": 7.452135095497922,
+          "2025": 9.257119335878961
+        }
+      },
+      "additive_plus_spacing_x_defensive_size": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "spacing_x_defensive_size"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.785531053582428,
+          0.11011105057732722,
+          0.0,
+          0.0,
+          1.0781364182316668,
+          0.6536774968118868,
+          -0.22678851310151824,
+          -0.1723131975887553,
+          -0.11609402301020419,
+          -0.22169551350055525,
+          -0.02487932519691713,
+          0.06100627284354372,
+          0.08852720013260514,
+          0.09581692942784766,
+          -0.27380376557314157
+        ],
+        "test_rmse": 8.504554470681086,
+        "by_season_rmse": {
+          "2024": 7.464468390772265,
+          "2025": 9.282923839269626
+        }
+      },
+      "additive_plus_offensive_rebounding_x_defensive_rebounding": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "offensive_rebounding_x_defensive_rebounding"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7878446026098547,
+          0.13392460399894857,
+          0.0,
+          0.0,
+          1.0913479966671953,
+          0.6486614211879753,
+          -0.23980912637490628,
+          -0.16393084153272539,
+          -0.12568422144737898,
+          -0.21450558594196792,
+          -0.06737832582652471,
+          0.06320839503678667,
+          0.08097112954789698,
+          0.09243712536378262,
+          0.014459206860985488
+        ],
+        "test_rmse": 8.485610370862181,
+        "by_season_rmse": {
+          "2024": 7.451326288918759,
+          "2025": 9.25990895874336
+        }
+      },
+      "additive_plus_turnover_proneness_x_disruption": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "turnover_proneness_x_disruption"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7939195321886257,
+          0.1314830938074082,
+          0.0,
+          0.0,
+          1.0899007856749956,
+          0.6481527631573035,
+          -0.2306411981375737,
+          -0.15803393926165585,
+          -0.12486175553004213,
+          -0.2131334388853728,
+          -0.06617971549102762,
+          0.06091911801487353,
+          0.06087714209485943,
+          0.09637698932375696,
+          -0.11377970240692654
+        ],
+        "test_rmse": 8.482122652742497,
+        "by_season_rmse": {
+          "2024": 7.456152472851951,
+          "2025": 9.250807037543748
+        }
+      },
+      "additive_plus_foul_pressure_x_defensive_foul_rate": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "foul_pressure_x_defensive_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7892723904060919,
+          0.13384487919512958,
+          0.0,
+          0.0,
+          1.089967657516419,
+          0.6479541685318957,
+          -0.23497971563048334,
+          -0.16559957610997178,
+          -0.11415062386743895,
+          -0.2181360156904571,
+          -0.06829431056360082,
+          0.06301606089421388,
+          0.08073691272672753,
+          0.07313975980319638,
+          0.05489214307388892
+        ],
+        "test_rmse": 8.482330918099043,
+        "by_season_rmse": {
+          "2024": 7.45143457881262,
+          "2025": 9.254325340925181
+        }
+      },
+      "additive_plus_all_contexts": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "o_rim",
+          "o_spacing",
+          "o_oreb",
+          "o_turnover",
+          "o_foul_pressure",
+          "d_rim_anchor",
+          "d_size",
+          "d_dreb",
+          "d_disruption",
+          "d_foul_rate",
+          "rim_pressure_x_rim_anchor",
+          "spacing_x_defensive_size",
+          "offensive_rebounding_x_defensive_rebounding",
+          "turnover_proneness_x_disruption",
+          "foul_pressure_x_defensive_foul_rate"
+        ],
+        "alpha": 10000.0,
+        "coefficients_standardized": [
+          -1.7235615626048362,
+          1.7994652256473143,
+          0.10807506722208025,
+          0.0,
+          0.0,
+          1.087603826744155,
+          0.6495207636321102,
+          -0.2146922505013686,
+          -0.16681757167398303,
+          -0.106011987488479,
+          -0.22286942621496345,
+          -0.023020626581322316,
+          0.05691910271197578,
+          0.06719998780301314,
+          0.07480676702317295,
+          -0.11585599205840776,
+          -0.32024789397759496,
+          -0.01118359247971234,
+          -0.10431855374278154,
+          0.05424118409419008
+        ],
+        "test_rmse": 8.498933303484245,
+        "by_season_rmse": {
+          "2024": 7.461572131104755,
+          "2025": 9.275422218044561
+        }
+      }
+    },
+    "comparisons": {
+      "additive_vs_frozen_rapm": {
+        "rmse_improvement_pct": 0.6513627319315041,
+        "game_cluster_95pct": [
+          -0.29194754909409426,
+          1.619698669451779
+        ]
+      },
+      "all_contexts_vs_frozen_rapm": {
+        "rmse_improvement_pct": 0.4746390666451439,
+        "game_cluster_95pct": [
+          -0.4484100732275087,
+          1.4147110852335678
+        ]
+      },
+      "all_contexts_vs_additive": {
+        "rmse_improvement_pct": -0.177882324454548,
+        "game_cluster_95pct": [
+          -0.602870401628397,
+          0.18913342048071133
+        ]
+      },
+      "additive_plus_rim_pressure_x_rim_anchor_vs_additive": {
+        "rmse_improvement_pct": -0.00508193645074595,
+        "game_cluster_95pct": [
+          -0.02830250931258438,
+          0.016940028189586207
+        ]
+      },
+      "additive_plus_spacing_x_defensive_size_vs_additive": {
+        "rmse_improvement_pct": -0.24413965415268635,
+        "game_cluster_95pct": [
+          -0.672947853664117,
+          0.11303218750219113
+        ]
+      },
+      "additive_plus_offensive_rebounding_x_defensive_rebounding_vs_additive": {
+        "rmse_improvement_pct": -0.02084341983312754,
+        "game_cluster_95pct": [
+          -0.04156019250818155,
+          -0.004135906053562312
+        ]
+      },
+      "additive_plus_turnover_proneness_x_disruption_vs_additive": {
+        "rmse_improvement_pct": 0.020266705743621216,
+        "game_cluster_95pct": [
+          -0.07871556660357326,
+          0.1556694536004033
+        ]
+      },
+      "additive_plus_foul_pressure_x_defensive_foul_rate_vs_additive": {
+        "rmse_improvement_pct": 0.017811858572180927,
+        "game_cluster_95pct": [
+          -0.04040801330735366,
+          0.08126019101778705
+        ]
+      }
+    }
+  },
+  "rating_shape_2025_confirmation_primary": {
+    "selection_season": 2024,
+    "confirmation_season": 2025,
+    "train_rows_through_2024": 9786,
+    "confirmation_rows": 2410,
+    "confirmation_games": 1205,
+    "models": {
+      "frozen_rapm": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -2.6334118552895174e-16,
+          2.7341394876995557,
+          0.4461517807992447,
+          0.32565757226698583,
+          0.8664505747843886
+        ],
+        "confirmation_2025_rmse": 8.450393193257732
+      },
+      "rapm_plus_rating_shape": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -6.639217805238746e-17,
+          2.63852812295861,
+          0.4433836511928016,
+          0.3312473015173436,
+          0.9375859555631728,
+          0.15149901064438928,
+          0.8078505360916398,
+          0.5491799237814474,
+          -1.0357761660393559
+        ],
+        "confirmation_2025_rmse": 8.473620196938084
+      },
+      "shape_plus_star_concentration_x_weak_link": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_weak_link"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -3.781762397665714e-17,
+          2.638118251713883,
+          0.44326493915310655,
+          0.3301804482686596,
+          0.9358027419222847,
+          0.29482110874447504,
+          0.9107443327575572,
+          0.5520841879828101,
+          -1.0381289040014277,
+          -0.18191290391624654
+        ],
+        "confirmation_2025_rmse": 8.474090803754908
+      },
+      "shape_plus_star_concentration_x_anchor": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_anchor"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -2.041234149774113e-16,
+          2.6391367185210957,
+          0.44322955279924486,
+          0.3310811949024829,
+          0.937732829343093,
+          -0.024117745745047416,
+          0.8067937092768933,
+          0.4169150847410221,
+          -1.0296684466918862,
+          0.2259492444430456
+        ],
+        "confirmation_2025_rmse": 8.473190314936765
+      },
+      "shape_plus_offense_concentration_x_defense_spread": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "offense_concentration_x_defense_spread"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -7.326752050175401e-17,
+          2.6388861204037624,
+          0.44344988104855754,
+          0.3316036658799274,
+          0.9383548706574939,
+          0.022661552027794737,
+          0.8079317296695452,
+          0.5447133164097441,
+          -1.1113206161988243,
+          0.1558659677747642
+        ],
+        "confirmation_2025_rmse": 8.473499227623181
+      },
+      "shape_plus_all_rating_contexts": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_weak_link",
+          "star_concentration_x_anchor",
+          "offense_concentration_x_defense_spread"
+        ],
+        "alpha": 100.0,
+        "coefficients_standardized": [
+          9.43195698880679e-16,
+          2.637826983352692,
+          0.4441958101298928,
+          0.3292981027784686,
+          0.9354794643281649,
+          0.07458121593358438,
+          1.5826273771046313,
+          1.0937171024373644,
+          -2.212439689475065,
+          -1.3726752461961584,
+          -1.0279064684141592,
+          2.3680957757893535
+        ],
+        "confirmation_2025_rmse": 8.477251782560822
+      }
+    },
+    "comparisons": {
+      "rating_shape_vs_frozen_rapm": {
+        "rmse_improvement_pct": -0.27486299334431585,
+        "game_cluster_95pct": [
+          -0.402812996944677,
+          -0.15085947585222195
+        ]
+      },
+      "all_rating_contexts_vs_frozen_rapm": {
+        "rmse_improvement_pct": -0.31783833827425667,
+        "game_cluster_95pct": [
+          -0.473956780915597,
+          -0.1692416467939868
+        ]
+      },
+      "all_rating_contexts_vs_rating_shape": {
+        "rmse_improvement_pct": -0.04285754539778974,
+        "game_cluster_95pct": [
+          -0.1077456701905577,
+          0.018145351328924232
+        ]
+      },
+      "shape_plus_star_concentration_x_weak_link_vs_rating_shape": {
+        "rmse_improvement_pct": -0.005553786998779842,
+        "game_cluster_95pct": [
+          -0.0255083981097598,
+          0.013642698642818685
+        ]
+      },
+      "shape_plus_star_concentration_x_anchor_vs_rating_shape": {
+        "rmse_improvement_pct": 0.005073179955294993,
+        "game_cluster_95pct": [
+          -0.02378205993308735,
+          0.03542206941455571
+        ]
+      },
+      "shape_plus_offense_concentration_x_defense_spread_vs_rating_shape": {
+        "rmse_improvement_pct": 0.0014275989729473082,
+        "game_cluster_95pct": [
+          -0.015393388791529738,
+          0.0190397183014812
+        ]
+      }
+    }
+  },
+  "rating_shape_2025_confirmation_all10_sensitivity": {
+    "selection_season": 2024,
+    "confirmation_season": 2025,
+    "train_rows_through_2024": 1162,
+    "confirmation_rows": 230,
+    "confirmation_games": 115,
+    "models": {
+      "frozen_rapm": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -1.5394912525989746,
+          2.171452526868804,
+          0.1197387412965983,
+          0.0,
+          0.0
+        ],
+        "confirmation_2025_rmse": 9.333802211809521
+      },
+      "rapm_plus_rating_shape": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread"
+        ],
+        "alpha": 1000.0,
+        "coefficients_standardized": [
+          -1.539491252598974,
+          2.0458426252099984,
+          0.10979484391201026,
+          0.0,
+          0.0,
+          0.2630412454329592,
+          1.193287877719142,
+          1.1775632471991495,
+          -1.9648897371907823
+        ],
+        "confirmation_2025_rmse": 9.411686027478765
+      },
+      "shape_plus_star_concentration_x_weak_link": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_weak_link"
+        ],
+        "alpha": 1000.0,
+        "coefficients_standardized": [
+          -1.539491252598974,
+          2.0457522207015213,
+          0.11210277648017333,
+          0.0,
+          0.0,
+          0.45174294563689915,
+          1.3258616452379333,
+          1.1731171526730613,
+          -1.9559090424386134,
+          -0.2358401176291582
+        ],
+        "confirmation_2025_rmse": 9.414097536757314
+      },
+      "shape_plus_star_concentration_x_anchor": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_anchor"
+        ],
+        "alpha": 1000.0,
+        "coefficients_standardized": [
+          -1.539491252598974,
+          2.0439263201479427,
+          0.10739248029436786,
+          0.0,
+          0.0,
+          0.12664149829159774,
+          1.197948382074895,
+          1.0761927973677434,
+          -1.9722142904413325,
+          0.17804309820083267
+        ],
+        "confirmation_2025_rmse": 9.412731968920568
+      },
+      "shape_plus_offense_concentration_x_defense_spread": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "offense_concentration_x_defense_spread"
+        ],
+        "alpha": 1000.0,
+        "coefficients_standardized": [
+          -1.539491252598974,
+          2.044927228747941,
+          0.1079305171807565,
+          0.0,
+          0.0,
+          0.12341564846591119,
+          1.1858718712881302,
+          1.1632683041591922,
+          -2.034408361699271,
+          0.16724552269454496
+        ],
+        "confirmation_2025_rmse": 9.41161306565602
+      },
+      "shape_plus_all_rating_contexts": {
+        "features": [
+          "rapm_expectation",
+          "offense_is_home",
+          "missing_offense",
+          "missing_defense",
+          "offense_star_concentration",
+          "defense_weak_link",
+          "defense_anchor",
+          "defense_rating_spread",
+          "star_concentration_x_weak_link",
+          "star_concentration_x_anchor",
+          "offense_concentration_x_defense_spread"
+        ],
+        "alpha": 0.0,
+        "coefficients_standardized": [
+          -1.5394912525989752,
+          2.0854338413402,
+          0.11865112123647722,
+          5.859910563388197e-13,
+          2.436736018878628e-13,
+          0.06911492035591138,
+          4.951473107647914,
+          5.609891960577102,
+          -8.958128747910848,
+          -5.6256828596737165,
+          -6.615199028003815,
+          11.672128885500683
+        ],
+        "confirmation_2025_rmse": 9.466945493054835
+      }
+    },
+    "comparisons": {
+      "rating_shape_vs_frozen_rapm": {
+        "rmse_improvement_pct": -0.83442753448002,
+        "game_cluster_95pct": [
+          -1.3235724159612599,
+          -0.31577492535049806
+        ]
+      },
+      "all_rating_contexts_vs_frozen_rapm": {
+        "rmse_improvement_pct": -1.4264634949822774,
+        "game_cluster_95pct": [
+          -2.3756159754020043,
+          -0.25320614230486577
+        ]
+      },
+      "all_rating_contexts_vs_rating_shape": {
+        "rmse_improvement_pct": -0.5871367299624008,
+        "game_cluster_95pct": [
+          -1.1929387195133105,
+          0.2110344051074611
+        ]
+      },
+      "shape_plus_star_concentration_x_weak_link_vs_rating_shape": {
+        "rmse_improvement_pct": -0.025622500277933113,
+        "game_cluster_95pct": [
+          -0.11633650865538636,
+          0.07735014600724814
+        ]
+      },
+      "shape_plus_star_concentration_x_anchor_vs_rating_shape": {
+        "rmse_improvement_pct": -0.011113220720981865,
+        "game_cluster_95pct": [
+          -0.08124264804606873,
+          0.09021364851502284
+        ]
+      },
+      "shape_plus_offense_concentration_x_defense_spread_vs_rating_shape": {
+        "rmse_improvement_pct": 0.0007752258472271123,
+        "game_cluster_95pct": [
+          -0.05170908185566647,
+          0.07445097964499046
+        ]
+      }
+    }
+  }
+}

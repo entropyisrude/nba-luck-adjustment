@@ -1,0 +1,80 @@
+{
+  "design": "same game and period; exact defensive four-man core; offense exact or four-man core",
+  "raw_events": 85569,
+  "games": 4555,
+  "outcomes": {
+    "strict_rim_access": {
+      "eligible_events": 13681,
+      "heldout_events": 13472,
+      "simultaneous_offensive_change_share": 0.4971127841532052,
+      "heldout_pearson": 0.01929733667896689,
+      "heldout_rmse_model": 0.2852598109361771,
+      "heldout_rmse_zero": 0.2839543448139485,
+      "rmse_improvement_pct": -0.45974507735881964,
+      "disjoint_game_defender_score_replication": {
+        "players": 262,
+        "pearson": 0.06739912261043222,
+        "spearman": 0.0711577424650807
+      },
+      "ridge": 100.0
+    },
+    "broad_rim_access": {
+      "eligible_events": 13681,
+      "heldout_events": 13472,
+      "simultaneous_offensive_change_share": 0.4971127841532052,
+      "heldout_pearson": 0.017006854527081512,
+      "heldout_rmse_model": 0.29632296085763143,
+      "heldout_rmse_zero": 0.2949112862773699,
+      "rmse_improvement_pct": -0.4786777061267955,
+      "disjoint_game_defender_score_replication": {
+        "players": 262,
+        "pearson": 0.06437011360457068,
+        "spearman": 0.08752987161253496
+      },
+      "ridge": 100.0
+    },
+    "recorded_rim_attempt": {
+      "eligible_events": 13681,
+      "heldout_events": 13472,
+      "simultaneous_offensive_change_share": 0.4971127841532052,
+      "heldout_pearson": 0.0190135460201998,
+      "heldout_rmse_model": 0.2716802724658431,
+      "heldout_rmse_zero": 0.2704094244543093,
+      "rmse_improvement_pct": -0.46997178966612374,
+      "disjoint_game_defender_score_replication": {
+        "players": 262,
+        "pearson": 0.02493596454860991,
+        "spearman": 0.06826191002835448
+      },
+      "ridge": 100.0
+    },
+    "restricted_area_foul": {
+      "eligible_events": 13681,
+      "heldout_events": 13472,
+      "simultaneous_offensive_change_share": 0.4971127841532052,
+      "heldout_pearson": 0.009722436950440746,
+      "heldout_rmse_model": 0.12908809025818704,
+      "heldout_rmse_zero": 0.12835028653209793,
+      "rmse_improvement_pct": -0.5748360568751831,
+      "disjoint_game_defender_score_replication": {
+        "players": 262,
+        "pearson": -0.057862172096379436,
+        "spearman": -0.029681281612698427
+      },
+      "ridge": 100.0
+    },
+    "rim_fg_pct": {
+      "eligible_events": 837,
+      "heldout_events": 527,
+      "simultaneous_offensive_change_share": 0.45280764635603343,
+      "heldout_pearson": 0.02535291665749088,
+      "heldout_rmse_model": 0.438178130393007,
+      "heldout_rmse_zero": 0.4383148400476138,
+      "rmse_improvement_pct": 0.031189830258071538,
+      "disjoint_game_defender_score_replication": {
+        "players": 0
+      },
+      "ridge": 100.0
+    }
+  }
+}
