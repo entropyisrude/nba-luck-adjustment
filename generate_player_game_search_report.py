@@ -21,6 +21,13 @@ REGULAR_GAME_SEARCH_HREF = os.environ.get("REGULAR_GAME_SEARCH_HREF", "game-sear
 REGULAR_SPAN_SEARCH_HREF = os.environ.get("REGULAR_SPAN_SEARCH_HREF", "player-span-search.html")
 PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-search-playoffs.html")
 PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
+COMBINED_GAME_SEARCH_HREF = os.environ.get("COMBINED_GAME_SEARCH_HREF", "combo-search.html")
+SEARCH_SCOPE = os.environ.get("PLAYER_GAME_SEARCH_SCOPE", "regular")
+_CUR_STYLE = (" style=\"background:rgba(245,132,38,.18);"
+              "border-color:rgba(245,132,38,.6);font-weight:700;\"")
+RS_CUR = _CUR_STYLE if SEARCH_SCOPE == "regular" else ""
+PO_CUR = _CUR_STYLE if SEARCH_SCOPE == "playoffs" else ""
+CB_CUR = _CUR_STYLE if SEARCH_SCOPE == "combined" else ""
 SOURCE_LABEL = os.environ.get("PLAYER_GAME_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
 ALLOW_PER100 = os.environ.get("PLAYER_GAME_SEARCH_ALLOW_PER100", "1") != "0"
 # Game-id prefix filter: '2' = regular season (default), '4' = playoffs.
@@ -448,14 +455,15 @@ def generate_player_game_search_report() -> Path:
     <section class="hero">
       <h1>{PAGE_TITLE}</h1>
       <div class="nav">
-        <a href="index.html">Overview</a>
+        <a href="index.html">Home</a>
         <a href="{REGULAR_GAME_SEARCH_HREF}">Game Search</a>
-        <a href="{REGULAR_SPAN_SEARCH_HREF}">Player Span Search</a>
-        <a href="{PLAYOFF_GAME_SEARCH_HREF}">Game Search: Playoffs</a>
-        <a href="{PLAYOFF_SPAN_SEARCH_HREF}">Player Span Search: Playoffs</a>
-        <a href="onoff-daily.html">+/- Games</a>
-        <a href="onoff.html">+/- Stats</a>
-        <a href="rapm.html">RAPM</a>
+        <a href="{REGULAR_SPAN_SEARCH_HREF}">Season Search</a>
+      </div>
+      <div class="nav" style="margin-top:6px">
+        <span style="align-self:center;opacity:.65;font-size:12px;padding:4px 2px;">Scope:</span>
+        <a href="{REGULAR_GAME_SEARCH_HREF}"{RS_CUR}>Regular Season</a>
+        <a href="{PLAYOFF_GAME_SEARCH_HREF}"{PO_CUR}>Playoffs</a>
+        <a href="{COMBINED_GAME_SEARCH_HREF}"{CB_CUR}>Combined</a>
       </div>
     </section>
 

@@ -316,15 +316,13 @@ def generate_playoff_series_report() -> Path:
   <h1>NBA Playoff Series &ndash; Luck-Adjusted Ratings</h1>
   <p class="subtitle">{season_label} &middot; Adjusted for 3-point shooting luck</p>
   <div class="nav">
-    <a href="index.html">Overview</a>
-    <a href="onoff-daily.html">+/- Games</a>
-    <a href="onoff.html">+/- Stats</a>
-    <a href="rapm.html">RAPM</a>
-    <a href="onoff-playoffs.html">+/- Playoffs</a>
-    <a href="rapm-playoffs.html">Playoff RAPM</a>
-    <a href="playoff-series.html">Series Ratings</a>
-    <a href="example.html">Method</a>
-  </div>
+        <a href="index.html">Home</a>
+        <a href="onoff.html">+/- Seasons</a>
+        <a href="onoff-daily.html">+/- Games</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="playoff-series.html">Playoff Series</a>
+        <a href="example.html">Method</a>
+      </div>
 </section>
 
 {body_html}

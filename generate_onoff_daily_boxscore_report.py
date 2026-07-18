@@ -314,8 +314,12 @@ def generate_daily_boxscores_report() -> Path:
     <section class="hero">
       <h1>{page_title}</h1>
       <div class="nav">
-        <a href="index.html">Main 3PT Luck Page</a>
-        <a href="onoff.html">3PT Luck Adjusted Plus Minus: Totals</a>
+        <a href="index.html">Home</a>
+        <a href="onoff.html">+/- Seasons</a>
+        <a href="onoff-daily.html">+/- Games</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="playoff-series.html">Playoff Series</a>
+        <a href="example.html">Method</a>
       </div>
     </section>
 

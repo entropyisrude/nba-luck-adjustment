@@ -11,6 +11,7 @@ os.environ.setdefault("PLAYER_SPAN_SEARCH_PAGE_TITLE", "Player Span Search: Play
 os.environ.setdefault("PLAYER_GAME_SEARCH_HREF", "game-search-playoffs.html")
 os.environ.setdefault("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics_playoffs.duckdb")
 os.environ.setdefault("PLAYER_SPAN_SEARCH_GAME_ID_PREFIX", "4")
+os.environ.setdefault("PLAYER_SPAN_SEARCH_SCOPE", "playoffs")
 
 from generate_player_span_search_report import generate_player_span_search_report
 from generate_player_span_search_playoffs_pbpstats import generate as generate_pbpstats_chunks
