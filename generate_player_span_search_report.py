@@ -844,14 +844,22 @@ def generate_player_span_search_report() -> Path:
               <th class="sortable" data-key="minutes"><div class="th-wrap"><span>Min</span></div></th>
               <th class="sortable" data-key="pts"><div class="th-wrap"><span>PTS</span></div></th>
               <th class="sortable" data-key="reb"><div class="th-wrap"><span>REB</span></div></th>
+              <th class="sortable" data-key="oreb"><div class="th-wrap"><span>ORB</span></div></th>
+              <th class="sortable" data-key="dreb"><div class="th-wrap"><span>DRB</span></div></th>
               <th class="sortable" data-key="ast"><div class="th-wrap"><span>AST</span></div></th>
               <th class="sortable" data-key="stl"><div class="th-wrap"><span>STL</span></div></th>
               <th class="sortable" data-key="blk"><div class="th-wrap"><span>BLK</span></div></th>
               <th class="sortable" data-key="tov"><div class="th-wrap"><span>TOV</span></div></th>
+              <th class="sortable" data-key="pf"><div class="th-wrap"><span>PF</span></div></th>
+              <th class="sortable" data-key="fgm"><div class="th-wrap"><span>FGM</span></div></th>
+              <th class="sortable" data-key="fga"><div class="th-wrap"><span>FGA</span></div></th>
+              <th class="sortable" data-key="fg2m"><div class="th-wrap"><span>2PM</span></div></th>
               <th class="sortable" data-key="fg2a"><div class="th-wrap"><span>2PA</span></div></th>
               <th class="sortable" data-key="fg2_pct"><div class="th-wrap"><span>2P%</span></div></th>
+              <th class="sortable" data-key="fg3m"><div class="th-wrap"><span>3PM</span></div></th>
               <th class="sortable" data-key="fg3a"><div class="th-wrap"><span>3PA</span></div></th>
               <th class="sortable" data-key="fg3_pct"><div class="th-wrap"><span>3P%</span></div></th>
+              <th class="sortable" data-key="ftm"><div class="th-wrap"><span>FTM</span></div></th>
               <th class="sortable" data-key="ft_pct"><div class="th-wrap"><span>FT%</span></div></th>
               <th class="sortable" data-key="fta"><div class="th-wrap"><span>FTA</span></div></th>
               <th class="sortable" data-key="assisted_fgm"><div class="th-wrap"><span>Ast FGM</span></div></th>
@@ -906,8 +914,8 @@ def generate_player_span_search_report() -> Path:
     const CAREER_YEAR_VALUES = {json.dumps(list(range(1, 24)), ensure_ascii=False)};
     const DRAFT_YEAR_VALUES = {json.dumps(list(range(1963, 2026)), ensure_ascii=False)};
     const DRAFT_PICK_VALUES = {json.dumps(list(range(1, 166)), ensure_ascii=False)};
-    const COUNT_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs"];
-    const DISPLAY_TOGGLE_KEYS = ["pts","reb","ast","stl","blk","tov","fg2a","fg3a","fta","assisted_fgm","unassisted_fgm","plus_minus_actual","plus_minus_adjusted","rim_dfga","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","deflections","screen_assists","contested_shots","charges_drawn","loose_balls_recovered","box_outs"];
+    const COUNT_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","contested_shots","contested_shots_2pt","contested_shots_3pt","deflections","charges_drawn","screen_assists","screen_ast_pts","loose_balls_recovered","box_outs"];
+    const DISPLAY_TOGGLE_KEYS = ["pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_fgm","unassisted_fgm","plus_minus_actual","plus_minus_adjusted","rim_dfga","layup_assists_created","dunk_assists_created","other_rim_assists_created","rim_assists_strict","rim_assists_all","deflections","screen_assists","contested_shots","charges_drawn","loose_balls_recovered","box_outs"];
     const DISPLAY_MODE_ORDER = ["totals","pergame","per36","per100"];
     const DISPLAY_MODE_LABELS = {{ totals: "Tot", pergame: "G", per36: "36", per100: "100" }};
     const CUSTOM_KEYS = ["expr1","expr2"];
@@ -1315,7 +1323,7 @@ def generate_player_span_search_report() -> Path:
             plus_minus_adjusted_by_season: {{}},
             off_diff_actual_by_season: {{}},
             off_diff_adjusted_by_season: {{}},
-            pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
+            pts: 0, reb: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, fgm: 0, fga: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
             assisted_2pm: 0, unassisted_2pm: 0, assisted_3pm: 0, unassisted_3pm: 0, assisted_fgm: 0, unassisted_fgm: 0,
             rim_anchor_signature: null,
             rim_deterrence_signature: null,
@@ -1419,7 +1427,7 @@ def generate_player_span_search_report() -> Path:
           g.off_possessions_by_season[metricSeasonKey] = (g.off_possessions_by_season[metricSeasonKey] || 0) + offPoss;
           g.rim_selected_games_by_season[metricSeasonKey] = (g.rim_selected_games_by_season[metricSeasonKey] || 0) + 1;
         }}
-        ["pts","reb","oreb","dreb","ast","stl","blk","tov","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
+        ["pts","reb","oreb","dreb","ast","stl","blk","tov","pf","fgm","fga","fg2m","fg2a","fg3m","fg3a","ftm","fta","assisted_2pm","unassisted_2pm","assisted_3pm","unassisted_3pm","assisted_fgm","unassisted_fgm"].forEach(stat => {{
           g[stat] += Number(v(r, stat) || 0);
         }});
         g.plus_minus_actual += plusMinusActual;
@@ -1858,14 +1866,22 @@ def generate_player_span_search_report() -> Path:
           <td data-key="minutes">${{fmt(basisDisplayValue(r, "minutes"),1)}}</td>
           <td data-key="pts">${{fmt(shown(r, "pts"), displayModes["pts"] === "totals" || (displayModes["pts"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="reb">${{fmt(shown(r, "reb"), displayModes["reb"] === "totals" || (displayModes["reb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="oreb">${{fmt(shown(r, "oreb"), displayModes["oreb"] === "totals" || (displayModes["oreb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="dreb">${{fmt(shown(r, "dreb"), displayModes["dreb"] === "totals" || (displayModes["dreb"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="ast">${{fmt(shown(r, "ast"), displayModes["ast"] === "totals" || (displayModes["ast"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="stl">${{fmt(shown(r, "stl"), displayModes["stl"] === "totals" || (displayModes["stl"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="blk">${{fmt(shown(r, "blk"), displayModes["blk"] === "totals" || (displayModes["blk"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="tov">${{fmt(shown(r, "tov"), displayModes["tov"] === "totals" || (displayModes["tov"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="pf">${{fmt(shown(r, "pf"), displayModes["pf"] === "totals" || (displayModes["pf"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fgm">${{fmt(shown(r, "fgm"), displayModes["fgm"] === "totals" || (displayModes["fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fga">${{fmt(shown(r, "fga"), displayModes["fga"] === "totals" || (displayModes["fga"] === "match" && mode === "totals") ? 0 : 2)}}</td>
+          <td data-key="fg2m">${{fmt(shown(r, "fg2m"), displayModes["fg2m"] === "totals" || (displayModes["fg2m"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="fg2a">${{fmt(shown(r, "fg2a"), displayModes["fg2a"] === "totals" || (displayModes["fg2a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="fg2_pct">${{fmt(r.fg2_pct,3)}}</td>
+          <td data-key="fg3m">${{fmt(shown(r, "fg3m"), displayModes["fg3m"] === "totals" || (displayModes["fg3m"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="fg3a">${{fmt(shown(r, "fg3a"), displayModes["fg3a"] === "totals" || (displayModes["fg3a"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="fg3_pct">${{fmt(r.fg3_pct,3)}}</td>
+          <td data-key="ftm">${{fmt(shown(r, "ftm"), displayModes["ftm"] === "totals" || (displayModes["ftm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="ft_pct">${{fmt(r.ft_pct,3)}}</td>
           <td data-key="fta">${{fmt(shown(r, "fta"), displayModes["fta"] === "totals" || (displayModes["fta"] === "match" && mode === "totals") ? 0 : 2)}}</td>
           <td data-key="assisted_fgm">${{fmt(shown(r, "assisted_fgm"), displayModes["assisted_fgm"] === "totals" || (displayModes["assisted_fgm"] === "match" && mode === "totals") ? 0 : 2)}}</td>
