@@ -494,14 +494,12 @@ def generate_combo_search_report() -> Path:
       <div class="sub">Season combos and game logs over the same lineup-derived combo engine, with raw and adjusted offense-defense splits.</div>
       <div class="nav">
         <a href="index.html">Home</a>
-        <a href="{REGULAR_GAME_SEARCH_HREF}">Game Search</a>
-        <a href="{REGULAR_SPAN_SEARCH_HREF}">Season Search</a>
-      </div>
-      <div class="nav" style="margin-top:6px">
-        <span style="align-self:center;opacity:.65;font-size:12px;padding:4px 2px;">Scope:</span>
-        <a href="{REGULAR_GAME_SEARCH_HREF}">Regular Season</a>
-        <a href="{PLAYOFF_GAME_SEARCH_HREF}">Playoffs</a>
-        <a href="combo-search.html" style="background:rgba(245,132,38,.18);border-color:rgba(245,132,38,.6);font-weight:700;">Combined</a>
+        <a href="onoff.html">+/- Seasons</a>
+        <a href="onoff-daily.html">+/- Games</a>
+        <a href="rapm.html">RAPM</a>
+        <a href="playoff-series.html">Playoff Series</a>
+        <a href="combo-search.html">Combinations</a>
+        <a href="example.html">Method</a>
       </div>
     </div>
 

@@ -463,7 +463,6 @@ def generate_player_game_search_report() -> Path:
         <span style="align-self:center;opacity:.65;font-size:12px;padding:4px 2px;">Scope:</span>
         <a href="{REGULAR_GAME_SEARCH_HREF}"{RS_CUR}>Regular Season</a>
         <a href="{PLAYOFF_GAME_SEARCH_HREF}"{PO_CUR}>Playoffs</a>
-        <a href="{COMBINED_GAME_SEARCH_HREF}"{CB_CUR}>Combined</a>
       </div>
     </section>
 

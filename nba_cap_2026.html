@@ -1519,5 +1519,6 @@ renderTeam();
 renderTrade();
 setView(q.get('view')==='trade'?'trade':'team');
 </script>
+<script>if (location.hash === '#trade') { try { setView('trade'); } catch (e) {} }</script>
 </body>
 </html>

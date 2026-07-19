@@ -319,6 +319,7 @@ def generate_daily_boxscores_report() -> Path:
         <a href="onoff-daily.html">+/- Games</a>
         <a href="rapm.html">RAPM</a>
         <a href="playoff-series.html">Playoff Series</a>
+        <a href="combo-search.html">Combinations</a>
         <a href="example.html">Method</a>
       </div>
     </section>
