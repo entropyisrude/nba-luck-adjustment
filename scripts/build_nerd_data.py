@@ -20,8 +20,10 @@ Usage: python scripts/build_nerd_data.py
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -32,6 +34,7 @@ import pandas as pd
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
 METRIC_DATA = Path(r"C:\Users\Dave\Downloads\nba-metric-data")
 OUT = ROOT / "data" / "nerd_seasons.js"
+HTML_CONSUMERS = ("nerd.html", "team-projections.html", "player-value.html")
 
 COLS = ["season", "pid", "name", "team", "poss", "o", "d", "nerd", "sd"]
 
@@ -39,6 +42,23 @@ PROJECT_TO = 2026            # season_year of the upcoming season (2026-27)
 PROJ_LAST_SEEN = 2024        # project players last seen this season or later
 KALMAN_Q = 1.0               # process variance per season per side (Phase 4a)
 MAX_DRIFT_YEARS = 4
+
+
+def update_consumer_cache_tokens() -> str:
+    """Bind every public consumer to the exact generated payload."""
+    token = hashlib.sha256(OUT.read_bytes()).hexdigest()[:12]
+    pattern = re.compile(r'data/nerd_seasons\.js(?:\?v=[^"\']+)?')
+    for rel in HTML_CONSUMERS:
+        path = ROOT / rel
+        text = path.read_text(encoding="utf-8")
+        updated, count = pattern.subn(
+            f"data/nerd_seasons.js?v={token}", text)
+        if count != 1:
+            raise RuntimeError(
+                f"expected exactly one NERD payload reference in {rel}; "
+                f"found {count}")
+        path.write_text(updated, encoding="utf-8")
+    return token
 
 
 def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
@@ -155,7 +175,9 @@ def main() -> None:
                           "rows": rows}, separators=(",", ":"),
                          ensure_ascii=False)
     OUT.write_text("window.NERD_DATA = " + payload + ";\n", encoding="utf-8")
-    print(f"wrote {OUT} ({len(rows)} rows, {OUT.stat().st_size/1e6:.2f} MB)")
+    token = update_consumer_cache_tokens()
+    print(f"wrote {OUT} ({len(rows)} rows, {OUT.stat().st_size/1e6:.2f} MB; "
+          f"consumer version {token})")
 
 
 if __name__ == "__main__":

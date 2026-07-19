@@ -37,6 +37,21 @@ The active NBA repository is `C:\Users\Dave\Downloads\nba-onoff-publish`. It is 
 - `generate_possessions_from_pbp.py`: lineup-aware possession reconstruction.
 - Root contextual builders under `C:\Users\Dave`: feature prototypes for spacing, drives, passing, finishing and contextual RAPM.
 
+## NERD publication dependencies
+
+- `scripts/build_nerd_data.py` is the single publisher for the shared NERD
+  payload. It reads historical `metric_v0`, the production Kalman state, aging
+  curves and team/minutes data, then updates cache-version tokens in all public
+  consumers.
+- Forecast consumers are `nerd.html`, `team-projections.html`, and
+  `player-value.html`. Run `scripts/audit_nerd_release.py` before every publish;
+  it fails on model-provenance mismatch, invalid projections, an unexpected
+  consumer, or a stale cache token.
+- `rapm.html`, on/off and screening/search pages do not consume NERD. The local
+  cross-metric screen uses current-season historical `metric_v0`; it is not a
+  forward Kalman projection and therefore does not change when only the
+  temporal forecast filter changes.
+
 ## Existing risks
 
 1. **No canonical pregame availability table.** `data/availability_2026_27.js` and `data/injury_notes.js` are tiny presentation assets, not historical injury feeds.

@@ -28,3 +28,18 @@ Read `docs/causal_metric_research_brief.md`, `docs/data_inventory.md`, and `docs
 - Before implementation, state treatment, outcome, confounders, mediators, estimand, and validation design.
 - Start with the smallest auditable prototype and log results and changed assumptions in `docs/research_log.md`.
 
+## NERD release contract
+
+- A production NERD/Kalman change is incomplete until every downstream site
+  consumer has been rebuilt and checked. Run `python scripts/build_nerd_data.py`
+  followed by `python scripts/audit_nerd_release.py` before committing.
+- The NERD payload's provenance must agree with the production Kalman artifact.
+  Do not publish a candidate state or silently fall back to a legacy filter.
+- `nerd.html`, `team-projections.html`, and `player-value.html` are the public
+  projection consumers. The payload builder owns their cache-version tokens;
+  do not update only one page by hand.
+- Raw RAPM, on/off, game-search, and current-season `metric_v0` comparison
+  outputs are separate estimands. Rebuild them only when their own evidence or
+  model changes, not merely because the temporal forecast filter changes.
+- After deployment, smoke-test all public consumers against the live site and
+  verify at least one diagnostic player and one team aggregate.

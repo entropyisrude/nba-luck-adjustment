@@ -48,7 +48,7 @@ OUT = ROOT / "outputs" / "contextual_causal" / "multivariate_kalman"
 # Freeze production parameters for the first comparison.  No Castle-specific
 # or multivariate-specific tuning is permitted in this script.
 Q = float(os.environ.get("MVK_Q", "1.0"))
-C = float(os.environ.get("MVK_C", "50000"))
+C = float(os.environ.get("MVK_C", "20000"))
 BOX_VAR = float(os.environ.get("MVK_BOX_VAR", "8.0"))
 INIT_VAR = 9.0
 SHIFT_TOTAL = 2.0

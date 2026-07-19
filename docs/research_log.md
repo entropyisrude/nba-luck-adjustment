@@ -594,3 +594,23 @@ Build a read-only audit script that selects canonical source files, reports sche
   `outputs/contextual_causal/production_independent_kalman_rollback_20260719/`.
   Full promotion details are in
   `outputs/contextual_causal/multivariate_kalman/production_promotion_report.md`.
+
+## 2026-07-19 — NERD downstream release contract
+
+- Audited all repository consumers of the production Kalman state and shared
+  NERD payload. The covariance filter applies to the forward temporal layer;
+  the public consumers are the NERD projection season, team win projections,
+  and player value. Raw RAPM, on/off and screening/search pages are separate
+  outputs. The local cross-metric screen intentionally uses current-season
+  historical `metric_v0`, not the forward Kalman projection.
+- Added `scripts/audit_nerd_release.py`, which fails publication on state/payload
+  provenance mismatch, duplicate or non-finite projections, an unexpected or
+  missing consumer, or a stale cache token.
+- `scripts/build_nerd_data.py` now hashes its generated payload and updates all
+  three public consumers to that exact version automatically. This prevents the
+  stale-asset behavior observed during the covariance deployment.
+- Corrected the multivariate builder's no-argument default to the locked
+  production likelihood scale `c=20000`; the experimental `50000` default could
+  otherwise have silently regenerated a different model.
+- Clean release audit: 14,005 state rows, 15,228 payload rows, 664 projections,
+  payload version `4267f3e17de5`, and exactly three declared consumers.
