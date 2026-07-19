@@ -162,7 +162,7 @@
       </div>
     </section>
     <section class="card">
-      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-07-09 12:34 from <code>data/nba_analytics.duckdb</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
+      <p class="muted">Aggregate player stats across any selected span of seasons or dates. Generated 2026-07-18 20:17 from <code>canonical counted regular-season database</code>. Season data loads on demand when you search. Games, minutes, plus-minus, and on-off filters can use either the whole selected span or the latest season inside that span.</p>
       <div class="controls">
         <label>Season start
           <select id="season_start"><option value="ALL">All</option></select>
@@ -836,7 +836,7 @@
       if (!file) return;
       await new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = CHUNK_BASE + file;
+        script.src = CHUNK_BASE + file + '?v=20260718-canonical-counted-v1';
         script.async = true;
         script.onload = () => resolve();
         script.onerror = () => reject(new Error(`Failed to load season data for ${season}`));

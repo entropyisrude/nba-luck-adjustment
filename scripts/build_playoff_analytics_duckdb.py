@@ -7,6 +7,8 @@ import csv
 
 import duckdb
 
+from canonical_onoff_overlay import apply_canonical_counted_onoff
+
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
 DATA_DIR = ROOT / "data"
@@ -35,6 +37,13 @@ _rim_sig_candidates = [
 PLAYER_RIM_SIGNATURES = next((p for p in _rim_sig_candidates if p.exists()), DATA_DIR / "player_rim_signatures.csv")
 PLAYER_RIM_DEFENSE_BY_SEASON = DATA_DIR / "player_rim_defense_by_season.csv"
 RECENT_PLAYER_BOX = DATA_DIR / "player_boxscore_stats.csv"
+CANONICAL_COUNTED_ONOFF = (
+    ROOT
+    / "derived"
+    / "contextual_causal"
+    / "production_counted_onoff"
+    / "adjusted_onoff_playoffs_canonical_counted.parquet"
+)
 
 
 TEAM_ID_TO_ABBR = {
@@ -696,6 +705,12 @@ def main() -> None:
         WHERE COALESCE(minutes, 0) > 0
           AND pts IS NOT NULL
         """
+    )
+
+    apply_canonical_counted_onoff(
+        con,
+        CANONICAL_COUNTED_ONOFF,
+        label="playoffs",
     )
 
     con.close()

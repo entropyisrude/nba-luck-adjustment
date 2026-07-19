@@ -1055,7 +1055,7 @@ def generate_player_game_search_report() -> Path:
       if (!file) return;
       await new Promise((resolve, reject) => {{
         const script = document.createElement("script");
-        script.src = CHUNK_BASE + file;
+        script.src = CHUNK_BASE + file + '?v=20260718-canonical-counted-v1';
         script.async = true;
         script.onload = () => resolve();
         script.onerror = () => reject(new Error(`Failed to load season data for ${{season}}`));

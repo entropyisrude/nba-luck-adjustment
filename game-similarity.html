@@ -259,7 +259,7 @@ async function selectPlayer(name) {
     const bucketName = player.bucket.toString(16).padStart(2, '0');
     let bucketGames = playerBucketCache.get(bucketName);
     if (!bucketGames) {
-      const resp = await fetch(`data/game_similarity/players/${bucketName}.json?v=20260714-shards-v3`);
+      const resp = await fetch(`data/game_similarity/players/${bucketName}.json?v=20260718-canonical-counted-v1`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       bucketGames = await resp.json();
       playerBucketCache.set(bucketName, bucketGames);
@@ -328,7 +328,7 @@ async function computeSimilarity() {
   for (let start = 0; start < files.length; start += batchSize) {
     const batchFiles = files.slice(start, start + batchSize);
     const chunks = await Promise.all(batchFiles.map(async filename => {
-      const resp = await fetch(`data/game_similarity/search/${filename}?v=20260714-shards-v3`);
+      const resp = await fetch(`data/game_similarity/search/${filename}?v=20260718-canonical-counted-v1`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${filename}`);
       return resp.json();
     }));
@@ -479,8 +479,8 @@ async function init() {
   buildWeightsUI();
   try {
     const [catalogResp, manifestResp] = await Promise.all([
-      fetch('data/game_similarity_players.json?v=20260714-shards-v3'),
-      fetch('data/game_similarity/manifest.json?v=20260714-shards-v3'),
+      fetch('data/game_similarity_players.json?v=20260718-canonical-counted-v1'),
+      fetch('data/game_similarity/manifest.json?v=20260718-canonical-counted-v1'),
     ]);
     if (!catalogResp.ok || !manifestResp.ok) throw new Error('Could not load search metadata');
     const [catalog, manifest] = await Promise.all([catalogResp.json(), manifestResp.json()]);

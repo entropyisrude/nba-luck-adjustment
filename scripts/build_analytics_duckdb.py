@@ -7,6 +7,8 @@ from pathlib import Path
 
 import duckdb
 
+from canonical_onoff_overlay import apply_canonical_counted_onoff
+
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
 DATA_DIR = ROOT / "data"
@@ -37,6 +39,13 @@ PLAYER_HUSTLE_BY_SEASON = DATA_DIR / "player_hustle_by_season.csv"
 COMMON_PLAYER_INFO = DATA_DIR / "common_player_info.csv"
 DRAFT_HISTORY = DATA_DIR / "draft_history.csv"
 PLAYER_METADATA_OFFICIAL_RECENT = DATA_DIR / "player_metadata_official_recent.csv"
+CANONICAL_COUNTED_ONOFF = (
+    ROOT
+    / "derived"
+    / "contextual_causal"
+    / "production_counted_onoff"
+    / "adjusted_onoff_regular_canonical_counted.parquet"
+)
 
 
 def _is_lfs_pointer(path: Path) -> bool:
@@ -1174,6 +1183,12 @@ def main() -> None:
         WHERE COALESCE(minutes, 0) > 0
           AND pts IS NOT NULL;
         """
+    )
+
+    apply_canonical_counted_onoff(
+        con,
+        CANONICAL_COUNTED_ONOFF,
+        label="regular season",
     )
 
     con.execute(

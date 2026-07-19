@@ -5,7 +5,7 @@ Build player-season data for the Similarity Machine.
 Sources:
   - Eoin/Kaggle zip  → 1979-80 through 1995-96 (box stats, no on/off)
   - nba_analytics.duckdb → 1996-97 through present (box stats)
-  - pbpstats_cache.json.gz → 1996-97 through present (on/off split)
+  - canonical counted on/off → 1996-97 through present (pbpstats fallback)
 
 Output: data/player_seasons.json
 
@@ -30,6 +30,13 @@ RS_DB = DATA_DIR / "nba_analytics.duckdb"
 PBPSTATS_CACHE = DATA_DIR / "pbpstats_cache.json.gz"
 FINISHING_CACHE = DATA_DIR / "finishing_stats.json"
 OUT = DATA_DIR / "player_seasons.json"
+CANONICAL_COUNTED_ONOFF = (
+    ROOT
+    / "derived"
+    / "contextual_causal"
+    / "production_counted_onoff"
+    / "adjusted_onoff_regular_canonical_counted.parquet"
+)
 
 MIN_MINUTES = 500
 EOIN_FIRST = "1979-80"
@@ -304,6 +311,53 @@ def load_pbpstats_onoff() -> dict[tuple[int, str], dict]:
     return result
 
 
+def load_canonical_counted_onoff() -> dict[tuple[int, str], dict]:
+    """Build player-season offensive/defensive on-off from counted evidence."""
+    if not CANONICAL_COUNTED_ONOFF.exists():
+        raise FileNotFoundError(
+            f"Canonical counted on/off file not found: {CANONICAL_COUNTED_ONOFF}"
+        )
+
+    columns = [
+        "player_id", "date", "on_pts_for", "on_pts_against",
+        "off_pts_for", "off_pts_against", "on_off_poss", "on_def_poss",
+        "off_off_poss", "off_def_poss",
+    ]
+    frame = pd.read_parquet(CANONICAL_COUNTED_ONOFF, columns=columns)
+    frame["date"] = pd.to_datetime(frame["date"])
+    start_year = frame["date"].dt.year.where(
+        frame["date"].dt.month >= 10,
+        frame["date"].dt.year - 1,
+    )
+    frame["season"] = start_year.astype(int).astype(str) + "-" + (
+        (start_year.astype(int) + 1) % 100
+    ).astype(str).str.zfill(2)
+
+    sums = frame.groupby(["player_id", "season"], as_index=False)[
+        [
+            "on_pts_for", "on_pts_against", "off_pts_for", "off_pts_against",
+            "on_off_poss", "on_def_poss", "off_off_poss", "off_def_poss",
+        ]
+    ].sum()
+    result: dict[tuple[int, str], dict] = {}
+    for row in sums.itertuples(index=False):
+        if min(row.on_off_poss, row.on_def_poss, row.off_off_poss, row.off_def_poss) <= 0:
+            continue
+        oo_off = 100.0 * row.on_pts_for / row.on_off_poss - 100.0 * row.off_pts_for / row.off_off_poss
+        oo_def = 100.0 * row.off_pts_against / row.off_def_poss - 100.0 * row.on_pts_against / row.on_def_poss
+        result[(int(row.player_id), row.season)] = {
+            "oo": r2(oo_off + oo_def),
+            "oo_off": r2(oo_off),
+            "oo_def": r2(oo_def),
+        }
+
+    print(
+        f"  canonical counted: {len(result):,} player-season on/off entries "
+        f"({frame['season'].nunique()} seasons)"
+    )
+    return result
+
+
 # ---------------------------------------------------------------------------
 # DuckDB: 1996-97 onwards
 # ---------------------------------------------------------------------------
@@ -419,7 +473,10 @@ def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def main():
+    # Retain pbpstats only as a fallback for a player-season absent from the
+    # audited artifact; canonical counted evidence is authoritative.
     pbp_onoff = load_pbpstats_onoff()
+    pbp_onoff.update(load_canonical_counted_onoff())
     finishing = load_finishing_stats()
     eoin = build_eoin_seasons()
     with zipfile.ZipFile(KAGGLE_ZIP) as z:
@@ -444,7 +501,7 @@ def main():
 
     output = {
         "generated": __import__("datetime").date.today().isoformat(),
-        "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + pbpstats on/off",
+        "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + canonical counted on/off (pbpstats fallback)",
         "min_minutes": MIN_MINUTES,
         "cols": ["pts","ast","or","dr","stl","blk","tov","fta","fg2a","fg3a",
                  "fg2p","fg3p","ftp","oo","oo_off","oo_def","ht","wt",

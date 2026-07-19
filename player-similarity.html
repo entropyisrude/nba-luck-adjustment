@@ -552,7 +552,7 @@ function renderResults() {
         + (ooUsed ? ' On/off available post-1996 only.' : '')
         + (finUsed ? ' Rim/dunk stats available post-1996 only; dunks counts made dunks only (missed-dunk tagging is unreliable pre-2019, so attempts aren’t counted).' : '')
       : `Similarity scored 0–100 (100 = identical profile). Weighted Euclidean distance on z-normalized per-36 stats.`
-        + (ooUsed ? ' On/off splits from pbpstats (post-1996 only) — may skew cross-era comparisons.' : '')
+        + (ooUsed ? ' On/off splits from canonical counted possessions (post-1996 only) — may skew cross-era comparisons.' : '')
         + (finUsed ? ' Rim/dunk stats post-1996 only; dunks = made dunks (attempts not tracked pre-2019).' : '')
         + (nPre96 ? ` ${nPre96} result(s) are pre-1996 (box stats only, no on/off${finUsed ? '/rim/dunk' : ''}).` : '');
 }
@@ -629,7 +629,7 @@ function clearError() {
 
 async function init() {
   try {
-    const resp = await fetch('data/player_seasons.json');
+    const resp = await fetch('data/player_seasons.json?v=20260718-canonical-counted-v1');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     allSeasons = data.seasons;
