@@ -1676,11 +1676,9 @@ def get_playbyplay_3pt_shots(game_id: str, game_date_mmddyyyy: str) -> pd.DataFr
     AREA: 'corner' or 'above_break'
     SHOT_TYPE: 'pullup', 'stepback', 'catch_shoot', etc.
     """
-    url = PLAYBYPLAY_URL.format(game_id=game_id)
-    pbp_data = _get_json(url)
-
-    game = pbp_data.get("game", {})
-    actions = game.get("actions", [])
+    # Reuse the canonical cache/CDN/stats fallback instead of bypassing it
+    # with a CDN-only request (which is commonly blocked with HTTP 403).
+    actions = get_playbyplay_actions(game_id, game_date_mmddyyyy)
 
     season = _season_from_mmddyyyy(game_date_mmddyyyy)
     shots = []

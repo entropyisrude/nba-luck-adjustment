@@ -11,6 +11,7 @@ from src.ingest import (
     get_boxscore_player_df,
     get_boxscore_team_df,
     get_game_home_away_team_ids,
+    get_playbyplay_actions,
     get_playbyplay_3pt_shots,
 )
 from src.state import load_player_state, save_player_state, ensure_players_exist
@@ -24,6 +25,9 @@ from src.adjust import (
     get_top_swing_players,
     update_player_state_attempt_decay,
 )
+from src.shooting_luck import (game_components, historical_game_totals,
+                               load_state as load_shooting_luck_state,
+                               save_state as save_shooting_luck_state)
 
 DATA_DIR = Path("data")
 CONFIG_PATH = Path("config.yaml")
@@ -44,7 +48,8 @@ def daterange(start_date, end_date):
         d += timedelta(days=1)
 
 
-def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, cfg):
+def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state,
+                 shooting_luck_state, historical_luck, cfg):
     """Process a single game and return a row dict (or None on failure)."""
     team_df = get_boxscore_team_df(game_id, game_date_mmddyyyy)
     player_df = get_boxscore_player_df(game_id, game_date_mmddyyyy)
@@ -53,7 +58,7 @@ def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, 
 
     if team_df.empty or player_df.empty:
         print("SKIP (empty df)", game_id)
-        return None, None, player_state
+        return None, None, player_state, shooting_luck_state
 
     player_state = ensure_players_exist(player_state, player_df)
 
@@ -95,9 +100,6 @@ def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, 
         ppp=float(cfg["ppp"]),
     )
 
-    biggest_swing = get_biggest_swing_player(player_deltas)
-    top_swing_players = get_top_swing_players(player_deltas, threshold=2.0)
-
     home_team_id, away_team_id = get_game_home_away_team_ids(game_id, game_date_mmddyyyy)
 
     home = team_df.loc[team_df["TEAM_ID"] == home_team_id].iloc[0]
@@ -105,6 +107,23 @@ def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, 
 
     home_adj = adjusted_by_team[home_team_id]
     away_adj = adjusted_by_team[away_team_id]
+
+    actions = get_playbyplay_actions(game_id, game_date_mmddyyyy)
+    components, extra_player_luck = game_components(
+        game_id, actions, home_team_id, away_team_id,
+        shooting_luck_state, historical_luck)
+    by_pid = {int(p["player_id"]): p for p in player_deltas}
+    for pid, extra in extra_player_luck.items():
+        rec = by_pid.setdefault(pid, {
+            "player_id": pid,
+            "player_name": extra.get("player_name", ""),
+            "team_id": int(extra.get("team_id", 0)),
+            "fg3a": 0, "fg3m": 0, "exp_3pm": 0.0, "delta_pts": 0.0,
+        })
+        rec["delta_pts"] += float(extra.get("ft_luck", 0.0)) + 0.5 * float(extra.get("mr_luck", 0.0))
+    player_deltas = list(by_pid.values())
+    biggest_swing = get_biggest_swing_player(player_deltas)
+    top_swing_players = get_top_swing_players(player_deltas, threshold=2.0)
 
     row = {
         "date": d.isoformat(),
@@ -126,8 +145,16 @@ def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, 
         "away_delta_pts_3": float(away_adj["delta_pts_3"]),
         "home_orb_corr_pts": float(home_adj["orb_corr_pts"]),
         "away_orb_corr_pts": float(away_adj["orb_corr_pts"]),
-        "home_pts_adj": float(home_adj["pts_adj"]),
-        "away_pts_adj": float(away_adj["pts_adj"]),
+        "home_pts_adj_3pt": float(home_adj["pts_adj"]),
+        "away_pts_adj_3pt": float(away_adj["pts_adj"]),
+        "home_ft_luck": float(components["ft_luck_home"]),
+        "away_ft_luck": float(components["ft_luck_away"]),
+        "home_mr_luck": float(components["mr_luck_home"]),
+        "away_mr_luck": float(components["mr_luck_away"]),
+        "home_pts_adj_3pt_ft": float(home_adj["pts_adj"] - components["ft_luck_home"]),
+        "away_pts_adj_3pt_ft": float(away_adj["pts_adj"] - components["ft_luck_away"]),
+        "home_pts_adj": float(home_adj["pts_adj"] - components["ft_luck_home"] - 0.5 * components["mr_luck_home"]),
+        "away_pts_adj": float(away_adj["pts_adj"] - components["ft_luck_away"] - 0.5 * components["mr_luck_away"]),
     }
     row["margin_actual"] = row["home_pts_actual"] - row["away_pts_actual"]
     row["margin_adj"] = row["home_pts_adj"] - row["away_pts_adj"]
@@ -156,7 +183,7 @@ def process_game(game_id, game_date_mmddyyyy, d, game_type_label, player_state, 
         })
     row["top_swing_players"] = json.dumps(top_players_list)
 
-    return row, player_df, player_state
+    return row, player_df, player_state, shooting_luck_state
 
 
 def main():
@@ -174,8 +201,11 @@ def main():
     DATA_DIR.mkdir(exist_ok=True)
     adjusted_path = DATA_DIR / "adjusted_games.csv"
     state_path = DATA_DIR / "player_state.csv"
+    shooting_luck_state_path = DATA_DIR / "shooting_luck_state.json"
 
     player_state = load_player_state(state_path)
+    shooting_luck_state = load_shooting_luck_state(shooting_luck_state_path)
+    historical_luck = historical_game_totals(DATA_DIR / "rapm_luck_adjust.parquet")
     if adjusted_path.exists():
         existing = pd.read_csv(adjusted_path, dtype={'game_id': str})
         existing['game_id'] = existing['game_id'].astype(str).str.lstrip('0')
@@ -201,8 +231,9 @@ def main():
 
             for game_id in game_ids:
                 try:
-                    row, player_df, player_state = process_game(
-                        game_id, game_date_mmddyyyy, d, game_type_label, player_state, cfg
+                    row, player_df, player_state, shooting_luck_state = process_game(
+                        game_id, game_date_mmddyyyy, d, game_type_label,
+                        player_state, shooting_luck_state, historical_luck, cfg
                     )
                     if row is None:
                         continue
@@ -239,6 +270,8 @@ def main():
 
     save_player_state(player_state, state_path)
     print(f"Wrote: {state_path} (players={len(player_state)})")
+    save_shooting_luck_state(shooting_luck_state, shooting_luck_state_path)
+    print(f"Wrote: {shooting_luck_state_path}")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+from itertools import combinations
 from pathlib import Path
 
 import duckdb
@@ -46,6 +47,8 @@ CANONICAL_COUNTED_ONOFF = (
     / "production_counted_onoff"
     / "adjusted_onoff_regular_canonical_counted.parquet"
 )
+LUCK_COMPONENTS = DATA_DIR / "rapm_luck_adjust.parquet"
+COUNTED_EVIDENCE = ROOT / "derived" / "contextual_causal" / "production_counted_evidence" / "canonical_counted_stints_production.parquet"
 
 
 def _is_lfs_pointer(path: Path) -> bool:
@@ -185,6 +188,32 @@ def main() -> None:
         f"""
         CREATE TABLE raw_adjusted_games AS
         SELECT * FROM read_csv_auto('{ADJUSTED_GAMES}', header=true);
+        """
+    )
+    if not LUCK_COMPONENTS.exists():
+        raise FileNotFoundError(f"Missing shooting-luck components: {LUCK_COMPONENTS}")
+    con.execute(
+        f"""
+        CREATE TEMP TABLE game_luck_totals AS
+        SELECT ltrim(CAST(game_id AS VARCHAR),'0') AS game_id,
+               SUM(ft_luck_home) AS ft_home, SUM(ft_luck_away) AS ft_away,
+               SUM(mr_luck_home) AS mr_home, SUM(mr_luck_away) AS mr_away
+        FROM read_parquet('{LUCK_COMPONENTS.as_posix()}') GROUP BY 1
+        """
+    )
+    for column in ("home_pts_adj_3pt", "away_pts_adj_3pt",
+                   "home_pts_adj_3pt_ft", "away_pts_adj_3pt_ft"):
+        con.execute(f"ALTER TABLE raw_adjusted_games ADD COLUMN {column} DOUBLE")
+    con.execute(
+        """
+        UPDATE raw_adjusted_games AS g SET
+          home_pts_adj_3pt=g.home_pts_adj, away_pts_adj_3pt=g.away_pts_adj,
+          home_pts_adj_3pt_ft=g.home_pts_adj-COALESCE(l.ft_home,0),
+          away_pts_adj_3pt_ft=g.away_pts_adj-COALESCE(l.ft_away,0),
+          home_pts_adj=g.home_pts_adj-COALESCE(l.ft_home,0)-0.5*COALESCE(l.mr_home,0),
+          away_pts_adj=g.away_pts_adj-COALESCE(l.ft_away,0)-0.5*COALESCE(l.mr_away,0)
+        FROM game_luck_totals l
+        WHERE ltrim(CAST(g.game_id AS VARCHAR),'0')=l.game_id
         """
     )
     if PLAYER_BOX_STATS.exists():
@@ -1297,6 +1326,81 @@ def main() -> None:
     )
 
     con.execute(
+        f"""
+        CREATE TEMP TABLE lineup_luck_allocation AS
+        WITH luck AS (
+            SELECT CAST(game_id AS VARCHAR) AS game_id, hk, ak,
+                   ft_luck_home, ft_luck_away, mr_luck_home, mr_luck_away
+            FROM read_parquet('{LUCK_COMPONENTS.as_posix()}')
+        ),
+        totals AS (
+            SELECT game_id,
+                   SUM(ft_luck_home) AS ft_home_total,
+                   SUM(ft_luck_away) AS ft_away_total,
+                   SUM(mr_luck_home) AS mr_home_total,
+                   SUM(mr_luck_away) AS mr_away_total
+            FROM luck GROUP BY 1
+        ),
+        joined AS (
+            SELECT l.game_id, l.stint_index, l.seconds,
+                   COALESCE(k.ft_luck_home,0) * l.seconds
+                     / NULLIF(SUM(l.seconds) OVER (PARTITION BY l.game_id,l.home_lineup_id,l.away_lineup_id),0) AS ft_home_exact,
+                   COALESCE(k.ft_luck_away,0) * l.seconds
+                     / NULLIF(SUM(l.seconds) OVER (PARTITION BY l.game_id,l.home_lineup_id,l.away_lineup_id),0) AS ft_away_exact,
+                   COALESCE(k.mr_luck_home,0) * l.seconds
+                     / NULLIF(SUM(l.seconds) OVER (PARTITION BY l.game_id,l.home_lineup_id,l.away_lineup_id),0) AS mr_home_exact,
+                   COALESCE(k.mr_luck_away,0) * l.seconds
+                     / NULLIF(SUM(l.seconds) OVER (PARTITION BY l.game_id,l.home_lineup_id,l.away_lineup_id),0) AS mr_away_exact,
+                   COALESCE(t.ft_home_total,0) AS ft_home_total,
+                   COALESCE(t.ft_away_total,0) AS ft_away_total,
+                   COALESCE(t.mr_home_total,0) AS mr_home_total,
+                   COALESCE(t.mr_away_total,0) AS mr_away_total
+            FROM lineup_stint_facts l
+            LEFT JOIN luck k
+              ON ltrim(l.game_id,'0') = ltrim(k.game_id,'0')
+             AND replace(l.home_lineup_id,'-',',') = k.hk
+             AND replace(l.away_lineup_id,'-',',') = k.ak
+            LEFT JOIN totals t ON ltrim(l.game_id,'0') = ltrim(t.game_id,'0')
+        ),
+        residuals AS (
+            SELECT *, SUM(seconds) OVER (PARTITION BY game_id) AS game_seconds,
+                   SUM(ft_home_exact) OVER (PARTITION BY game_id) AS ft_home_assigned,
+                   SUM(ft_away_exact) OVER (PARTITION BY game_id) AS ft_away_assigned,
+                   SUM(mr_home_exact) OVER (PARTITION BY game_id) AS mr_home_assigned,
+                   SUM(mr_away_exact) OVER (PARTITION BY game_id) AS mr_away_assigned
+            FROM joined
+        )
+        SELECT game_id, stint_index,
+               ft_home_exact + (ft_home_total-ft_home_assigned)*seconds/NULLIF(game_seconds,0) AS ft_home,
+               ft_away_exact + (ft_away_total-ft_away_assigned)*seconds/NULLIF(game_seconds,0) AS ft_away,
+               mr_home_exact + (mr_home_total-mr_home_assigned)*seconds/NULLIF(game_seconds,0) AS mr_home,
+               mr_away_exact + (mr_away_total-mr_away_assigned)*seconds/NULLIF(game_seconds,0) AS mr_away
+        FROM residuals
+        """
+    )
+    for column in ("home_pts_adj_3pt", "away_pts_adj_3pt",
+                   "home_pts_adj_3pt_ft", "away_pts_adj_3pt_ft"):
+        con.execute(f"ALTER TABLE lineup_stint_facts ADD COLUMN {column} DOUBLE")
+    con.execute(
+        """
+        UPDATE lineup_stint_facts AS l SET
+          home_pts_adj_3pt = l.home_pts_adj,
+          away_pts_adj_3pt = l.away_pts_adj,
+          home_pts_adj_3pt_ft = l.home_pts_adj - COALESCE(a.ft_home,0),
+          away_pts_adj_3pt_ft = l.away_pts_adj - COALESCE(a.ft_away,0),
+          home_pts_adj = l.home_pts_adj - COALESCE(a.ft_home,0) - 0.5*COALESCE(a.mr_home,0),
+          away_pts_adj = l.away_pts_adj - COALESCE(a.ft_away,0) - 0.5*COALESCE(a.mr_away,0)
+        FROM lineup_luck_allocation a
+        WHERE l.game_id=a.game_id AND l.stint_index=a.stint_index
+        """
+    )
+    con.execute("""
+        UPDATE lineup_stint_facts SET
+          margin_adj = home_pts_adj-away_pts_adj,
+          margin_delta = (home_pts_adj-away_pts_adj)-(home_pts-away_pts)
+    """)
+
+    con.execute(
         """
         CREATE TABLE lineup_5man_agg AS
         WITH base AS (
@@ -1312,7 +1416,9 @@ def main() -> None:
                 home_pts AS pts_for_raw,
                 away_pts AS pts_against_raw,
                 home_pts_adj AS pts_for_adj,
-                away_pts_adj AS pts_against_adj
+                away_pts_adj AS pts_against_adj,
+                home_pts_adj_3pt_ft AS pts_for_adj_3pt_ft,
+                away_pts_adj_3pt_ft AS pts_against_adj_3pt_ft
             FROM lineup_stint_facts
             UNION ALL
             SELECT
@@ -1327,7 +1433,9 @@ def main() -> None:
                 away_pts AS pts_for_raw,
                 home_pts AS pts_against_raw,
                 away_pts_adj AS pts_for_adj,
-                home_pts_adj AS pts_against_adj
+                home_pts_adj AS pts_against_adj,
+                away_pts_adj_3pt_ft AS pts_for_adj_3pt_ft,
+                home_pts_adj_3pt_ft AS pts_against_adj_3pt_ft
             FROM lineup_stint_facts
         )
         SELECT
@@ -1347,121 +1455,177 @@ def main() -> None:
             SUM(pts_for_adj) AS pts_for_adj,
             SUM(pts_against_adj) AS pts_against_adj,
             100.0 * (SUM(pts_for_adj) - SUM(pts_against_adj)) / NULLIF(SUM(seconds) / 24.0, 0) AS net_adj,
-            100.0 * ((SUM(pts_for_adj) - SUM(pts_against_adj)) - (SUM(pts_for_raw) - SUM(pts_against_raw))) / NULLIF(SUM(seconds) / 24.0, 0) AS net_delta
+            100.0 * ((SUM(pts_for_adj) - SUM(pts_against_adj)) - (SUM(pts_for_raw) - SUM(pts_against_raw))) / NULLIF(SUM(seconds) / 24.0, 0) AS net_delta,
+            SUM(pts_for_adj_3pt_ft) AS pts_for_adj_3pt_ft,
+            SUM(pts_against_adj_3pt_ft) AS pts_against_adj_3pt_ft,
+            100.0 * (SUM(pts_for_adj_3pt_ft)-SUM(pts_against_adj_3pt_ft)) / NULLIF(SUM(seconds)/24.0,0) AS net_adj_3pt_ft,
+            100.0 * ((SUM(pts_for_adj_3pt_ft)-SUM(pts_against_adj_3pt_ft))-(SUM(pts_for_raw)-SUM(pts_against_raw))) / NULLIF(SUM(seconds)/24.0,0) AS net_delta_3pt_ft
         FROM base
         GROUP BY ALL;
         """
     )
 
-    con.execute(
-        """
-        CREATE TABLE combo_2man_agg AS
-        WITH base AS (
-            SELECT season, home_id AS team_id, home_abbr AS team_abbr,
-                   [home_p1,home_p2,home_p3,home_p4,home_p5] AS players,
-                   game_id, stint_index, seconds,
-                   home_pts AS pts_for_raw, away_pts AS pts_against_raw,
-                   home_pts_adj AS pts_for_adj, away_pts_adj AS pts_against_adj
-            FROM lineup_stint_facts
-            UNION ALL
-            SELECT season, away_id AS team_id, away_abbr AS team_abbr,
-                   [away_p1,away_p2,away_p3,away_p4,away_p5] AS players,
-                   game_id, stint_index, seconds,
-                   away_pts AS pts_for_raw, home_pts AS pts_against_raw,
-                   away_pts_adj AS pts_for_adj, home_pts_adj AS pts_against_adj
-            FROM lineup_stint_facts
-        ),
-        combos AS (
-            SELECT
-                season, team_id, team_abbr, game_id, stint_index, seconds,
-                pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj,
-                list_sort([players[1], players[2]]) AS pair FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[3]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[3]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[3], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[3], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[4], players[5]]) FROM base
+    # Build 2-, 3-, and 4-player units from one shared definition so the
+    # default and alternate shooting-luck fields cannot drift by unit size.
+    base_sql = """
+        SELECT season, home_id AS team_id, home_abbr AS team_abbr,
+               [home_p1,home_p2,home_p3,home_p4,home_p5] AS players,
+               game_id, stint_index, seconds,
+               home_pts AS pts_for_raw, away_pts AS pts_against_raw,
+               home_pts_adj AS pts_for_adj, away_pts_adj AS pts_against_adj,
+               home_pts_adj_3pt_ft AS pts_for_adj_3pt_ft,
+               away_pts_adj_3pt_ft AS pts_against_adj_3pt_ft
+        FROM lineup_stint_facts
+        UNION ALL
+        SELECT season, away_id AS team_id, away_abbr AS team_abbr,
+               [away_p1,away_p2,away_p3,away_p4,away_p5] AS players,
+               game_id, stint_index, seconds,
+               away_pts AS pts_for_raw, home_pts AS pts_against_raw,
+               away_pts_adj AS pts_for_adj, home_pts_adj AS pts_against_adj,
+               away_pts_adj_3pt_ft AS pts_for_adj_3pt_ft,
+               home_pts_adj_3pt_ft AS pts_against_adj_3pt_ft
+        FROM lineup_stint_facts
+    """
+    metric_fields = (
+        "season, team_id, team_abbr, game_id, stint_index, seconds, "
+        "pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, "
+        "pts_for_adj_3pt_ft, pts_against_adj_3pt_ft"
+    )
+    for combo_size in (2, 3, 4):
+        combo_unions = []
+        for slots in combinations(range(1, 6), combo_size):
+            player_list = ", ".join(f"players[{slot}]" for slot in slots)
+            combo_unions.append(
+                f"SELECT {metric_fields}, list_sort([{player_list}]) AS unit FROM base"
+            )
+        player_columns = ",\n            ".join(
+            f"unit[{idx}] AS p{idx}" for idx in range(1, combo_size + 1)
         )
-        SELECT
-            season,
-            team_id,
-            team_abbr,
-            array_to_string(pair, '-') AS combo_id,
-            pair[1] AS p1,
-            pair[2] AS p2,
-            COUNT(DISTINCT game_id) AS games,
-            COUNT(*) AS stints,
-            SUM(seconds) AS seconds,
-            SUM(seconds) / 60.0 AS minutes,
-            SUM(seconds) / 24.0 AS poss_est,
-            SUM(pts_for_raw) AS pts_for_raw,
-            SUM(pts_against_raw) AS pts_against_raw,
-            100.0 * (SUM(pts_for_raw) - SUM(pts_against_raw)) / NULLIF(SUM(seconds) / 24.0, 0) AS net_raw,
-            SUM(pts_for_adj) AS pts_for_adj,
-            SUM(pts_against_adj) AS pts_against_adj,
-            100.0 * (SUM(pts_for_adj) - SUM(pts_against_adj)) / NULLIF(SUM(seconds) / 24.0, 0) AS net_adj,
-            100.0 * ((SUM(pts_for_adj) - SUM(pts_against_adj)) - (SUM(pts_for_raw) - SUM(pts_against_raw))) / NULLIF(SUM(seconds) / 24.0, 0) AS net_delta
-        FROM combos
-        GROUP BY ALL;
+        con.execute(
+            f"""
+            CREATE TABLE combo_{combo_size}man_agg AS
+            WITH base AS ({base_sql}),
+            units AS ({' UNION ALL '.join(combo_unions)})
+            SELECT
+                season, team_id, team_abbr,
+                array_to_string(unit, '-') AS combo_id,
+                {player_columns},
+                COUNT(DISTINCT game_id) AS games,
+                COUNT(*) AS stints,
+                SUM(seconds) AS seconds,
+                SUM(seconds) / 60.0 AS minutes,
+                SUM(seconds) / 24.0 AS poss_est,
+                SUM(pts_for_raw) AS pts_for_raw,
+                SUM(pts_against_raw) AS pts_against_raw,
+                100.0*(SUM(pts_for_raw)-SUM(pts_against_raw))/NULLIF(SUM(seconds)/24.0,0) AS net_raw,
+                SUM(pts_for_adj) AS pts_for_adj,
+                SUM(pts_against_adj) AS pts_against_adj,
+                100.0*(SUM(pts_for_adj)-SUM(pts_against_adj))/NULLIF(SUM(seconds)/24.0,0) AS net_adj,
+                100.0*((SUM(pts_for_adj)-SUM(pts_against_adj))-(SUM(pts_for_raw)-SUM(pts_against_raw)))/NULLIF(SUM(seconds)/24.0,0) AS net_delta,
+                SUM(pts_for_adj_3pt_ft) AS pts_for_adj_3pt_ft,
+                SUM(pts_against_adj_3pt_ft) AS pts_against_adj_3pt_ft,
+                100.0*(SUM(pts_for_adj_3pt_ft)-SUM(pts_against_adj_3pt_ft))/NULLIF(SUM(seconds)/24.0,0) AS net_adj_3pt_ft,
+                100.0*((SUM(pts_for_adj_3pt_ft)-SUM(pts_against_adj_3pt_ft))-(SUM(pts_for_raw)-SUM(pts_against_raw)))/NULLIF(SUM(seconds)/24.0,0) AS net_delta_3pt_ft
+            FROM units
+            GROUP BY ALL
+            """
+        )
+
+    if not COUNTED_EVIDENCE.exists():
+        raise FileNotFoundError(f"Missing counted evidence: {COUNTED_EVIDENCE}")
+    # Game logs are emitted only for the latest season by the public report.
+    # Keeping this fact table to that same season avoids materializing tens of
+    # millions of historical unit-game rows that the site never loads.
+    con.execute(
+        f"""
+        CREATE TEMP TABLE counted_latest AS
+        WITH raw AS (
+            SELECT *, CASE WHEN month(date)>=7
+                THEN printf('%d-%02d',year(date), (year(date)+1)%100)
+                ELSE printf('%d-%02d',year(date)-1, year(date)%100) END AS season
+            FROM read_parquet('{COUNTED_EVIDENCE.as_posix()}')
+        )
+        SELECT * FROM raw WHERE season=(SELECT max(season) FROM raw)
         """
     )
-
+    game_base_sql = """
+        SELECT date, season, game_id, home_id AS team_id, away_id AS opp_team_id,
+               [home_p1,home_p2,home_p3,home_p4,home_p5] AS players,
+               seconds, n_home AS off_poss, n_away AS def_poss,
+               pts_home AS pts_for_raw_off, pts_away AS pts_against_raw_def,
+               points_adjusted_home AS pts_for_adj_off,
+               points_adjusted_away AS pts_against_adj_def,
+               points_adjusted_home_3pt_ft AS pts_for_adj_off_3pt_ft,
+               points_adjusted_away_3pt_ft AS pts_against_adj_def_3pt_ft
+        FROM counted_latest
+        UNION ALL
+        SELECT date, season, game_id, away_id AS team_id, home_id AS opp_team_id,
+               [away_p1,away_p2,away_p3,away_p4,away_p5] AS players,
+               seconds, n_away AS off_poss, n_home AS def_poss,
+               pts_away AS pts_for_raw_off, pts_home AS pts_against_raw_def,
+               points_adjusted_away AS pts_for_adj_off,
+               points_adjusted_home AS pts_against_adj_def,
+               points_adjusted_away_3pt_ft AS pts_for_adj_off_3pt_ft,
+               points_adjusted_home_3pt_ft AS pts_against_adj_def_3pt_ft
+        FROM counted_latest
+    """
+    game_metric_fields = (
+        "date, season, game_id, team_id, opp_team_id, seconds, off_poss, def_poss, "
+        "pts_for_raw_off, pts_against_raw_def, pts_for_adj_off, pts_against_adj_def, "
+        "pts_for_adj_off_3pt_ft, pts_against_adj_def_3pt_ft"
+    )
+    game_unions = []
+    for combo_size in (2, 3, 4, 5):
+        for slots in combinations(range(1, 6), combo_size):
+            player_list = ", ".join(f"players[{slot}]" for slot in slots)
+            pcols = ", ".join(
+                (f"list_sort([{player_list}])[{idx}] AS p{idx}"
+                 if idx <= combo_size else f"CAST(NULL AS BIGINT) AS p{idx}")
+                for idx in range(1, 6)
+            )
+            game_unions.append(
+                f"SELECT {combo_size} AS combo_size, {game_metric_fields}, "
+                f"array_to_string(list_sort([{player_list}]), '-') AS combo_id, {pcols} FROM base"
+            )
     con.execute(
-        """
-        CREATE TABLE combo_3man_agg AS
-        WITH base AS (
-            SELECT season, home_id AS team_id, home_abbr AS team_abbr,
-                   [home_p1,home_p2,home_p3,home_p4,home_p5] AS players,
-                   game_id, stint_index, seconds,
-                   home_pts AS pts_for_raw, away_pts AS pts_against_raw,
-                   home_pts_adj AS pts_for_adj, away_pts_adj AS pts_against_adj
-            FROM lineup_stint_facts
-            UNION ALL
-            SELECT season, away_id AS team_id, away_abbr AS team_abbr,
-                   [away_p1,away_p2,away_p3,away_p4,away_p5] AS players,
-                   game_id, stint_index, seconds,
-                   away_pts AS pts_for_raw, home_pts AS pts_against_raw,
-                   away_pts_adj AS pts_for_adj, home_pts_adj AS pts_against_adj
-            FROM lineup_stint_facts
-        ),
-        combos AS (
-            SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[2], players[3]]) AS trio FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[2], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[2], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[3], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[3], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[1], players[4], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[3], players[4]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[3], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[2], players[4], players[5]]) FROM base
-            UNION ALL SELECT season, team_id, team_abbr, game_id, stint_index, seconds, pts_for_raw, pts_against_raw, pts_for_adj, pts_against_adj, list_sort([players[3], players[4], players[5]]) FROM base
+        f"""
+        CREATE TABLE combo_game_facts AS
+        WITH base AS ({game_base_sql}),
+        units AS ({' UNION ALL '.join(game_unions)}),
+        names AS (
+            SELECT CAST(team_id AS BIGINT) AS team_id, any_value(team_abbr) AS team_abbr
+            FROM player_game_facts WHERE team_abbr IS NOT NULL GROUP BY 1
         )
         SELECT
-            season,
-            team_id,
-            team_abbr,
-            array_to_string(trio, '-') AS combo_id,
-            trio[1] AS p1,
-            trio[2] AS p2,
-            trio[3] AS p3,
-            COUNT(DISTINCT game_id) AS games,
-            COUNT(*) AS stints,
-            SUM(seconds) AS seconds,
-            SUM(seconds) / 60.0 AS minutes,
-            SUM(seconds) / 24.0 AS poss_est,
-            SUM(pts_for_raw) AS pts_for_raw,
-            SUM(pts_against_raw) AS pts_against_raw,
-            100.0 * (SUM(pts_for_raw) - SUM(pts_against_raw)) / NULLIF(SUM(seconds) / 24.0, 0) AS net_raw,
-            SUM(pts_for_adj) AS pts_for_adj,
-            SUM(pts_against_adj) AS pts_against_adj,
-            100.0 * (SUM(pts_for_adj) - SUM(pts_against_adj)) / NULLIF(SUM(seconds) / 24.0, 0) AS net_adj,
-            100.0 * ((SUM(pts_for_adj) - SUM(pts_against_adj)) - (SUM(pts_for_raw) - SUM(pts_against_raw))) / NULLIF(SUM(seconds) / 24.0, 0) AS net_delta
-        FROM combos
-        GROUP BY ALL;
+            combo_size, date, season, game_id, u.team_id, tn.team_abbr,
+            opp_team_id, oname.team_abbr AS opp_team_abbr, combo_id,
+            p1,p2,p3,p4,p5,
+            COUNT(*) AS stints, SUM(seconds) AS seconds, SUM(seconds)/60.0 AS minutes,
+            (SUM(off_poss)+SUM(def_poss))/2.0 AS poss_est,
+            SUM(off_poss) AS off_poss, SUM(def_poss) AS def_poss,
+            SUM(pts_for_raw_off) AS pts_for_raw_off,
+            SUM(pts_against_raw_def) AS pts_against_raw_def,
+            SUM(pts_for_adj_off) AS pts_for_adj_off,
+            SUM(pts_against_adj_def) AS pts_against_adj_def,
+            SUM(pts_for_adj_off_3pt_ft) AS pts_for_adj_off_3pt_ft,
+            SUM(pts_against_adj_def_3pt_ft) AS pts_against_adj_def_3pt_ft,
+            100.0*SUM(pts_for_raw_off)/NULLIF(SUM(off_poss),0) AS ortg_raw,
+            100.0*SUM(pts_against_raw_def)/NULLIF(SUM(def_poss),0) AS drtg_raw,
+            100.0*(SUM(pts_for_raw_off)/NULLIF(SUM(off_poss),0)-SUM(pts_against_raw_def)/NULLIF(SUM(def_poss),0)) AS net_raw,
+            100.0*SUM(pts_for_adj_off)/NULLIF(SUM(off_poss),0) AS ortg_adj,
+            100.0*SUM(pts_against_adj_def)/NULLIF(SUM(def_poss),0) AS drtg_adj,
+            100.0*(SUM(pts_for_adj_off)/NULLIF(SUM(off_poss),0)-SUM(pts_against_adj_def)/NULLIF(SUM(def_poss),0)) AS net_adj,
+            100.0*((SUM(pts_for_adj_off)-SUM(pts_for_raw_off))/NULLIF(SUM(off_poss),0)
+                 -(SUM(pts_against_adj_def)-SUM(pts_against_raw_def))/NULLIF(SUM(def_poss),0)) AS net_delta,
+            100.0*SUM(pts_for_adj_off_3pt_ft)/NULLIF(SUM(off_poss),0) AS ortg_adj_3pt_ft,
+            100.0*SUM(pts_against_adj_def_3pt_ft)/NULLIF(SUM(def_poss),0) AS drtg_adj_3pt_ft,
+            100.0*(SUM(pts_for_adj_off_3pt_ft)/NULLIF(SUM(off_poss),0)-SUM(pts_against_adj_def_3pt_ft)/NULLIF(SUM(def_poss),0)) AS net_adj_3pt_ft,
+            100.0*((SUM(pts_for_adj_off_3pt_ft)-SUM(pts_for_raw_off))/NULLIF(SUM(off_poss),0)
+                 -(SUM(pts_against_adj_def_3pt_ft)-SUM(pts_against_raw_def))/NULLIF(SUM(def_poss),0)) AS net_delta_3pt_ft
+        FROM units u
+        LEFT JOIN names tn ON u.team_id=tn.team_id
+        LEFT JOIN names oname ON u.opp_team_id=oname.team_id
+        GROUP BY ALL
         """
     )
 

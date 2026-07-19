@@ -90,6 +90,7 @@ def generate_rapm_report_playoffs() -> None:
     print(f"Playoff years: {playoff_years[0]}–{playoff_years[-1]}  ({len(playoff_years)} seasons)")
 
     data: dict = {}
+    data_3pt_ft: dict = {}
 
     # Per-season RAPM
     era_abbrs = load_era_team_abbrs()
@@ -98,6 +99,8 @@ def generate_rapm_report_playoffs() -> None:
         for alpha in ALPHAS:
             print(f"  {label} alpha={alpha} ...", end=" ")
             rows = model.fit("playoffs", [yr - 1], alpha, MIN_MINUTES_SEASON)
+            rows_3pt_ft = model.fit("playoffs", [yr - 1], alpha,
+                                    MIN_MINUTES_SEASON, adjustment="3pt_ft")
             for row in rows:
                 era = era_abbrs.get((int(row.get("team_id") or 0), yr - 1))
                 if era:
@@ -105,11 +108,20 @@ def generate_rapm_report_playoffs() -> None:
                 for col in ("rapm", "orapm", "drapm", "rapm_raw", "orapm_raw", "drapm_raw"):
                     row[col] = round(float(row[col]), 2)
             data[f"{label}_a{alpha}"] = rows
+            for row in rows_3pt_ft:
+                era = era_abbrs.get((int(row.get("team_id") or 0), yr - 1))
+                if era:
+                    row["team_abbr"] = era
+                for col in ("rapm", "orapm", "drapm", "rapm_raw", "orapm_raw", "drapm_raw"):
+                    row[col] = round(float(row[col]), 2)
+            data_3pt_ft[f"{label}_a{alpha}"] = rows_3pt_ft
             print(len(rows), "players")
         data[label] = data[f"{label}_a{DEFAULT_ALPHA}"]
+        data_3pt_ft[label] = data_3pt_ft[f"{label}_a{DEFAULT_ALPHA}"]
 
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     data_json = json.dumps(data, separators=(",", ":"))
+    data_3pt_ft_json = json.dumps(data_3pt_ft, separators=(",", ":"))
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -265,13 +277,19 @@ def generate_rapm_report_playoffs() -> None:
     <section class="explain">
       <h3>Playoff RAPM</h3>
       <p>RAPM computed from canonical counted playoff possessions only — separate from the regular season model. Each season is estimated independently; the multi-year leaderboard uses minutes-weighted averaging across seasons.</p>
-      <p>Playoff samples are much smaller than regular season (~15–20 games vs 82), so estimates are noisier. The luck adjustment — 3PT, free-throw, and mid-range make/miss variance muted at 75% of each shooter's deviation from his own expectation — matters most here, damping hot/cold shooting runs.</p>
+      <p>Playoff samples are much smaller than regular season (~15–20 games vs 82), so estimates are noisier. The default removes 100% of 3PT and free-throw make/miss residuals and 50% of 10–23-foot mid-range residuals. The selector can omit the mid-range adjustment.</p>
       <p><strong>Alpha:</strong> Ridge regularization strength. α=500 (default) applies strong shrinkage, which is especially useful for small playoff samples. α=10 shrinks less and can show more separation among players with large samples.</p>
     </section>
 
     <section class="card">
       <h2>Single Season</h2>
       <div class="controls">
+        <label>Shooting adjustment
+          <select id="luck-filter">
+            <option value="default">3PT + FT + 50% mid-range (default)</option>
+            <option value="3pt_ft">3PT + FT only</option>
+          </select>
+        </label>
         <label>Season
           <select id="season-filter"></select>
         </label>
@@ -299,9 +317,9 @@ def generate_rapm_report_playoffs() -> None:
               <th class="sortable" data-table="season" data-key="player_name" data-type="str">Player</th>
               <th class="sortable" data-table="season" data-key="team_abbr" data-type="str">Team</th>
               <th class="sortable" data-table="season" data-key="minutes" data-type="num">Min</th>
-              <th class="sortable group-start" data-table="season" data-key="rapm" data-type="num" title="3PT-adjusted RAPM">RAPM Adj</th>
-              <th class="sortable" data-table="season" data-key="orapm" data-type="num" title="Offensive RAPM (3PT-adjusted)">ORAPM Adj</th>
-              <th class="sortable" data-table="season" data-key="drapm" data-type="num" title="Defensive RAPM (3PT-adjusted)">DRAPM Adj</th>
+              <th class="sortable group-start" data-table="season" data-key="rapm" data-type="num">RAPM Adj</th>
+              <th class="sortable" data-table="season" data-key="orapm" data-type="num">ORAPM Adj</th>
+              <th class="sortable" data-table="season" data-key="drapm" data-type="num">DRAPM Adj</th>
               <th class="sortable col-raw col-hidden group-start" data-table="season" data-key="rapm_raw" data-type="num">RAPM Raw</th>
               <th class="sortable col-raw col-hidden" data-table="season" data-key="orapm_raw" data-type="num">ORAPM Raw</th>
               <th class="sortable col-raw col-hidden" data-table="season" data-key="drapm_raw" data-type="num">DRAPM Raw</th>
@@ -351,9 +369,9 @@ def generate_rapm_report_playoffs() -> None:
               <th class="sortable" data-table="lb" data-key="player_name" data-type="str">Player</th>
               <th class="sortable" data-table="lb" data-key="team_abbr" data-type="str">Team</th>
               <th class="sortable" data-table="lb" data-key="minutes" data-type="num">Min</th>
-              <th class="sortable group-start" data-table="lb" data-key="rapm" data-type="num" title="3PT-adjusted RAPM">RAPM Adj</th>
-              <th class="sortable" data-table="lb" data-key="orapm" data-type="num" title="Offensive RAPM (3PT-adjusted)">ORAPM Adj</th>
-              <th class="sortable" data-table="lb" data-key="drapm" data-type="num" title="Defensive RAPM (3PT-adjusted)">DRAPM Adj</th>
+              <th class="sortable group-start" data-table="lb" data-key="rapm" data-type="num" title="Shooting-luck adjusted RAPM">RAPM Adj</th>
+              <th class="sortable" data-table="lb" data-key="orapm" data-type="num" title="Offensive shooting-luck adjusted RAPM">ORAPM Adj</th>
+              <th class="sortable" data-table="lb" data-key="drapm" data-type="num" title="Defensive shooting-luck adjusted RAPM">DRAPM Adj</th>
               <th class="sortable col-lb-raw col-hidden group-start" data-table="lb" data-key="rapm_raw" data-type="num">RAPM Raw</th>
               <th class="sortable col-lb-raw col-hidden" data-table="lb" data-key="orapm_raw" data-type="num">ORAPM Raw</th>
               <th class="sortable col-lb-raw col-hidden" data-table="lb" data-key="drapm_raw" data-type="num">DRAPM Raw</th>
@@ -368,7 +386,8 @@ def generate_rapm_report_playoffs() -> None:
   </div>
 
   <script>
-    const DATA = {data_json};
+    const DATASETS = {{ default: {data_json}, "3pt_ft": {data_3pt_ft_json} }};
+    let DATA = DATASETS.default;
     const LATEST_SEASON = {json.dumps(latest_label)};
     const DEFAULT_ALPHA = {DEFAULT_ALPHA};
 
@@ -528,6 +547,10 @@ def generate_rapm_report_playoffs() -> None:
       ["season-filter","alpha-filter","min-minutes","search"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderSeasonTable)
       );
+      document.getElementById("luck-filter").addEventListener("change", e => {{
+        DATA = DATASETS[e.target.value] || DATASETS.default;
+        render();
+      }});
       ["lb-decay-filter","lb-alpha-filter","lb-min-minutes","lb-search"].forEach(id =>
         document.getElementById(id).addEventListener("input", renderLeaderboardTable)
       );

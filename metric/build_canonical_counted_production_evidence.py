@@ -33,6 +33,7 @@ SALVAGE = ROOT / "derived" / "contextual_causal" / "probabilistic_lineup_salvage
 OUT = ROOT / "derived" / "contextual_causal" / "production_counted_evidence"
 REPORT = ROOT / "outputs" / "contextual_causal"
 PLAYOFFS = ROOT / "data" / "stints_playoffs.csv"
+LUCK_COMPONENTS = ROOT / "data" / "rapm_luck_adjust.parquet"
 HISTORICAL_ZIP = ROOT / "historical-nba-data-and-player-box-scores.zip"
 HCOLS = [f"home_p{i}" for i in range(1, 6)]
 ACOLS = [f"away_p{i}" for i in range(1, 6)]
@@ -136,15 +137,68 @@ def build_aggregate_from_stints(stints: pd.DataFrame, game_totals: pd.DataFrame,
         frame["offense_side"] = offense
         frame["observation_id"] = frame.game_id + f"_{offense}_offense"
         frame["points"] = frame.game_id.map(totals[f"adjusted_{offense}_points"])
+        frame["points_3pt_ft"] = frame.game_id.map(
+            totals[f"adjusted_{offense}_points_3pt_ft"])
         frame["possessions_proxy"] = frame.game_id.map(totals[f"n_{offense}"])
         frame["target_per_100"] = frame.points / frame.possessions_proxy * 100
+        frame["target_per_100_3pt_ft"] = (
+            frame.points_3pt_ft / frame.possessions_proxy * 100)
         frame["sqrt_weight"] = np.sqrt(frame.possessions_proxy)
         frame["information_tier"] = "aggregate_counted_possessions_lineup_minutes"
         out.append(frame)
     return pd.concat(out, ignore_index=True)[[
         "observation_id", "game_id", "date", "offense_side", "role",
-        "player_id", "design_value", "points", "possessions_proxy",
-        "target_per_100", "sqrt_weight", "information_tier"]]
+        "player_id", "design_value", "points", "points_3pt_ft",
+        "possessions_proxy", "target_per_100", "target_per_100_3pt_ft",
+        "sqrt_weight", "information_tier"]]
+
+
+def load_luck_components() -> tuple[pd.DataFrame, pd.DataFrame]:
+    if not LUCK_COMPONENTS.exists():
+        raise FileNotFoundError(f"missing canonical luck components: {LUCK_COMPONENTS}")
+    luck = pd.read_parquet(LUCK_COMPONENTS)
+    required = {"game_id", "hk", "ak", "ft_luck_home", "ft_luck_away",
+                "mr_luck_home", "mr_luck_away"}
+    missing = required - set(luck.columns)
+    if missing:
+        raise ValueError(f"luck component payload missing columns: {sorted(missing)}")
+    luck["game_id"] = norm(luck.game_id)
+    totals = luck.groupby("game_id", as_index=False)[[
+        "ft_luck_home", "ft_luck_away", "mr_luck_home", "mr_luck_away"]].sum()
+    return luck, totals
+
+
+def apply_luck_to_counted(counted: pd.DataFrame, luck: pd.DataFrame,
+                          totals: pd.DataFrame) -> pd.DataFrame:
+    """Add exact 3PT+FT and production 3PT+FT+50% MR outcomes."""
+    out = counted.copy()
+    out["_hk"] = out.home_lineup_key.str.replace("-", ",", regex=False)
+    out["_ak"] = out.away_lineup_key.str.replace("-", ",", regex=False)
+    out["_row"] = np.arange(len(out))
+    out = out.merge(luck, left_on=["game_id", "_hk", "_ak"],
+                    right_on=["game_id", "hk", "ak"], how="left")
+    total_map = totals.set_index("game_id")
+    for side in ("home", "away"):
+        ncol = f"n_{side}"
+        for component, source in (("ft", f"ft_luck_{side}"),
+                                  ("mr", f"mr_luck_{side}")):
+            group_n = out.groupby(["game_id", "_hk", "_ak"])[ncol].transform("sum")
+            exact = (out[source].fillna(0.0).to_numpy(float)
+                     * out[ncol].to_numpy(float)
+                     / group_n.replace(0, np.nan).fillna(1).to_numpy(float))
+            assigned = pd.Series(exact, index=out.index).groupby(out.game_id).transform("sum")
+            wanted = out.game_id.map(total_map[source]).fillna(0.0).to_numpy(float)
+            game_n = out.groupby("game_id")[ncol].transform("sum").clip(lower=1e-9)
+            out[f"_{component}_{side}"] = (
+                exact + (wanted - assigned.to_numpy(float))
+                * out[ncol].to_numpy(float) / game_n.to_numpy(float))
+        base = f"points_adjusted_{side}"
+        out[f"{base}_3pt"] = out[base]
+        out[f"{base}_3pt_ft"] = out[base] - out[f"_ft_{side}"]
+        out[base] = out[f"{base}_3pt_ft"] - 0.5 * out[f"_mr_{side}"]
+    return (out.sort_values("_row").drop(columns=[
+        "_hk", "_ak", "_row", "hk", "ak", "ft_luck_home",
+        "ft_luck_away", "mr_luck_home", "mr_luck_away"]))
 
 
 def main() -> None:
@@ -282,6 +336,17 @@ def main() -> None:
             game_n > 0,
             (source_game - modeled_game) * counted[f"n_{side}"] / game_n,
             0.0)
+
+    luck, luck_totals = load_luck_components()
+    luck_game = luck_totals.set_index("game_id")
+    counted = apply_luck_to_counted(counted, luck, luck_totals)
+    for side in ("home", "away"):
+        base = f"adjusted_{side}_points"
+        audit[f"{base}_3pt"] = audit[base]
+        ft = audit.game_id.map(luck_game[f"ft_luck_{side}"]).fillna(0.0)
+        mr = audit.game_id.map(luck_game[f"mr_luck_{side}"]).fillna(0.0)
+        audit[f"{base}_3pt_ft"] = audit[base] - ft
+        audit[base] = audit[f"{base}_3pt_ft"] - 0.5 * mr
     counted.to_parquet(OUT / "canonical_counted_stints_production.parquet",
                        index=False)
 
@@ -308,13 +373,21 @@ def main() -> None:
         lookup = exact_counts[side].to_dict()
         mask = base.offense_side.eq(side)
         base.loc[mask, "possessions_proxy"] = base.loc[mask, "game_id"].map(lookup)
+        component_ft = base.loc[mask, "game_id"].map(
+            luck_game[f"ft_luck_{side}"]).fillna(0.0)
+        component_mr = base.loc[mask, "game_id"].map(
+            luck_game[f"mr_luck_{side}"]).fillna(0.0)
+        base.loc[mask, "points_3pt_ft"] = base.loc[mask, "points"] - component_ft
+        base.loc[mask, "points"] = base.loc[mask, "points_3pt_ft"] - 0.5 * component_mr
     base["target_per_100"] = base.points / base.possessions_proxy * 100
+    base["target_per_100_3pt_ft"] = base.points_3pt_ft / base.possessions_proxy * 100
     base["sqrt_weight"] = np.sqrt(base.possessions_proxy)
     base["information_tier"] = "aggregate_exact_possessions_official_minutes"
     base = base[aggregate.columns] if not aggregate.empty else base[[
         "observation_id", "game_id", "date", "offense_side", "role",
-        "player_id", "design_value", "points", "possessions_proxy",
-        "target_per_100", "sqrt_weight", "information_tier"]]
+        "player_id", "design_value", "points", "points_3pt_ft",
+        "possessions_proxy", "target_per_100", "target_per_100_3pt_ft",
+        "sqrt_weight", "information_tier"]]
     aggregate = pd.concat([aggregate, base], ignore_index=True)
     aggregate.to_parquet(OUT / "canonical_counted_aggregate_production.parquet",
                          index=False)

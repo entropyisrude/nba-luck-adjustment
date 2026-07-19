@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from generate_report import _apply_shooting_luck
 
 DATA_DIR = Path("data")
 BOX_PATH = DATA_DIR / "player_daily_boxscore.csv"
@@ -96,7 +97,7 @@ def _prepare_box() -> pd.DataFrame:
 def _prepare_games_meta() -> dict[str, dict]:
     if not GAMES_PATH.exists():
         return {}
-    g = pd.read_csv(GAMES_PATH, dtype={"game_id": str})
+    g = _apply_shooting_luck(pd.read_csv(GAMES_PATH, dtype={"game_id": str}))
     g["game_id"] = g["game_id"].astype(str).str.lstrip("0")
     out: dict[str, dict] = {}
     for _, r in g.iterrows():
@@ -401,9 +402,9 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Player name">Player</th>
                       <th title="Minutes played">Min</th>
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
-                      <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
+                      <th class="key-th" title="Adjusted plus-minus while on court under the 100% 3PT and FT, 50% midrange luck model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnOff Adj</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 100% 3PT and FT, 50% midrange luck model">OnOff Adj</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -432,9 +433,9 @@ def generate_daily_boxscores_report() -> Path:
                       <th title="Player name">Player</th>
                       <th title="Minutes played">Min</th>
                       <th title="Actual plus-minus while the player was on court (official boxscore)">PM</th>
-                      <th class="key-th" title="Adjusted plus-minus while on court under the 3PT luck-adjusted model">PM Adj</th>
+                      <th class="key-th" title="Adjusted plus-minus while on court under the 100% 3PT and FT, 50% midrange luck model">PM Adj</th>
                       <th title="Actual on-off differential: on-court plus-minus minus off-court plus-minus">OnOff</th>
-                      <th class="key-th" title="Adjusted on-off differential under the 3PT luck-adjusted model">OnOff Adj</th>
+                      <th class="key-th" title="Adjusted on-off differential under the 100% 3PT and FT, 50% midrange luck model">OnOff Adj</th>
                     </tr>
                   </thead>
                   <tbody>

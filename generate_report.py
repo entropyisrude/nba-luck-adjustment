@@ -11,6 +11,46 @@ from datetime import datetime
 
 TEMPLATE_PATH = Path("template.html")
 DATA_DIR = Path("data")
+LUCK_COMPONENTS = DATA_DIR / "rapm_luck_adjust.parquet"
+
+
+def _apply_shooting_luck(df: pd.DataFrame) -> pd.DataFrame:
+    """Layer FT and mid-range components onto the stored 3PT-adjusted games."""
+    if not LUCK_COMPONENTS.exists():
+        raise FileNotFoundError(f"Missing shooting-luck components: {LUCK_COMPONENTS}")
+    luck = pd.read_parquet(LUCK_COMPONENTS)
+    required = {"game_id", "ft_luck_home", "ft_luck_away",
+                "mr_luck_home", "mr_luck_away"}
+    missing = required - set(luck.columns)
+    if missing:
+        raise ValueError(f"Luck payload missing component columns: {sorted(missing)}")
+    totals = luck.groupby(luck.game_id.astype(str).str.lstrip("0"))[[
+        "ft_luck_home", "ft_luck_away", "mr_luck_home", "mr_luck_away"]].sum()
+    out = df.copy()
+    gid = out.game_id.astype(str).str.lstrip("0")
+    for side in ("home", "away"):
+        stored_base = pd.to_numeric(
+            out.get(f"{side}_pts_adj_3pt", pd.Series(index=out.index, dtype=float)),
+            errors="coerce")
+        base = stored_base.fillna(
+            pd.to_numeric(out[f"{side}_pts_adj"], errors="coerce"))
+        ft_fallback = gid.map(totals[f"ft_luck_{side}"]).fillna(0.0)
+        mr_fallback = gid.map(totals[f"mr_luck_{side}"]).fillna(0.0)
+        ft = pd.to_numeric(
+            out.get(f"{side}_ft_luck", pd.Series(index=out.index, dtype=float)),
+            errors="coerce").fillna(ft_fallback)
+        mr = pd.to_numeric(
+            out.get(f"{side}_mr_luck", pd.Series(index=out.index, dtype=float)),
+            errors="coerce").fillna(mr_fallback)
+        out[f"{side}_pts_adj_3pt"] = base
+        out[f"{side}_pts_adj_3pt_ft"] = base - ft
+        out[f"{side}_pts_adj"] = base - ft - 0.5 * mr
+    out["margin_actual"] = out.home_pts_actual - out.away_pts_actual
+    out["margin_adj"] = out.home_pts_adj - out.away_pts_adj
+    out["margin_delta"] = out.margin_adj - out.margin_actual
+    out["margin_adj_3pt_ft"] = out.home_pts_adj_3pt_ft - out.away_pts_adj_3pt_ft
+    out["margin_delta_3pt_ft"] = out.margin_adj_3pt_ft - out.margin_actual
+    return out
 
 
 def _load_game_possessions() -> dict[str, float]:
@@ -212,7 +252,7 @@ def generate_report():
         raise FileNotFoundError(f"Template file not found: {TEMPLATE_PATH}")
     template = TEMPLATE_PATH.read_text(encoding='utf-8')
 
-    df = pd.read_csv("data/adjusted_games.csv")
+    df = _apply_shooting_luck(pd.read_csv("data/adjusted_games.csv"))
 
     # Rows without game_type were written before the column existed — treat as regular season.
     if 'game_type' in df.columns:
@@ -222,14 +262,25 @@ def generate_report():
 
     rs_df = df[df['game_type'] == 'regular'].copy()
     playoff_df = df[df['game_type'] == 'playoff'].copy()
+    alt_df = df.copy()
+    for side in ('home', 'away'):
+        alt_df[f'{side}_pts_adj'] = alt_df[f'{side}_pts_adj_3pt_ft']
+    alt_df['margin_adj'] = alt_df['margin_adj_3pt_ft']
+    alt_df['margin_delta'] = alt_df['margin_delta_3pt_ft']
+    alt_rs_df = alt_df[alt_df['game_type'] == 'regular'].copy()
+    alt_playoff_df = alt_df[alt_df['game_type'] == 'playoff'].copy()
     # play-in (game_type == 'playin') is excluded from both ranking tables
 
     game_poss = _load_game_possessions()
     team_rows = _build_team_rows(rs_df, game_poss)
     playoff_team_rows = _build_team_rows(playoff_df, game_poss)
+    team_rows_3pt_ft = _build_team_rows(alt_rs_df, game_poss)
+    playoff_team_rows_3pt_ft = _build_team_rows(alt_playoff_df, game_poss)
 
     swing_rows = _build_swing_rows(rs_df)
     playoff_swing_rows = _build_swing_rows(playoff_df)
+    swing_rows_3pt_ft = _build_swing_rows(alt_rs_df)
+    playoff_swing_rows_3pt_ft = _build_swing_rows(alt_playoff_df)
 
     # Calendar game objects
     has_swing_player = 'swing_player' in df.columns
@@ -250,6 +301,14 @@ def generate_report():
             'margin_actual': int(row['margin_actual']),
             'margin_adj': round(row['margin_adj'], 2),
             'margin_delta': round(row['margin_delta'], 1),
+            'home_pts_adj_default': round(row['home_pts_adj'], 1),
+            'away_pts_adj_default': round(row['away_pts_adj'], 1),
+            'margin_adj_default': round(row['margin_adj'], 2),
+            'margin_delta_default': round(row['margin_delta'], 1),
+            'home_pts_adj_3pt_ft': round(row['home_pts_adj_3pt_ft'], 1),
+            'away_pts_adj_3pt_ft': round(row['away_pts_adj_3pt_ft'], 1),
+            'margin_adj_3pt_ft': round(row['margin_adj_3pt_ft'], 2),
+            'margin_delta_3pt_ft': round(row['margin_delta_3pt_ft'], 1),
             'home_3pa': int(row['home_3pa']),
             'home_3pm': int(row['home_3pm_actual']),
             'home_3pm_exp': round(row['home_3pm_exp'], 1),
@@ -293,8 +352,12 @@ def generate_report():
     html = html.replace('{{SEASON_MONTHS_JSON}}', season_months_json)
     html = html.replace('{{TEAM_RANKINGS_ROWS}}', team_rows)
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS}}', playoff_team_rows)
+    html = html.replace('{{TEAM_RANKINGS_ROWS_3PT_FT}}', team_rows_3pt_ft)
+    html = html.replace('{{PLAYOFF_RANKINGS_ROWS_3PT_FT}}', playoff_team_rows_3pt_ft)
     html = html.replace('{{BIGGEST_SWINGS_ROWS}}', swing_rows)
     html = html.replace('{{PLAYOFF_BIGGEST_SWINGS_ROWS}}', playoff_swing_rows)
+    html = html.replace('{{BIGGEST_SWINGS_ROWS_3PT_FT}}', swing_rows_3pt_ft)
+    html = html.replace('{{PLAYOFF_BIGGEST_SWINGS_ROWS_3PT_FT}}', playoff_swing_rows_3pt_ft)
     html = html.replace('{{GENERATED_TIMESTAMP}}', datetime.now().strftime('%Y-%m-%d %H:%M'))
 
     output_path = Path("data/3pt_luck_report.html")

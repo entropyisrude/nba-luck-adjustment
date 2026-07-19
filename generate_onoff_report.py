@@ -454,7 +454,7 @@ def generate_onoff_report() -> Path:
     season_values = sorted({r["season"] for r in records}, reverse=True)
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    page_title = "3PT Luck Adjusted Plus Minus: Totals"
+    page_title = "Shooting Luck Adjusted Plus Minus: Totals"
 
     html = f"""<!doctype html>
 <html lang=\"en\">
@@ -634,11 +634,11 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable metric-emph\" data-key=\"pm_adj_100\" data-type=\"num\">+/- Adj</th>
               <th class=\"sortable col-pm-delta col-hidden\" data-key=\"pm_delta_100\" data-type=\"num\">+/- Delta</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">On/Off</th>
-              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">On/Off Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
+              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"Shooting-luck adjusted on-off per 100 possessions (100% 3PT and FT, 50% midrange)\">On/Off Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team shooting-luck adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is ON court\">On ORtg Adj</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is OFF court\">Off ORtg Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team shooting-luck adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is ON court\">On DRtg Adj</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is OFF court\">Off DRtg Adj</th>
               <th class=\"sortable col-onoff-delta col-hidden\" data-key=\"onoff_delta_100\" data-type=\"num\">On/Off Delta</th>
@@ -686,11 +686,11 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable metric-emph\" data-key=\"pm_adj_100\" data-type=\"num\">+/- Adj</th>
               <th class=\"sortable col-pm-delta col-hidden\" data-key=\"pm_delta_100\" data-type=\"num\">+/- Delta</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">On/Off</th>
-              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">On/Off Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
+              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"Shooting-luck adjusted on-off per 100 possessions (100% 3PT and FT, 50% midrange)\">On/Off Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team shooting-luck adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is ON court\">On ORtg Adj</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is OFF court\">Off ORtg Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team shooting-luck adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is ON court\">On DRtg Adj</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is OFF court\">Off DRtg Adj</th>
               <th class=\"sortable col-onoff-delta col-hidden\" data-key=\"onoff_delta_100\" data-type=\"num\">On/Off Delta</th>
@@ -730,11 +730,11 @@ def generate_onoff_report() -> Path:
               <th class=\"sortable metric-emph\" data-key=\"pm_adj_100\" data-type=\"num\">+/- Adj</th>
               <th class=\"sortable col-pm-delta col-hidden\" data-key=\"pm_delta_100\" data-type=\"num\">+/- Delta</th>
               <th class=\"sortable\" data-key=\"onoff_actual_100\" data-type=\"num\">On/Off</th>
-              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"3PT-luck adjusted on-off per 100 possessions\">On/Off Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team 3PT-adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
+              <th class=\"sortable metric-emph\" data-key=\"onoff_adj_100\" data-type=\"num\" title=\"Shooting-luck adjusted on-off per 100 possessions (100% 3PT and FT, 50% midrange)\">On/Off Adj</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_off_100\" data-type=\"num\" title=\"Offensive component: team shooting-luck adjusted ORtg when ON minus when OFF. Positive = player improves team offense.\">On/Off Adj Off</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"on_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is ON court\">On ORtg Adj</th>
               <th class=\"sortable col-ortg-adj col-hidden\" data-key=\"off_ortg_adj\" data-type=\"num\" title=\"Team adjusted ORtg when player is OFF court\">Off ORtg Adj</th>
-              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team 3PT-adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
+              <th class=\"sortable\" data-key=\"onoff_adj_def_100\" data-type=\"num\" title=\"Defensive component: team shooting-luck adjusted DRtg when OFF minus when ON. Positive = player improves team defense.\">On/Off Adj Def</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"on_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is ON court\">On DRtg Adj</th>
               <th class=\"sortable col-drtg-adj col-hidden\" data-key=\"off_drtg_adj\" data-type=\"num\" title=\"Team adjusted DRtg when player is OFF court\">Off DRtg Adj</th>
               <th class=\"sortable col-onoff-delta col-hidden\" data-key=\"onoff_delta_100\" data-type=\"num\">On/Off Delta</th>

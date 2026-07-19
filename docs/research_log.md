@@ -614,3 +614,280 @@ Build a read-only audit script that selects canonical source files, reports sche
   otherwise have silently regenerated a different model.
 - Clean release audit: 14,005 state rows, 15,228 payload rows, 664 projections,
   payload version `4267f3e17de5`, and exactly three declared consumers.
+
+## 2026-07-19 — Context-transport study specified
+
+- Question: when a player enters a lineup environment materially different
+  from the one represented in his history, can frozen context improve his
+  subsequent performance forecast beyond covariance-NERD?
+- Claim tier: predictive transport, not causal player value. Team changes,
+  injuries and rotation decisions are selected; the study will not interpret
+  context coefficients as interventions without a separate design.
+- Unit: returning player-season. The player's prior environment is his
+  possession-weighted teammate environment in the preceding season. His new
+  environment is measured only in an early-season exposure window. Teammate
+  capability values are frozen from the preceding season. The target is
+  performance in the non-overlapping remainder of the season.
+- Baseline: the production covariance model's one-step preseason O/D state.
+  Outcome: a late-window luck-adjusted lineup solve, expressed as the player's
+  residual contribution beyond the frozen baseline. The first diagnostic asks
+  whether context distance predicts absolute forecast error; the primary test
+  asks whether a small, partially pooled capability-by-context-change model
+  improves signed prediction.
+- Context coordinates will remain continuous: creation concentration, spacing,
+  rim pressure/finishing, turnover tendency, foul pressure, offensive
+  rebounding, size/rim protection, disruption and defensive rebounding.
+  Archetype labels may summarize the coordinates but will not create arbitrary
+  hard clusters for fitting.
+- Timing safeguards: no current-season box outcomes in context features; no
+  full-season lineup shares; early and target windows do not overlap. Actual
+  early rotations make this an in-season transport forecast, not a preseason
+  roster projection.
+- Chronology is frozen before modeling: development through 2021-22,
+  specification/regularization selection in 2022-23 and 2023-24, untouched
+  confirmation in 2024-25 and 2025-26. If historical trait coverage forces a
+  later start, the endpoints remain fixed and only development coverage falls.
+- Promotion standard: directional stability across both confirmation seasons,
+  improvement concentrated in genuinely high-distance transitions, no
+  material degradation in ordinary contexts, and improvement in basketball
+  process outcomes consistent with the fitted direction. A global average
+  interaction without transport-subgroup confirmation is not sufficient.
+
+### Mechanism-first addendum (specified before fitting)
+
+- Because aggregate value can hide offsetting role changes, the final diagnostic
+  predicts late-season changes in observable basketball processes: 3PA, FTA,
+  turnovers, offensive rebounds, assists, assisted field goals, unassisted field
+  goals and 2PA, each per 75 on-court possessions.
+- The unit and timing remain the returning player-season. The outcome is the
+  player's rate after his team's first 15 games minus his full prior-season
+  rate. Prior-season rates and frozen own-player capabilities form the fair
+  baseline, so ordinary regression to the mean is not credited to context.
+  Context models add only the early measured teammate-environment change and,
+  separately, a compact own-capability-by-environment-change interaction.
+- Require at least 750 prior-season and 750 late-window possessions. Ridge
+  strength is chosen only on 2022-23 and 2023-24; 2024-25 and 2025-26 remain
+  confirmation seasons. The combined score gives each standardized process
+  outcome equal weight. A useful finding must improve the combined score in
+  both confirmation seasons and have interpretable, directionally stable
+  outcome-level effects; an isolated pooled win is insufficient.
+
+## 2026-07-19 — Context transport results: role signal, not value signal
+
+- The leakage-safe transport panel contains 5,581 returning player-seasons.
+  The direct target was late-season luck-adjusted lineup value beyond the
+  frozen preseason covariance-NERD state. Against a calibrated intercept,
+  context distance lost 0.16%, directional context change lost 0.10%, and
+  capability-by-context interactions lost 0.57% on 2024-25 and 2025-26.
+  All three reversed direction between the two confirmation seasons. Actual
+  team changers also lost. This rejects a direct context adjustment to NERD.
+- Context did not reliably identify underadvertised uncertainty either. A
+  directional-context variance model improved Gaussian NLL by only 0.00149;
+  the player-cluster 95% interval for that gain was [-0.00213, 0.00532]. No
+  production uncertainty change is justified.
+- The pre-specified mechanism test was more promising. Before seeing the
+  player's current-season statistics, teammate-context change improved the
+  combined forecast of late changes in eight per-75 role outcomes by 1.61%
+  (player-cluster 95% interval 0.77% to 2.41%). It improved in both
+  confirmation seasons, reached 3.70% in the high-distance subgroup, and its
+  largest outcome gains were turnovers (4.42%), FTA (2.66%) and 2PA (2.49%).
+- Post-result robustness added the player's own first-15-game box rates to the
+  baseline, because those rates are available whenever the early lineup
+  context is available. The simple context-change model retained a small
+  0.23% gain: 0.23% in 2024-25, 0.22% in 2025-26, and a player-cluster 95%
+  interval of 0.01% to 0.45%. The gain was concentrated among actual team
+  changers (0.82%) and high-distance environments (0.93%), versus 0.05% for
+  same-team players. Capability interactions were weaker (0.13%, interval
+  -0.14% to 0.40%), so the data favor simple environment changes rather than
+  an elaborate archetype interaction surface.
+- Basketball interpretation: a different teammate mix modestly helps forecast
+  the role a player will settle into, especially after a move, but it has not
+  helped forecast how valuable that player will be after RAPM and the existing
+  box prior are accounted for. The credible next bridge to player value is not
+  a direct context bonus. It is a mover-only test that predicts event-window
+  atomic box components, passes those predicted role changes through the
+  already-frozen atomic coefficients, and then asks whether the transported
+  box prior improves later RAPM/NERD. Until that succeeds chronologically, the
+  production model remains unchanged.
+
+## 2026-07-19 — Observed-extremes additivity boundary test specified
+
+- Question: within the unusual lineup compositions NBA coaches actually used,
+  does adjusted scoring systematically depart from the sum of player NERD
+  offense and defense ratings? This is a predictive calibration/support test,
+  not evidence about arbitrary lineups outside the observed distribution and
+  not a causal estimate of changing lineup composition.
+- Unit: offense-side exact-lineup-pair within game, aggregating repeated stints
+  with the same five offensive and five defensive players. Outcome is
+  luck-adjusted points per 100 possessions, centered on that season's league
+  scoring environment. The baseline expectation is the sum of one-step
+  preseason covariance-NERD offense for the five offensive players minus the
+  corresponding defense ratings for the five defenders. Ratings and all
+  composition traits are frozen before the season; current-season performance
+  is never used as a feature.
+- Primary sample requires frozen ratings and prior-season traits for all ten
+  players. A coverage sensitivity may allow eight of ten only if missingness is
+  exposed and results agree. Exact lineup, game, team, opponent, season and
+  possession counts remain explicit. Uncertainty is clustered by game and the
+  report includes possessions, games, unique lineups and teams in every tail.
+- Fixed composition dimensions: offensive sum of prior usage; offensive sum
+  of prior 3PA per 75; defensive sum of prior blocks per 75; defensive mean
+  height; and defensive count of players at least 81 inches tall. The discrete
+  big-count diagnostics explicitly compare no-big and at-least-three-big
+  lineups. Continuous low/high tails use possession-weighted development
+  10th/90th percentiles, with 5th/95th as sensitivity thresholds.
+- Chronology: 2021-22 and earlier define thresholds and calibration
+  specification; 2022-23 and 2023-24 extend coefficient fitting without
+  changing the family; 2024-25 and 2025-26 are confirmation seasons. Report
+  each confirmation season separately.
+- Primary diagnostics are (1) tail mean residual from summed frozen NERD,
+  relative to the central observed range; (2) out-of-sample RMSE change from
+  adding the fixed tail indicators; and (3) tail error dispersion. Because the
+  family contains multiple tails, a boundary violation requires the same sign
+  in both confirmation seasons, a game-cluster 99% interval excluding zero,
+  and meaningful magnitude. A null result supports additivity only through the
+  most extreme observed threshold; it does not license extrapolation to five
+  point guards or any other unsupported construction.
+
+## 2026-07-19 — Observed-extremes result: a low-usage capacity floor
+
+- The final quality-controlled panel requires every one of the ten players to
+  have at least 500 prior-season possessions in addition to a frozen preseason
+  covariance-NERD state. It contains 30,396 confirmation lineup-pair spells
+  across 1,774 regular-season games in 2024-25 and 2025-26.
+- Most observed lineup extremes did not systematically miss summed NERD.
+  There was no directionally stable confirmation penalty for high prior usage,
+  high shooting, low/high blocks, low/high mean height, no player at least 6-9,
+  or at least three such big players. The confirmation sample included 11,392
+  possessions with no 6-9 player and 10,179 with at least three, so this is
+  meaningful evidence about coach-selected lineups in those observed ranges.
+  Low-shooting lineups had only 381 confirmation possessions beyond the frozen
+  historical threshold and remain under-supported.
+- One asymmetric boundary did emerge. The development 10th-percentile cutoff
+  for the five offensive players' summed prior usage was 0.874. Below it, the
+  raw confirmation residual was about -2.05 points per 100 relative to the
+  central usage range, with the same direction in both seasons; its conservative
+  game-cluster 99% interval narrowly included zero. The 5% threshold was -2.59
+  and also stable, though less precise.
+- The stronger selection sensitivity compares lineups within the same offense
+  team-game and removes fourth-quarter high-margin spells. The low-usage gap
+  was -2.01 points per 100, almost identical in 2024-25 (-1.99) and 2025-26
+  (-1.98), with a game-cluster 99% interval of [-3.57, -0.47]. Thus neither
+  team quality, the particular game, nor the simple garbage-time screen explains
+  the result. A low-usage penalty estimated only through 2023-24 was -1.44 and
+  reduced error inside the low-usage tail in both confirmation seasons, though
+  the RMSE gain was only 0.015% because short-spell scoring is extremely noisy.
+- Basketball interpretation: excess demonstrated usage appears easy to
+  redistribute, but a lineup in which nobody has previously carried enough
+  possessions may have a roughly two-point offensive capacity cost beyond the
+  sum of the players' ordinary ratings. This is a plausible non-additivity and
+  reconnects with the earlier burden-transfer idea. It is not evidence that
+  usage itself causally creates value; coaching, role changes and unmeasured
+  lineup tasks remain selected.
+- The complete fixed family of tail penalties did not improve overall
+  confirmation RMSE. Therefore no general context layer or production NERD
+  change is warranted. The result supports a narrow lineup-construction warning
+  or separately validated low-creation-capacity penalty, not revised individual
+  player values. The no-big null supports additivity for no-6-9 lineups coaches
+  actually used; it still does not identify an arbitrary five-point-guard lineup
+  beyond that support.
+
+### Low-usage historical and playoff extension (specified before fitting)
+
+- Historical regular-season extension uses rolling origin. For every target
+  season before 2016-17, the low-usage and central-range thresholds, NERD
+  calibration and candidate penalty are estimated only from earlier regular
+  seasons. The primary historical summary pools 2009-10 through 2015-16 and
+  also reports every season separately; no future fixed threshold is projected
+  backward.
+- Playoffs are a separate environment. Historical postseason diagnostics use
+  earlier regular seasons only. The primary postseason confirmation applies
+  the already-frozen modern regular-season definition and through-2023-24
+  calibration to the 2024-25 and 2025-26 playoffs without playoff refitting.
+- Samples retain the all-ten-player rating/trait coverage rule and 500 prior
+  possession minimum. Primary gaps again remove the simple garbage-time screen
+  and compare within offense team-game. Report possessions and games because
+  extreme postseason lineups may be too rare for a useful test.
+
+### Low-usage historical and playoff extension results
+
+- Seven rolling-origin regular seasons from 2009-10 through 2015-16 contain
+  50,350 low-usage possessions across 3,368 games. The pooled within-team-game,
+  non-garbage gap is only -0.24 points per 100, with a game-cluster 99%
+  interval of [-1.14, 0.76]. Season estimates alternate sign. The capacity
+  penalty is therefore not a timeless NBA relationship.
+- The relationship becomes visible in the modern period before the untouched
+  confirmation. Rolling-origin 2016-17 through 2023-24 tests contain 59,925
+  low-usage possessions across 3,906 games and pool to -1.15 points per 100
+  (99% interval [-2.05, -0.32]). Seven of eight seasons are negative, although
+  individual seasons remain noisy and 2017-18 is strongly positive. Combined
+  with the separately frozen 2024-25 and 2025-26 result of about -2.01, the
+  evidence favors a modern-era capacity constraint rather than a universal
+  lineup law. A schema/model-era explanation remains a falsification risk.
+- Playoff samples exist but are thin. Rolling 2016-17 through 2023-24 playoffs
+  contain 3,761 low-usage possessions and estimate -1.76, with a wide 99%
+  interval [-4.94, 1.20]. The frozen 2024-25 and 2025-26 playoff confirmation
+  contains 1,701 possessions and estimates -3.93, interval [-9.44, 1.58]. The
+  postseason direction is compatible with the modern regular-season result
+  but does not independently confirm it.
+- Practical conclusion: the modern regular-season sample is now large enough
+  to take the low-usage boundary seriously, but the historical null means it
+  should be modeled, if at all, as an era-dependent lineup capacity warning.
+  It should not be encoded as a permanent player-value interaction or treated
+  as proof that low prior usage causally harms an offense.
+
+### Canonical shooting-luck strength grid (specified before fitting)
+
+- Treat shooting-luck removal as a predictive denoising choice, not a causal
+  player-value estimand. Fit separate single-season RAPM evidence on the
+  canonical counted-possession design and predict the next season's raw RAPM.
+- Vary 3PT, FT and 10-23-foot mid-range residual removal independently over
+  {0, .25, .50, .75, 1.0}. The upstream shooter expectations use only prior
+  information. Use alpha 150, require 1,000 possessions in both seasons and
+  score total, offensive and defensive estimates separately.
+- Join legacy FT/mid-range events to reconstructed evidence by game and sorted
+  ten-player lineup, not unstable stint index. Exact lineup matches cover
+  95.53% of counted possessions; retain exact game component totals by
+  spreading the unmatched remainder over that game's counted possessions.
+
+### Canonical shooting-luck strength results
+
+- The validation panel contains 7,909 player-season transitions from 1996-97
+  through 2025-26. Raw evidence predicts next-season raw RAPM at .3184 total,
+  .3510 offense and .2526 defense. Full 3PT removal alone raises those to
+  .3501/.3969/.2747. The 3PT result improves monotonically through every grid
+  step and full removal beats no 3PT removal in 24/29 total, 28/29 offensive
+  and 26/29 defensive season pairs.
+- The best total setting is 3PT=1.0, FT=1.0, mid-range=.50, scoring
+  .3587/.4039/.2846. Relative to 3PT-only it improves total/offense/defense by
+  .0086/.0070/.0099 and wins 20/29, 24/29 and 22/29 season pairs. A season-block
+  bootstrap gives positive 95% intervals on all three improvements.
+- FT removal is beneficial but its exact upper setting is unresolved. With
+  3PT=1 and mid-range=.50, full FT removal improves total/offense/defense over
+  no FT removal by .0038/.0025/.0031. FT=.75 and FT=1.0 are statistically
+  indistinguishable; full FT is ahead by only .00006 total and slightly behind
+  on offense. Basketball structure therefore supports full FT removal, but the
+  data support the broader 75-100% range rather than a precise optimum.
+- Mid-range is genuinely partial. With 3PT=FT=1, .50 removal beats zero by
+  .0050 total and beats full removal by .0043; both improvements have positive
+  season-block bootstrap intervals for total and offense. Defense alone peaks
+  at .75 and is nearly flat from .50 to 1.0. A uniform .50 mid-range setting is
+  the cleanest total-value choice.
+- The formerly intended 1.0/.75/.75 setting remains close (.3578 total), but
+  it has no measurable advantage over 1.0/1.0/.50.
+
+### Canonical shooting-luck production adoption
+
+- Production now removes 100% of estimated 3PT and FT make/miss residuals and
+  50% of estimated 10-23-foot mid-range residuals. The same default feeds the
+  canonical counted-possession evidence, regular-season and playoff on-off,
+  public RAPM, NERD's RAPM evidence, daily results, player game/span search,
+  playoff series and lineup-combination aggregates.
+- The daily luck page, playoff RAPM page and combinations page also expose the
+  prespecified comparison that removes 3PT and FT residuals but leaves 2PT
+  results untouched. The full model remains the default on all three.
+- Canonical evidence contains 1,084,159 counted stints. Recalculation checks
+  reproduce both the default and comparison adjusted scores with zero maximum
+  algebraic error. The rebuilt analytics database contains 120,745 two-player,
+  427,517 three-player, 687,873 four-player, 371,014 five-player and 507,833
+  player-combination game rows with both adjustment variants.

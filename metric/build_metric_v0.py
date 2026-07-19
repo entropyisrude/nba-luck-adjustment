@@ -158,6 +158,9 @@ def main() -> None:
 
     out = pd.DataFrame(results)
     evid = pd.DataFrame(evid_rows)
+    evid_path = METRIC_DATA / "evidence_season_canonical_counted.parquet"
+    evid.to_parquet(evid_path, index=False)
+    print(f"Wrote {len(evid)} single-season evidence rows to {evid_path}")
 
     # ---------------- predictive scoreboard --------------------------------
     ev_next = evid.rename(columns={"season_year": "next_year"})

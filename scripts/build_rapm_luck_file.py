@@ -1,4 +1,4 @@
-"""Export FT + mid-range luck for the site's RAPM generators.
+"""Export separate FT and mid-range luck for all site generators.
 
 Combines nba-metric-data's ft_stint_adjust + midrange_stint_adjust with the
 prepared stints' lineups and aggregates per (game, lineup-pair), keyed by
@@ -11,7 +11,11 @@ the group's luck is split among them cannot change the normal equations.
 
 Output (committed): data/rapm_luck_adjust.parquet
   game_id, hk (sorted home five, comma-joined), ak (sorted away five),
-  luck_home, luck_away   [FT + mid-range summed, in points]
+  ft_luck_home, ft_luck_away, mr_luck_home, mr_luck_away (points)
+
+Keeping the components separate lets production use the validated default
+(100% FT, 50% mid-range) while selected public pages can expose the requested
+3PT+FT-only view without rebuilding or approximating the underlying evidence.
 
 Run locally after refreshing the two adjustment builders (desktop-only
 inputs); CI consumes the committed output.
@@ -41,20 +45,18 @@ def main() -> None:
         st = st.merge(adj, on=["game_id", "stint_index"], how="left")
     st = st.fillna({c: 0.0 for c in ["ft_luck_home", "ft_luck_away",
                                      "mr_luck_home", "mr_luck_away"]})
-    st["luck_home"] = st["ft_luck_home"] + st["mr_luck_home"]
-    st["luck_away"] = st["ft_luck_away"] + st["mr_luck_away"]
-
     H = np.sort(st[HCOLS].to_numpy().astype(np.int64), axis=1)
     A = np.sort(st[ACOLS].to_numpy().astype(np.int64), axis=1)
     st["hk"] = [",".join(map(str, r)) for r in H]
     st["ak"] = [",".join(map(str, r)) for r in A]
 
-    agg = (st.groupby(["game_id", "hk", "ak"], as_index=False)
-           [["luck_home", "luck_away"]].sum())
-    agg = agg[(agg["luck_home"] != 0) | (agg["luck_away"] != 0)]
+    luck_cols = ["ft_luck_home", "ft_luck_away",
+                 "mr_luck_home", "mr_luck_away"]
+    agg = st.groupby(["game_id", "hk", "ak"], as_index=False)[luck_cols].sum()
+    agg = agg[agg[luck_cols].ne(0).any(axis=1)]
     agg.to_parquet(OUT, index=False)
     print(f"wrote {OUT}: {len(agg)} lineup-pair rows, "
-          f"total |luck| {agg[['luck_home','luck_away']].abs().to_numpy().sum():,.0f} pts")
+          f"total |luck| {agg[luck_cols].abs().to_numpy().sum():,.0f} pts")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NBA 3-Point Shooting Luck-Adjusted Results - 2025-26 Season</title>
+    <title>NBA Shooting Luck-Adjusted Results - 2025-26 Season</title>
     <style>
         body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -502,7 +502,7 @@
 </head>
 <body>
     <div class="hero-banner">
-        <h1>NBA 3-Point Shooting Luck-Adjusted Results</h1>
+        <h1>NBA Shooting Luck-Adjusted Results</h1>
         <p class="timestamp">2025-26 Season through {{SEASON_DATE}} | {{GAME_COUNT}} games analyzed</p>
         <div class="hero-nav">
             <div class="hero-nav-row">
@@ -549,6 +549,14 @@
                 <a href="example.html">Method</a>
             </div>
         </div>
+    </div>
+
+    <div style="max-width:1180px;margin:18px auto 0;text-align:center;">
+        <label for="luck-mode" style="font-weight:700;">Shooting adjustment</label>
+        <select id="luck-mode" style="margin-left:8px;padding:8px 10px;border:1px solid #c5d4e8;border-radius:6px;">
+            <option value="default">3PT + FT + 50% mid-range (default)</option>
+            <option value="3pt_ft">3PT + FT only</option>
+        </select>
     </div>
 
     <h2>Games by Date</h2>
@@ -624,15 +632,15 @@
     </div>
 
     <div id="swings-regular">
-    <h2 id="biggest-swings">Highest 3PT Variance Games</h2>
-    <p>Regular season games where 3PT variance most dramatically affected the outcome</p>
-    <table>
+    <h2 id="biggest-swings">Highest Shooting Variance Games</h2>
+    <p>Regular season games where adjusted shooting variance most dramatically affected the outcome</p>
+    <table id="swings-table-regular">
         <tr>
             <th>Date</th>
             <th>Matchup</th>
             <th>Actual</th>
             <th>Adjusted</th>
-            <th>3PT Luck</th>
+            <th>Shooting Luck</th>
         </tr>
 {{BIGGEST_SWINGS_ROWS}}
     </table>
@@ -640,26 +648,36 @@
     </div>
 
     <div id="swings-playoff" style="display:none;">
-    <h2>Highest 3PT Variance Games — Playoffs</h2>
-    <p>Playoff games where 3PT variance most dramatically affected the outcome</p>
-    <table>
+    <h2>Highest Shooting Variance Games — Playoffs</h2>
+    <p>Playoff games where adjusted shooting variance most dramatically affected the outcome</p>
+    <table id="swings-table-playoff">
         <tr>
             <th>Date</th>
             <th>Matchup</th>
             <th>Actual</th>
             <th>Adjusted</th>
-            <th>3PT Luck</th>
+            <th>Shooting Luck</th>
         </tr>
 {{PLAYOFF_BIGGEST_SWINGS_ROWS}}
     </table>
     <p><small>&#9888; = Adjusted margin flips the winner</small></p>
     </div>
 
+    <template id="rows-team-default">{{TEAM_RANKINGS_ROWS}}</template>
+    <template id="rows-team-3pt-ft">{{TEAM_RANKINGS_ROWS_3PT_FT}}</template>
+    <template id="rows-playoff-default">{{PLAYOFF_RANKINGS_ROWS}}</template>
+    <template id="rows-playoff-3pt-ft">{{PLAYOFF_RANKINGS_ROWS_3PT_FT}}</template>
+    <template id="rows-swings-default">{{BIGGEST_SWINGS_ROWS}}</template>
+    <template id="rows-swings-3pt-ft">{{BIGGEST_SWINGS_ROWS_3PT_FT}}</template>
+    <template id="rows-playoff-swings-default">{{PLAYOFF_BIGGEST_SWINGS_ROWS}}</template>
+    <template id="rows-playoff-swings-3pt-ft">{{PLAYOFF_BIGGEST_SWINGS_ROWS_3PT_FT}}</template>
+
     <p class="timestamp" style="text-align: center; margin-top: 32px;">Generated {{GENERATED_TIMESTAMP}} | <a href="https://github.com/entropyisrude/nba-luck-adjustment" target="_blank">View on GitHub</a></p>
 
     <script>
     // Game data embedded as JSON
     const gamesByDate = {{GAMES_JSON}};
+    let shootingLuckMode = 'default';
     const mostRecentDate = "{{MOST_RECENT_DATE}}";
 
     // Month names
@@ -681,6 +699,40 @@
     const seasonMonths = {{SEASON_MONTHS_JSON}};
 
     let selectedDate = null;
+
+    function replaceDataRows(tableId, templateId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        table.querySelectorAll('tr:not(:first-child)').forEach(row => row.remove());
+        table.insertAdjacentHTML('beforeend', document.getElementById(templateId).innerHTML);
+    }
+
+    function applyShootingLuckMode(mode) {
+        shootingLuckMode = mode === '3pt_ft' ? '3pt_ft' : 'default';
+        for (const games of Object.values(gamesByDate)) {
+            for (const game of games) {
+                if (shootingLuckMode === '3pt_ft') {
+                    game.home_pts_adj = game.home_pts_adj_3pt_ft;
+                    game.away_pts_adj = game.away_pts_adj_3pt_ft;
+                    game.margin_adj = game.margin_adj_3pt_ft;
+                    game.margin_delta = game.margin_delta_3pt_ft;
+                } else {
+                    game.home_pts_adj = game.home_pts_adj_default;
+                    game.away_pts_adj = game.away_pts_adj_default;
+                    game.margin_adj = game.margin_adj_default;
+                    game.margin_delta = game.margin_delta_default;
+                }
+            }
+        }
+        const suffix = shootingLuckMode === '3pt_ft' ? '3pt-ft' : 'default';
+        replaceDataRows('team-table', `rows-team-${suffix}`);
+        replaceDataRows('team-table-playoff', `rows-playoff-${suffix}`);
+        replaceDataRows('swings-table-regular', `rows-swings-${suffix}`);
+        replaceDataRows('swings-table-playoff', `rows-playoff-swings-${suffix}`);
+        setupSortableTable('team-table');
+        setupSortableTable('team-table-playoff');
+        if (selectedDate) renderGamesTable(selectedDate);
+    }
 
     function formatDate(year, month, day) {
         return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -897,7 +949,7 @@
                             <span class="three-pt-stats">${game.home_3pm}/${game.home_3pa} (${home3pClass ? `<span class="${home3pClass}">${home3pPct}%</span>` : home3pPct + '%'} vs ${home3pExpPct}% exp)</span>
                         </div>
                         <div class="swing-row">
-                            <span><span class="luck-label">3PT Luck:</span> <span class="luck-team">${luckyTeam}</span> <span class="luck-value">+${luckAmount.toFixed(1)}</span></span>
+                            <span><span class="luck-label">Shooting Luck:</span> <span class="luck-team">${luckyTeam}</span> <span class="luck-value">+${luckAmount.toFixed(1)}</span></span>
                             ${isFlipped ? '<span class="flip-indicator">⚠ FLIPPED</span>' : ''}
                         </div>
                         ${swingPlayerHtml}
@@ -989,6 +1041,10 @@
             setupSortableTable('team-table');
         }
     })();
+
+    document.getElementById('luck-mode').addEventListener('change', event => {
+        applyShootingLuckMode(event.target.value);
+    });
 
     function showFlippedGames(team) {
         const overlay = document.getElementById('modal-overlay');

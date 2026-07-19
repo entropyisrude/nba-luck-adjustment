@@ -106,7 +106,13 @@ def main() -> None:
     seasons = design["seasons"]
     names = load_player_names()
 
-    evidence = pd.read_parquet(EVIDENCE_PATH)
+    evidence = pd.read_parquet(EVIDENCE_PATH).rename(
+        columns={"evid_poss": "ev_poss"}
+    )
+    if "ev_poss" not in evidence.columns:
+        raise RuntimeError(
+            f"{EVIDENCE_PATH} must contain ev_poss or evid_poss"
+        )
     ev_lookup = evidence.set_index(["season_year", "player_id"])
     pri = pd.read_parquet(PRIOR_PATH).rename(columns={"pid": "player_id"})
     pri = pri.set_index(["season_year", "player_id"])
@@ -277,7 +283,7 @@ def main() -> None:
     out.to_csv(run_out / "multivariate_kalman_states.csv", index=False)
 
     score = out.merge(
-        evidence.assign(evid=evidence.ev_o + evidence.ev_d),
+        evidence,
         on=["player_id", "season_year"], suffixes=("", "_target"))
     first_year = score.groupby("player_id").season_year.transform("min")
     score = score[(score.season_year > first_year)

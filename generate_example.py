@@ -1,6 +1,7 @@
 """Generate a detailed example page showing how adjustments are calculated."""
 
 import pandas as pd
+from generate_report import _apply_shooting_luck
 import yaml
 from pathlib import Path
 from datetime import datetime
@@ -31,7 +32,7 @@ def generate_example_page():
         return
 
     # Get game info from adjusted_games.csv
-    games_df = pd.read_csv("data/adjusted_games.csv")
+    games_df = _apply_shooting_luck(pd.read_csv("data/adjusted_games.csv"))
     game_row = games_df[games_df['game_id'].astype(str).str.lstrip('0') == EXAMPLE_GAME_ID.lstrip('0')].iloc[0]
 
     # Process each shot
@@ -104,7 +105,7 @@ def generate_example_page():
     html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>Detailed Example: {away_team} @ {home_team} - NBA 3PT Luck Analysis</title>
+    <title>Detailed Example: {away_team} @ {home_team} - NBA Shooting Luck Analysis</title>
     <style>
         body {{
             font-family: "Segoe UI", Arial, sans-serif;
@@ -218,6 +219,7 @@ def generate_example_page():
         <a href="rapm-playoffs.html">Playoff RAPM</a>
         <a href="example.html">Method</a>
       </div>
+      <p style="color:#d6e8ff;margin:10px 0 0;">The production score removes 100% of estimated 3PT and free-throw luck and 50% of estimated midrange luck. The shot table below illustrates the 3PT component in detail.</p>
     </section>
 
     <p style="color:#5b6778;font-size:0.9em;margin-top:0">A detailed breakdown using the <strong>{away_team} @ {home_team}</strong> game from <strong>{game_row['date']}</strong></p>

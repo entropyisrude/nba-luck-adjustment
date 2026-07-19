@@ -200,7 +200,7 @@ def generate_onoff_report_playoffs() -> Path:
     latest_season = season_values[0] if season_values else _season_from_game_id("", latest_date)
     generated_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    page_title = "3PT Luck Adjusted Plus Minus: Playoffs"
+    page_title = "Shooting Luck Adjusted Plus Minus: Playoffs"
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -378,10 +378,10 @@ def generate_onoff_report_playoffs() -> Path:
               <th data-key="games">G</th>
               <th data-key="minutes">Min</th>
               <th data-key="pm_actual" class="col-actual col-hidden" title="Unadjusted plus-minus per 48 min">+/-</th>
-              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
+              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (100% 3PT and FT, 50% midrange luck adjusted)">PM Adj</th>
               <th data-key="pm_delta" class="col-delta col-hidden" title="PM Adj minus unadjusted PM">+/- Delta</th>
               <th data-key="onoff_actual" class="col-actual col-hidden" title="Unadjusted on-off per 48 min">On/Off</th>
-              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
+              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (100% 3PT and FT, 50% midrange luck adjusted)">OnOff Adj</th>
               <th data-key="onoff_adj_off" title="Offensive On-Off (team ORtg impact)">Off</th>
               <th data-key="on_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is ON">On ORtg</th>
               <th data-key="off_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is OFF">Off ORtg</th>
@@ -430,10 +430,10 @@ def generate_onoff_report_playoffs() -> Path:
               <th data-key="games">G</th>
               <th data-key="minutes">Min</th>
               <th data-key="pm_actual" class="col-actual col-hidden" title="Unadjusted plus-minus per 48 min">+/-</th>
-              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (3PT adjusted)">PM Adj</th>
+              <th data-key="pm_adj" class="metric-emph" title="Plus-minus per 48 min (100% 3PT and FT, 50% midrange luck adjusted)">PM Adj</th>
               <th data-key="pm_delta" class="col-delta col-hidden" title="PM Adj minus unadjusted PM">+/- Delta</th>
               <th data-key="onoff_actual" class="col-actual col-hidden" title="Unadjusted on-off per 48 min">On/Off</th>
-              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (3PT adjusted)">OnOff Adj</th>
+              <th data-key="onoff_adj" class="metric-emph" title="On-Off per 48 min (100% 3PT and FT, 50% midrange luck adjusted)">OnOff Adj</th>
               <th data-key="onoff_adj_off" title="Offensive On-Off (team ORtg impact)">Off</th>
               <th data-key="on_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is ON">On ORtg</th>
               <th data-key="off_ortg_adj" class="col-ortg-adj col-hidden" title="Team adjusted ORtg when player is OFF">Off ORtg</th>

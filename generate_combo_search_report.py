@@ -9,7 +9,7 @@ from pathlib import Path
 import duckdb
 
 
-ROOT = Path("/mnt/c/users/dave/Downloads/nba-onoff-publish")
+ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba_analytics.duckdb")))
 OUTPUT_DATA_PATH = Path(os.environ.get("COMBO_SEARCH_OUTPUT_DATA_PATH", str(DATA_DIR / "combo_search.html")))
@@ -60,10 +60,11 @@ def _stream_query_rows_to_js(
             for row in batch:
                 if not first:
                     fh.write(",")
-                fh.write(json.dumps(list(row), ensure_ascii=False, separators=(",", ":")))
+                fh.write(json.dumps(list(row), ensure_ascii=False,
+                                    separators=(",", ":"), default=str))
                 first = False
                 row_count += 1
-        fh.write(";\n")
+        fh.write("];\n")
     return row_count
 
 
@@ -104,7 +105,9 @@ def generate_combo_search_report() -> Path:
                 {", ".join(player_exprs)},
                 games, stints, seconds, minutes, poss_est,
                 pts_for_raw, pts_against_raw, net_raw,
-                pts_for_adj, pts_against_adj, net_adj, net_delta
+                pts_for_adj, pts_against_adj, net_adj, net_delta,
+                pts_for_adj_3pt_ft, pts_against_adj_3pt_ft,
+                net_adj_3pt_ft, net_delta_3pt_ft
             FROM {table_name} c
             LEFT JOIN team_names t ON c.team_id = t.team_id
             """
@@ -139,10 +142,14 @@ def generate_combo_search_report() -> Path:
                 SUM(pts_against_raw_def) AS pts_against_raw_def,
                 SUM(pts_for_adj_off) AS pts_for_adj_off,
                 SUM(pts_against_adj_def) AS pts_against_adj_def,
+                SUM(pts_for_adj_off_3pt_ft) AS pts_for_adj_off_3pt_ft,
+                SUM(pts_against_adj_def_3pt_ft) AS pts_against_adj_def_3pt_ft,
                 100.0 * SUM(pts_for_raw_off) / NULLIF(SUM(off_poss), 0) AS ortg_raw,
                 100.0 * SUM(pts_against_raw_def) / NULLIF(SUM(def_poss), 0) AS drtg_raw,
                 100.0 * SUM(pts_for_adj_off) / NULLIF(SUM(off_poss), 0) AS ortg_adj,
-                100.0 * SUM(pts_against_adj_def) / NULLIF(SUM(def_poss), 0) AS drtg_adj
+                100.0 * SUM(pts_against_adj_def) / NULLIF(SUM(def_poss), 0) AS drtg_adj,
+                100.0 * SUM(pts_for_adj_off_3pt_ft) / NULLIF(SUM(off_poss), 0) AS ortg_adj_3pt_ft,
+                100.0 * SUM(pts_against_adj_def_3pt_ft) / NULLIF(SUM(def_poss), 0) AS drtg_adj_3pt_ft
             FROM combo_game_facts
             GROUP BY ALL
         )
@@ -162,11 +169,15 @@ def generate_combo_search_report() -> Path:
             c.games, c.stints, c.seconds, c.minutes, c.poss_est,
             c.pts_for_raw, c.pts_against_raw, c.net_raw,
             c.pts_for_adj, c.pts_against_adj, c.net_adj, c.net_delta,
+            c.pts_for_adj_3pt_ft, c.pts_against_adj_3pt_ft,
+            c.net_adj_3pt_ft, c.net_delta_3pt_ft,
             sr.game_logs,
             sr.off_poss, sr.def_poss,
             sr.pts_for_raw_off, sr.pts_against_raw_def,
             sr.pts_for_adj_off, sr.pts_against_adj_def,
-            sr.ortg_raw, sr.drtg_raw, sr.ortg_adj, sr.drtg_adj
+            sr.pts_for_adj_off_3pt_ft, sr.pts_against_adj_def_3pt_ft,
+            sr.ortg_raw, sr.drtg_raw, sr.ortg_adj, sr.drtg_adj,
+            sr.ortg_adj_3pt_ft, sr.drtg_adj_3pt_ft
         FROM combined c
         LEFT JOIN split_rollups sr
           ON c.combo_size = sr.combo_size
@@ -256,8 +267,10 @@ def generate_combo_search_report() -> Path:
             off_poss, def_poss,
             pts_for_raw_off, pts_against_raw_def,
             pts_for_adj_off, pts_against_adj_def,
+            pts_for_adj_off_3pt_ft, pts_against_adj_def_3pt_ft,
             ortg_raw, drtg_raw, net_raw,
-            ortg_adj, drtg_adj, net_adj, net_delta
+            ortg_adj, drtg_adj, net_adj, net_delta,
+            ortg_adj_3pt_ft, drtg_adj_3pt_ft, net_adj_3pt_ft, net_delta_3pt_ft
         FROM combo_game_facts g
         LEFT JOIN player_names pn1 ON g.p1 = pn1.player_id
         LEFT JOIN player_names pn2 ON g.p2 = pn2.player_id
@@ -329,8 +342,10 @@ def generate_combo_search_report() -> Path:
             off_poss, def_poss,
             pts_for_raw_off, pts_against_raw_def,
             pts_for_adj_off, pts_against_adj_def,
+            pts_for_adj_off_3pt_ft, pts_against_adj_def_3pt_ft,
             ortg_raw, drtg_raw, net_raw,
-            ortg_adj, drtg_adj, net_adj, net_delta
+            ortg_adj, drtg_adj, net_adj, net_delta,
+            ortg_adj_3pt_ft, drtg_adj_3pt_ft, net_adj_3pt_ft, net_delta_3pt_ft
         FROM combo_game_facts g
         LEFT JOIN player_names pn1 ON g.p1 = pn1.player_id
         LEFT JOIN player_names pn2 ON g.p2 = pn2.player_id
@@ -511,6 +526,12 @@ def generate_combo_search_report() -> Path:
             <option value="logs">Game Logs</option>
           </select>
         </label>
+        <label>Shooting Luck
+          <select id="luckMode">
+            <option value="default">3PT + FT + 50% Midrange</option>
+            <option value="3pt_ft">3PT + FT Only</option>
+          </select>
+        </label>
         <label>Combo Size
           <select id="comboSize">
 {size_options}
@@ -569,7 +590,7 @@ def generate_combo_search_report() -> Path:
         <button class="secondary" id="clearBtn">Clear</button>
         <span class="meta" id="status">{total_agg_rows:,} season combo rows indexed across all sizes</span>
       </div>
-      <div class="note">`Season Combos` uses aggregate rows. {log_note} Player filters can be typed manually or added from the filtered player pickers.</div>
+      <div class="note">The default removes 100% of estimated 3PT and free-throw luck and 50% of estimated midrange luck. `Season Combos` uses aggregate rows. {log_note} Player filters can be typed manually or added from the filtered player pickers.</div>
     </div>
 
     <div class="card table-wrap">
@@ -730,6 +751,13 @@ def generate_combo_search_report() -> Path:
       return currentMode() === "logs" ? LOG_IDX : AGG_IDX;
     }}
 
+    function metricKey(baseKey) {{
+      if ($("luckMode").value === "3pt_ft" && ["ortg_adj", "drtg_adj", "net_adj", "net_delta"].includes(baseKey)) {{
+        return `${{baseKey}}_3pt_ft`;
+      }}
+      return baseKey;
+    }}
+
     function rowPlayers(r, idx) {{
       const names = [];
       for (const key of ["p1_name","p2_name","p3_name","p4_name","p5_name"]) {{
@@ -862,13 +890,18 @@ def generate_combo_search_report() -> Path:
         return;
       }}
       rows.sort((a, b) => {{
-        const av = Number(a[idx[sortState.key]] || 0);
-        const bv = Number(b[idx[sortState.key]] || 0);
+        const sortKey = metricKey(sortState.key);
+        const av = Number(a[idx[sortKey]] || 0);
+        const bv = Number(b[idx[sortKey]] || 0);
         return sortState.dir * (av - bv);
       }});
       for (const r of rows.slice(0, 400)) {{
         const players = rowPlayers(r, idx).join(" / ");
-        const delta = Number(r[idx.net_delta] || 0);
+        const ortgAdjKey = metricKey("ortg_adj");
+        const drtgAdjKey = metricKey("drtg_adj");
+        const netAdjKey = metricKey("net_adj");
+        const deltaKey = metricKey("net_delta");
+        const delta = Number(r[idx[deltaKey]] || 0);
         const team = displayTeamAbbr(r[idx.team_abbr] || r[idx.team_id] || "", r[idx.season]);
         const opp = r[idx.opp_team_abbr] || "";
         const cells = currentMode() === "logs"
@@ -884,9 +917,9 @@ def generate_combo_search_report() -> Path:
               `<td class="num">${{formatNum(r[idx.ortg_raw], 1)}}</td>`,
               `<td class="num">${{formatNum(r[idx.drtg_raw], 1)}}</td>`,
               `<td class="num">${{formatNum(r[idx.net_raw], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.ortg_adj], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.drtg_adj], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.net_adj], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[ortgAdjKey]], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[drtgAdjKey]], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[netAdjKey]], 1)}}</td>`,
               `<td class="num ${{delta > 0 ? "good" : (delta < 0 ? "bad" : "")}}">${{formatNum(delta, 1)}}</td>`,
             ]
           : [
@@ -900,9 +933,9 @@ def generate_combo_search_report() -> Path:
               `<td class="num">${{formatNum(r[idx.ortg_raw], 1)}}</td>`,
               `<td class="num">${{formatNum(r[idx.drtg_raw], 1)}}</td>`,
               `<td class="num">${{formatNum(r[idx.net_raw], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.ortg_adj], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.drtg_adj], 1)}}</td>`,
-              `<td class="num">${{formatNum(r[idx.net_adj], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[ortgAdjKey]], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[drtgAdjKey]], 1)}}</td>`,
+              `<td class="num">${{formatNum(r[idx[netAdjKey]], 1)}}</td>`,
               `<td class="num ${{delta > 0 ? "good" : (delta < 0 ? "bad" : "")}}">${{formatNum(delta, 1)}}</td>`,
             ];
         const tr = document.createElement("tr");
@@ -942,6 +975,7 @@ def generate_combo_search_report() -> Path:
 
     function resetFilters() {{
       $("resultMode").value = "aggregate";
+      $("luckMode").value = "default";
       $("comboSize").value = String(AVAILABLE_SIZES[0] || 2);
       $("seasonStart").value = SEASONS[SEASONS.length - 1] || "";
       $("seasonEnd").value = SEASONS[SEASONS.length - 1] || "";
@@ -969,7 +1003,17 @@ def generate_combo_search_report() -> Path:
     }});
     $("includeAddBtn").addEventListener("click", () => addSelectedPlayer("includePlayerSelect", "includePlayers"));
     $("excludeAddBtn").addEventListener("click", () => addSelectedPlayer("excludePlayerSelect", "excludePlayers"));
-    $("resultMode").addEventListener("change", runSearch);
+    $("resultMode").addEventListener("change", () => {{
+      if (currentMode() === "logs") {{
+        $("minMinutes").value = "1";
+        $("minPoss").value = "1";
+      }} else {{
+        $("minMinutes").value = "200";
+        $("minPoss").value = "400";
+      }}
+      runSearch();
+    }});
+    $("luckMode").addEventListener("change", runSearch);
     $("sortBy").addEventListener("change", () => {{
       const key = $("sortBy").value;
       sortState = {{

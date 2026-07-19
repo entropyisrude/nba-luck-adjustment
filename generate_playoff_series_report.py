@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
+from generate_report import _apply_shooting_luck
 
 DATA_DIR = Path("data")
 GAMES_CSV = DATA_DIR / "adjusted_games.csv"
@@ -152,9 +153,9 @@ def _series_card(teams_sorted: list[str], stats: dict, in_progress: bool) -> str
         <th title="Actual offensive rating">OffRtg</th>
         <th title="Actual defensive rating">DefRtg</th>
         <th title="Actual net rating">NetRtg</th>
-        <th class="adj-col" title="3-point luck adjusted offensive rating">Adj Off</th>
-        <th class="adj-col" title="3-point luck adjusted defensive rating">Adj Def</th>
-        <th class="adj-col" title="3-point luck adjusted net rating">Adj Net</th>
+        <th class="adj-col" title="Offensive rating adjusted for 100% of estimated 3PT and FT luck and 50% of midrange luck">Adj Off</th>
+        <th class="adj-col" title="Defensive rating adjusted for 100% of estimated 3PT and FT luck and 50% of midrange luck">Adj Def</th>
+        <th class="adj-col" title="Net rating adjusted for 100% of estimated 3PT and FT luck and 50% of midrange luck">Adj Net</th>
       </tr>
     </thead>
     <tbody>
@@ -166,7 +167,7 @@ def _series_card(teams_sorted: list[str], stats: dict, in_progress: bool) -> str
 
 
 def generate_playoff_series_report() -> Path:
-    df = pd.read_csv(GAMES_CSV)
+    df = _apply_shooting_luck(pd.read_csv(GAMES_CSV))
     if "game_type" in df.columns:
         df["game_type"] = df["game_type"].fillna("regular")
     else:

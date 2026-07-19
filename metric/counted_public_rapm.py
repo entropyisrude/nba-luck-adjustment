@@ -60,6 +60,13 @@ class CountedPublicRapm:
                   out=ya[0::2], where=c.n_home.to_numpy(float)>0)
         np.divide(c.points_adjusted_away.to_numpy(float)*100, c.n_away.to_numpy(float),
                   out=ya[1::2], where=c.n_away.to_numpy(float)>0)
+        ya_3pt_ft = np.zeros(2*n)
+        np.divide(c.points_adjusted_home_3pt_ft.to_numpy(float)*100,
+                  c.n_home.to_numpy(float), out=ya_3pt_ft[0::2],
+                  where=c.n_home.to_numpy(float)>0)
+        np.divide(c.points_adjusted_away_3pt_ft.to_numpy(float)*100,
+                  c.n_away.to_numpy(float), out=ya_3pt_ft[1::2],
+                  where=c.n_away.to_numpy(float)>0)
         # Raw targets preserve each source game's exact scoring total while
         # keeping the canonical possession placement within that game.
         tmp = c.copy()
@@ -77,7 +84,8 @@ class CountedPublicRapm:
         np.divide(rawa*100, tmp.n_away.to_numpy(float), out=yr[1::2], where=tmp.n_away.to_numpy(float)>0)
 
         obs = (a.drop_duplicates("observation_id")[["observation_id","game_id","season_year",
-               "target_per_100","possessions_proxy"]].reset_index(drop=True))
+               "target_per_100","target_per_100_3pt_ft",
+               "possessions_proxy"]].reset_index(drop=True))
         rowmap = {v:i for i,v in enumerate(obs.observation_id)}
         ar = a.observation_id.map(rowmap).to_numpy(int)
         ap = a.player_id.astype(int).map(self.pidx).to_numpy(int)
@@ -86,6 +94,8 @@ class CountedPublicRapm:
         xa = sparse.csr_matrix((av,(ar,ac)),shape=(len(obs),2*P))
         self.X = sparse.vstack([xs,xa],format="csr")
         self.y_adj = np.r_[ya,obs.target_per_100.to_numpy(float)]
+        self.y_3pt_ft = np.r_[ya_3pt_ft,
+                              obs.target_per_100_3pt_ft.to_numpy(float)]
         self.y_raw = np.r_[yr,obs.target_per_100.to_numpy(float)]
         self.poss = np.r_[poss,obs.possessions_proxy.to_numpy(float)]
         self.seasons = np.r_[np.repeat(c.season_year.to_numpy(int),2),obs.season_year.to_numpy(int)]
@@ -101,13 +111,15 @@ class CountedPublicRapm:
         self.meta["season_year"] = season_year(self.meta.date)
         self.meta["game_type"] = np.where(self.meta.game_id.str.startswith("4"),"playoffs","regular")
 
-    def fit(self, kind: str, years: list[int], alpha: float, min_minutes: int) -> list[dict]:
+    def fit(self, kind: str, years: list[int], alpha: float, min_minutes: int,
+            adjustment: str = "default") -> list[dict]:
         mask = (self.game_types == kind) & np.isin(self.seasons, years) & (self.poss > 0)
         X = self.X[mask]
         active = np.asarray(X.getnnz(axis=0)).ravel() > 0
         X = X[:,active]
         w = self.poss[mask]
-        Y = np.c_[self.y_adj[mask],self.y_raw[mask]]
+        adjusted = self.y_3pt_ft if adjustment == "3pt_ft" else self.y_adj
+        Y = np.c_[adjusted[mask],self.y_raw[mask]]
         Y = Y - np.average(Y,axis=0,weights=w)
         model = Ridge(alpha=alpha,fit_intercept=False,solver="lsqr",tol=1e-6,max_iter=1000)
         model.fit(X,Y,sample_weight=w)
