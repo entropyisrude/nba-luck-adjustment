@@ -111,7 +111,8 @@
       <p class="muted">Minutes come from the hand-tuned depth charts where they exist, otherwise
       a last-season-minutes-based estimate (same as the <a href="depth-charts.html">Depth
       Charts</a> pages). Players we don't project — rookies and anyone without NBA history — are
-      treated as replacement level (about &minus;2 per 100) and tagged <span class="tag-rep">REP</span>;
+      treated as replacement level (two points per 100 below an average rotation slot) and
+      tagged <span class="tag-rep">REP</span>;
       teams leaning on unproven youth are therefore projected conservatively. Rosters reflect the
       current offseason snapshot and will shift with trades and signings.</p>
     </section>
@@ -134,9 +135,9 @@
         </label>
         <label>Replacement level
           <select id="rep-sel">
-            <option value="-2">Standard (&minus;2.0)</option>
-            <option value="-1">Lenient (&minus;1.0)</option>
-            <option value="-3">Harsh (&minus;3.0)</option>
+            <option value="2">Standard (&minus;2.0)</option>
+            <option value="1">Lenient (&minus;1.0)</option>
+            <option value="3">Harsh (&minus;3.0)</option>
           </select>
         </label>
         <label>Health
@@ -161,9 +162,10 @@
         not the rosters. Players DARKO doesn't rate get replacement level.
         <br><em>Comparing raw player values across systems misleads:</em> the two scales have
         different zero points (an average rotation player carries about +1.3 NERD but +0.3
-        DPM), so per-player numbers and WAR/82 are comparable <em>within</em> a mode, not
-        across modes. Standings wins are always relative to each system's own league average
-        — that's why a team can rate similar player-by-player yet project differently.
+        DPM), so compare raw ratings only after accounting for those baselines. Replacement
+        level and WAR/82 are calibrated to the same depth and fixed league-wide wins pool in
+        both modes. Standings wins are relative to each system's own league average — that's
+        why a team can rate similar player-by-player yet project differently.
       </p>
       <div class="table-scroll">
       <table id="proj-table">
@@ -184,6 +186,7 @@
       <p class="muted" style="font-size:11.5px;margin:10px 2px 0;">
         Click a team to see its rotation. Net Rtg is centered so the league averages to .500
         (projected wins across all 30 teams sum to a full season).
+        <span id="rep-note"></span>
       </p>
     </section>
   </div>
@@ -203,7 +206,24 @@
     const POSITIONS = ['PG','SG','SF','PF','C'];
     const TEAM_MINUTES = 240, MAX_PLAYER_MINUTES = 48, NO_DATA_MPG_WEIGHT = 8;
     const GAME_SD = 11.5;   // single-game margin sd; wins = 82*Phi(net/GAME_SD)
-    const PTS_PER_WIN = 28.8;  // slope of that curve at .500: GAME_SD / phi(0)
+    let REPLACEMENT_DEPTH = 2.0; // per player, relative to the rotation-slot mean
+
+    function erf(x){ // Abramowitz-Stegun 7.1.26
+      const s = x<0?-1:1; x = Math.abs(x);
+      const t = 1/(1+0.3275911*x);
+      const y = 1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+      return s*y;
+    }
+    function Phi(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+    function replacementTeamNet(){
+      return -(TEAM_MINUTES / MAX_PLAYER_MINUTES) * REPLACEMENT_DEPTH;
+    }
+    function replacementTeamWins(){ return 82 * Phi(replacementTeamNet() / GAME_SD); }
+    // Make player wins above replacement add to the league's fixed pool:
+    // 41 average-team wins minus the wins of a five-replacement-player team.
+    function ptsPerWin(){
+      return -replacementTeamNet() * 82 / (41 - replacementTeamWins());
+    }
 
     const CONF = { East: new Set(['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NYK','ORL','PHI','TOR','WAS']),
                    West: new Set(['DAL','DEN','GSW','HOU','LAC','LAL','MEM','MIN','NOP','OKC','PHX','POR','SAC','SAS','UTA']) };
@@ -325,29 +345,36 @@
     function lookupDarko(name){ return lookupIn(DKMAP, name); }
 
     // ---- compute every team ----
-    let REP = -2.0;
-    // Replacement depth must be consistent ACROSS rating scales: the two
-    // systems put "zero" in different places, so a fixed -2.0 floor sits
-    // 3.3 below a typical NERD rotation player but only ~2.3 below a
-    // typical DPM one (inflating DARKO-mode WAR and rookie value). Anchor
-    // each system's floor at the same depth below its own minutes-weighted
-    // rotation mean, calibrated to NERD's (-2.0 = 16-win replacement team).
+    // RAPM/DPM zero points are arbitrary. Define replacement relative to each
+    // system's own minutes-weighted rotation-slot mean so both systems have
+    // the same two-points-per-player replacement depth (a -10 team, ~16 wins).
     function slotMean(lookup){
-      let sw = 0, sv = 0;
+      let sw = 0, sv = 0, so = 0, sd = 0, totalMinutes = 0;
       for(const abbr of Object.keys(SNAP.teams)){
         for(const p of rotationFor(abbr)){
+          totalMinutes += p.minutes;
           const nd = lookup(p.player);
-          if(nd){ sw += p.minutes; sv += p.minutes * nd.nerd; }
+          if(nd){
+            sw += p.minutes;
+            sv += p.minutes * nd.nerd;
+            so += p.minutes * nd.o;
+            sd += p.minutes * nd.d;
+          }
         }
       }
-      return sv / sw;
+      return { nerd: sv/sw, o: so/sw, d: sd/sw, ratedShare: sw/totalMinutes };
     }
-    let SCALE_OFFSET_DARKO = null;   // darko slot mean - nerd slot mean
+    const SCALE_MEANS = new Map();
     function repFor(lookup){
-      if(lookup !== lookupDarko) return REP;
-      if(SCALE_OFFSET_DARKO === null)
-        SCALE_OFFSET_DARKO = slotMean(lookupDarko) - slotMean(lookupNerd);
-      return REP + SCALE_OFFSET_DARKO;
+      if(!SCALE_MEANS.has(lookup)) SCALE_MEANS.set(lookup, slotMean(lookup));
+      const mean = SCALE_MEANS.get(lookup);
+      // Missing projections are themselves assigned replacement minutes. Make
+      // the floor two points below the final rotation mean after those minutes
+      // are included, not merely two below the rated-player subset.
+      const depthFromRatedMean = REPLACEMENT_DEPTH / mean.ratedShare;
+      const nerd = mean.nerd - depthFromRatedMean;
+      const o = mean.o - depthFromRatedMean/2;
+      return { nerd, o, d: nerd-o };
     }
     const AVAIL = window.AVAILABILITY || {};
     function computeTeams(lookup = lookupNerd){
@@ -359,37 +386,30 @@
         let net = 0, off = 0, def = 0;
         const players = rot.map(p=>{
           const nd = lookup(p.player);
-          let val = nd ? nd.nerd : rep;
-          let ov = nd ? nd.o : rep/2, dv = nd ? nd.d : rep/2;
+          let val = nd ? nd.nerd : rep.nerd;
+          let ov = nd ? nd.o : rep.o, dv = nd ? nd.d : rep.d;
           const gp = useInj ? Math.max(0, Math.min(82, AVAIL[p.player] ?? 82)) : 82;
           if(gp < 82){
             const a = gp / 82;
-            val = a*val + (1-a)*rep;
-            ov = a*ov + (1-a)*rep/2;
-            dv = a*dv + (1-a)*rep/2;
+            val = a*val + (1-a)*rep.nerd;
+            ov = a*ov + (1-a)*rep.o;
+            dv = a*dv + (1-a)*rep.d;
           }
           const w = p.minutes / 48;
           net += w*val; off += w*ov; def += w*dv;
           return { name:p.player, minutes:p.minutes, nerd:val, o:ov, d:dv,
-                   isRep:!nd, rep, gp };
+                   isRep:!nd, rep:rep.nerd, gp };
         }).sort((a,b)=>b.minutes-a.minutes);
         teams.push({ abbr, name: SNAP.teams[abbr].name, net, off, def, players });
       }
       const mean = teams.reduce((s,t)=>s+t.net,0)/teams.length;
       const offMean = teams.reduce((s,t)=>s+t.off,0)/teams.length;
       const defMean = teams.reduce((s,t)=>s+t.def,0)/teams.length;
-      const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
       teams.forEach(t=>{
         t.netC = t.net - mean; t.offC = t.off - offMean; t.defC = t.def - defMean;
         t.wins = 82*Phi(t.netC/GAME_SD);
       });
       return teams;
-    }
-    function erf(x){ // Abramowitz-Stegun 7.1.26
-      const s = x<0?-1:1; x = Math.abs(x);
-      const t = 1/(1+0.3275911*x);
-      const y = 1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
-      return s*y;
     }
 
     let sortKey = 'wins', sortDir = -1, openTeam = null, lastSrc = 'nerd';
@@ -408,6 +428,10 @@
       <th data-key="nnet">NERD Net</th><th data-key="dnet">DARKO Net</th></tr>`;
 
     function render(){
+      const repWins = replacementTeamWins();
+      const leagueWar = Object.keys(SNAP.teams).length * (41-repWins);
+      document.getElementById('rep-note').textContent =
+        ` Replacement calibration: ${repWins.toFixed(1)}-win team; ${leagueWar.toFixed(1)} league WAR.`;
       const src = document.getElementById('src-sel').value;
       const grp = document.getElementById('group-sel').value;
       document.getElementById('darko-note').style.display = src==='nerd' ? 'none' : 'block';
@@ -455,8 +479,8 @@
             const dval = dp ? dp.nerd : null;
             // estimated wins per 82 at these minutes, each vs its own
             // system's (depth-consistent) replacement floor -> comparable
-            const nw = p.minutes/48*(p.nerd - p.rep)*82/PTS_PER_WIN;
-            const dw = dp ? p.minutes/48*(dp.nerd - dp.rep)*82/PTS_PER_WIN : null;
+            const nw = p.minutes/48*(p.nerd - p.rep)*82/ptsPerWin();
+            const dw = dp ? p.minutes/48*(dp.nerd - dp.rep)*82/ptsPerWin() : null;
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep&&(dp?dp.isRep:true)?'<span class="tag-rep">REP</span>':''}</td>
               <td>${p.minutes}<span class="rk"> mpg</span>${p.gp<82?` <span class="rk">(${p.gp}g)</span>`:''}</td>
@@ -500,7 +524,7 @@
             const barw = Math.round(Math.min(p.minutes,maxMin)/maxMin*100);
             const col = p.nerd>0 ? 'var(--good)' : 'var(--bad)';
             const ppgRep = p.minutes/48*(p.nerd - p.rep);
-            const war82 = ppgRep*82/PTS_PER_WIN;
+            const war82 = ppgRep*82/ptsPerWin();
             return `<tr>
               <td style="text-align:left">${p.name}${p.isRep?'<span class="tag-rep">REP</span>':''}</td>
               <td>${p.minutes}<span class="rk"> mpg</span>${p.gp<82?` <span class="rk">(${p.gp}g)</span>`:''}</td>
@@ -535,7 +559,10 @@
     document.getElementById('src-sel').addEventListener('change', render);
     document.getElementById('group-sel').addEventListener('change', render);
     document.getElementById('health-sel').addEventListener('change', render);
-    document.getElementById('rep-sel').addEventListener('change', e=>{ REP = +e.target.value; render(); });
+    document.getElementById('rep-sel').addEventListener('change', e=>{
+      REPLACEMENT_DEPTH = +e.target.value;
+      render();
+    });
     document.getElementById('src-chip').textContent = SNAP ? `Rosters: ${SNAP.season} snapshot` : '';
     document.getElementById('darko-date').textContent = (window.DARKO_CURRENT||{}).date || '?';
     render();
