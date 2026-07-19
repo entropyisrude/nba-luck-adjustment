@@ -160,12 +160,10 @@
         (snapshot <span id="darko-date"></span>, their last update), run through the same
         depth-chart minutes and win conversion as NERD — so differences reflect the ratings,
         not the rosters. Players DARKO doesn't rate get replacement level.
-        <br><em>Comparing raw player values across systems misleads:</em> the two scales have
-        different zero points (an average rotation player carries about +1.3 NERD but +0.3
-        DPM), so compare raw ratings only after accounting for those baselines. Replacement
-        level and WAR/82 are calibrated to the same depth and fixed league-wide wins pool in
-        both modes. Standings wins are relative to each system's own league average — that's
-        why a team can rate similar player-by-player yet project differently.
+        For a fair comparison, both player-rating columns are shown relative to the
+        minutes-weighted average rotation slot (zero), with the selected replacement level
+        the same distance below zero. WAR/82 then uses the same fixed league-wide wins pool
+        in both modes. Standings wins are also relative to each system's league average.
       </p>
       <div class="table-scroll">
       <table id="proj-table">
@@ -379,15 +377,25 @@
     const AVAIL = window.AVAILABILITY || {};
     function computeTeams(lookup = lookupNerd){
       const teams = [];
-      const rep = repFor(lookup);
+      const rawRep = repFor(lookup);
+      // Put every source on the same public scale before displaying or valuing a
+      // player: average rotation slot = 0, replacement = -selected depth.
+      const center = {
+        nerd: rawRep.nerd + REPLACEMENT_DEPTH,
+        o: rawRep.o + REPLACEMENT_DEPTH/2,
+        d: rawRep.d + REPLACEMENT_DEPTH/2,
+      };
+      const rep = { nerd:-REPLACEMENT_DEPTH, o:-REPLACEMENT_DEPTH/2,
+                    d:-REPLACEMENT_DEPTH/2 };
       const useInj = document.getElementById('health-sel').value === 'inj';
       for(const abbr of Object.keys(SNAP.teams)){
         const rot = rotationFor(abbr);
         let net = 0, off = 0, def = 0;
         const players = rot.map(p=>{
           const nd = lookup(p.player);
-          let val = nd ? nd.nerd : rep.nerd;
-          let ov = nd ? nd.o : rep.o, dv = nd ? nd.d : rep.d;
+          let val = nd ? nd.nerd-center.nerd : rep.nerd;
+          let ov = nd ? nd.o-center.o : rep.o;
+          let dv = nd ? nd.d-center.d : rep.d;
           const gp = useInj ? Math.max(0, Math.min(82, AVAIL[p.player] ?? 82)) : 82;
           if(gp < 82){
             const a = gp / 82;
@@ -493,7 +501,7 @@
           return main + `<tr class="detail"><td colspan="7"><div class="rot">
             <table><thead><tr><th style="text-align:left">Player</th><th>Min</th>
             <th title="Rate, points per 100 (NERD units)">NERD</th>
-            <th title="Rate, points per 100 (DPM units — different zero point; compare the wins columns instead)">DARKO</th>
+            <th title="DPM relative to the minutes-weighted average rotation slot">DARKO</th>
             <th title="Estimated wins per 82 at these minutes vs NERD's replacement floor">W/82 N</th>
             <th title="Estimated wins per 82 at these minutes vs DARKO's depth-matched floor">W/82 D</th>
             <th title="NERD wins minus DARKO wins — comparable because both floors sit at the same depth below their own scale's average">&Delta;W</th></tr></thead><tbody>${pr}</tbody></table>

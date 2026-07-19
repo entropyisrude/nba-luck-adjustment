@@ -110,11 +110,13 @@
     <section class="explain">
       <h3>How this is priced</h3>
       <p>Every rostered player's <a href="nerd.html">Projected NERD</a> converts to
-      <strong>WAR</strong> the same way the NERD leaderboard does: NERD is first recentered
-      to this season's own possession-weighted average (the underlying model's zero point
-      isn't perfectly season-neutral on its own), then replacement level is set 1.45 points
-      below that &mdash; <code>WAR = (NERD &minus; season avg + 1.45) &times; possessions /
-      100 / 28.8</code>. Since the season hasn't tipped off, possessions use each player's
+      <strong>WAR</strong> the same way the NERD leaderboard does. Published NERD is
+      possession-weighted to a league average of zero, replacement is &minus;2.0, and
+      <code>PAR = (NERD + 2) &times; possessions / 100</code>. PAR is converted into the
+      league's fixed pool of wins above a five-replacement-player team (about 16 wins).
+      On this page that pool is allocated across the rated players on current active rosters,
+      so inactive and unsigned forecast rows do not absorb wins from the salary market.
+      Since the season hasn't tipped off, possessions use each player's
       <em>last</em> season as
       the workload assumption &mdash; the same convention as Projected NERD, and the same
       caveat: a player coming off an injury-shortened season will show an understated WAR here
@@ -202,13 +204,14 @@
     const MPG = window.LAST_SEASON_MPG;
     const ALIASES = (MPG && MPG.aliases) || {};
     const NAME_SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
-    // DEPTH = points below the season's own (centered) average that counts as
-    // replacement level. See nerd.html for the full derivation: the joint solve's zero
-    // point isn't fully season-neutral (every real season's possession-weighted average
-    // NERD sits +0.8 to +1.4 above 0), so PAR/WAR first recenters to this season's own
-    // mean, then applies DEPTH=1.45 below it (calibrated so league-wide WAR reconciles
-    // to the site's ~757-win replacement-team convention).
-    const DEPTH = 1.45, PTS_PER_WIN = 28.8, PROJ_SEASON = 2026;
+    const DEPTH = 2.0, GAME_SD = 11.5, PROJ_SEASON = 2026;
+    function erf(x){
+      const s=x<0?-1:1; x=Math.abs(x); const t=1/(1+0.3275911*x);
+      const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+      return s*y;
+    }
+    const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
+    const TARGET_LEAGUE_WAR = 30 * 82 * (0.5 - Phi(-10/GAME_SD));
 
     const CONTRACT_LABELS = {
       'RK-1ST': 'Rookie Scale', 'RK-2ND': 'Rookie Scale (2nd Rd)', 'RK': 'Rookie',
@@ -230,15 +233,10 @@
     // ---- Projected NERD lookup (2026 rows: last-season Kalman state drifted forward) ----
     const ND = window.NERD_DATA, NI = Object.fromEntries(ND.cols.map((c,i)=>[c,i]));
     const PROJ = new Map();
-    let projSn = 0, projSp = 0;
     for(const r of ND.rows){
       if(r[NI.season] !== PROJ_SEASON) continue;
       PROJ.set(normalizeName(r[NI.name]), { nerd: r[NI.nerd], poss: r[NI.poss] });
-      projSn += r[NI.nerd] * r[NI.poss]; projSp += r[NI.poss];
     }
-    // Season mean over ALL 2026 projection rows (not just the roster-filtered subset
-    // below) — matches the population DEPTH was calibrated against.
-    const SEASON_MEAN = projSn / projSp;
     function lookupNerd(name){
       const n = normalizeName(name);
       return PROJ.get(n) || PROJ.get(ALIASES[n]) || null;
@@ -252,17 +250,23 @@
         if(!p.cap_hit) continue;
         const nd = lookupNerd(p.player);
         if(!nd){ unratedCount++; continue; }
-        const par = (nd.nerd - SEASON_MEAN + DEPTH) * nd.poss / 100;
-        const war = par / PTS_PER_WIN;
+        const par = (nd.nerd + DEPTH) * nd.poss / 100;
         allRows.push({
           name: p.player, team: abbr, position: p.position || '',
           contractType: p.contract_type,
           contract: CONTRACT_LABELS[p.contract_type] || p.contract_type || '',
           isRookie: ROOKIE_TYPES.has(p.contract_type),
-          capHit: p.cap_hit, poss: nd.poss, nerd: nd.nerd, war,
+          capHit: p.cap_hit, poss: nd.poss, nerd: nd.nerd, par,
         });
       }
     }
+
+    // The salary market is the active-roster population.  Allocate the fixed league
+    // WAR pool here so unsigned/inactive forecast rows cannot consume wins while
+    // contributing no salary; unrated rookies enter at replacement (zero WAR).
+    const rosterPar = allRows.reduce((s,r)=>s+r.par, 0);
+    const WAR_SCALE = TARGET_LEAGUE_WAR / rosterPar;
+    allRows.forEach(r=>{ r.war = r.par * WAR_SCALE; });
 
     // league-wide $/win: fixed regardless of on-page filters. A chunk of every team's
     // payroll pays for replacement-level roster occupancy (even a replacement-level

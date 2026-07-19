@@ -163,15 +163,13 @@
       calibrated to official box scores. Playoff possessions are included in the on-court
       evidence; the statistical profile uses regular-season stats only.</p>
       <p><strong>PAR</strong> and <strong>WAR</strong> convert the rate into season totals
-      against a <em>replacement</em> baseline: each season's NERD values are first
-      recentered to that season's own possession-weighted average (the raw joint solve's
-      zero point isn't perfectly season-neutral), then replacement is set 1.45 points
-      below that — a full team of these wins about 16 games, matching our win model — so
-      PAR = (NERD<sub>centered</sub> + 1.45) &times; possessions / 100 is total points
-      added over a replacement player across the season, and WAR = PAR / 28.8 converts
-      points to wins. The displayed NERD/O-NERD/D-NERD columns are unaffected by this
-      recentering; only the PAR/WAR math uses it. Below-replacement players still show
-      negative PAR/WAR. In Career mode they sum across seasons.</p>
+      against a <em>replacement</em> baseline. Published NERD, O-NERD, and D-NERD are
+      possession-weighted to a league average of zero in every season, and replacement
+      is always &minus;2.0 NERD. Thus PAR = (NERD + 2) &times; possessions / 100 is total
+      points above replacement. WAR converts that season's PAR into the fixed pool of
+      wins above a five-replacement-player team (about 16 wins over 82 games), with
+      shortened seasons scaled to their actual schedule length. Below-replacement players
+      can have negative PAR/WAR. In Career mode the season values are summed.</p>
       <details>
         <summary>How good is it? (validation)</summary>
         <p>On the retrodiction benchmark published by dunksandthrees (prior-season ratings,
@@ -219,8 +217,8 @@
               <th class="sortable" data-key="nerd" data-type="num" title="Net Estimated Rating, Denoised">NERD</th>
               <th class="sortable" data-key="o" data-type="num" title="Offensive NERD">O-NERD</th>
               <th class="sortable" data-key="d" data-type="num" title="Defensive NERD">D-NERD</th>
-              <th class="sortable" data-key="par" data-type="num" title="Points above replacement: (season-centered NERD + 1.45) x possessions / 100">PAR</th>
-              <th class="sortable" data-key="war" data-type="num" title="Wins above replacement: PAR / 28.8 points-per-win">WAR</th>
+              <th class="sortable" data-key="par" data-type="num" title="Points above replacement: (NERD + 2.0) x possessions / 100">PAR</th>
+              <th class="sortable" data-key="war" data-type="num" title="Wins above replacement, scaled to the league's fixed replacement-win pool">WAR</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -239,39 +237,34 @@
     const IDX = Object.fromEntries(D.cols.map((c, i) => [c, i]));
     const seasonLabel = y => y + "-" + String(y + 1).slice(2);
 
-    // The joint solve's own zero point isn't fully season-centered (it dilutes each
-    // season's mean against the whole 1996-2026 player pool), so every real season's
-    // possession-weighted average NERD sits +0.8 to +1.4 above 0, not at 0. Recenter
-    // per season before computing PAR/WAR (displayed NERD/O-NERD/D-NERD are untouched —
-    // only the PAR/WAR math uses the centered value) — same discipline
-    // team-projections.html already applies to its own win conversion.
-    const seasonMeanAcc = new Map();
-    for (const r of D.rows) {
-      const s = r[IDX.season], nerd = r[IDX.nerd], poss = r[IDX.poss];
-      if (nerd == null || poss == null) continue;
-      const acc = seasonMeanAcc.get(s) || { sn: 0, sp: 0 };
-      acc.sn += nerd * poss; acc.sp += poss;
-      seasonMeanAcc.set(s, acc);
+    const DEPTH = 2.0, GAME_SD = 11.5;
+    function erf(x){
+      const s=x<0?-1:1; x=Math.abs(x); const t=1/(1+0.3275911*x);
+      const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+      return s*y;
     }
-    const seasonMean = new Map([...seasonMeanAcc].map(([s, acc]) => [s, acc.sn / acc.sp]));
+    const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
+    const teamCount = season => season < 2004 ? 29 : 30;
+    const seasonGames = season => ({1998:50, 2011:66, 2019:70.6, 2020:72}[season] || 82);
+    const targetWar = season => teamCount(season) * seasonGames(season)
+      * (0.5 - Phi(-10/GAME_SD));
 
-    // DEPTH = points below that season's own (centered) average that counts as
-    // replacement level. Solved so league-wide WAR reconciles to the site's existing
-    // ~757-win replacement-team convention (1230 - 30 x ~15.8, team-projections.html's
-    // model) once the season-centering above is applied: averaged 1.46 (median 1.45)
-    // across 19 normal 82-game seasons 2003-2025 (excluding the 2011 lockout season).
-    // PAR = season points above replacement = (NERD_centered + DEPTH) x poss/100;
-    // WAR = PAR / 28.8, the points-per-win slope of the wins conversion. Below-
-    // replacement players still show negative PAR/WAR — nothing is floored at 0.
-    const DEPTH = 1.45, PTS_PER_WIN = 28.8;
+    // NERD is already published on a zero-average scale.  Convert PAR to WAR with
+    // a season-specific points-per-win factor so the five copies of every player's
+    // on-court opportunities reconcile exactly to the same replacement-team win curve.
+    const seasonPar = new Map();
+    for(const r of D.rows){
+      const par = (r[IDX.nerd] + DEPTH) * r[IDX.poss] / 100;
+      seasonPar.set(r[IDX.season], (seasonPar.get(r[IDX.season]) || 0) + par);
+    }
+    const warScale = new Map([...seasonPar].map(([s, par]) => [s, targetWar(s)/par]));
     const rows = D.rows.map(r => {
       const nerd = r[IDX.nerd], poss = r[IDX.poss];
-      const nerdC = nerd - (seasonMean.get(r[IDX.season]) || 0);
-      const par = (nerdC + DEPTH) * poss / 100;
+      const par = (nerd + DEPTH) * poss / 100;
       return {
         season: r[IDX.season], pid: r[IDX.pid], name: r[IDX.name],
         team: r[IDX.team], poss, o: r[IDX.o], d: r[IDX.d],
-        nerd, sd: r[IDX.sd], par, war: par / PTS_PER_WIN,
+        nerd, sd: r[IDX.sd], par, war: par * warScale.get(r[IDX.season]),
         seasonLabel: seasonLabel(r[IDX.season]),
       };
     });
@@ -309,17 +302,18 @@
         if (r.season === PROJ_SEASON) continue;
         let c = by.get(r.pid);
         if (!c) { c = { pid: r.pid, name: r.name, team: r.team, poss: 0,
-                        so: 0, sd_: 0, sn: 0, par: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
+                        so: 0, sd_: 0, sn: 0, par: 0, war: 0, lastSeason: -1, seasons: 0 }; by.set(r.pid, c); }
         c.poss += r.poss;
         c.so += r.o * r.poss; c.sd_ += r.d * r.poss; c.sn += r.nerd * r.poss;
         c.par += r.par;
+        c.war += r.war;
         c.seasons += 1;
         if (r.season > c.lastSeason) { c.lastSeason = r.season; c.name = r.name; c.team = r.team; }
       }
       return [...by.values()].map(c => ({
         pid: c.pid, name: c.name, team: c.team, poss: c.poss,
         o: c.so / c.poss, d: c.sd_ / c.poss, nerd: c.sn / c.poss, sd: null,
-        par: c.par, war: c.par / PTS_PER_WIN,
+        par: c.par, war: c.war,
         season: c.lastSeason, seasonLabel: c.seasons + " szn",
       }));
     }

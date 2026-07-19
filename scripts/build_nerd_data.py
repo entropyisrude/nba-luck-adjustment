@@ -59,7 +59,7 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
     last = last.merge(team.rename(columns={"pid": "player_id"}),
                       on=["player_id", "season_year"], how="left")
 
-    rows = []
+    forecasts = []
     for r in last.itertuples(index=False):
         m_o, m_d = float(r.filt_o), float(r.filt_d)
         v_o, v_d = float(r.filt_var_o), float(r.filt_var_d)
@@ -71,18 +71,40 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
             m_d += drift_d(age + step) + extra / 2
         v_o += KALMAN_Q * gap
         v_d += KALMAN_Q * gap
-        rows.append([PROJECT_TO, int(r.player_id), r.player_name,
-                     r.team_abbr if pd.notna(r.team_abbr) else "",
-                     int(round(r.poss)) if pd.notna(r.poss) else 0,
-                     round(m_o, 2), round(m_d, 2), round(m_o + m_d, 2),
-                     round(float(np.sqrt(v_o + v_d)), 2)])
-    return rows
+        forecasts.append({
+            "pid": int(r.player_id), "name": r.player_name,
+            "team": r.team_abbr if pd.notna(r.team_abbr) else "",
+            "poss": int(round(r.poss)) if pd.notna(r.poss) else 0,
+            "o": m_o, "d": m_d,
+            "sd": float(np.sqrt(v_o + v_d)),
+        })
+
+    # A rating point should have the same public meaning in every season.  The
+    # joint solve has an arbitrary intercept, so anchor each forecast population
+    # to a possession-weighted league average of zero before publishing it.
+    weights = np.array([r["poss"] for r in forecasts], dtype=float)
+    o_mean = np.average([r["o"] for r in forecasts], weights=weights)
+    d_mean = np.average([r["d"] for r in forecasts], weights=weights)
+    return [[PROJECT_TO, r["pid"], r["name"], r["team"], r["poss"],
+             round(r["o"] - o_mean, 2), round(r["d"] - d_mean, 2),
+             round(r["o"] + r["d"] - o_mean - d_mean, 2), round(r["sd"], 2)]
+            for r in forecasts]
 
 
 def main() -> None:
     m = pd.read_parquet(METRIC_DATA / "metric" / "metric_v0.parquet")
     m = m[["season_year", "player_id", "player_name", "poss_season",
            "metric_o", "metric_d", "metric"]]
+
+    # The solve's global intercept is not a meaningful basketball baseline.
+    # Publish every season with possession-weighted average offense and defense
+    # equal to zero; total NERD is then exactly their sum on the same scale.
+    for col in ("metric_o", "metric_d"):
+        means = m.groupby("season_year").apply(
+            lambda g: np.average(g[col], weights=g["poss_season"]),
+            include_groups=False)
+        m[col] = m[col] - m["season_year"].map(means)
+    m["metric"] = m["metric_o"] + m["metric_d"]
 
     k = pd.read_parquet(METRIC_DATA / "kalman" / "kalman_states.parquet")
     k["sd"] = np.sqrt(k["filt_var_o"] + k["filt_var_d"])
@@ -120,6 +142,8 @@ def main() -> None:
     print(f"projection rows for {PROJECT_TO}-{str(PROJECT_TO+1)[-2:]}: {len(proj)}")
     payload = json.dumps({"model": "atomic_denominator",
                           "evidence": "canonical_counted_possessions_v1",
+                          "centering": "season_possession_weighted_v1",
+                          "replacement": -2.0,
                           "cols": COLS,
                           "rows": rows}, separators=(",", ":"),
                          ensure_ascii=False)
