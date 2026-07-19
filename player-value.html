@@ -96,7 +96,7 @@
     <section class="hero">
       <h1>Player Value</h1>
       <div class="meta">
-        <span class="chip">Projected NERD WAR &times; 2026-27 Cap Hit</span>
+        <span class="chip">Projected NERD &times; selected workload &times; 2026-27 cap hit</span>
         <span class="chip" id="src-chip"></span>
       </div>
       <div class="nav">
@@ -116,11 +116,12 @@
       league's fixed pool of wins above a five-replacement-player team (about 16 wins).
       On this page that pool is allocated across the rated players on current active rosters,
       so inactive and unsigned forecast rows do not absorb wins from the salary market.
-      Since the season hasn't tipped off, possessions use each player's
-      <em>last</em> season as
-      the workload assumption &mdash; the same convention as Projected NERD, and the same
-      caveat: a player coming off an injury-shortened season will show an understated WAR here
-      even if his rate of play (NERD) is fine.</p>
+      The default workload is <strong>36 minutes per game for 82 games</strong>, which makes this
+      primarily a comparison of player quality rather than recent health. The workload selector
+      can instead use the current 2026-27 depth-chart MPG projection (also over 82 games), or each
+      player's actual total 2025-26 regular-season minutes. Only that final option carries games
+      missed into WAR and market value. Minutes convert to possessions using each player's
+      observed 2025-26 possessions per minute, with the roster average as a fallback.</p>
       <p>The league's implied <strong>price per marginal win</strong> is a cap-share pivot, netted
       against replacement cost: total 2026-27 cap commitments across every rated, rostered player,
       minus $2.7M per player for the real salary a replacement-level roster spot still costs (the
@@ -161,6 +162,13 @@
 
     <section class="card">
       <div class="controls">
+        <label>Workload
+          <select id="workload-sel">
+            <option value="standard" selected>36 MPG × 82 games</option>
+            <option value="projected">Projected 2026-27 MPG × 82</option>
+            <option value="actual">Actual 2025-26 total minutes</option>
+          </select>
+        </label>
         <label>Team
           <select id="team-sel"><option value="ALL">All Teams</option></select>
         </label>
@@ -180,7 +188,8 @@
               <th class="sortable" data-key="team" data-type="str">Team</th>
               <th class="sortable" data-key="contract" data-type="str">Contract</th>
               <th class="sortable" data-key="capHit" data-type="num">Cap Hit</th>
-              <th class="sortable" data-key="poss" data-type="num" title="Last season's possessions (workload assumption)">Poss</th>
+              <th class="sortable" id="minutes-head" data-key="workloadMinutes" data-type="num" title="Minutes used for the selected workload">Minutes</th>
+              <th class="sortable" data-key="poss" data-type="num" title="Estimated possessions from the selected workload">Poss</th>
               <th class="sortable" data-key="nerd" data-type="num" title="Projected NERD, points per 100 possessions">NERD</th>
               <th class="sortable" data-key="war" data-type="num" title="Wins above replacement">WAR</th>
               <th class="sortable" data-key="marketValue" data-type="num" title="WAR x league $/win">Market Value</th>
@@ -198,10 +207,12 @@
 
   <script src="data/nba_cap_data_2026_27.js"></script>
   <script src="data/last_season_mpg.js"></script>
+  <script src="data/depth_chart_defaults.js"></script>
   <script src="data/nerd_seasons.js?v=4267f3e17de5"></script>
   <script>
     const SNAP = window.NBA_CAP_SNAPSHOT;
     const MPG = window.LAST_SEASON_MPG;
+    const DEPTH_DEFAULTS = window.DEPTH_CHART_DEFAULTS || {};
     const ALIASES = (MPG && MPG.aliases) || {};
     const NAME_SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
     const DEPTH = 2.0, GAME_SD = 11.5, PROJ_SEASON = 2026;
@@ -242,6 +253,23 @@
       return PROJ.get(n) || PROJ.get(ALIASES[n]) || null;
     }
 
+    function lookupActualMinutes(name){
+      const n = normalizeName(name);
+      return (MPG && MPG.players && (MPG.players[n] || MPG.players[ALIASES[n]])) || null;
+    }
+    function lookupProjectedMpg(team, name){
+      const chart = DEPTH_DEFAULTS[team];
+      if(!chart) return null;
+      const target = normalizeName(name);
+      const entries = [];
+      for(const pos of ['PG','SG','SF','PF','C']) entries.push(...((chart.positions && chart.positions[pos]) || []));
+      entries.push(...(chart.unassigned || []));
+      const found = entries.find(e=>normalizeName(e.player) === target
+        || normalizeName(e.player) === ALIASES[target]
+        || ALIASES[normalizeName(e.player)] === target);
+      return found && Number.isFinite(+found.minutes) ? +found.minutes : null;
+    }
+
     // ---- build one row per signed active-roster player ----
     let allRows = [], unratedCount = 0;
     for(const abbr of Object.keys(SNAP.teams)){
@@ -250,13 +278,18 @@
         if(!p.cap_hit) continue;
         const nd = lookupNerd(p.player);
         if(!nd){ unratedCount++; continue; }
-        const par = (nd.nerd + DEPTH) * nd.poss / 100;
+        const actual = lookupActualMinutes(p.player);
+        const actualMinutes = actual ? +actual.min : 0;
+        const actualMpg = actual ? +actual.mpg : 0;
+        const actualGames = actual ? +actual.games : 0;
         allRows.push({
           name: p.player, team: abbr, position: p.position || '',
           contractType: p.contract_type,
           contract: CONTRACT_LABELS[p.contract_type] || p.contract_type || '',
           isRookie: ROOKIE_TYPES.has(p.contract_type),
-          capHit: p.cap_hit, poss: nd.poss, nerd: nd.nerd, par,
+          capHit: p.cap_hit, nerd: nd.nerd, actualPoss: nd.poss,
+          actualMinutes, actualMpg, actualGames,
+          projectedMpg: lookupProjectedMpg(abbr, p.player),
         });
       }
     }
@@ -264,10 +297,6 @@
     // The salary market is the active-roster population.  Allocate the fixed league
     // WAR pool here so unsigned/inactive forecast rows cannot consume wins while
     // contributing no salary; unrated rookies enter at replacement (zero WAR).
-    const rosterPar = allRows.reduce((s,r)=>s+r.par, 0);
-    const WAR_SCALE = TARGET_LEAGUE_WAR / rosterPar;
-    allRows.forEach(r=>{ r.war = r.par * WAR_SCALE; });
-
     // league-wide $/win: fixed regardless of on-page filters. A chunk of every team's
     // payroll pays for replacement-level roster occupancy (even a replacement-level
     // player still costs a real salary) and buys zero marginal wins above replacement
@@ -278,17 +307,47 @@
     // (23 ROS-tagged deals, avg $2.70M).
     const REPL_SALARY = 2.7e6;
     const totalCap = allRows.reduce((s,r)=>s+r.capHit, 0);
-    const totalWAR = allRows.reduce((s,r)=>s+r.war, 0);
-    const DOLLARS_PER_WIN = (totalCap - allRows.length * REPL_SALARY) / totalWAR;
-    // Per-player market value adds the same baseline back so it's fairly comparable to
-    // a player's FULL cap hit (which also includes that baseline) -- without this, every
-    // player would show as overpaid by roughly REPL_SALARY regardless of production.
-    allRows.forEach(r=>{ r.marketValue = r.war * DOLLARS_PER_WIN + REPL_SALARY; r.surplus = r.marketValue - r.capHit; });
+    const observedRates = allRows.filter(r=>r.actualMinutes>0 && r.actualPoss>0)
+      .map(r=>r.actualPoss/r.actualMinutes);
+    const FALLBACK_POSS_PER_MINUTE = observedRates.reduce((s,v)=>s+v,0) / observedRates.length;
+    let DOLLARS_PER_WIN = 0, totalWAR = 0;
 
-    document.getElementById('stat-dpw').textContent = '$' + (DOLLARS_PER_WIN/1e6).toFixed(2) + 'M';
+    function applyWorkload(){
+      const mode = document.getElementById('workload-sel').value;
+      for(const r of allRows){
+        r.possPerMinute = r.actualMinutes>0 && r.actualPoss>0
+          ? r.actualPoss/r.actualMinutes : FALLBACK_POSS_PER_MINUTE;
+        if(mode === 'actual'){
+          r.workloadMinutes = r.actualMinutes;
+          r.workloadMpg = r.actualMpg;
+          r.poss = r.actualPoss;
+        }else{
+          r.workloadMpg = mode === 'projected'
+            ? (r.projectedMpg ?? r.actualMpg ?? 0) : 36;
+          r.workloadMinutes = r.workloadMpg * 82;
+          r.poss = r.workloadMinutes * r.possPerMinute;
+        }
+        r.par = (r.nerd + DEPTH) * r.poss / 100;
+      }
+      const rosterPar = allRows.reduce((s,r)=>s+r.par, 0);
+      const warScale = TARGET_LEAGUE_WAR / rosterPar;
+      allRows.forEach(r=>{ r.war = r.par * warScale; });
+      totalWAR = allRows.reduce((s,r)=>s+r.war, 0);
+      DOLLARS_PER_WIN = (totalCap - allRows.length * REPL_SALARY) / totalWAR;
+      // Add replacement salary back so market value is comparable to the full cap hit.
+      allRows.forEach(r=>{
+        r.marketValue = r.war * DOLLARS_PER_WIN + REPL_SALARY;
+        r.surplus = r.marketValue - r.capHit;
+      });
+      document.getElementById('minutes-head').textContent = mode === 'actual' ? '2025-26 Min' : 'MPG';
+      document.getElementById('stat-dpw').textContent = '$' + (DOLLARS_PER_WIN/1e6).toFixed(2) + 'M';
+      document.getElementById('stat-war').textContent = totalWAR.toFixed(0);
+    }
+
+    applyWorkload();
+
     document.getElementById('stat-n').textContent = allRows.length.toLocaleString();
     document.getElementById('stat-cap').textContent = '$' + (totalCap/1e9).toFixed(2) + 'B';
-    document.getElementById('stat-war').textContent = totalWAR.toFixed(0);
     document.getElementById('unrated-note').textContent =
       unratedCount + ' rostered players (mostly this year’s rookie class) have no prior-season NERD yet and aren’t shown.';
     document.getElementById('src-chip').textContent = SNAP ? `Rosters: ${SNAP.season} snapshot` : '';
@@ -330,6 +389,7 @@
     }
 
     function render(){
+      const mode = document.getElementById('workload-sel').value;
       const rows = currentRows();
       document.querySelector('#value-table tbody').innerHTML = rows.map((r,i)=>`
         <tr>
@@ -338,7 +398,10 @@
           <td>${r.team}</td>
           <td class="muted">${r.contract}</td>
           <td>$${(r.capHit/1e6).toFixed(1)}M</td>
-          <td class="muted">${r.poss.toLocaleString()}</td>
+          <td class="muted">${mode==='actual'
+            ? Math.round(r.workloadMinutes).toLocaleString()
+            : r.workloadMpg.toFixed(1)}</td>
+          <td class="muted">${Math.round(r.poss).toLocaleString()}</td>
           <td>${fmtNum(r.nerd, 1)}</td>
           <td>${fmtNum(r.war, 1)}</td>
           <td>$${(r.marketValue/1e6).toFixed(1)}M</td>
@@ -354,6 +417,7 @@
       render();
     });
     document.getElementById('team-sel').addEventListener('change', render);
+    document.getElementById('workload-sel').addEventListener('change', ()=>{ applyWorkload(); render(); });
     document.getElementById('min-poss').addEventListener('input', render);
     document.getElementById('search').addEventListener('input', render);
     render();
