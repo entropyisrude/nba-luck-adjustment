@@ -488,3 +488,109 @@ Build a read-only audit script that selects canonical source files, reports sche
   displayed numeric inputs finite, no negative possession exposures, Python
   compilation passed, and all four generated pages rendered headlessly without
   JavaScript errors.
+
+## 2026-07-19 — Multivariate lineup-covariance Kalman prototype specified
+
+- Motivation: the production season filter reduces RAPM reliability to
+  `c / possessions` and updates each player independently. That discards the
+  lineup design's player-to-player covariance. In 2025-26 evidence, Stephon
+  Castle shared roughly 62% of his counted possessions with Victor Wembanyama;
+  their ridge coefficient errors are correlated about -0.36 on both sides of
+  the ball, so their combined contribution is better identified than its
+  individual allocation.
+- Estimand: predictive latent player O/D contribution for the contexts
+  represented by NBA stint evidence. This remains a predictive realized-value
+  estimate, not causal or portable value. Low lineup diversity changes
+  uncertainty and prior reliance; it is not itself a negative treatment or
+  value penalty.
+- Outcome: canonical luck-adjusted points per 100 at directed-stint grain,
+  with exact counted possessions as likelihood weights. Aggregate fallback
+  games retain their existing exact-possession design.
+- Treatment/intervention: none. This is an observational predictive state
+  model. Teammates, opponents and realized lineups form the likelihood design;
+  box features are an independently regularized observation, not causal
+  controls.
+- Main comparison: hold the production `q`, `c` and box variance fixed, replace
+  the independent season-RAPM measurement update with the joint Gaussian stint
+  likelihood. Carry the resulting covariance for players who appear in
+  consecutive seasons; initialize new or gap-returning players independently.
+- Validation is frozen before fitting: one-step player prediction against
+  next-season evidence through 2018, untouched 2019+ confirmation, plus the
+  existing chronologically calibrated game-margin test. Report overall,
+  young-player and high-entanglement sensitivity. Castle is a diagnostic case,
+  not a tuning target.
+- Implementation safety: write only an experimental script and artifacts under
+  `outputs/contextual_causal/multivariate_kalman/`; do not overwrite production
+  metric, Kalman, site or raw-data files.
+
+## 2026-07-19 — Multivariate lineup-covariance prototype completed
+
+- Implemented `metric/build_kalman_multivariate.py`. It updates the full active
+  season O/D vector from `X'WX` and carries consecutive-player covariance.
+  The selected development configuration is `q=1`, `c=20000`, box variance 8.
+  Output has 14,005 unique finite player-seasons; production remains untouched.
+- Next-season evidence: development wcorr 0.5240 versus production 0.5230;
+  untouched 2019+ 0.4992 versus 0.4970. Confirmation affine RMSE is worse,
+  3.7220 versus 3.6878, from an optimistic level shift.
+- Existing chronological regular-season margin test improves materially:
+  projected-minutes MAE/correlation 9.55/0.415 versus production 9.65/0.395.
+  Paired season-block MAE improvement is about 0.099, 95% interval 0.067-0.134.
+  Playoff direction is favorable but uncertain. The existing jointk candidate
+  remains competitive at 9.53/0.414.
+- Young, highly tethered 2019+ players improve from 0.4199 to 0.4395 wcorr and
+  3.8467 to 3.8329 RMSE; treat this inspected subgroup as exploratory pending a
+  frozen replication.
+- Castle's current filtered state moves from -0.93 to -0.06 and his centered
+  next-season projection from -1.45 to -0.75. The selected posterior preserves
+  about -0.14 Castle-Wembanyama correlation per side. It also raises the Spurs'
+  minutes-weighted projection roughly 0.55, so this is not merely pairwise
+  credit transfer.
+- Decision: promising candidate, not production-ready. Require a modern
+  2019-2025 chronological game-outcome test and interval/level recalibration
+  before considering promotion. Full details are in
+  `outputs/contextual_causal/multivariate_kalman/prototype_report.md`.
+
+## 2026-07-19 — Modern multivariate margin replication
+
+- Added `metric/backtest_multivariate_modern.py`: 8,289 regular-season games,
+  2019-20 through 2025-26, using one-step preseason states, trailing pregame
+  projected minutes and four-season rolling affine calibration.
+- Projected-minutes MAE/correlation improve from production 10.838/0.421 to
+  multivariate 10.784/0.429. Existing jointk is 10.927/0.401, partly with lower
+  player-game coverage. The paired multivariate MAE gain is 0.054; season-block
+  95% interval approximately 0.014-0.086.
+- Multivariate wins in 2019 and 2021-2024, is nearly tied in 2020, and loses in
+  2025. This confirms that the old-era margin result is not isolated. At this
+  stage the most recent reversal and uncertainty calibration were held as
+  promotion checks; the following entry records the added calibration test and
+  final decision.
+
+## 2026-07-19 — Multivariate lineup-covariance Kalman promoted
+
+- Reconsidered the promotion decision on structural grounds and added an
+  uncertainty-calibration check. The independent filter's standard errors are
+  substantially too wide against next-season evidence (development standardized
+  residual SD 0.716; confirmation 0.637). The multivariate filter is much closer
+  to its advertised uncertainty (0.997 and 0.895, respectively), with 68%/95%
+  confirmation coverage of 74.2%/96.7%.
+- Locked production parameters at the development-selected values: `q=1`,
+  `c=20000`, box variance 8. The production state contains 14,005 unique finite
+  player-seasons and exactly matches the clean promotion-candidate artifact.
+  Provenance is embedded as `atomic_denominator`,
+  `canonical_counted_possessions_v1`, and
+  `multivariate_stint_gaussian_v1`.
+- Promoted the joint stint filter to the production Kalman parquet/CSV and
+  regenerated `data/nerd_seasons.js`. Historical published O-NERD, D-NERD and
+  NERD values are unchanged; the new state affects the 2026-27 forecasts and
+  correctly carries offense-defense covariance into published uncertainty.
+- Stephon Castle's centered 2026-27 projection is -0.75 (-0.29 offense, -0.46
+  defense); Victor Wembanyama is +8.45. The shared team-projection consumer now
+  puts San Antonio at +7.2 net rating and 60 wins under the current depth chart.
+- Browser smoke tests passed for both `nerd.html` and
+  `team-projections.html`, with no JavaScript warnings or errors. The Castle row
+  rendered at -0.8 after display rounding.
+- The immediately preceding independent-filter state, CSV and site payload are
+  retained under
+  `outputs/contextual_causal/production_independent_kalman_rollback_20260719/`.
+  Full promotion details are in
+  `outputs/contextual_causal/multivariate_kalman/production_promotion_report.md`.

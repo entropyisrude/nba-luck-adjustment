@@ -27,7 +27,10 @@ The active NBA repository is `C:\Users\Dave\Downloads\nba-onoff-publish`. It is 
 
 - `metric/build_box_prior.py`: box-score feature construction and prior model.
 - `metric/build_rapm_target.py`: RAPM target construction.
-- `metric/build_game_kalman.py` and `metric/build_kalman_v0.py`: time-evolving player estimates.
+- `metric/build_kalman_multivariate.py`: production time-evolving O/D player
+  estimates, updated jointly from stint evidence while preserving lineup-driven
+  player covariance. `metric/build_game_kalman.py` and
+  `metric/build_kalman_v0.py` remain legacy/rollback builders.
 - `metric/build_aging_curves.py`: age adjustment.
 - `metric/build_fit_layer.py`: capability-based lineup synergy and temporal validation warnings.
 - `metric/backtest_margin.py`: held-out game-margin evaluation and explicit lineup-information leakage analysis.
@@ -64,4 +67,3 @@ One row per teammate-player × target game × focal-absence event:
 ## Data still needed
 
 For a genuinely “unexpected absence” design, acquire a timestamped availability source: official injury reports, archived sportsbook/lineup news, or another pregame status feed. Until then, label the first study as a realized-absence response analysis and use conservative eligibility proxies.
-

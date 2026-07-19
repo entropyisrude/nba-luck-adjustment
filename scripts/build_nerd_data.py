@@ -63,6 +63,7 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
     for r in last.itertuples(index=False):
         m_o, m_d = float(r.filt_o), float(r.filt_d)
         v_o, v_d = float(r.filt_var_o), float(r.filt_var_d)
+        cov_od = float(getattr(r, "filt_cov_od", 0.0))
         age = float(r.age) if pd.notna(r.age) else 27.0
         gap = PROJECT_TO - int(r.season_year)
         for step in range(min(gap, MAX_DRIFT_YEARS)):
@@ -76,7 +77,7 @@ def build_projections(k: pd.DataFrame, team: pd.DataFrame) -> list[list]:
             "team": r.team_abbr if pd.notna(r.team_abbr) else "",
             "poss": int(round(r.poss)) if pd.notna(r.poss) else 0,
             "o": m_o, "d": m_d,
-            "sd": float(np.sqrt(v_o + v_d)),
+            "sd": float(np.sqrt(max(v_o + v_d + 2 * cov_od, 0.0))),
         })
 
     # A rating point should have the same public meaning in every season.  The
@@ -107,7 +108,9 @@ def main() -> None:
     m["metric"] = m["metric_o"] + m["metric_d"]
 
     k = pd.read_parquet(METRIC_DATA / "kalman" / "kalman_states.parquet")
-    k["sd"] = np.sqrt(k["filt_var_o"] + k["filt_var_d"])
+    cov_od = (k["filt_cov_od"] if "filt_cov_od" in k.columns else 0.0)
+    k["sd"] = np.sqrt(np.maximum(
+        k["filt_var_o"] + k["filt_var_d"] + 2 * cov_od, 0.0))
     m = m.merge(k[["player_id", "season_year", "sd"]],
                 on=["player_id", "season_year"], how="left")
 
@@ -142,6 +145,10 @@ def main() -> None:
     print(f"projection rows for {PROJECT_TO}-{str(PROJECT_TO+1)[-2:]}: {len(proj)}")
     payload = json.dumps({"model": "atomic_denominator",
                           "evidence": "canonical_counted_possessions_v1",
+                          "projection_model": (
+                              "multivariate_stint_gaussian_v1"
+                              if "filter_model" in k.columns else
+                              "independent_season_rapm_kalman_v1"),
                           "centering": "season_possession_weighted_v1",
                           "replacement": -2.0,
                           "cols": COLS,
