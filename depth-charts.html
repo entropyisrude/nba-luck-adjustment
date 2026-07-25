@@ -22,21 +22,30 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
 .controls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .field{display:grid;gap:4px;color:var(--txt3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .field select{min-width:220px;padding:7px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;font-size:13px;outline:none}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;align-items:start}
 .team-card{display:block;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .1s,border-color .1s}
 .team-card:hover{border-color:var(--blue);box-shadow:0 2px 6px rgba(0,107,182,.15)}
 .team-head{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:7px 10px;border-bottom:1px solid var(--border)}
 .team-head .abbr{font-weight:800;font-size:13px;color:var(--blue)}
 .team-head .name{font-size:10px;color:var(--txt3);margin-left:6px}
 .team-head .goto{font-size:10px;font-weight:700;color:var(--orange);white-space:nowrap}
-.pos-table{width:100%;border-collapse:collapse}
-.pos-table td{padding:4px 9px;border-bottom:1px solid #eef1f4;vertical-align:top;font-size:11.5px}
-.pos-table tr:last-child td{border-bottom:none}
-.pos-table td.pos{width:28px;font-weight:800;color:var(--txt3);font-size:10px;padding-top:5px}
-.pos-table td.names{color:var(--txt)}
-.pos-table td.names .inj{color:#b91c1c;background:#fdecec;border:1px solid #f3c4c4;border-radius:3px;font-size:9px;font-weight:800;padding:0 3px;vertical-align:1px;text-transform:uppercase;cursor:help}
-.pos-table tr.other td.pos{color:#bc4c00}
-.empty{color:#c8d0d8;font-style:italic}
+.rotation-list{list-style:none}
+.rotation-player{display:grid;grid-template-columns:20px minmax(0,1fr) auto 30px;gap:6px;align-items:center;min-height:29px;padding:4px 9px;border-bottom:1px solid #eef1f4}
+.rotation-player:nth-child(-n+5){background:#f8fbfe}
+.rank{font-size:9px;font-weight:800;color:var(--txt3);font-variant-numeric:tabular-nums;text-align:center}
+.player-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:650}
+.player-name .inj{color:#b91c1c;background:#fdecec;border:1px solid #f3c4c4;border-radius:3px;font-size:8px;font-weight:800;padding:0 3px;vertical-align:1px;text-transform:uppercase;cursor:help}
+.role{border:1px solid #c8d5e3;border-radius:3px;background:#f2f7fb;color:#31546f;font-size:8px;font-weight:800;line-height:16px;padding:0 4px;white-space:nowrap;text-transform:uppercase}
+.role.big{background:#fff7ed;border-color:#fed7aa;color:#9a4b08}
+.role.flex{background:#f6f3f8;border-color:#d9cedf;color:#684f74}
+.mpg{text-align:right;font-size:10px;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums}
+.mpg::after{content:"m";font-size:8px;color:var(--txt3);margin-left:1px}
+.depth-foot{min-height:28px;padding:6px 10px;color:var(--txt3);font-size:9.5px}
+.empty{padding:18px 10px;color:#9aa3ac;font-size:11px;font-style:italic}
+@media(max-width:420px){
+  main{padding-left:8px;padding-right:8px}
+  .grid{grid-template-columns:minmax(0,1fr)}
+}
 </style>
 </head>
 <body>
@@ -57,18 +66,23 @@ main{max-width:1600px;margin:0 auto;padding:16px 14px 40px}
       </select>
     </label>
   </div>
-  <div class="legend">Projected 2026-27 rotations: most teams are hand-tuned depth charts; the rest are estimated from Cap Tracker rosters, ranked by cap hit within position. Click a team card to open its editable depth chart.</div>
+  <div class="legend">Projected 2026-27 rotations ranked by expected minutes. Broad roles show lineup flexibility without treating a single listed position as a player's fixed job.</div>
   <div class="grid" id="grid"></div>
 </main>
 
 <script>
 document.write('<scr'+'ipt src="data/nba_cap_data_2026_27.js?v='+Date.now()+'"></scr'+'ipt>');
 document.write('<scr'+'ipt src="data/depth_chart_defaults.js?v='+Date.now()+'"></scr'+'ipt>');
+document.write('<scr'+'ipt src="data/last_season_mpg.js?v='+Date.now()+'"></scr'+'ipt>');
 document.write('<scr'+'ipt src="data/injury_notes.js?v='+Date.now()+'"></scr'+'ipt>');
 </script>
 <script>
 const SNAP = window.NBA_CAP_SNAPSHOT;
 const POSITIONS = ['PG','SG','SF','PF','C'];
+const MPG = window.LAST_SEASON_MPG;
+const TEAM_MINUTES = 240;
+const MAX_PLAYER_MINUTES = 42;
+const ESTIMATED_ROTATION_SIZE = 10;
 
 function fmtDate(iso){
   if(!iso) return '';
@@ -111,64 +125,120 @@ function rosterFor(team){
   return out;
 }
 
-function bucket(roster, abbr){
-  const cols = {PG:[],SG:[],SF:[],PF:[],C:[],OTHER:[]};
-  const saved = (window.DEPTH_CHART_DEFAULTS || {})[abbr];
-  if(saved){
-    // Hand-tuned depth chart: use its position assignments and ordering,
-    // reconciled against the live roster (departed players drop off, new
-    // arrivals land in their listed position after the tuned players).
-    const byName = new Map(roster.map(p=>[p.player, p]));
-    const used = new Set();
-    POSITIONS.forEach(pos=>{
-      ((saved.positions && saved.positions[pos]) || []).forEach(entry=>{
-        const p = byName.get(entry.player);
-        if(p && !used.has(entry.player)){ cols[pos].push(p); used.add(entry.player); }
-      });
-    });
-    (saved.unassigned || []).forEach(entry=>{
-      const p = byName.get(entry.player);
-      if(p && !used.has(entry.player)){ cols.OTHER.push(p); used.add(entry.player); }
-    });
-    const leftovers = roster.filter(p=>!used.has(p.player))
-      .sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
-    for(const p of leftovers){
-      const pos = POSITIONS.includes(p.position) ? p.position : 'OTHER';
-      cols[pos].push(p);
+function normalizeName(name){
+  let text = String(name||'').normalize('NFKD').replace(/[̀-ͯ]/g,'');
+  text = text.replace(/\./g,'').replace(/[^a-zA-Z0-9 ]/g,'');
+  const suffixes = new Set(['jr','sr','ii','iii','iv','v']);
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  while(words.length && suffixes.has(words[words.length-1])) words.pop();
+  return words.join(' ');
+}
+
+function priorMpg(player){
+  const rec = MPG && MPG.players && MPG.players[normalizeName(player.player)];
+  return rec ? Number(rec.mpg)||0 : 0;
+}
+
+function broadRole(position){
+  const pos = String(position||'').toUpperCase();
+  if(pos==='PG') return {label:'Lead/Wing', cls:''};
+  if(pos==='SG') return {label:'Wing/Lead', cls:''};
+  if(pos==='SF') return {label:'Wing', cls:''};
+  if(pos==='PF') return {label:'Wing/Big', cls:'flex'};
+  if(pos==='C') return {label:'Big', cls:'big'};
+  return {label:'Flex', cls:'flex'};
+}
+
+function normalizeEstimatedMinutes(players){
+  let open = players.slice();
+  let remaining = TEAM_MINUTES;
+  while(open.length){
+    const weight = open.reduce((sum,p)=>sum+p.weight,0) || open.length;
+    const capped = open.filter(p=>remaining*(p.weight||1)/weight >= MAX_PLAYER_MINUTES);
+    if(!capped.length) break;
+    capped.forEach(p=>{ p.minutes=MAX_PLAYER_MINUTES; remaining-=MAX_PLAYER_MINUTES; });
+    open = open.filter(p=>!capped.includes(p));
+  }
+  const weight = open.reduce((sum,p)=>sum+p.weight,0) || open.length;
+  open.forEach(p=>{ p.minutes=Math.round(remaining*(p.weight||1)/weight); });
+  let delta = TEAM_MINUTES-players.reduce((sum,p)=>sum+p.minutes,0);
+  let i = 0;
+  while(delta && players.length && i<1000){
+    const p = players[i%players.length];
+    const step = delta>0 ? 1 : -1;
+    if((step>0 && p.minutes<MAX_PLAYER_MINUTES) || (step<0 && p.minutes>0)){
+      p.minutes+=step;
+      delta-=step;
     }
-    return cols;
+    i+=1;
   }
-  for(const p of roster){
-    const pos = POSITIONS.includes(p.position) ? p.position : 'OTHER';
-    cols[pos].push(p);
-  }
-  for(const k of Object.keys(cols)){
-    cols[k].sort((a,b)=>(b.cap_hit||0)-(a.cap_hit||0));
-  }
-  return cols;
+}
+
+function estimatedRotation(roster){
+  const ranked = roster.map(p=>({...p, weight:priorMpg(p)}))
+    .sort((a,b)=>(b.weight-a.weight)||((b.cap_hit||0)-(a.cap_hit||0)));
+  const rotation = ranked.slice(0,ESTIMATED_ROTATION_SIZE);
+  rotation.forEach(p=>{ if(!p.weight) p.weight=8; });
+  normalizeEstimatedMinutes(rotation);
+  return ranked.map((p,index)=>({
+    ...p,
+    minutes:index<rotation.length ? rotation[index].minutes : 0,
+    role:broadRole(p.position)
+  }));
+}
+
+function rotationFor(roster, abbr){
+  const saved = (window.DEPTH_CHART_DEFAULTS || {})[abbr];
+  if(!saved) return estimatedRotation(roster);
+  const byName = new Map(roster.map(p=>[p.player,p]));
+  const used = new Set();
+  const rotation = [];
+  POSITIONS.forEach(pos=>{
+    ((saved.positions && saved.positions[pos]) || []).forEach(entry=>{
+      const p = byName.get(entry.player);
+      if(!p || used.has(entry.player)) return;
+      used.add(entry.player);
+      rotation.push({...p, minutes:Number(entry.minutes)||0, role:broadRole(pos)});
+    });
+  });
+  (saved.unassigned||[]).forEach(entry=>{
+    const p = byName.get(entry.player);
+    if(!p || used.has(entry.player)) return;
+    used.add(entry.player);
+    rotation.push({...p, minutes:0, role:broadRole(p.position)});
+  });
+  roster.filter(p=>!used.has(p.player)).forEach(p=>{
+    rotation.push({...p, minutes:0, role:broadRole(p.position)});
+  });
+  return rotation;
 }
 
 function renderTeam(abbr, team){
-  const cols = bucket(rosterFor(team), abbr);
-  const rows = POSITIONS.map(pos=>{
-    const players = cols[pos];
-    if(!players.length) return `<tr><td class="pos">${pos}</td><td class="names empty">—</td></tr>`;
-    return `<tr><td class="pos">${pos}</td><td class="names">${players.map(dispName).join(', ')}</td></tr>`;
-  }).join('');
-  const other = cols.OTHER;
-  const otherRow = other.length
-    ? `<tr class="other"><td class="pos">?</td><td class="names">${other.map(dispName).join(', ')}</td></tr>`
-    : '';
+  const rotation = rotationFor(rosterFor(team), abbr)
+    .sort((a,b)=>(b.minutes-a.minutes)||(priorMpg(b)-priorMpg(a))||a.player.localeCompare(b.player));
+  const shown = rotation.slice(0,ESTIMATED_ROTATION_SIZE);
+  const rows = shown.map((p,index)=>`
+    <li class="rotation-player">
+      <span class="rank">${index+1}</span>
+      <span class="player-name">${dispName(p)}</span>
+      <span class="role ${p.role.cls}">${p.role.label}</span>
+      <span class="mpg">${p.minutes}</span>
+    </li>`).join('');
+  const remaining = Math.max(0,rotation.length-shown.length);
+  const zeroMinutes = rotation.filter(p=>p.minutes<=0).length;
+  const footer = remaining
+    ? `${remaining} more roster player${remaining===1?'':'s'} on full chart${zeroMinutes ? ` · ${zeroMinutes} currently outside rotation` : ''}`
+    : (zeroMinutes ? `${zeroMinutes} currently outside rotation` : 'Projected rotation totals 240 minutes');
   return `
     <a class="team-card" href="depth-chart-team.html?team=${abbr}">
       <div class="team-head">
         <span><span class="abbr">${abbr}</span><span class="name">${team.name}</span></span>
-        <span class="goto">Edit →</span>
+        <span class="goto">Full chart →</span>
       </div>
-      <table class="pos-table">${rows}${otherRow}</table>
+      ${rows ? `<ol class="rotation-list">${rows}</ol>` : '<div class="empty">No roster available</div>'}
+      <div class="depth-foot">${footer}</div>
     </a>`;
 }
-
 function jumpToTeam(abbr){
   if(abbr) location.href = `depth-chart-team.html?team=${abbr}`;
 }
