@@ -32,6 +32,13 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
 .scale-btn{border:1px solid var(--blue);background:#fff;color:var(--blue);padding:7px 12px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer}
 .scale-btn:hover{background:var(--blue);color:#fff}
 .note{font-size:11px;color:var(--txt3);margin-bottom:12px}
+.publish-btn{border:1px solid var(--orange);background:var(--orange);color:#fff;padding:7px 12px;border-radius:4px;font-size:11px;font-weight:800;cursor:pointer;display:none}
+.publish-btn:hover{background:#d96f13;border-color:#d96f13}
+.publish-btn:disabled{opacity:.55;cursor:default}
+.pub-status{font-size:11px;font-weight:700;display:none}
+.pub-status.ok{color:var(--green)}
+.pub-status.err{color:#cf222e}
+.pub-status.busy{color:var(--txt2)}
 
 .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
 .pos-col{background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:120px}
@@ -93,6 +100,7 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
   <div class="back-links">
     <a class="back" href="depth-charts.html">← All Teams</a>
     <a class="back" href="index.html">Home</a>
+    <a class="back" href="#" id="adminLink" onclick="adminSetup(event)" style="opacity:.45">Admin</a>
   </div>
 </header>
 <main>
@@ -103,6 +111,8 @@ main{max-width:1500px;margin:0 auto;padding:14px 14px 40px}
     <button class="reset-btn" onclick="resetChart()">Reset to Estimated</button>
     <div class="team-total" id="teamTotal"></div>
     <button class="scale-btn" onclick="scaleTo240()">Scale to 240</button>
+    <button class="publish-btn" id="publishBtn" onclick="publishDefault()">Publish as Site Default</button>
+    <span class="pub-status" id="pubStatus"></span>
   </div>
   <div class="note">Drag players between position columns or reorder within a column to set depth. Type any minutes value you want -- nothing auto-adjusts as you go. The Team Minutes total turns red once it's off 240 and green when it's back on the dot; click "Scale to 240" to proportionally rescale everyone's minutes back to 240 with the smallest change to each player's current number (position isn't a factor -- it's often wrong in the source data). Defaults for most teams are hand-tuned rotations; other teams are seeded from each player's 2025-26 MPG when we have it (shown in blue under their Min box), falling back to cap hit for rookies or data gaps. "Reset to Estimated" shows the raw MPG/cap-hit estimate. Your edits here are session-only — reloading returns to the default.</div>
 
@@ -379,6 +389,7 @@ function changeTeam(){
   url.searchParams.set('team', currentAbbr);
   history.replaceState(null,'',url);
   loadDefault();
+  showDefaultInfo();
 }
 function resetChart(){
   chart = buildEstimate(currentAbbr);
@@ -438,6 +449,139 @@ function loadDefault(){
   render();
 }
 
+// ── Publish mode (owner only) ────────────────────────────────────────────────
+// With a fine-grained GitHub token (Contents read/write on this repo only) stored
+// in localStorage, "Publish as Site Default" commits the current chart straight
+// into data/depth_chart_defaults.js via the GitHub Contents API. Anyone without a
+// valid token gets the normal session-only sandbox — GitHub rejects the write, so
+// the token IS the access control, not this UI.
+const GH_REPO = 'entropyisrude/nba-luck-adjustment';
+const GH_BRANCH = 'main';
+const GH_DEFAULTS_PATH = 'data/depth_chart_defaults.js';
+const GH_TOKEN_KEY = 'ghPublishToken';
+
+function ghToken(){ try{ return localStorage.getItem(GH_TOKEN_KEY) || ''; }catch(_){ return ''; } }
+function updateAdminUi(){
+  const on = !!ghToken();
+  // NB: must be an explicit value — '' would fall back to the CSS display:none
+  document.getElementById('publishBtn').style.display = on ? 'inline-block' : 'none';
+  document.getElementById('adminLink').textContent = on ? 'Admin ✓' : 'Admin';
+  showDefaultInfo();
+}
+function adminSetup(e){
+  e.preventDefault();
+  if(ghToken()){
+    if(confirm('Publish mode is on. Remove the stored GitHub token from this browser?')){
+      try{ localStorage.removeItem(GH_TOKEN_KEY); }catch(_){}
+    }
+  }else{
+    const t = prompt('Paste a fine-grained GitHub token with Contents read/write on ' + GH_REPO + '.\nIt is stored only in this browser\'s localStorage and sent only to api.github.com.');
+    if(t && t.trim()){ try{ localStorage.setItem(GH_TOKEN_KEY, t.trim()); }catch(_){ alert('localStorage unavailable — cannot store the token.'); } }
+  }
+  updateAdminUi();
+}
+function showDefaultInfo(){
+  const el = document.getElementById('pubStatus');
+  if(!ghToken()){ el.style.display='none'; return; }
+  const saved = (window.DEPTH_CHART_DEFAULTS || {})[currentAbbr];
+  el.className = 'pub-status busy';
+  el.style.display = 'inline-block';
+  el.textContent = saved && saved.savedAt ? `Default published ${fmtDate(saved.savedAt)}` : 'No published default yet (showing estimate)';
+}
+function setPubStatus(msg, cls){
+  const el = document.getElementById('pubStatus');
+  el.className = 'pub-status ' + cls;
+  el.style.display = 'inline-block';
+  el.textContent = msg;
+}
+function buildPayload(){
+  // Must stay format-identical to depth-chart-local.html's buildPayload() /
+  // scripts/bake_local_depth_chart_saves.py output — loadDefault() reads this.
+  const payload = {
+    schema: 1,
+    team: currentAbbr,
+    teamName: SNAP.teams[currentAbbr].name,
+    savedAt: new Date().toISOString(),
+    positions: {},
+    unassigned: chart.POOL.map(p=>({player:p.player, minutes:p.minutes||0})),
+  };
+  POSITIONS.forEach(pos=>{
+    payload.positions[pos] = chart[pos].map(p=>({player:p.player, minutes:p.minutes||0}));
+  });
+  return payload;
+}
+function b64EncodeUtf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for(let i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+  return btoa(bin);
+}
+function b64DecodeUtf8(b64){
+  const bin = atob(b64.replace(/\s/g,''));
+  const bytes = Uint8Array.from(bin, c=>c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+function ghApi(path, opts){
+  return fetch('https://api.github.com' + path, Object.assign({}, opts, {
+    headers: {
+      'Authorization': 'Bearer ' + ghToken(),
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  }));
+}
+async function publishDefault(){
+  const btn = document.getElementById('publishBtn');
+  if(btn.disabled) return;
+  const abbr = currentAbbr;
+  const payload = buildPayload();
+  btn.disabled = true;
+  setPubStatus('Publishing…', 'busy');
+  try{
+    // Fetch current file (content + sha) so we merge into the latest version.
+    const getResp = await ghApi(`/repos/${GH_REPO}/contents/${GH_DEFAULTS_PATH}?ref=${GH_BRANCH}`);
+    let defaults = {}, sha = null;
+    if(getResp.status === 200){
+      const file = await getResp.json();
+      sha = file.sha;
+      const text = b64DecodeUtf8(file.content);
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if(start === -1 || end === -1) throw new Error('defaults file has unexpected format');
+      defaults = JSON.parse(text.slice(start, end+1));
+    }else if(getResp.status === 401){
+      throw new Error('token rejected (401) — expired or wrong permissions?');
+    }else if(getResp.status !== 404){
+      throw new Error(`GitHub read failed (${getResp.status})`);
+    }
+    defaults[abbr] = payload;
+    const body = 'window.DEPTH_CHART_DEFAULTS = ' + JSON.stringify(defaults) + ';\n';
+    const putResp = await ghApi(`/repos/${GH_REPO}/contents/${GH_DEFAULTS_PATH}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: `Publish ${abbr} depth chart default (web editor)`,
+        content: b64EncodeUtf8(body),
+        branch: GH_BRANCH,
+        sha: sha || undefined,
+      }),
+    });
+    if(putResp.status === 401) throw new Error('token rejected (401) — expired or wrong permissions?');
+    if(putResp.status === 409) throw new Error('conflict — the file changed mid-publish, try again');
+    if(putResp.status !== 200 && putResp.status !== 201){
+      let detail = '';
+      try{ detail = (await putResp.json()).message || ''; }catch(_){}
+      throw new Error(`GitHub write failed (${putResp.status}${detail ? ': '+detail : ''})`);
+    }
+    // Reflect immediately in this session so the page agrees with what was pushed.
+    window.DEPTH_CHART_DEFAULTS = defaults;
+    setPubStatus(`Published ${abbr} ✓ — live site updates in ~1 min`, 'ok');
+  }catch(err){
+    setPubStatus('Publish failed: ' + err.message, 'err');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 function init(){
   document.getElementById('source').textContent = SNAP ? `Data: ${SNAP.season} · fetched ${fmtDate(SNAP.fetched_at)}` : '';
   const abbrs = Object.keys(SNAP.teams).sort((a,b)=>SNAP.teams[a].name.localeCompare(SNAP.teams[b].name));
@@ -447,6 +591,7 @@ function init(){
   document.getElementById('teamSel').innerHTML = abbrs.map(a=>
     `<option value="${a}"${a===currentAbbr?' selected':''}>${esc(SNAP.teams[a].name)}</option>`).join('');
   loadDefault();
+  updateAdminUi();
 }
 init();
 </script>
