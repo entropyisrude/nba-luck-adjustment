@@ -7,12 +7,14 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from src.season import TAG
+
 # CONFIGURATION
 DATA_DIR = Path("data")
-LEDGER_PATH = DATA_DIR / "master_boxscore_2526.csv"
-BBREF_PATH = DATA_DIR / "bbref_advanced_2526.csv"
-TEAM_GP_PATH = DATA_DIR / "bbref_team_gp_2526.csv"
-BBREF_HIST_PATH = DATA_DIR / "bbref_advanced_2024_25.csv"
+LEDGER_PATH = DATA_DIR / f"master_boxscore_{TAG}.csv"
+BBREF_PATH = DATA_DIR / f"bbref_advanced_{TAG}.csv"
+TEAM_GP_PATH = DATA_DIR / f"bbref_team_gp_{TAG}.csv"
+BBREF_HIST_PATH = DATA_DIR / "bbref_advanced_prev.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
 CACHE_PATH = Path("cdn_boxscore_cache.json")
 if not CACHE_PATH.exists():
@@ -137,7 +139,7 @@ def build_daily_report():
     player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
     final = bbref.merge(player_map, on='player_name', how='inner')
 
-    official_date = "2026-04-03"
+    official_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
     
     # Map live team GP to abbreviations
     team_rem_map = {}

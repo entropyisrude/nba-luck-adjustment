@@ -1,4 +1,6 @@
-# v1 constants for 2025-26
+season: "2026-27"       # current season; drives file names, BBRef URLs, report titles
+
+# v1 constants
 mu: 0.36               # baseline 3P%
 kappa: 400             # prior attempt strength
 half_life_3pa: 2000    # attempt-based half-life for recency weighting

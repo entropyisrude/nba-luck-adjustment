@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+from src.season import SEASON, SEASON_START_DATE
+
 TEMPLATE_PATH = Path("template.html")
 DATA_DIR = Path("data")
 LUCK_COMPONENTS = DATA_DIR / "rapm_luck_adjust.parquet"
@@ -252,7 +254,13 @@ def generate_report():
         raise FileNotFoundError(f"Template file not found: {TEMPLATE_PATH}")
     template = TEMPLATE_PATH.read_text(encoding='utf-8')
 
-    df = _apply_shooting_luck(pd.read_csv("data/adjusted_games.csv"))
+    df = pd.read_csv("data/adjusted_games.csv")
+    # adjusted_games.csv accumulates across seasons; the report covers only the current one.
+    df = df[df['date'] >= SEASON_START_DATE]
+    if df.empty:
+        print(f"No {SEASON} games yet; leaving existing report in place.")
+        return False
+    df = _apply_shooting_luck(df)
 
     # Rows without game_type were written before the column existed — treat as regular season.
     if 'game_type' in df.columns:
@@ -345,6 +353,7 @@ def generate_report():
     season_months_json = json.dumps(season_months)
 
     html = template
+    html = html.replace('{{SEASON_LABEL}}', SEASON)
     html = html.replace('{{SEASON_DATE}}', df['date'].max())
     html = html.replace('{{GAME_COUNT}}', str(len(rs_df)))
     html = html.replace('{{GAMES_JSON}}', games_json)

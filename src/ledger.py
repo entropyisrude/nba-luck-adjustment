@@ -5,7 +5,9 @@ import json
 import re
 from pathlib import Path
 
-LEDGER_PATH = Path("data/master_boxscore_2526.csv")
+from src.season import TAG
+
+LEDGER_PATH = Path(f"data/master_boxscore_{TAG}.csv")
 
 def update_master_ledger(game_id, player_df, team_df, date_str):
     """

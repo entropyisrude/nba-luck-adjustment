@@ -2,6 +2,8 @@
 import pandas as pd
 from pathlib import Path
 
+from src.season import SEASON, PREV_SEASON, END_YEAR, TAG
+
 # Authoritative BBRef Abbreviation Mapping
 TEAM_MAP = {
     'Atlanta Hawks': 'ATL', 'Boston Celtics': 'BOS', 'Brooklyn Nets': 'BRK',
@@ -17,12 +19,12 @@ TEAM_MAP = {
 }
 
 def fetch_bbref_data():
-    print("Fetching 2025-26 Stats and Standings from Basketball Reference...")
+    print(f"Fetching {SEASON} Stats and Standings from Basketball Reference...")
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
     
-    # 1. Fetch 2025-26 Advanced Player Stats
-    adv_url = "https://www.basketball-reference.com/leagues/NBA_2026_advanced.html"
+    # 1. Fetch current-season Advanced Player Stats
+    adv_url = f"https://www.basketball-reference.com/leagues/NBA_{END_YEAR}_advanced.html"
     try:
         tables = pd.read_html(adv_url)
         df = tables[0]
@@ -37,13 +39,13 @@ def fetch_bbref_data():
         df['Player'] = df['Player'].str.replace(r'[*]+$', '', regex=True).str.strip()
         df = df.rename(columns={'Player': 'player_name'})
         
-        df.to_csv(data_dir / "bbref_advanced_2526.csv", index=False)
-        print("Saved 2025-26 Advanced Player Stats.")
+        df.to_csv(data_dir / f"bbref_advanced_{TAG}.csv", index=False)
+        print(f"Saved {SEASON} Advanced Player Stats.")
     except Exception as e:
-        print(f"Error fetching 2025-26 player stats: {e}")
+        print(f"Error fetching {SEASON} player stats: {e}")
 
-    # 1b. Fetch 2024-25 Advanced Player Stats (Historical VORP)
-    hist_url = "https://www.basketball-reference.com/leagues/NBA_2025_advanced.html"
+    # 1b. Fetch previous-season Advanced Player Stats (Historical VORP)
+    hist_url = f"https://www.basketball-reference.com/leagues/NBA_{END_YEAR - 1}_advanced.html"
     try:
         tables = pd.read_html(hist_url)
         df = tables[0]
@@ -54,13 +56,13 @@ def fetch_bbref_data():
         # Deduplicate historical: keep highest VORP (usually the TOT row if traded)
         df = df.sort_values(['Player', 'VORP'], ascending=[True, False]).drop_duplicates('Player')
         df = df.rename(columns={'Player': 'player_name', 'VORP': 'vorp_prev'})
-        df.to_csv(data_dir / "bbref_advanced_2024_25.csv", index=False)
-        print("Saved 2024-25 Historical VORP Stats.")
+        df.to_csv(data_dir / "bbref_advanced_prev.csv", index=False)
+        print(f"Saved {PREV_SEASON} Historical VORP Stats.")
     except Exception as e:
         print(f"Error fetching historical stats: {e}")
 
     # 2. Fetch Official Team Standings
-    std_url = "https://www.basketball-reference.com/leagues/NBA_2026.html"
+    std_url = f"https://www.basketball-reference.com/leagues/NBA_{END_YEAR}.html"
     try:
         tables = pd.read_html(std_url)
         east = tables[0].rename(columns={'Eastern Conference': 'Team'})
@@ -74,7 +76,7 @@ def fetch_bbref_data():
         standings['team_abbr'] = standings['Team'].map(TEAM_MAP)
         
         output_df = standings[['team_abbr', 'W', 'L', 'team_gp']].dropna()
-        output_df.to_csv(data_dir / "bbref_team_gp_2526.csv", index=False)
+        output_df.to_csv(data_dir / f"bbref_team_gp_{TAG}.csv", index=False)
         print(f"Saved Authoritative Team Standings ({len(output_df)} teams).")
     except Exception as e:
         print(f"Error fetching standings: {e}")
