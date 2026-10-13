@@ -1,0 +1,11 @@
+name: Probe nba.com pages (temporary)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in "https://www.nba.com/games?date=2025-10-22" "https://www.nba.com/game/0022500001/play-by-play" "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20251022"; do
+            code=$(curl -s -m 30 -A "Mozilla/5.0" -o out.html -w '%{http_code} %{size_download}' "$u")
+            echo "$code ids=$(grep -oE '"gameId":"00[0-9]{8}"' out.html | sort -u | wc -l) actions=$(grep -o '"actionNumber"' out.html | wc -l) $u"
+          done
