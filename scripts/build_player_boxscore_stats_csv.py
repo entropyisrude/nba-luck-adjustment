@@ -2,23 +2,17 @@ from __future__ import annotations
 
 import csv
 import os
+import sys
 from pathlib import Path
 
-import requests
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src import nba_pages  # noqa: E402
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", Path(__file__).resolve().parents[1]))
 DATA_DIR = ROOT / "data"
 GAMES_CSV = DATA_DIR / "adjusted_games.csv"
 OUT_CSV = DATA_DIR / "player_boxscore_stats.csv"
-
-BOXSCORE_URL = "https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json,text/plain,*/*",
-    "Origin": "https://www.nba.com",
-    "Referer": "https://www.nba.com/",
-}
 
 
 def _num(value) -> float:
@@ -120,18 +114,10 @@ def main() -> None:
     records: list[dict] = list(existing_records)
     missing_games = [(game_id, game_date) for game_id, game_date in unique_games if game_id not in existing_game_ids]
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
     for idx, (game_id, game_date) in enumerate(missing_games, start=1):
         if idx == 1 or idx % 25 == 0 or idx == len(missing_games):
             print(f"Fetching boxscores {idx}/{len(missing_games)}...")
-        gid10 = game_id.zfill(10)
-        url = BOXSCORE_URL.format(game_id=gid10)
-        resp = session.get(url, timeout=30)
-        resp.raise_for_status()
-        js = resp.json()
-        game = js.get("game") or {}
+        game = nba_pages.boxscore_json(game_id.zfill(10)).get("game") or {}
         for side in ("homeTeam", "awayTeam"):
             for rec in _team_rows(game_id, game, side):
                 rec["date"] = game_date

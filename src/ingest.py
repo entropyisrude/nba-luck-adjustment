@@ -11,6 +11,8 @@ from typing import Any
 import pandas as pd
 import requests
 
+from src import nba_pages
+
 from nba_api.stats.endpoints import playercareerstats
 from nba_api.stats.endpoints import leaguegamefinder
 from nba_api.stats.endpoints import boxscoretraditionalv2
@@ -1204,7 +1206,8 @@ def get_game_ids_for_date(
                         Useful for edge cases like the COVID bubble where games are played outside
                         the normal season dates.
     """
-    # Use CDN schedule for current season — works from GitHub Actions unlike stats.nba.com
+    # Current season: final games from the nba.com scores page (cdn.nba.com
+    # and stats.nba.com JSON are behind Akamai "Access Denied" since mid-2026).
     if not season_override:
         if season_type == "PlayIn":
             prefix = "005"
@@ -1212,25 +1215,19 @@ def get_game_ids_for_date(
             prefix = "004"
         else:
             prefix = "002"
-        schedule_all = _load_schedule_all()
-        ids = schedule_all.get(game_date_mmddyyyy, {}).get(prefix, [])
-        if ids:
-            return ids
-        # For regular season also try the original CDN cache as a fallback
-        if season_type == "Regular Season":
-            ids = _load_schedule().get(game_date_mmddyyyy, [])
-            if ids:
-                return ids
-        # CDN returned nothing (game not yet final or date out of season) — don't hit stats API
-        return []
+        date_iso = datetime.strptime(game_date_mmddyyyy, "%m/%d/%Y").strftime("%Y-%m-%d")
+        return [
+            str(g["gameId"])
+            for g in nba_pages.games_for_date(date_iso)
+            if str(g["gameId"]).startswith(prefix) and g.get("gameStatus") == 3
+        ]
     # Historical season override: must use stats API
     ids = _get_game_ids_for_date_from_stats_api(game_date_mmddyyyy, season_type, season_override)
     return ids if ids else []
 
 
 def _get_boxscore_json(game_id: str, game_date_mmddyyyy: str) -> dict[str, Any]:
-    url = BOXSCORE_URL.format(game_id=game_id)
-    return _get_json(url)
+    return nba_pages.boxscore_json(game_id)
 
 
 def get_game_home_away_team_ids(game_id: str, game_date_mmddyyyy: str) -> tuple[int, int]:
@@ -1595,14 +1592,28 @@ def get_playbyplay_actions(game_id: str, game_date_mmddyyyy: str) -> list[dict[s
     if _stats_cache_only():
         return []
 
-    # Try CDN first
+    # nba.com game page: stats-v3 actions, same schema as the local
+    # nbastatsv3 archives, so reuse their normalization + substitution expansion.
     try:
-        url = PLAYBYPLAY_URL.format(game_id=game_id)
-        pbp_data = _get_json(url)
-        game = pbp_data.get("game", {}) or {}
-        actions = game.get("actions", []) or []
+        actions = nba_pages.playbyplay_actions(game_id)
         if actions:
-            return [canonicalize_action_player_ids(a) for a in actions]
+            for a in actions:
+                a.setdefault("gameId", str(game_id).zfill(10))
+            # Seed name aliases from the full box-score roster so players whose
+            # only events are substitutions still resolve to a personId.
+            roster_aliases: dict[int, dict[str, set[int]]] = {}
+            for team in _get_boxscore_json(game_id, game_date_mmddyyyy)["game"].values():
+                if not isinstance(team, dict) or "players" not in team:
+                    continue
+                team_aliases = roster_aliases.setdefault(int(team["teamId"]), {})
+                for pl in team["players"]:
+                    full = f"{pl.get('firstName', '')} {pl.get('familyName', '')}".strip()
+                    for alias in _name_aliases(full, str(pl.get("nameI", "") or ""), ""):
+                        team_aliases.setdefault(alias, set()).add(canonicalize_player_id(pl["personId"]))
+            return [
+                canonicalize_action_player_ids(a)
+                for a in _expand_local_substitutions(_normalize_statsv3_actions(actions), roster_aliases)
+            ]
     except Exception:
         pass
 
