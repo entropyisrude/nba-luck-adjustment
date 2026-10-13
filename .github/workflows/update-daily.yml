@@ -92,10 +92,25 @@ jobs:
         run: |
           python generate_report.py
 
-      - name: Pull on/off CSVs from LFS
+      - name: Compute LFS cache key
+        id: lfskey
+        run: |
+          LFS_FILES="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv,derived/contextual_causal/production_counted_onoff/adjusted_onoff_regular_canonical_counted.parquet,derived/contextual_causal/production_counted_evidence/canonical_counted_stints_production.parquet"
+          echo "files=$LFS_FILES" >> $GITHUB_OUTPUT
+          echo "key=lfs-$(git lfs ls-files -l -I "$LFS_FILES" | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      # Cache LFS objects so ~330MB isn't re-downloaded (and billed) every run
+      - name: Restore LFS cache
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: ${{ steps.lfskey.outputs.key }}
+          restore-keys: lfs-
+
+      - name: Pull on/off data from LFS
         run: |
           git lfs install
-          git lfs pull --include="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv"
+          git lfs pull --include="${{ steps.lfskey.outputs.files }}"
 
       - name: Recompute recent on/off
         continue-on-error: true
