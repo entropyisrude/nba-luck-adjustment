@@ -95,7 +95,7 @@ jobs:
       - name: Compute LFS cache key
         id: lfskey
         run: |
-          LFS_FILES="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv,derived/contextual_causal/production_counted_onoff/adjusted_onoff_regular_canonical_counted.parquet,derived/contextual_causal/production_counted_evidence/canonical_counted_stints_production.parquet"
+          LFS_FILES="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv,derived/contextual_causal/production_counted_onoff/*.parquet,derived/contextual_causal/production_counted_evidence/*.parquet"
           echo "files=$LFS_FILES" >> $GITHUB_OUTPUT
           echo "key=lfs-$(git lfs ls-files -l -I "$LFS_FILES" | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
 
