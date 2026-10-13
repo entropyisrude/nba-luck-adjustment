@@ -9,3 +9,4 @@ lxml
 beautifulsoup4
 html5lib
 numpy
+pyarrow>=14.0.0
