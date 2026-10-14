@@ -60,6 +60,11 @@ jobs:
         env:
           SEARCH_ONLY_SEASON: ${{ steps.season.outputs.season }}
         run: |
+          TAG=$(python -c 'from src.season import TAG; print(TAG)')
+          if [ ! -f "data/season_${TAG}/stints_${TAG}.csv" ]; then
+            echo "No ${SEARCH_ONLY_SEASON} games ingested yet; nothing to refresh."
+            exit 0
+          fi
           python metric/build_current_season_counted.py
           python scripts/build_analytics_duckdb.py
           python generate_player_game_search_report.py

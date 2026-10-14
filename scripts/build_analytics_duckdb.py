@@ -161,7 +161,7 @@ def main() -> None:
         if HIST_STINTS.exists():
             con.execute(f"CREATE TABLE raw_stints AS SELECT * FROM read_csv_auto('{HIST_STINTS}', header=true) WHERE FALSE;")
         else:
-            con.execute("CREATE TABLE raw_stints (game_id VARCHAR, stint_index BIGINT, home_id BIGINT, away_id BIGINT, home_p1 BIGINT, home_p2 BIGINT, home_p3 BIGINT, home_p4 BIGINT, home_p5 BIGINT, away_p1 BIGINT, away_p2 BIGINT, away_p3 BIGINT, away_p4 BIGINT, away_p5 BIGINT, seconds DOUBLE, home_pts DOUBLE, away_pts DOUBLE, date VARCHAR)")
+            con.execute("CREATE TABLE raw_stints (game_id VARCHAR, stint_index BIGINT, home_id BIGINT, away_id BIGINT, home_p1 BIGINT, home_p2 BIGINT, home_p3 BIGINT, home_p4 BIGINT, home_p5 BIGINT, away_p1 BIGINT, away_p2 BIGINT, away_p3 BIGINT, away_p4 BIGINT, away_p5 BIGINT, seconds DOUBLE, home_pts DOUBLE, away_pts DOUBLE, home_pts_adj DOUBLE, away_pts_adj DOUBLE, date VARCHAR)")
     else:
         con.execute(
             f"""
