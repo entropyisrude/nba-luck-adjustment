@@ -34,6 +34,10 @@ ALLOW_PER100 = os.environ.get("PLAYER_GAME_SEARCH_ALLOW_PER100", "1") != "0"
 # The RS facts table also carries playoff ('4') and play-in ('5') games for
 # recent seasons, which must not leak into the regular-season search.
 GAME_ID_PREFIX = os.environ.get("PLAYER_GAME_SEARCH_GAME_ID_PREFIX", "2")
+# CI sets this to the current season: its database lacks desktop-only
+# history, so only that season's chunk is rewritten and every other
+# season's committed chunk and index entry is kept as is.
+ONLY_SEASON = os.environ.get("SEARCH_ONLY_SEASON", "").strip() or None
 
 
 def _season_start(season: str) -> int:
@@ -172,6 +176,8 @@ def generate_player_game_search_report() -> Path:
 
     col_index = {name: idx for idx, name in enumerate(cols)}
     compact_rows = [list(row) for row in rows]
+    if ONLY_SEASON:
+        compact_rows = [r for r in compact_rows if r[col_index["season"]] == ONLY_SEASON]
     seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
     teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
     opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
@@ -182,6 +188,11 @@ def generate_player_game_search_report() -> Path:
         if not name or not season:
             continue
         player_seasons_by_name.setdefault(name, []).append(season)
+    if ONLY_SEASON and OUTPUT_SITE_PATH.exists():
+        # Keep every other season's players from the published index.
+        m = re.search(r"const PLAYER_SEASONS_BY_NAME = (.*?);\n", OUTPUT_SITE_PATH.read_text(encoding="utf-8"))
+        for name, season_list in (json.loads(m.group(1)) if m else {}).items():
+            player_seasons_by_name.setdefault(name, []).extend(s for s in season_list if s != ONLY_SEASON)
     player_seasons_by_name = {
         name: sorted(set(season_list), key=_season_start)
         for name, season_list in player_seasons_by_name.items()
@@ -856,6 +867,7 @@ def generate_player_game_search_report() -> Path:
     const DATA_FILES = {json.dumps(season_files, ensure_ascii=False)};
     const LOADED_SEASONS = new Set();
     const SEASONS = {json.dumps(seasons, ensure_ascii=False)};
+    const DEFAULT_SEASON = SEASONS[SEASONS.length - 1];
     const SEASON_STARTS = {json.dumps(season_starts, ensure_ascii=False)};
     const TEAMS = {json.dumps(teams, ensure_ascii=False)};
     const OPPS = {json.dumps(opps, ensure_ascii=False)};
@@ -1024,9 +1036,9 @@ def generate_player_game_search_report() -> Path:
       document.getElementById("expr2_label").value = "STL+BLK";
       document.getElementById("split1_key").value = "";
       document.getElementById("split2_key").value = "";
-      if (SEASONS.includes("2025-26")) {{
-        document.getElementById("season_start").value = "2025";
-        document.getElementById("season_end").value = "2025";
+      if (DEFAULT_SEASON) {{
+        document.getElementById("season_start").value = String(seasonStart(DEFAULT_SEASON));
+        document.getElementById("season_end").value = String(seasonStart(DEFAULT_SEASON));
       }}
       updateCustomHeaders();
     }}
@@ -1582,9 +1594,9 @@ def generate_player_game_search_report() -> Path:
 
     function clearFilters() {{
       document.querySelectorAll('input').forEach(el => el.value = '');
-      if (SEASONS.includes("2025-26")) {{
-        document.getElementById('season_start').value = "2025";
-        document.getElementById('season_end').value = "2025";
+      if (DEFAULT_SEASON) {{
+        document.getElementById('season_start').value = String(seasonStart(DEFAULT_SEASON));
+        document.getElementById('season_end').value = String(seasonStart(DEFAULT_SEASON));
       }} else {{
         document.getElementById('season_start').value = 'ALL';
         document.getElementById('season_end').value = 'ALL';
@@ -1633,9 +1645,9 @@ def generate_player_game_search_report() -> Path:
 
     populate();
     clearFilters();
-    if (SEASONS.includes("2025-26")) {{
+    if (DEFAULT_SEASON) {{
       setTimeout(() => {{
-        loadSeasonChunk("2025-26").catch(() => {{}});
+        loadSeasonChunk(DEFAULT_SEASON).catch(() => {{}});
       }}, 0);
     }}
   </script>

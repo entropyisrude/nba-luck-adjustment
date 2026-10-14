@@ -30,6 +30,10 @@ RS_CUR = _CUR_STYLE if SEARCH_SCOPE == "regular" else ""
 PO_CUR = _CUR_STYLE if SEARCH_SCOPE == "playoffs" else ""
 CB_CUR = _CUR_STYLE if SEARCH_SCOPE == "combined" else ""
 GAME_ID_PREFIX = os.environ.get("PLAYER_SPAN_SEARCH_GAME_ID_PREFIX", "2")
+# CI sets this to the current season: its database lacks desktop-only
+# history, so only that season's chunk is rewritten and every other
+# season's committed chunk and index entry is kept as is.
+ONLY_SEASON = os.environ.get("SEARCH_ONLY_SEASON", "").strip() or None
 SOURCE_LABEL = os.environ.get("PLAYER_SPAN_SEARCH_SOURCE_LABEL", "data/nba_analytics.duckdb")
 ALLOW_PER100 = os.environ.get("PLAYER_SPAN_SEARCH_ALLOW_PER100", "1") != "0"
 PLAYER_RIM_ASSISTS_BY_SEASON = DATA_DIR / "player_rim_assists_by_season.csv"
@@ -253,6 +257,8 @@ def generate_player_span_search_report() -> Path:
                 continue
             if row[idx] in (None, ""):
                 row[idx] = enrich.get(csv_key)
+    if ONLY_SEASON:
+        compact_rows = [r for r in compact_rows if r[col_index["season"]] == ONLY_SEASON]
     seasons = sorted({r[col_index["season"]] for r in compact_rows if r[col_index["season"]]})
     teams = sorted({r[col_index["team_abbr"]] for r in compact_rows if r[col_index["team_abbr"]]})
     opps = sorted({r[col_index["opp_team_abbr"]] for r in compact_rows if r[col_index["opp_team_abbr"]]})
@@ -916,6 +922,7 @@ def generate_player_span_search_report() -> Path:
     const DATA_FILES = {json.dumps(season_files, ensure_ascii=False)};
     const LOADED_SEASONS = new Set();
     const SEASONS = {json.dumps(seasons, ensure_ascii=False)};
+    const DEFAULT_SEASON = SEASONS[SEASONS.length - 1];
     const TEAMS = {json.dumps(teams, ensure_ascii=False)};
     const OPPS = {json.dumps(opps, ensure_ascii=False)};
     const HEIGHT_VALUES = {json.dumps(list(range(65, 92)), ensure_ascii=False)};
@@ -1063,9 +1070,9 @@ def generate_player_span_search_report() -> Path:
       document.getElementById("expr2_label").placeholder = "Optional label";
       document.getElementById("split1_key").value = "";
       document.getElementById("split2_key").value = "";
-      if (SEASONS.includes("2025-26")) {{
-        document.getElementById("season_start").value = "2025";
-        document.getElementById("season_end").value = "2025";
+      if (DEFAULT_SEASON) {{
+        document.getElementById("season_start").value = DEFAULT_SEASON.split("-")[0];
+        document.getElementById("season_end").value = DEFAULT_SEASON.split("-")[0];
       }}
       updateCustomHeaders();
       initHeaderModeToggles();
@@ -1938,9 +1945,9 @@ def generate_player_span_search_report() -> Path:
 
     function clearFilters() {{
       document.querySelectorAll('input').forEach(el => el.value = '');
-      if (SEASONS.includes("2025-26")) {{
-        document.getElementById('season_start').value = "2025";
-        document.getElementById('season_end').value = "2025";
+      if (DEFAULT_SEASON) {{
+        document.getElementById('season_start').value = DEFAULT_SEASON.split("-")[0];
+        document.getElementById('season_end').value = DEFAULT_SEASON.split("-")[0];
       }} else {{
         document.getElementById('season_start').value = 'ALL';
         document.getElementById('season_end').value = 'ALL';
@@ -1987,9 +1994,9 @@ def generate_player_span_search_report() -> Path:
     populate();
     clearFilters();
     updateOnOffAvailabilityUi();
-    if (SEASONS.includes("2025-26")) {{
+    if (DEFAULT_SEASON) {{
       setTimeout(() => {{
-        loadSeasonChunk("2025-26").catch(() => {{}});
+        loadSeasonChunk(DEFAULT_SEASON).catch(() => {{}});
       }}, 0);
     }}
   </script>

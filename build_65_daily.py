@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from src.season import TAG
+from src.season import SEASON, START_YEAR, TAG
 
 # CONFIGURATION
 DATA_DIR = Path("data")
@@ -16,17 +16,17 @@ BBREF_PATH = DATA_DIR / f"bbref_advanced_{TAG}.csv"
 TEAM_GP_PATH = DATA_DIR / f"bbref_team_gp_{TAG}.csv"
 BBREF_HIST_PATH = DATA_DIR / "bbref_advanced_prev.csv"
 PLAYER_MAP_PATH = DATA_DIR / "player_totals_2025_26.csv"
-CACHE_PATH = Path("cdn_boxscore_cache.json")
-if not CACHE_PATH.exists():
-    CACHE_PATH = Path("../cdn_boxscore_cache.json")
-BOXSCORE_DIR = Path("boxscores_cache")
-BOXSCORE_DIR.mkdir(exist_ok=True)
+BOX_STATS_PATH = DATA_DIR / "player_boxscore_stats.csv"
 OUTPUT_HTML = "65-game-tracker.html"
 
-# Corrected NBA Cup Final Participants (Spurs vs Knicks, Dec 16, 2025)
-CUP_FINAL_PLAYERS = {
-    1628384, 1626157, 1628969, 1628973, 203903, 1642278, 1630577, 203084,
-    1641705, 1630170, 1642264, 1628436, 1642844, 1628404, 1628368
+# NBA Cup final participants get one extra eligible game, keyed by season.
+# Add the season's final rosters once the final is played.
+CUP_FINAL_PLAYERS_BY_SEASON = {
+    # Spurs vs Knicks, Dec 16, 2025
+    "2025-26": {
+        1628384, 1626157, 1628969, 1628973, 203903, 1642278, 1630577, 203084,
+        1641705, 1630170, 1642264, 1628436, 1642844, 1628404, 1628368
+    },
 }
 
 TEAM_MAP_REV = {
@@ -40,83 +40,47 @@ TEAM_MAP_REV = {
     1610612765: 'DET', 1610612766: 'CHO'
 }
 
-def get_live_stats_from_cdn():
-    """Scans the CDN cache for authoritative game counts, using local file cache for speed."""
-    print("Updating Award Eligibility counts from live CDN...")
-    if not CACHE_PATH.exists():
+def get_live_stats():
+    """Per-player 65-game rule counts and team games played for the current season.
+
+    Reads data/player_boxscore_stats.csv, which the daily workflow fills from
+    nba.com box scores for every game in adjusted_games.csv.
+    """
+    print(f"Counting {SEASON} award-eligibility games from player box scores...")
+    if not BOX_STATS_PATH.exists():
         return None, None
-    
-    with open(CACHE_PATH, 'r') as f:
-        gids = sorted(list(set([gid for gid in json.load(f) if gid.startswith("00225")])))
-    
-    # Auto-detect current date (ET)
-    now_et = datetime.utcnow() - timedelta(hours=5)
-    today_str = now_et.strftime("%Y-%m-%d")
-    player_stats = {} 
-    team_gp = {} 
-    
-    for i, gid in enumerate(gids):
-        local_path = BOXSCORE_DIR / f"{gid}.json"
-        data = None
-        
-        if local_path.exists():
-            with open(local_path, 'r') as f:
-                data = json.load(f)
-        else:
-            url = f"https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{gid}.json"
-            try:
-                r = requests.get(url, timeout=10)
-                if r.status_code == 200:
-                    data = r.json()
-                    with open(local_path, 'w') as f:
-                        json.dump(data, f)
-            except:
-                pass
-        
-        if data:
-            try:
-                game_date = data['game']['gameTimeUTC'].split('T')[0]
-                if game_date > today_str: continue
-                
-                players = data['game']['homeTeam']['players'] + data['game']['awayTeam']['players']
-                total_min = sum(int(re.search(r'PT(\d+)M', p['statistics']['minutes']).group(1)) for p in players if re.search(r'PT(\d+)M', p['statistics']['minutes']))
-                if total_min < 200: continue
+    box = pd.read_csv(BOX_STATS_PATH, dtype={"game_id": str})
+    box["game_id"] = box["game_id"].str.lstrip("0")
+    # Regular-season game IDs are 2YY#####, with YY the season's start year.
+    box = box[box["game_id"].str.startswith(f"2{START_YEAR % 100:02d}")]
+    if box.empty:
+        return None, None
 
-                # Count for teams
-                team_gp[data['game']['homeTeam']['teamId']] = team_gp.get(data['game']['homeTeam']['teamId'], 0) + 1
-                team_gp[data['game']['awayTeam']['teamId']] = team_gp.get(data['game']['awayTeam']['teamId'], 0) + 1
+    def _minutes(value) -> float:
+        text = str(value or "")
+        m = re.fullmatch(r"PT(\d+)M([\d.]+)S", text)
+        if m:
+            return int(m.group(1)) + float(m.group(2)) / 60.0
+        m = re.fullmatch(r"(\d+):(\d+(?:\.\d+)?)", text)
+        return int(m.group(1)) + float(m.group(2)) / 60.0 if m else 0.0
 
-                # Count for players
-                for p in players:
-                    pid = p['personId']
-                    s = p['statistics']['minutes']
-                    m = re.search(r'PT(\d+)M', s)
-                    s_sec = re.search(r'M([\d.]+)S', s)
-                    mins = 0
-                    if m: mins += int(m.group(1))
-                    if s_sec: mins += float(s_sec.group(1))/60.0
-                    
-                    if mins == 0: continue
-                    
-                    if pid not in player_stats:
-                        player_stats[pid] = {'g20': 0, 'g15_20': 0, 'g_lt_15': 0, 'total': 0}
-                    
-                    player_stats[pid]['total'] += 1
-                    if mins >= 20: player_stats[pid]['g20'] += 1
-                    elif mins >= 15: player_stats[pid]['g15_20'] += 1
-                    else: player_stats[pid]['g_lt_15'] += 1
-            except:
-                pass
-        
-        if (i+1) % 200 == 0:
-            print(f"  Processed {i+1} games...")
-            
+    box["mins"] = box["minutes"].map(_minutes)
+    team_gp = box.groupby("team_id")["game_id"].nunique().to_dict()
+    played = box[box["mins"] > 0]
+    player_stats = {}
+    for pid, mins in played.groupby("player_id")["mins"]:
+        player_stats[int(pid)] = {
+            "g20": int((mins >= 20).sum()),
+            "g15_20": int(((mins >= 15) & (mins < 20)).sum()),
+            "g_lt_15": int((mins < 15).sum()),
+            "total": int(len(mins)),
+        }
     return player_stats, team_gp
 
 def build_daily_report():
     print("Building Award Eligibility Report (Restoring VORP + Correcting Counts)...")
 
-    player_stats, live_team_gp = get_live_stats_from_cdn()
+    player_stats, live_team_gp = get_live_stats()
     if not player_stats:
         print("Failed to get live stats.")
         return
@@ -136,7 +100,11 @@ def build_daily_report():
     else:
         bbref['vorp_prev'] = 0.0
 
-    player_map = pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]
+    # Name -> NBA id from this season's box scores (covers rookies), then the
+    # older season-totals map for anyone not yet seen.
+    season_names = pd.read_csv(BOX_STATS_PATH)[['player_name', 'player_id']]
+    player_map = (pd.concat([season_names, pd.read_csv(PLAYER_MAP_PATH)[['player_name', 'player_id']]])
+                  .drop_duplicates('player_name'))
     final = bbref.merge(player_map, on='player_name', how='inner')
 
     official_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -160,7 +128,7 @@ def build_daily_report():
 
         # Special credit for NBA Cup Final
         has_cup_credit = False
-        if pid in CUP_FINAL_PLAYERS:
+        if pid in CUP_FINAL_PLAYERS_BY_SEASON.get(SEASON, set()):
             eligible += 1
             has_cup_credit = True
 

@@ -1,4 +1,10 @@
-name: Weekly PBP Data Refresh
+name: Weekly Search Pages Refresh
+
+# Rebuilds the analytics DuckDB and the player game / span search pages for the
+# current season. The daily workflow already ingests games, on/off, stints and
+# possessions; this only re-derives the search pages, which need the full DB.
+# CI lacks the desktop-only historical sources, so the generators rewrite only
+# the current season (SEARCH_ONLY_SEASON) and keep every other season as is.
 
 on:
   schedule:
@@ -7,54 +13,63 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  refresh-pbp:
+  refresh-search:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-        with:
-          lfs: true
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
-      - name: Get weekly update window
-        id: date
+      - name: Resolve season
+        id: season
         run: |
-          if [ "$(date -u +'%m')" -ge 10 ]; then
-            echo "season_start=$(date -u +'%Y')-10-01" >> $GITHUB_OUTPUT
-          else
-            echo "season_start=$(($(date -u +'%Y') - 1))-10-01" >> $GITHUB_OUTPUT
-          fi
-          echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "season=$(python -c 'from src.season import SEASON; print(SEASON)')" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          echo "today=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      # Same file list and cache key as the daily workflow, so this reuses its
+      # cached LFS objects instead of downloading them again.
+      - name: Compute LFS cache key
+        id: lfskey
+        run: |
+          LFS_FILES="data/adjusted_onoff.csv,data/adjusted_onoff_historical_pbp.csv,derived/contextual_causal/production_counted_onoff/*.parquet,derived/contextual_causal/production_counted_evidence/*.parquet"
+          echo "files=$LFS_FILES" >> $GITHUB_OUTPUT
+          echo "key=lfs-$(git lfs ls-files -l -I "$LFS_FILES" | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      - name: Restore LFS cache
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: ${{ steps.lfskey.outputs.key }}
+          restore-keys: lfs-
 
       - name: Pull LFS data
         run: |
-          git lfs pull
+          git lfs install
+          git lfs pull --include="${{ steps.lfskey.outputs.files }},data/player_daily_boxscore.csv"
 
-      - name: Refresh PBP and Stints
+      - name: Rebuild DB and current-season search pages
+        env:
+          SEARCH_ONLY_SEASON: ${{ steps.season.outputs.season }}
         run: |
-          python run_onoff.py --start ${{ steps.date.outputs.fourteen_days_ago }} --end ${{ steps.date.outputs.yesterday }} --recompute-existing
-          python scripts/extend_historical_onoff.py
-          python generate_possessions_from_pbp.py
-          python scripts/build_player_boxscore_stats_csv.py
+          python metric/build_current_season_counted.py
           python scripts/build_analytics_duckdb.py
           python generate_player_game_search_report.py
           python generate_player_span_search_report.py
-          python generate_rapm_report.py --use-possessions
 
       - name: Commit and push changes
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add -A
-          git diff --staged --quiet || git commit -m "Weekly PBP Refresh: Games through ${{ steps.date.outputs.yesterday }}"
+          git diff --staged --quiet || git commit -m "Weekly search refresh: ${{ steps.season.outputs.season }} games through ${{ steps.season.outputs.yesterday }}"
+          git pull --rebase
           git push

@@ -3,12 +3,16 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import sys
 from itertools import combinations
 from pathlib import Path
 
 import duckdb
 
 from canonical_onoff_overlay import apply_canonical_counted_onoff
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.season import TAG  # noqa: E402
 
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", str(Path(__file__).resolve().parents[1])))
@@ -17,11 +21,21 @@ FINAL_DB_PATH = Path(os.environ.get("NBA_ANALYTICS_DB_PATH", str(DATA_DIR / "nba
 BUILD_DB_PATH = Path(os.environ.get("NBA_ANALYTICS_BUILD_PATH", "/tmp/nba_analytics_build.duckdb"))
 
 PLAYER_DAILY_BOX = DATA_DIR / "player_daily_boxscore.csv"
-ADJUSTED_ONOFF = DATA_DIR / "adjusted_onoff.csv"
+# Current regular season: run_onoff.py writes data/season_<TAG>/ (the legacy
+# data/adjusted_onoff.csv, stints.csv, possessions.csv hold earlier seasons).
+SEASON_DIR = DATA_DIR / f"season_{TAG}"
+
+
+def _current(name: str) -> Path:
+    path = SEASON_DIR / f"{name}_{TAG}.csv"
+    return path if path.exists() else DATA_DIR / f"{name}.csv"
+
+
+ADJUSTED_ONOFF = _current("adjusted_onoff")
 HIST_ADJUSTED_ONOFF = DATA_DIR / "adjusted_onoff_historical_pbp.csv"
-STINTS = DATA_DIR / "stints.csv"
+STINTS = _current("stints")
 HIST_STINTS = DATA_DIR / "stints_historical_pbp.csv"
-POSSESSIONS = DATA_DIR / "possessions.csv"
+POSSESSIONS = _current("possessions")
 HIST_POSSESSIONS = DATA_DIR / "possessions_historical_pbp.csv"
 ADJUSTED_GAMES = DATA_DIR / "adjusted_games.csv"
 PLAYER_BOX_STATS = DATA_DIR / "player_boxscore_stats.csv"
@@ -49,6 +63,8 @@ CANONICAL_COUNTED_ONOFF = (
 )
 LUCK_COMPONENTS = DATA_DIR / "rapm_luck_adjust.parquet"
 COUNTED_EVIDENCE = ROOT / "derived" / "contextual_causal" / "production_counted_evidence" / "canonical_counted_stints_production.parquet"
+# Current-season counterparts, rebuilt by metric/build_current_season_counted.py.
+CURRENT_COUNTED = ROOT / "derived" / "contextual_causal" / "current_season"
 
 
 def _is_lfs_pointer(path: Path) -> bool:
@@ -1219,6 +1235,8 @@ def main() -> None:
         CANONICAL_COUNTED_ONOFF,
         label="regular season",
     )
+    for current_onoff in sorted(CURRENT_COUNTED.glob("onoff_counted_*.parquet")):
+        apply_canonical_counted_onoff(con, current_onoff, label=f"current season {current_onoff.stem}")
 
     con.execute(
         f"""
@@ -1533,6 +1551,8 @@ def main() -> None:
 
     if not COUNTED_EVIDENCE.exists():
         raise FileNotFoundError(f"Missing counted evidence: {COUNTED_EVIDENCE}")
+    counted_sources = [COUNTED_EVIDENCE.as_posix()] + [
+        p.as_posix() for p in sorted(CURRENT_COUNTED.glob("counted_stints_*.parquet"))]
     # Game logs are emitted only for the latest season by the public report.
     # Keeping this fact table to that same season avoids materializing tens of
     # millions of historical unit-game rows that the site never loads.
@@ -1543,7 +1563,7 @@ def main() -> None:
             SELECT *, CASE WHEN month(date)>=7
                 THEN printf('%d-%02d',year(date), (year(date)+1)%100)
                 ELSE printf('%d-%02d',year(date)-1, year(date)%100) END AS season
-            FROM read_parquet('{COUNTED_EVIDENCE.as_posix()}')
+            FROM read_parquet({counted_sources!r}, union_by_name=true)
         )
         SELECT * FROM raw WHERE season=(SELECT max(season) FROM raw)
         """
