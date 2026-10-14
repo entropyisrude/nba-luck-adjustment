@@ -11,3 +11,4 @@ END_YEAR = START_YEAR + 1                                   # 2027 (BBRef's seas
 TAG = f"{START_YEAR % 100:02d}{END_YEAR % 100:02d}"         # "2627"
 PREV_SEASON = f"{START_YEAR - 1}-{START_YEAR % 100:02d}"    # "2025-26"
 SEASON_START_DATE = f"{START_YEAR}-10-01"
+SEASON_DIR = Path(__file__).resolve().parents[1] / "data" / f"season_{TAG}"  # current-season on/off, stints, possessions

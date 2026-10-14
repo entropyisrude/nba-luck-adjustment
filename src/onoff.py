@@ -1133,6 +1133,10 @@ def compute_adjusted_onoff_for_game(
                 i = j
                 continue
 
+            # Earlier same-clock subs deferred behind free throws happened
+            # first; apply them before this batch (e.g. 22500093 Q2 8:34,
+            # where a too-many-players tech separates two HOU sub batches).
+            _flush_pending_substitutions(period, clock)
             _close_stint()  # Save stint before lineup changes
             # Do not reset lineup on period starts. The feed's startperiod batch
             # may be incomplete, so treating it as a full replacement can create
@@ -2090,3 +2094,73 @@ def _compute_adjusted_onoff_for_game_with_gamerotation(
         })
 
     return pd.DataFrame(rows), pd.DataFrame(stint_rows), pd.DataFrame(poss_rows)
+
+def compute_adjusted_onoff_with_box_minutes(
+    game_id: str,
+    game_date_mmddyyyy: str,
+    **kwargs: Any,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """compute_adjusted_onoff_for_game, repairing period-start lineups against box minutes.
+
+    Play-by-play has no record of between-period substitutions, so a player who
+    opens a period (typically an overtime) and logs no action in it can be
+    missed, crediting his minutes to whoever finished the prior period (or
+    leaving the lineup incomplete). When a player is short of box-score
+    minutes, try swapping him into each later period's opening lineup and keep
+    the swap that best matches the official minutes.
+    """
+    overrides = dict(kwargs.pop("period_start_overrides", None) or {})
+    result = compute_adjusted_onoff_for_game(
+        game_id, game_date_mmddyyyy, period_start_overrides=overrides or None, **kwargs)
+    box = get_boxscore_players(game_id, game_date_mmddyyyy)
+    if result[0].empty or box.empty:
+        return result
+    box = box[box["PLAYED"] == "1"]
+    official = {(int(r.TEAM_ID), int(r.PLAYER_ID)): float(r.MINUTES) for r in box.itertuples()}
+
+    def _errors(onoff_df: pd.DataFrame) -> dict[tuple[int, int], float]:
+        computed = {(int(r.team_id), int(r.player_id)): float(r.minutes_on) for r in onoff_df.itertuples()}
+        return {k: computed.get(k, 0.0) - official.get(k, 0.0) for k in set(official) | set(computed)}
+
+    def _total(errors: dict[tuple[int, int], float]) -> float:
+        return sum(abs(v) for v in errors.values())
+
+    errors = _errors(result[0])
+    for _ in range(4):
+        deficit = [k for k, v in errors.items() if v < -1.0]
+        if not deficit:
+            break
+        stints = result[1]
+        best: tuple[float, dict, tuple] | None = None
+        for period in sorted(int(p) for p in stints["start_period"].unique() if int(p) > 1):
+            start = (period - 1) * 720 if period <= 4 else 2880 + (period - 5) * 300
+            # Opening lineup as reconstructed, else the lineup that closed the
+            # previous period (an incomplete opening produces no stint at all).
+            opening = stints[(stints["start_period"] == period) & (stints["start_elapsed"] == start)]
+            if opening.empty:
+                opening = stints[stints["end_elapsed"] == start]
+            if opening.empty:
+                continue
+            row = opening.iloc[0]
+            lineups = {
+                int(row["home_id"]): [int(row[f"home_p{i}"]) for i in range(1, 6)],
+                int(row["away_id"]): [int(row[f"away_p{i}"]) for i in range(1, 6)],
+            }
+            for team_id, in_pid in deficit:
+                lineup = lineups.get(team_id)
+                if not lineup or in_pid in lineup:
+                    continue
+                for out_pid in lineup:
+                    trial = {**overrides, period: {**lineups, team_id: [in_pid if p == out_pid else p for p in lineup]}}
+                    candidate = compute_adjusted_onoff_for_game(
+                        game_id, game_date_mmddyyyy, period_start_overrides=trial, **kwargs)
+                    if candidate[0].empty:
+                        continue
+                    score = _total(_errors(candidate[0]))
+                    if score < _total(errors) - 0.5 and (best is None or score < best[0]):
+                        best = (score, trial, candidate)
+        if best is None:
+            break
+        _, overrides, result = best
+        errors = _errors(result[0])
+    return result

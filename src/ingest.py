@@ -142,6 +142,27 @@ def _stats_cache_only() -> bool:
     return os.getenv("NBA_STATS_CACHE_ONLY", "").strip().lower() in {"1", "true", "yes"}
 
 
+_stats_api_up: bool | None = None
+
+
+def _stats_api_available() -> bool:
+    """stats.nba.com has answered Akamai "Access Denied" or hung since mid-2026.
+
+    Probe once per process so callers fail fast instead of each waiting out
+    nba_api's timeout (~45s per call).
+    """
+    global _stats_api_up
+    if _stats_api_up is None:
+        try:
+            r = requests.get(
+                "https://stats.nba.com/stats/scoreboardv3?GameDate=2025-10-22&LeagueID=00",
+                headers=DEFAULT_HEADERS, timeout=8)
+            _stats_api_up = r.ok and "json" in r.headers.get("content-type", "")
+        except Exception:
+            _stats_api_up = False
+    return _stats_api_up
+
+
 def _game_id_cache_keys(game_id: str) -> list[str]:
     gid = str(game_id)
     keys: list[str] = []
@@ -169,6 +190,9 @@ def get_player_career_3p_stats(player_id: int) -> dict[str, float]:
 
     if player_id in _career_stats_cache:
         return _career_stats_cache[player_id]
+    if not _stats_api_available():
+        # Don't cache: zeros here mean "unknown", not a real career line.
+        return {'fg3a': 0.0, 'fg3m': 0.0}
 
     try:
         # Small delay to avoid rate limiting
@@ -962,6 +986,8 @@ def _load_season_schedule_from_stats_api(season: str, season_type: str = "Regula
         season: Season string like "2024-25"
         season_type: "Regular Season", "Playoffs", or "PlayIn"
     """
+    if not _stats_api_available():
+        return {}
     # Game ID prefix: 001 = Preseason, 002 = Regular Season, 004 = Playoffs, 005 = PlayIn
     if season_type == "Playoffs":
         game_id_prefix = "004"
@@ -1021,7 +1047,7 @@ def _load_stats_boxscore(game_id: str) -> dict[str, pd.DataFrame]:
             return out
     players_path = STATS_BOXSCORE_DIR / f"{gid}_players.json"
     teams_path = STATS_BOXSCORE_DIR / f"{gid}_teams.json"
-    if _stats_cache_only():
+    if _stats_cache_only() or not _stats_api_available():
         raise RuntimeError(f"stats cache miss for boxscore {gid}")
 
     try:
@@ -1120,7 +1146,7 @@ def _load_stats_home_away(game_id: str) -> tuple[int, int]:
                     _stats_summary_cache[cache_gid] = out
                 return out
     summary_path = STATS_SUMMARY_DIR / f"{gid}.json"
-    if _stats_cache_only():
+    if _stats_cache_only() or not _stats_api_available():
         raise RuntimeError(f"stats cache miss for summary {gid}")
 
     try:
@@ -1168,7 +1194,7 @@ def _load_stats_gamerotation(game_id: str) -> pd.DataFrame:
                 _stats_rotation_cache[cache_gid] = cached_rotation.copy()
             return cached_rotation
     rotation_path = STATS_ROTATION_DIR / f"{gid}.json"
-    if _stats_cache_only():
+    if _stats_cache_only() or not _stats_api_available():
         raise RuntimeError(f"stats cache miss for gamerotation {gid}")
 
     gr = gamerotation.GameRotation(

@@ -132,6 +132,10 @@ jobs:
             python generate_rapm_report_playoffs.py
           fi
 
+      - name: Build current-season counted evidence
+        run: |
+          python metric/build_current_season_counted.py
+
       - name: Generate derived reports
         run: |
           python generate_onoff_report.py

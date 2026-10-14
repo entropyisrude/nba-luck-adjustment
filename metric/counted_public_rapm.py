@@ -11,6 +11,8 @@ from sklearn.linear_model import Ridge
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "derived/contextual_causal/production_counted_evidence"
 ONOFF = ROOT / "derived/contextual_causal/production_counted_onoff"
+# Current season, built daily by metric/build_current_season_counted.py.
+CURRENT = ROOT / "derived/contextual_causal/current_season"
 HCOLS = [f"home_p{i}" for i in range(1, 6)]
 ACOLS = [f"away_p{i}" for i in range(1, 6)]
 
@@ -33,6 +35,10 @@ def season_year(dates: pd.Series) -> np.ndarray:
 class CountedPublicRapm:
     def __init__(self) -> None:
         c = pd.read_parquet(EVIDENCE / "canonical_counted_stints_production.parquet")
+        current = sorted(CURRENT.glob("counted_stints_*.parquet"))
+        if current:
+            c = pd.concat([c, *(pd.read_parquet(p, columns=list(c.columns)) for p in current)],
+                          ignore_index=True)
         a = pd.read_parquet(EVIDENCE / "canonical_counted_aggregate_production.parquet")
         c["game_id"] = c.game_id.astype(str).str.lstrip("0")
         a["game_id"] = a.game_id.astype(str).str.lstrip("0")
@@ -106,6 +112,9 @@ class CountedPublicRapm:
                   "adjusted_onoff_playoffs_canonical_counted.parquet"):
             meta.append(pd.read_parquet(ONOFF/f,columns=["game_id","date","player_id","player_name",
                                                          "team_id","minutes_on"]))
+        for p in sorted(CURRENT.glob("onoff_counted_*.parquet")):
+            meta.append(pd.read_parquet(p,columns=["game_id","date","player_id","player_name",
+                                                   "team_id","minutes_on"]))
         self.meta = pd.concat(meta,ignore_index=True)
         self.meta["game_id"] = self.meta.game_id.astype(str).str.lstrip("0")
         self.meta["season_year"] = season_year(self.meta.date)

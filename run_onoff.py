@@ -7,9 +7,10 @@ import yaml
 
 from src.ingest import get_game_ids_for_date, get_player_3pt_df_from_pbp
 from src.onoff_boxscore import write_player_daily_boxscore
-from src.onoff import compute_adjusted_onoff_for_game
+from src.onoff import compute_adjusted_onoff_with_box_minutes
 from src.onoff_history import write_player_onoff_history
 from src.shot_priors import SeasonalShotPriorLookup
+from src.season import END_YEAR, SEASON_DIR, SEASON_START_DATE, TAG
 from src.state import load_player_state, save_player_state, ensure_players_exist
 from src.adjust import update_player_state_attempt_decay
 
@@ -41,12 +42,12 @@ def main():
     )
     parser.add_argument(
         "--history-season-start",
-        default="2025-10-01",
+        default=SEASON_START_DATE,
         help="Season start date for player_onoff_history.csv window (YYYY-MM-DD)",
     )
     parser.add_argument(
         "--history-season-end",
-        default="2026-06-30",
+        default=f"{END_YEAR}-06-30",
         help="Season end date for player_onoff_history.csv window (YYYY-MM-DD)",
     )
     parser.add_argument(
@@ -87,9 +88,16 @@ def main():
     DATA_DIR.mkdir(exist_ok=True)
     season_type = "Playoffs" if args.playoffs else "Regular Season"
     suffix = "_playoffs" if args.playoffs else ""
-    out_path = DATA_DIR / f"adjusted_onoff{suffix}.csv"
-    stint_path = DATA_DIR / f"stints{suffix}.csv"
-    poss_path = DATA_DIR / f"possessions{suffix}.csv"
+    if args.playoffs or args.season:
+        out_dir, tag = DATA_DIR, ""
+    else:
+        # Current regular season lives in its own plain-CSV folder: the legacy
+        # data/stints.csv + possessions.csv are LFS files that CI never pulls.
+        out_dir, tag = SEASON_DIR, f"_{TAG}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"adjusted_onoff{suffix}{tag}.csv"
+    stint_path = out_dir / f"stints{suffix}{tag}.csv"
+    poss_path = out_dir / f"possessions{suffix}{tag}.csv"
     state_path = DATA_DIR / f"player_state{suffix}.csv"
 
     player_state = load_player_state(state_path)
@@ -248,7 +256,7 @@ def main():
                 if not player_df.empty:
                     player_state = ensure_players_exist(player_state, player_df)
 
-                onoff_df, stint_df, poss_df = compute_adjusted_onoff_for_game(
+                onoff_df, stint_df, poss_df = compute_adjusted_onoff_with_box_minutes(
                     game_id=game_id,
                     game_date_mmddyyyy=game_date_mmddyyyy,
                     player_state=player_state,

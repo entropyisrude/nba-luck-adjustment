@@ -891,3 +891,30 @@ Build a read-only audit script that selects canonical source files, reports sche
   algebraic error. The rebuilt analytics database contains 120,745 two-player,
   427,517 three-player, 687,873 four-player, 371,014 five-player and 507,833
   player-combination game rows with both adjustment variants.
+
+### Current-season counted evidence from the daily pipeline (2026-10-14)
+
+- cdn.nba.com / stats.nba.com JSON is behind Akamai "Access Denied" since
+  mid-2026; daily games now come from public nba.com page payloads
+  (`src/nba_pages.py`), stats-v3 play-by-play through the existing
+  `nbastatsv3` normalization.
+- The canonical July build needs desktop-only archives and cannot extend into
+  2026-27. `metric/build_current_season_counted.py` rebuilds, every CI run,
+  the same two artifacts for the current regular season from `run_onoff.py`
+  output in `data/season_<TAG>/`, written to
+  `derived/contextual_causal/current_season/` (gitignored). Public RAPM and
+  the on/off report append them to the canonical evidence.
+- Changed assumptions vs canonical: possessions come from the daily parser
+  (rows at game x lineup-pair grain), and FT / 50% mid-range luck is known
+  only per game, so it is spread across lineups by possession share rather
+  than placed at lineup grain.
+- Replay check on 26 games from 2025-10-21..24: on-court minutes within 0.5
+  of the box score for all 584 player-games (+/- exact for 574); on/off
+  possessions corr .994 and on-court adjusted points corr .984 vs canonical.
+  Game-level adjusted points differ by 5.6/game on average, from the daily
+  3PT expectation priors (the replay used end-of-season player state, so this
+  overstates the live gap).
+- Lineup fixes found in the replay: same-clock substitution batches split
+  around free throws are now applied in feed order, and period-opening
+  lineups are repaired against box-score minutes when a player opens a
+  period with no logged action (`compute_adjusted_onoff_with_box_minutes`).

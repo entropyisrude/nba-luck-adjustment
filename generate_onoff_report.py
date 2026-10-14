@@ -16,6 +16,8 @@ ONOFF_PATH = DATA_DIR / "adjusted_onoff.csv"
 ONOFF_PRE2006_PATH = DATA_DIR / "adjusted_onoff_pre2006.csv"
 ONOFF_HIST_PATH = DATA_DIR / "adjusted_onoff_historical_pbp.csv"
 CANONICAL_ONOFF_PATH = Path("derived/contextual_causal/production_counted_onoff/adjusted_onoff_regular_canonical_counted.parquet")
+# Current season, built daily by metric/build_current_season_counted.py.
+CURRENT_SEASON_DIR = Path("derived/contextual_causal/current_season")
 OUTPUT_DATA_PATH = DATA_DIR / "onoff_report.html"
 OUTPUT_SITE_PATH = Path("onoff.html")
 PLAYER_INFO_MAP = DATA_DIR / "player_info_map.json"
@@ -142,6 +144,8 @@ def _load_team_player_totals() -> tuple[list[dict], str, int, list[str]]:
     if not CANONICAL_ONOFF_PATH.exists():
         raise FileNotFoundError(f"Missing canonical counted input: {CANONICAL_ONOFF_PATH}")
     ingest(CANONICAL_ONOFF_PATH)
+    for path in sorted(CURRENT_SEASON_DIR.glob("onoff_counted_*.parquet")):
+        ingest(path)
 
     agg: dict[tuple[str, str, str], dict] = {}
     for r in rows:
