@@ -32,14 +32,26 @@ def resolve(data, idx):
     return v
 
 
-def main() -> None:
+def fetch_players() -> pd.DataFrame:
+    """DARKO's current player table, one row per player, with a `date` column."""
     req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0"})
     raw = json.load(urllib.request.urlopen(req, timeout=60))
     node = next(n for n in raw["nodes"] if n and n.get("type") == "data")
     data = node["data"]
     root = data[0]
-    players = [resolve(data, i) for i in data[root["players"]]]
-    df = pd.DataFrame(players)
+    players = resolve(data, root["players"])
+    if isinstance(players, dict) and "keys" in players:
+        # Column-oriented payload (darko.app since mid-2026): keys + one value
+        # list per key; the data date moved to root["ratingsThrough"].
+        df = pd.DataFrame(dict(zip(players["keys"], players["values"])))
+        df["date"] = resolve(data, root["ratingsThrough"])
+    else:
+        df = pd.DataFrame(players)
+    return df
+
+
+def main() -> None:
+    df = fetch_players()
     date = df["date"].mode().iat[0]
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUT_DIR / f"darko_{date}.csv"

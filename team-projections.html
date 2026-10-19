@@ -123,6 +123,7 @@
           <select id="src-sel">
             <option value="nerd">Projected NERD</option>
             <option value="darko">DARKO DPM</option>
+            <option value="avg">NERD + DARKO average</option>
             <option value="compare">Compare NERD vs DARKO</option>
           </select>
         </label>
@@ -160,6 +161,9 @@
         (snapshot <span id="darko-date"></span>, their last update), run through the same
         depth-chart minutes and win conversion as NERD — so differences reflect the ratings,
         not the rosters. Players DARKO doesn't rate get replacement level.
+        <strong>Average:</strong> each player's NERD and DARKO values, both on the shared
+        scale (average rotation slot = 0), averaged; a player only one system rates uses
+        that system's value.
         For a fair comparison, both player-rating columns are shown relative to the
         minutes-weighted average rotation slot (zero), with the selected replacement level
         the same distance below zero. WAR/82 then uses the same fixed league-wide wins pool
@@ -413,6 +417,10 @@
         }).sort((a,b)=>b.minutes-a.minutes);
         teams.push({ abbr, name: SNAP.teams[abbr].name, net, off, def, players });
       }
+      return finalizeTeams(teams);
+    }
+    // League-center team ratings and convert to wins.
+    function finalizeTeams(teams){
       const mean = teams.reduce((s,t)=>s+t.net,0)/teams.length;
       const offMean = teams.reduce((s,t)=>s+t.off,0)/teams.length;
       const defMean = teams.reduce((s,t)=>s+t.def,0)/teams.length;
@@ -421,6 +429,26 @@
         t.wins = 82*Phi(t.netC/GAME_SD);
       });
       return teams;
+    }
+    // NERD + DARKO average: each system's player value on the common scale
+    // (rotation-slot mean = 0, same replacement floor), averaged per player.
+    // A player one system doesn't rate takes the other's value; replacement
+    // only when neither rates him.
+    function computeTeamsAvg(){
+      const dBy = new Map(computeTeams(lookupDarko).map(t=>[t.abbr, t]));
+      return finalizeTeams(computeTeams(lookupNerd).map(t=>{
+        const dp = new Map(dBy.get(t.abbr).players.map(p=>[p.name, p]));
+        let net = 0, off = 0, def = 0;
+        const players = t.players.map(p=>{
+          const rated = [p, dp.get(p.name)].filter(x=>x && !x.isRep);
+          const avg = k => rated.length ? rated.reduce((s,x)=>s+x[k],0)/rated.length : p[k];
+          const val = avg('nerd'), ov = avg('o'), dv = avg('d');
+          const w = p.minutes / 48;
+          net += w*val; off += w*ov; def += w*dv;
+          return { ...p, nerd:val, o:ov, d:dv, isRep: rated.length===0 };
+        });
+        return { abbr:t.abbr, name:t.name, net, off, def, players };
+      }));
     }
 
     let sortKey = 'wins', sortDir = -1, openTeam = null, lastSrc = 'nerd';
@@ -511,7 +539,8 @@
             </div></td></tr>`;
         }).join('');
       } else {
-        let teams = computeTeams(src==='darko' ? lookupDarko : lookupNerd);
+        let teams = src==='avg' ? computeTeamsAvg()
+                  : computeTeams(src==='darko' ? lookupDarko : lookupNerd);
         if(grp!=='league') teams = teams.filter(t=>CONF[grp].has(t.abbr));
         teams.sort((a,b)=>{
           if(sortKey==='team') return sortDir*a.name.localeCompare(b.name);
@@ -530,7 +559,7 @@
             <td>${fmt(t.defC)}</td>
           </tr>`;
           if(openTeam!==t.abbr) return rows;
-          const lbl = src==='darko' ? 'DPM' : 'NERD';
+          const lbl = src==='darko' ? 'DPM' : src==='avg' ? 'Avg' : 'NERD';
           const pr = t.players.map(p=>{
             const barw = Math.round(Math.min(p.minutes,maxMin)/maxMin*100);
             const col = p.nerd>0 ? 'var(--good)' : 'var(--bad)';
