@@ -149,10 +149,19 @@ jobs:
         run: |
           cp data/3pt_luck_report.html index.html
 
+      # Spotrac blocks scripts, so rosters follow NBA.com's official team pages.
+      # Independent of the stats steps: a failure here never blocks the update.
+      - name: Sync rosters to NBA.com
+        continue-on-error: true
+        run: |
+          python scripts/sync_rosters_from_nba.py
+
       - name: Commit and push changes
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add -A
           git diff --staged --quiet || git commit -m "Auto-update: Games from ${{ steps.date.outputs.start }} to ${{ steps.date.outputs.end }}"
+          # Depth charts published from the web editor can land mid-run.
+          git pull --rebase
           git push
