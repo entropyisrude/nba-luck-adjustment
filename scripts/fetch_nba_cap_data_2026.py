@@ -497,6 +497,18 @@ def main() -> None:
         if index + 1 < len(selected):
             time.sleep(max(0.0, args.delay))
 
+    if not teams:
+        # Every request failed (Spotrac has returned 403 to scripts since
+        # Oct 2026): keep the existing snapshot rather than overwrite it empty.
+        print(json.dumps({"errors": errors}, indent=2))
+        raise SystemExit("No teams scraped; existing snapshot left unchanged.")
+    if errors and args.output.exists():
+        # Keep the previous snapshot's data for teams that failed this run.
+        previous = json.loads(args.output.read_text(encoding="utf-8")).get("teams", {})
+        for abbreviation in errors:
+            if abbreviation in previous:
+                teams[abbreviation] = previous[abbreviation]
+
     reconcile_cross_team_signings(teams)
     apply_manual_additions(teams)
 
