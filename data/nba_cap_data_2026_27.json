@@ -2457,21 +2457,6 @@
           "rights": null
         },
         {
-          "player": "Dwight Powell",
-          "category": "active_roster",
-          "position": "C",
-          "age": 35,
-          "contract_type": null,
-          "cap_hit": 7600000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Marcus Sasser",
           "category": "active_roster",
           "position": "PG",
@@ -4313,21 +4298,6 @@
       "source_sha256": "864c1feb76b8b0f9aa84397b401483b40bd7c5c09d4329b5be87e188f0507225",
       "active_roster": [
         {
-          "player": "Sean Pedulla",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Quadir Copeland",
           "category": "active_roster",
           "position": "SG",
@@ -5577,21 +5547,6 @@
           "rights": null
         },
         {
-          "player": "Dalton Knecht",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 25,
-          "contract_type": "RK-1ST",
-          "cap_hit": 4201080,
-          "base_salary": 4201080,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 4201080,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Quentin Grimes",
           "category": "active_roster",
           "position": "SG",
@@ -5926,36 +5881,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 34206898,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Walter Clayton Jr.",
-          "category": "active_roster",
-          "position": "PG",
-          "age": 23,
-          "contract_type": "RK-1ST",
-          "cap_hit": 4190520,
-          "base_salary": 4190520,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 4190520,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Micah Peavy",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 25,
-          "contract_type": "RK-2ND",
-          "cap_hit": 2150917,
-          "base_salary": 2150917,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2150917,
           "qualifying_offer": null,
           "rights": null
         },
@@ -6726,21 +6651,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 15200000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Kevin Porter Jr.",
-          "category": "active_roster",
-          "position": "PG",
-          "age": 26,
-          "contract_type": "FA",
-          "cap_hit": 5390700,
-          "base_salary": 5390700,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5390700,
           "qualifying_offer": null,
           "rights": null
         },
@@ -9558,21 +9468,6 @@
           "rights": null
         },
         {
-          "player": "Koby Brea",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Devin Booker",
           "category": "active_roster",
           "position": "SG",
@@ -9618,6 +9513,21 @@
           "rights": null
         },
         {
+          "player": "Drew Timme",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 26,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Koa Peat",
           "category": "active_roster",
           "position": "PF",
@@ -9644,21 +9554,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 2150917,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "CJ Huntley",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -10519,21 +10414,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 24137936,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Adam Flagler",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12495,6 +12375,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-19T17:57:06.932464+00:00",
+  "roster_synced_at": "2026-10-20T14:29:01.236038+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
