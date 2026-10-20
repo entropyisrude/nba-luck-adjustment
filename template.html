@@ -687,12 +687,8 @@
 
     // Format adjusted score: round to whole number unless it would create a tie
     function formatAdjScore(score, otherScore) {
-        const rounded = Math.round(score);
-        const otherRounded = Math.round(otherScore);
-        if (rounded === otherRounded) {
-            return score.toFixed(1);
-        }
-        return rounded.toString();
+        // Whole numbers; on a rounding tie the winner/loser styling shows who led.
+        return Math.round(score).toString();
     }
 
     // Season months: dynamically generated from game data
