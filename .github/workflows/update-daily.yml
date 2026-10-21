@@ -2,8 +2,12 @@ name: Update NBA 3PT Luck Report
 
 on:
   schedule:
-    - cron: '0 9 * 10-12,1-6 *'   # 4 AM EST (9 AM UTC) — primary run
-    - cron: '0 11 * 10-12,1-6 *'  # 6 AM EST (11 AM UTC) — backup if primary failed
+    # Off the top of the hour: GitHub delays on-the-hour schedules by hours
+    # (Oct 2026: the 9:00 UTC run started ~14:15). Later runs are backups and
+    # skip once a day's update has landed.
+    - cron: '17 9 * 10-12,1-6 *'   # ~5 AM ET — primary run
+    - cron: '47 11 * 10-12,1-6 *'  # ~7:45 AM ET — backup
+    - cron: '17 13 * 10-12,1-6 *'  # ~9:15 AM ET — second backup
   workflow_dispatch:  # Allow manual trigger
     inputs:
       start_date:

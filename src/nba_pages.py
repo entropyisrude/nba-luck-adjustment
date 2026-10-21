@@ -100,4 +100,15 @@ def boxscore_json(game_id: str) -> dict[str, Any]:
 def playbyplay_actions(game_id: str) -> list[dict[str, Any]]:
     """Raw stats-v3 play-by-play actions (same schema as data/pbp/nbastatsv3_*.csv)."""
     pbp = _game_props(game_id).get("playByPlay") or {}
-    return [dict(a) for a in pbp.get("actions") or []]
+    actions = [dict(a) for a in pbp.get("actions") or []]
+    # Period start/end markers score nothing, but the feed sometimes stamps them
+    # with a wrong running score (22600002: Q3 start 68-66 between 58-54 and
+    # 58-56), which on/off would book as points for one lineup and take back
+    # from the next. Give them the last real score instead.
+    last = ("0", "0")
+    for a in actions:
+        if str(a.get("actionType") or "").lower() == "period":
+            a["scoreHome"], a["scoreAway"] = last
+        elif a.get("scoreHome") not in (None, "") and a.get("scoreAway") not in (None, ""):
+            last = (a["scoreHome"], a["scoreAway"])
+    return actions
