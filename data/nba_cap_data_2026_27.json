@@ -2442,6 +2442,21 @@
           "rights": null
         },
         {
+          "player": "Walter Clayton Jr.",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Marcus Sasser",
           "category": "active_roster",
           "position": "PG",
@@ -11741,21 +11756,6 @@
           "rights": null
         },
         {
-          "player": "Blake Hinson",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Brice Sensabaugh",
           "category": "active_roster",
           "position": "SF",
@@ -12390,6 +12390,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-21T13:43:08.433709+00:00",
+  "roster_synced_at": "2026-10-22T12:23:19.477924+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
