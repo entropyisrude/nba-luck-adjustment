@@ -6312,21 +6312,6 @@
           "rights": null
         },
         {
-          "player": "Klay Thompson",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 36,
-          "contract_type": null,
-          "cap_hit": 17460317,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Dru Smith",
           "category": "active_roster",
           "position": "SG",
@@ -6385,6 +6370,21 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Early Bird"
+        },
+        {
+          "player": "Klay Thompson",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 36,
+          "contract_type": null,
+          "cap_hit": 17460317,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
         },
         {
           "player": "Andrew Wiggins",
@@ -9513,21 +9513,6 @@
           "rights": null
         },
         {
-          "player": "Mark Williams",
-          "category": "active_roster",
-          "position": "C",
-          "age": 25,
-          "contract_type": "FA",
-          "cap_hit": 11728395,
-          "base_salary": 11728395,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 11728395,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jamaree Bouyea",
           "category": "active_roster",
           "position": "PG",
@@ -9614,6 +9599,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5864198,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Mark Williams",
+          "category": "active_roster",
+          "position": "C",
+          "age": 25,
+          "contract_type": "FA",
+          "cap_hit": 11728395,
+          "base_salary": 11728395,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 11728395,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12390,6 +12390,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-22T12:23:19.477924+00:00",
+  "roster_synced_at": "2026-10-23T10:44:28.009345+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
