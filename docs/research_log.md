@@ -918,3 +918,16 @@ Build a read-only audit script that selects canonical source files, reports sche
   around free throws are now applied in feed order, and period-opening
   lineups are repaired against box-score minutes when a player opens a
   period with no logged action (`compute_adjusted_onoff_with_box_minutes`).
+
+### Schedule adjustment for luck-adjusted team ratings (2026-10-23)
+
+- Option on the luck report team rankings. Model per team-game offense:
+  luck-adjusted pts/100 = league avg + O[team] - D[opponent] +/- 1.25 home
+  edge, fit by least squares over the season to date with each O and D shrunk
+  toward a prior worth 10 games.
+- Prior: team-projections.html computeTeamsAvg() (NERD + DARKO average,
+  depth-chart minutes, all healthy), exported daily by
+  scripts/export_team_priors.py to data/team_priors_<TAG>.json.
+- Displayed ratings are a team's own results with estimated opponent quality
+  and venue removed; the prior only informs opponent strength, not the team's
+  own rating. Descriptive, not predictive; regular season only.

@@ -165,6 +165,18 @@ jobs:
         run: |
           python scripts/build_darko_site_data.py
 
+      # Schedule adjustment prior: team offense/defense from the win-projections
+      # page (uses today's rosters, DARKO and depth charts), then rebuild the
+      # luck report with it.
+      - name: Refresh team priors and rebuild luck report
+        continue-on-error: true
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python scripts/export_team_priors.py
+          python generate_report.py
+          cp data/3pt_luck_report.html index.html
+
       - name: Commit and push changes
         run: |
           git config user.name "GitHub Actions Bot"
