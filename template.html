@@ -557,17 +557,6 @@
             <option value="default">3PT + FT + 50% mid-range (default)</option>
             <option value="3pt_ft">3PT + FT only</option>
         </select>
-        <label for="sched-mode" style="font-weight:700;margin-left:18px;">Schedule adjustment</label>
-        <select id="sched-mode" style="margin-left:8px;padding:8px 10px;border:1px solid #c5d4e8;border-radius:6px;">
-            <option value="off">Off</option>
-            <option value="on">On (adjust for opponents)</option>
-        </select>
-        <p id="sched-note" hidden style="max-width:760px;margin:8px auto 0;font-size:12.5px;color:#5b6778;line-height:1.5;">
-            Regular-season Adj OffRtg / DefRtg / NetRtg with opponent strength and home court removed.
-            Opponent strength is estimated from all games so far, starting from each team's
-            <a href="team-projections.html">projected offense and defense</a> (NERD + DARKO average),
-            which counts like 10 games and fades as real results accumulate.
-        </p>
     </div>
 
     <h2>Games by Date</h2>
@@ -590,6 +579,19 @@
 
     <h2 id="team-rankings" style="text-align: center;">Team Rankings</h2>
     <p style="text-align: center;">Opponent 3P% vs expected based on shooter skill and shot difficulty. Click column headers to sort.</p>
+    <div style="max-width:1180px;margin:0 auto 12px;text-align:center;">
+        <label for="sched-mode" style="font-weight:700;">Schedule adjustment</label>
+        <select id="sched-mode" style="margin-left:8px;padding:8px 10px;border:1px solid #c5d4e8;border-radius:6px;">
+            <option value="off">Off — ratings as played</option>
+            <option value="on">On — adjust ratings for opponent strength</option>
+        </select>
+        <p id="sched-note" hidden style="max-width:760px;margin:8px auto 0;font-size:12.5px;color:#5b6778;line-height:1.5;">
+            Regular-season Adj OffRtg / DefRtg / NetRtg with opponent strength and home court removed.
+            Opponent strength is estimated from all games so far, starting from each team's
+            <a href="team-projections.html">projected offense and defense</a> (NERD + DARKO average),
+            which counts like 10 games and fades as real results accumulate.
+        </p>
+    </div>
 
     <div class="rankings-tabs">
         <button class="rankings-tab active" onclick="switchRankingsTab('regular', this)">Regular Season</button>
