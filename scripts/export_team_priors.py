@@ -8,7 +8,8 @@ repo locally, loads the page in headless Chromium, and calls its own
 computeTeamsAvg(), so the prior always matches what the page shows.
 
 Output: data/team_priors_<TAG>.json
-  {"generated_at", "source", "teams": {ABBR: {"off": .., "def": .., "net": ..}}}
+  {"generated_at", "source", "replacement": {"o", "d"},
+   "teams": {ABBR: {"off", "def", "net", "rotation": [{"name", "minutes", "o", "d"}]}}}
 off/def are points per 100 possessions relative to league average (positive =
 better; def is points prevented), net = off + def.
 
@@ -51,8 +52,10 @@ def main() -> None:
             page.on("pageerror", lambda e: errors.append(str(e)))
             page.goto(url, wait_until="networkidle")
             page.select_option("#health-sel", "healthy")
-            teams = page.evaluate(
-                "computeTeamsAvg().map(t => ({abbr: t.abbr, off: t.offC, def: t.defC, net: t.netC}))")
+            teams = page.evaluate("""computeTeamsAvg().map(t => ({
+                abbr: t.abbr, off: t.offC, def: t.defC, net: t.netC,
+                rotation: t.players.map(p => ({name: p.name, minutes: p.minutes, o: p.o, d: p.d}))}))""")
+            replacement = page.evaluate("({o: -REPLACEMENT_DEPTH/2, d: -REPLACEMENT_DEPTH/2})")
             browser.close()
     finally:
         server.shutdown()
@@ -62,7 +65,14 @@ def main() -> None:
         "season": SEASON,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": "team-projections.html computeTeamsAvg() (NERD + DARKO average, depth-chart minutes, all healthy)",
-        "teams": {t["abbr"]: {k: round(t[k], 3) for k in ("off", "def", "net")} for t in teams},
+        # Player o/d on the page's common scale (rotation-slot mean = 0); a missing
+        # player's minutes go to replacement level (injury adjustment).
+        "replacement": {k: round(v, 3) for k, v in replacement.items()},
+        "teams": {t["abbr"]: {**{k: round(t[k], 3) for k in ("off", "def", "net")},
+                              "rotation": [{"name": p["name"], "minutes": p["minutes"],
+                                            "o": round(p["o"], 3), "d": round(p["d"], 3)}
+                                           for p in t["rotation"]]}
+                  for t in teams},
     }
     OUT.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     best = max(teams, key=lambda t: t["net"])

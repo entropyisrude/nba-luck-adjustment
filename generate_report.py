@@ -9,6 +9,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+import re
+import unicodedata
+
 import numpy as np
 
 from src.season import SEASON, SEASON_START_DATE, TAG
@@ -81,49 +84,108 @@ def _load_game_possessions() -> dict[str, float]:
     return result
 
 
-# Schedule adjustment (team rankings "Schedule adjustment: on").
-# Model per team-game offense: pts/100 = league avg + O[off] - D[def] + venue,
-# each team's O and D shrunk toward its preseason prior with the weight of
-# SOS_PRIOR_GAMES games. A team's adjusted ratings are then its own
-# luck-adjusted results with opponent quality and venue removed.
+# Team-rating adjustments (team rankings "Ratings adjustment" dropdown).
+# Model per team-game offense, with each side's lineup strength that night:
+#   pts/100 = league avg + (O[off] - miss_o[off]) - (D[def] - miss_d[def]) + venue
+# O and D are full-strength team qualities, shrunk toward the win-projections
+# prior with the weight of SOS_PRIOR_GAMES games. miss_o/miss_d are the known
+# cost of projected-rotation players who did not play that game: their
+# depth-chart minutes valued at replacement level instead of their rating.
 SOS_PRIOR_GAMES = 10.0
 SOS_HOME_EDGE = 1.25  # per side, pts/100: a 2.5-point home margin
 TEAM_PRIORS_PATH = DATA_DIR / f"team_priors_{TAG}.json"
+NAME_ALIASES = {"nahshon hyland": "bones hyland"}  # depth-chart -> box-score name
 
 
-def _load_team_priors() -> dict[str, dict[str, float]]:
-    """{abbr: {"off", "def"}} from scripts/export_team_priors.py (zeros if missing)."""
+def _load_team_priors() -> dict:
+    """scripts/export_team_priors.py payload ({} if missing: zero priors, no injuries)."""
     if TEAM_PRIORS_PATH.exists():
-        return json.loads(TEAM_PRIORS_PATH.read_text(encoding="utf-8"))["teams"]
+        return json.loads(TEAM_PRIORS_PATH.read_text(encoding="utf-8"))
     return {}
 
 
-def _schedule_adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
-                               priors: dict[str, dict[str, float]]) -> dict[str, tuple[float, float]]:
-    """{team: (adj_ortg, adj_drtg)} with opponent strength and venue removed."""
+def _name_key(name: str) -> tuple[str, str]:
+    """(first, last) normalized; drops periods, accents and suffixes."""
+    text = unicodedata.normalize("NFKD", str(name)).encode("ascii", "ignore").decode().lower()
+    text = text.replace(".", "").replace(",", " ")
+    plain = re.sub(r"[^a-z ]", "", text).strip()
+    text = NAME_ALIASES.get(plain, text)
+    parts = [re.sub(r"[^a-z]", "", w) for w in text.split()]
+    parts = [w for w in parts if w and w not in {"jr", "sr", "ii", "iii", "iv", "v"}]
+    return (parts[0] if parts else "", "".join(parts[1:]))
+
+
+def _same_player(a: tuple[str, str], b: tuple[str, str]) -> bool:
+    """Same last name and one first name a prefix of the other (Nic/Nicolas)."""
+    return (a[1] == b[1] and bool(a[0]) and bool(b[0])
+            and (a[0].startswith(b[0]) or b[0].startswith(a[0])))
+
+
+def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str], tuple[float, float]]:
+    """{(game_id, team): (offense cost, defense cost)} in pts/100 from projected-
+    rotation players who did not play that game (injured, rested or benched)."""
+    box_csv = DATA_DIR / "player_boxscore_stats.csv"
+    teams = priors.get("teams", {})
+    if not teams or not box_csv.exists():
+        return {}
+    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
+    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
+    box["game_id"] = box["game_id"].str.lstrip("0")
+    played = {k: [_name_key(n) for n in g]
+              for k, g in box.groupby(["game_id", "team_abbr"])["player_name"]}
+    costs = {}
+    for r in source_df.itertuples(index=False):
+        gid = str(r.game_id).lstrip("0")
+        for team in (r.home_team, r.away_team):
+            names = played.get((gid, team))
+            if names is None or team not in teams:
+                continue
+            co = cd = 0.0
+            for p in teams[team].get("rotation", []):
+                key = _name_key(p["name"])
+                if not any(_same_player(key, n) for n in names):
+                    co += p["minutes"] / 48 * (p["o"] - rep_o)
+                    cd += p["minutes"] / 48 * (p["d"] - rep_d)
+            costs[(gid, team)] = (co, cd)
+    return costs
+
+
+def _adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
+                      priors: dict) -> dict[str, dict[str, tuple[float, float]]]:
+    """{mode: {team: (adj_ortg, adj_drtg)}} for modes:
+    "sos"  - opponent strength (incl. the opponent's missing players) and venue removed
+    "inj"  - the team's own missing players credited back (no opponent adjustment)
+    "both" - both of the above."""
     if source_df.empty:
         return {}
     df = source_df.copy()
     gid = df["game_id"].astype(str).str.lstrip("0")
     fallback = (df["home_pts_actual"] + df["away_pts_actual"]) / 2
     df["poss"] = gid.map(game_poss or {}).fillna(fallback)
-    obs = []  # (offense, defense, pts per 100, venue sign, possessions)
+    df["gid"] = gid
+    costs = _missing_costs(df, priors)
+    team_priors = priors.get("teams", {})
+    obs = []  # (offense, defense, pts/100, venue sign, possessions, offense miss_o, defense miss_d)
     for r in df.itertuples(index=False):
-        obs.append((r.home_team, r.away_team, 100 * r.home_pts_adj / r.poss, 1.0, r.poss))
-        obs.append((r.away_team, r.home_team, 100 * r.away_pts_adj / r.poss, -1.0, r.poss))
+        for off, dfn, pts, venue in ((r.home_team, r.away_team, r.home_pts_adj, 1.0),
+                                     (r.away_team, r.home_team, r.away_pts_adj, -1.0)):
+            mo = costs.get((r.gid, off), (0.0, 0.0))[0]
+            md = costs.get((r.gid, dfn), (0.0, 0.0))[1]
+            obs.append((off, dfn, 100 * pts / r.poss, venue, r.poss, mo, md))
     teams = sorted({o[0] for o in obs})
     idx = {t: i for i, t in enumerate(teams)}
     n = len(teams)
     # Unknowns: [mu, O_0..O_n-1, D_0..D_n-1]. Each observation weighs one game.
     rows, ys = [], []
-    for off, dfn, y, venue, _ in obs:
+    for off, dfn, y, venue, _, mo, md in obs:
         x = np.zeros(1 + 2 * n)
         x[0], x[1 + idx[off]], x[1 + n + idx[dfn]] = 1.0, 1.0, -1.0
         rows.append(x)
-        ys.append(y - SOS_HOME_EDGE * venue)
+        ys.append(y - SOS_HOME_EDGE * venue + mo - md)
     lam = np.sqrt(SOS_PRIOR_GAMES)
     for t in teams:
-        prior = priors.get(t, {})
+        prior = team_priors.get(t, {})
         for offset, key in ((1, "off"), (1 + n, "def")):
             x = np.zeros(1 + 2 * n)
             x[offset + idx[t]] = lam
@@ -132,14 +194,22 @@ def _schedule_adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
     coef = np.linalg.lstsq(np.array(rows), np.array(ys), rcond=None)[0]
     off_q = {t: coef[1 + idx[t]] for t in teams}
     def_q = {t: coef[1 + n + idx[t]] for t in teams}
-    num_o, num_d, den = ({t: 0.0 for t in teams} for _ in range(3))
-    for off, dfn, y, venue, poss in obs:
-        # Offense: credit back the opponent's defense; strip the venue edge.
-        num_o[off] += poss * (y + def_q[dfn] - SOS_HOME_EDGE * venue)
-        # Defense: points allowed with the opponent's offense quality removed.
-        num_d[dfn] += poss * (y - off_q[off] - SOS_HOME_EDGE * venue)
+    sums = {m: ({t: 0.0 for t in teams}, {t: 0.0 for t in teams}) for m in ("sos", "inj", "both")}
+    den = {t: 0.0 for t in teams}
+    for off, dfn, y, venue, poss, mo, md in obs:
+        # The opponent as it actually lined up that night: full strength minus
+        # its missing players.
+        sos_o = y + (def_q[dfn] - md) - SOS_HOME_EDGE * venue
+        sos_d = y - (off_q[off] - mo) - SOS_HOME_EDGE * venue
+        for mode, o_val, d_val in (("sos", sos_o, sos_d),
+                                   ("inj", y + mo, y - md),
+                                   ("both", sos_o + mo, sos_d - md)):
+            # Offense credited to `off`; points allowed charged to `dfn`.
+            sums[mode][0][off] += poss * o_val
+            sums[mode][1][dfn] += poss * d_val
         den[off] += poss
-    return {t: (num_o[t] / den[t], num_d[t] / den[t]) for t in teams if den[t] > 0}
+    return {m: {t: (so[t] / den[t], sd[t] / den[t]) for t in teams if den[t] > 0}
+            for m, (so, sd) in sums.items()}
 
 
 def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None,
@@ -351,10 +421,12 @@ def generate_report():
     playoff_team_rows = _build_team_rows(playoff_df, game_poss)
     team_rows_3pt_ft = _build_team_rows(alt_rs_df, game_poss)
     priors = _load_team_priors()
-    team_rows_sos = _build_team_rows(
-        rs_df, game_poss, _schedule_adjusted_ratings(rs_df, game_poss, priors))
-    team_rows_3pt_ft_sos = _build_team_rows(
-        alt_rs_df, game_poss, _schedule_adjusted_ratings(alt_rs_df, game_poss, priors))
+    adjusted_rows = {}
+    for luck_key, luck_df in (("default", rs_df), ("3pt-ft", alt_rs_df)):
+        by_mode = _adjusted_ratings(luck_df, game_poss, priors)
+        for mode in ("sos", "inj", "both"):
+            adjusted_rows[f"{luck_key}-{mode}"] = _build_team_rows(
+                luck_df, game_poss, by_mode.get(mode))
     playoff_team_rows_3pt_ft = _build_team_rows(alt_playoff_df, game_poss)
 
     swing_rows = _build_swing_rows(rs_df)
@@ -434,8 +506,8 @@ def generate_report():
     html = html.replace('{{TEAM_RANKINGS_ROWS}}', team_rows)
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS}}', playoff_team_rows)
     html = html.replace('{{TEAM_RANKINGS_ROWS_3PT_FT}}', team_rows_3pt_ft)
-    html = html.replace('{{TEAM_RANKINGS_ROWS_SOS}}', team_rows_sos)
-    html = html.replace('{{TEAM_RANKINGS_ROWS_3PT_FT_SOS}}', team_rows_3pt_ft_sos)
+    html = html.replace('{{TEAM_RANKINGS_ADJUSTED_TEMPLATES}}', "\n".join(
+        f'    <template id="rows-team-{key}">{rows}</template>' for key, rows in adjusted_rows.items()))
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS_3PT_FT}}', playoff_team_rows_3pt_ft)
     html = html.replace('{{BIGGEST_SWINGS_ROWS}}', swing_rows)
     html = html.replace('{{PLAYOFF_BIGGEST_SWINGS_ROWS}}', playoff_swing_rows)

@@ -931,3 +931,20 @@ Build a read-only audit script that selects canonical source files, reports sche
 - Displayed ratings are a team's own results with estimated opponent quality
   and venue removed; the prior only informs opponent strength, not the team's
   own rating. Descriptive, not predictive; regular season only.
+
+### Missing-player adjustment for team ratings (2026-10-26)
+
+- Team rankings "Ratings adjustment": Off / Schedule / Own injuries /
+  Schedule + own injuries. A projected-rotation player (depth charts) who did
+  not play a game - for any reason, injury or coach's decision - costs his
+  team minutes/48 x (rating - replacement) that night, split into offense and
+  defense (NERD + DARKO average, exported with the rotation by
+  scripts/export_team_priors.py).
+- These costs enter the team-quality fit as known per-game offsets, so O and D
+  are full-strength qualities. Schedule removes the opponent as it actually
+  lined up (full strength minus its missing players); Own injuries adds the
+  team's own missing-player cost back.
+- Assumption (user decision): absence of any kind counts, since the team that
+  played was weaker either way. Depth-chart minutes and current ratings are
+  applied to past games, so a player acquired mid-season counts as missing
+  for his new team's earlier games.
