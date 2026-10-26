@@ -7962,6 +7962,21 @@
           "rights": null
         },
         {
+          "player": "Dalton Knecht",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Pacome Dadiet",
           "category": "active_roster",
           "position": "SG",
@@ -8333,6 +8348,21 @@
           "rights": null
         },
         {
+          "player": "Micah Peavy",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jalen Williams",
           "category": "active_roster",
           "position": "SF",
@@ -8374,21 +8404,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 4887720,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Otega Oweh",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -11591,6 +11606,21 @@
           "rights": null
         },
         {
+          "player": "Kobe Bufkin",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Josh Green",
           "category": "active_roster",
           "position": "SG",
@@ -12390,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-25T10:44:08.080535+00:00",
+  "roster_synced_at": "2026-10-26T10:44:05.596406+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
