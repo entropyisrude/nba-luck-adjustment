@@ -8348,21 +8348,6 @@
           "rights": null
         },
         {
-          "player": "Micah Peavy",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 25,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jalen Williams",
           "category": "active_roster",
           "position": "SF",
@@ -8434,6 +8419,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5791680,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Micah Peavy",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -9059,21 +9059,6 @@
           "rights": null
         },
         {
-          "player": "Caleb Love",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 25,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Anfernee Simons",
           "category": "active_roster",
           "position": "SG",
@@ -9100,6 +9085,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 57078728,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Caleb Love",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -9408,6 +9408,21 @@
           "rights": null
         },
         {
+          "player": "Drew Timme",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 26,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Dillon Brooks",
           "category": "active_roster",
           "position": "SF",
@@ -9520,21 +9535,6 @@
           "contract_type": "ROS",
           "cap_hit": 2584539,
           "base_salary": 2584539,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Drew Timme",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -9932,21 +9932,6 @@
       "source_sha256": "4199d4c6edd6158f8dcd3ace295ef35393b9c05a8fefac32380f1b1c1da7c978",
       "active_roster": [
         {
-          "player": "Jayson Kent",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Damian Lillard",
           "category": "active_roster",
           "position": "PG",
@@ -10134,6 +10119,21 @@
           "contract_type": "FA",
           "cap_hit": 2667944,
           "base_salary": 2667944,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Jayson Kent",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -11204,21 +11204,6 @@
       "source_sha256": "0d1346f43ab4876cc31a41a800421ac51e375de845a65c84fda4bf6f9258b600",
       "pending_transactions": [
         {
-          "player": "Nate Bittle",
-          "category": "pending_transaction",
-          "position": "C",
-          "age": null,
-          "contract_type": "UFA",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Kawhi Leonard",
           "category": "pending_transaction",
           "position": "SF",
@@ -11237,6 +11222,21 @@
           "player": "Jaden Bradley",
           "category": "pending_transaction",
           "position": "SG",
+          "age": null,
+          "contract_type": "UFA",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Nate Bittle",
+          "category": "pending_transaction",
+          "position": "C",
           "age": null,
           "contract_type": "UFA",
           "cap_hit": null,
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-26T10:44:05.596406+00:00",
+  "roster_synced_at": "2026-10-27T10:44:07.971218+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
