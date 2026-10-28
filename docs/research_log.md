@@ -962,3 +962,10 @@ Build a read-only audit script that selects canonical source files, reports sche
 - "Out now": missed the team's last 3 games in a row (all games if fewer,
   with 2+ played), overridable via window.OUT_NOW in
   data/availability_2026_27.js.
+
+## 2026-10-28 — Injury Tracker page
+
+- `scripts/build_player_boxscore_stats_csv.py` now also writes `data/season_2627/player_game_status_2627.csv`: every listed player per game with "played" or nba.com's DNP comment; players only in a team's `inactives` list are "Inactive" (no reason given).
+- `src/nba_pages.py`: some game pages already use liveData minutes ("PT23M56.00S") and carry `played`; those were being read as 0 minutes. Now passed through.
+- `generate_report.py::_injury_payload` -> `data/team_injuries.js` -> `team-injuries.html`. Projected-rotation absences tagged by reason; cost = min/48 x (rating - replacement), floored at 0; wins lost = cost x poss/100 x 0.033. "Inactive, reason not listed" counts as injury by default (page toggle).
+- Name alias: depth-chart "Yang Hansen" = box "Hansen Yang" (also fixes his power-rating absences).

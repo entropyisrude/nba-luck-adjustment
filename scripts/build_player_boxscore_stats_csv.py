@@ -8,11 +8,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src import nba_pages  # noqa: E402
+from src.season import SEASON_DIR, SEASON_START_DATE, TAG  # noqa: E402
 
 ROOT = Path(os.environ.get("NBA_ONOFF_ROOT", Path(__file__).resolve().parents[1]))
 DATA_DIR = ROOT / "data"
 GAMES_CSV = DATA_DIR / "adjusted_games.csv"
 OUT_CSV = DATA_DIR / "player_boxscore_stats.csv"
+# Current season: every listed player per game with "played" or nba.com's DNP
+# comment ("Inactive - Injury/Illness", "DNP - Coach's Decision", ...).
+STATUS_CSV = SEASON_DIR / f"player_game_status_{TAG}.csv"
+STATUS_FIELDS = ["date", "game_id", "team_abbr", "player_id", "player_name", "status"]
 
 
 def _num(value) -> float:
@@ -64,6 +69,66 @@ def _team_rows(game_id: str, game: dict, side_key: str) -> list[dict]:
             }
         )
     return out
+
+
+def _status_rows(game_id: str, game_date: str, game: dict) -> list[dict]:
+    out: list[dict] = []
+    for side_key in ("homeTeam", "awayTeam"):
+        team = game.get(side_key) or {}
+        seen: set[int] = set()
+        # Some pages list inactive players only under `inactives`, with no reason.
+        listed = [(p, False) for p in team.get("players") or []] + \
+                 [(p, True) for p in team.get("inactives") or []]
+        for p, inactive_only in listed:
+            if p.get("personId") is None or int(p["personId"]) in seen:
+                continue
+            seen.add(int(p["personId"]))
+            first = (p.get("firstName") or "").strip()
+            last = (p.get("familyName") or p.get("lastName") or "").strip()
+            if inactive_only:
+                status = "Inactive"
+            elif str(p.get("played", "0")) == "1":
+                status = "played"
+            else:
+                reason = str(p.get("comment") or p.get("notPlayingReason") or "").strip()
+                if not reason and str(p.get("status") or "").upper() == "INACTIVE":
+                    reason = "Inactive"
+                status = reason or "DNP"
+            out.append({
+                "date": game_date,
+                "game_id": str(game_id).lstrip("0"),
+                "team_abbr": str(team.get("teamTricode") or ""),
+                "player_id": int(p["personId"]),
+                "player_name": (first + " " + last).strip() or str(p.get("nameI") or ""),
+                "status": status,
+            })
+    return out
+
+
+def update_status(game_rows: list[tuple[str, str]]) -> None:
+    """Fetch player statuses for current-season games not yet in STATUS_CSV."""
+    existing: list[dict] = []
+    if STATUS_CSV.exists():
+        with open(STATUS_CSV, newline="", encoding="utf-8") as f:
+            existing = list(csv.DictReader(f))
+    done = {r["game_id"] for r in existing}
+    todo = [(g, d) for g, d in game_rows if d >= SEASON_START_DATE and g not in done]
+    rows = list(existing)
+    for idx, (game_id, game_date) in enumerate(todo, start=1):
+        if idx == 1 or idx % 25 == 0 or idx == len(todo):
+            print(f"Fetching player statuses {idx}/{len(todo)}...")
+        try:
+            game = nba_pages.boxscore_json(game_id.zfill(10)).get("game") or {}
+        except Exception as e:
+            print(f"  status fetch failed for {game_id}: {e}")
+            continue
+        rows.extend(_status_rows(game_id, game_date, game))
+    STATUS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    with open(STATUS_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=STATUS_FIELDS)
+        writer.writeheader()
+        writer.writerows(sorted(rows, key=lambda r: (r["date"], r["game_id"], r["team_abbr"], r["player_name"])))
+    print(f"Wrote {STATUS_CSV} rows={len(rows)} (fetched {len(todo)} games)")
 
 
 def main() -> None:
@@ -133,6 +198,8 @@ def main() -> None:
         f"Wrote {OUT_CSV} rows={len(records)} games={len(unique_games)} "
         f"(fetched {len(missing_games)} new games, reused {len(existing_game_ids)} existing)"
     )
+    # Same game pages, already cached by nba_pages for new games.
+    update_status(unique_games)
 
 
 if __name__ == "__main__":

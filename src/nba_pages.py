@@ -68,6 +68,8 @@ def _game_props(game_id: str) -> dict[str, Any]:
 def _mmss_to_iso(value: Any) -> str:
     """'45:15' -> 'PT45M15.00S' (cdn.nba.com liveData minutes format)."""
     text = str(value or "").strip()
+    if re.fullmatch(r"PT\d+M\d+(?:\.\d+)?S", text):  # some pages already use liveData format
+        return text
     m = re.fullmatch(r"(\d+):(\d+(?:\.\d+)?)", text)
     if not m:
         return "PT00M00.00S"
@@ -89,7 +91,9 @@ def boxscore_json(game_id: str) -> dict[str, Any]:
             stats["minutes"] = _mmss_to_iso(raw_minutes)
             p["statistics"] = stats
             p["starter"] = "1" if str(p.get("position") or "").strip() else "0"
-            p["played"] = "1" if raw_minutes and stats["minutes"] != "PT00M00.00S" else "0"
+            if "played" not in p:
+                p["played"] = "1" if raw_minutes and stats["minutes"] != "PT00M00.00S" else "0"
+            p["played"] = str(p["played"])
             p["oncourt"] = "0"
             players.append(p)
         team["players"] = players

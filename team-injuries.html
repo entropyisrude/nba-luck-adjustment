@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Injury Tracker — 2026-27</title>
+  <style>
+    :root {
+      --bg: #f2f6fb; --card: #fff; --line: #d6e1ef; --ink: #192231;
+      --muted: #5b6778; --good: #15803d; --bad: #b91c1c; --bar: #2f6db5; --bar-soft: #c9d9ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff; border-radius: 14px; padding: 18px 20px;
+      border: 1px solid #254b72; margin-bottom: 14px; text-align: center;
+    }
+    h1 { margin: 0; font-size: 26px; }
+    h2 { margin: 0 0 10px; font-size: 17px; }
+    .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; justify-content: center; }
+    .chip {
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      padding: 6px 10px; border-radius: 999px; font-size: 12px;
+    }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px; padding: 6px 10px; font-size: 12px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px; box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06); margin-bottom: 14px;
+    }
+    .explain {
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.55;
+    }
+    .explain h3 { margin: 0 0 8px; font-size: 14px; }
+    .explain p { margin: 0 0 8px; }
+    .explain p:last-child { margin-bottom: 0; }
+    .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fbfdff; }
+    .tile .v { font-size: 24px; font-weight: 700; }
+    .tile .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .controls { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; font-size: 13px; }
+    .controls label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #edf2f9; padding: 8px 9px; text-align: right; white-space: nowrap; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    td.names, th.names { text-align: left; white-space: normal; min-width: 180px; }
+    thead th { background: #edf3fc; color: #123154; cursor: pointer; user-select: none; }
+    thead th:hover { background: #e4edf9; }
+    thead th.sorted { background: #dbe7f8; }
+    th.primary, td.primary { background: #f3f8ff; font-weight: 700; }
+    .muted { color: var(--muted); }
+    .barcell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+    .bar { height: 10px; border-radius: 0 4px 4px 0; background: var(--bar); min-width: 0; }
+    .bartrack { width: 90px; display: flex; }
+    tr.team-row { cursor: pointer; }
+    tr.team-row:hover { background: #f4f8fd; }
+    tr.team-row td:first-child::before { content: "\25B8 "; color: var(--muted); }
+    tr.team-row.open td:first-child::before { content: "\25BE "; }
+    .detail td { background: #fafcff; padding: 0; text-align: left; white-space: normal; }
+    .det { padding: 10px 14px 14px 34px; }
+    .det table { font-size: 12px; }
+    .det th, .det td { padding: 4px 8px; border-bottom: 1px solid #eef3f9; cursor: default; }
+    .det th:nth-child(2), .det td:nth-child(2) { text-align: right; }
+    .det th:first-child, .det td:first-child { text-align: left; }
+    .det td.reasons { text-align: left; white-space: normal; }
+    .table-scroll { overflow-x: auto; }
+    .weeks { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 6px 0 0; border-bottom: 1px solid var(--line); }
+    .wk { flex: 1; max-width: 70px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .wk .b { width: 100%; background: var(--bar); border-radius: 4px 4px 0 0; }
+    .wk .n { font-size: 11px; color: var(--ink); margin-bottom: 3px; }
+    .wklabels { display: flex; gap: 6px; }
+    .wklabels span { flex: 1; max-width: 70px; text-align: center; font-size: 11px; color: var(--muted); padding-top: 4px; }
+    .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 720px) {
+      .wrap { padding: 8px; }
+      h1 { font-size: 20px; }
+      .tiles { grid-template-columns: 1fr 1fr; }
+      .twocol { grid-template-columns: 1fr; }
+      table { font-size: 11.5px; }
+      th, td { padding: 6px 5px; }
+      .team-full, .bartrack { display: none; }
+      .det { padding-left: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Injury Tracker</h1>
+      <div class="meta">
+        <span class="chip" id="season-chip"></span>
+        <span class="chip">Projected-rotation games lost, weighted by player value</span>
+      </div>
+      <div class="nav">
+        <a href="index.html">Home (Luck-Adjusted Results)</a>
+        <a href="team-power-ratings.html">Team Power Ratings</a>
+        <a href="team-projections.html">Win Projections</a>
+        <a href="depth-charts.html">Depth Charts</a>
+      </div>
+    </section>
+
+    <section class="explain">
+      <h3>How to read this</h3>
+      <p>Each team's projected rotation comes from the <a href="depth-charts.html">depth charts</a>.
+      For every game, each rotation player who did not play is tagged with nba.com's reason
+      (injury/illness, rest, coach's decision, G League, ...). Only injuries count toward the
+      injury numbers below; other absences are shown separately.</p>
+      <p><strong>Cost</strong> is how much worse the team is, in points per 100 possessions, with
+      the missing players' projected minutes going to a replacement-level player instead
+      (NERD + DARKO ratings), the same cost the <a href="team-power-ratings.html">power ratings</a>
+      use. Missing a star for a game costs far more than missing a bench player.
+      <strong>Wins lost</strong> converts each game's cost to win probability (about 0.033 wins
+      per point of expected margin) and adds them up.</p>
+      <p class="muted">Some nba.com box scores list a player as inactive without a reason. For
+      rotation players that is almost always an injury, so it counts as one by default (toggle below).</p>
+    </section>
+
+    <section class="card">
+      <h2>League</h2>
+      <div class="tiles" id="tiles"></div>
+      <div class="twocol">
+        <div>
+          <div class="muted" style="font-size:12px;margin-bottom:4px">Share of projected rotation minutes lost to injury, by week</div>
+          <div class="weeks" id="weeks"></div>
+          <div class="wklabels" id="wklabels"></div>
+        </div>
+        <div>
+          <div class="muted" style="font-size:12px;margin-bottom:4px">All absences of rotation players, by reason (player-games)</div>
+          <table id="reasons"><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Teams</h2>
+      <div class="controls">
+        <label><input type="checkbox" id="inc-inactive" checked /> Count "inactive, reason not listed" as injury</label>
+      </div>
+      <div class="table-scroll">
+        <table id="team-table">
+          <thead><tr>
+            <th data-key="rank">#</th>
+            <th data-key="team">Team</th>
+            <th data-key="gp">GP</th>
+            <th data-key="cost" class="primary" title="Average injury cost per game, pts/100">Cost / game</th>
+            <th data-key="wins" title="Estimated wins lost to injury so far">Wins lost</th>
+            <th data-key="games" title="Rotation player-games missed to injury">Games missed</th>
+            <th data-key="minpg" title="Projected rotation minutes missing per game (of 240)">Min lost / g</th>
+            <th data-key="healthyPct" title="Share of games with no rotation player out injured">Healthy games</th>
+            <th data-key="otherCost" title="Average cost of non-injury absences per game (rest, coach's decision, ...)">Other absences</th>
+            <th class="names" data-key="outCount">Out now</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" id="footer" style="font-size:12px;margin:10px 2px 0"></p>
+    </section>
+
+    <section class="card">
+      <h2>Biggest injury losses (players)</h2>
+      <div class="table-scroll">
+        <table id="player-table">
+          <thead><tr>
+            <th style="text-align:left">#</th><th>Player</th><th>Team</th><th>Proj. min</th>
+            <th title="Cost per game missed, pts/100">Cost / game out</th>
+            <th>Games missed</th><th class="primary" title="Cost per game x games missed">Total cost</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const TEAM_NAMES = {
+      ATL:"Atlanta Hawks", BOS:"Boston Celtics", BKN:"Brooklyn Nets", CHA:"Charlotte Hornets",
+      CHI:"Chicago Bulls", CLE:"Cleveland Cavaliers", DAL:"Dallas Mavericks", DEN:"Denver Nuggets",
+      DET:"Detroit Pistons", GSW:"Golden State Warriors", HOU:"Houston Rockets", IND:"Indiana Pacers",
+      LAC:"LA Clippers", LAL:"Los Angeles Lakers", MEM:"Memphis Grizzlies", MIA:"Miami Heat",
+      MIL:"Milwaukee Bucks", MIN:"Minnesota Timberwolves", NOP:"New Orleans Pelicans",
+      NYK:"New York Knicks", OKC:"Oklahoma City Thunder", ORL:"Orlando Magic",
+      PHI:"Philadelphia 76ers", PHX:"Phoenix Suns", POR:"Portland Trail Blazers",
+      SAC:"Sacramento Kings", SAS:"San Antonio Spurs", TOR:"Toronto Raptors", UTA:"Utah Jazz",
+      WAS:"Washington Wizards" };
+    let sortKey = 'cost', sortDir = -1, openTeam = null;
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const n1 = v => (Math.round(v * 10) / 10 || 0).toFixed(1);
+    const injuryCats = () => document.getElementById('inc-inactive').checked ? ['injury', 'inactive'] : ['injury'];
+    const isInjury = status => {
+      const s = (status || '').toLowerCase();
+      return s.includes('injury') || s.includes('illness') || (s === 'inactive' && injuryCats().includes('inactive'));
+    };
+    const sumCats = (totals, cats, k) => cats.reduce((a, c) => a + (totals[c] ? totals[c][k] : 0), 0);
+
+    function teamRows() {
+      const d = window.TEAM_INJURIES, inj = injuryCats();
+      const other = d.categories.map(c => c.key).filter(c => !inj.includes(c) && c !== 'unlisted' && c !== 'gleague');
+      return d.teams.map(t => {
+        const gp = Math.max(t.gp, 1);
+        return {
+          ...t,
+          cost: sumCats(t.totals, inj, 'cost') / gp,
+          wins: sumCats(t.totals, inj, 'wins'),
+          games: sumCats(t.totals, inj, 'games'),
+          minpg: sumCats(t.totals, inj, 'minutes') / gp,
+          healthy: inj.includes('inactive') ? t.healthy_with_inactive : t.healthy,
+          healthyPct: t.gp ? (inj.includes('inactive') ? t.healthy_with_inactive : t.healthy) / t.gp : 0,
+          otherCost: sumCats(t.totals, other, 'cost') / gp,
+          outCount: t.out.filter(o => isInjury(o.status)).length,
+        };
+      });
+    }
+
+    function renderLeague() {
+      const d = window.TEAM_INJURIES, inj = injuryCats(), ts = d.teams;
+      const teamGames = ts.reduce((a, t) => a + t.gp, 0);
+      const projMin = ts.reduce((a, t) => a + t.gp * 240, 0);
+      const games = ts.reduce((a, t) => a + sumCats(t.totals, inj, 'games'), 0);
+      const mins = ts.reduce((a, t) => a + sumCats(t.totals, inj, 'minutes'), 0);
+      const cost = ts.reduce((a, t) => a + sumCats(t.totals, inj, 'cost'), 0);
+      const wins = ts.reduce((a, t) => a + sumCats(t.totals, inj, 'wins'), 0);
+      const outNow = ts.reduce((a, t) => a + t.out.filter(o => isInjury(o.status)).length, 0);
+      document.getElementById('tiles').innerHTML = [
+        [games, 'rotation player-games lost to injury'],
+        [(100 * mins / Math.max(projMin, 1)).toFixed(1) + '%', 'of projected rotation minutes lost to injury'],
+        [n1(cost / Math.max(teamGames, 1)), 'avg. cost per team-game (pts/100)'],
+        [outNow, 'rotation players out injured now'],
+      ].map(([v, l]) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+
+      const wk = d.weekly.map(w => ({ week: w.week, games: w.team_games,
+        pct: inj.reduce((a, c) => a + (w[c] ? w[c].minutes : 0), 0) / Math.max(w.team_games * 240, 1) }));
+      const max = Math.max(0.01, ...wk.map(w => w.pct));
+      document.getElementById('weeks').innerHTML = wk.map(w =>
+        `<div class="wk" title="Week of ${w.week}: ${(100 * w.pct).toFixed(1)}% of projected rotation minutes lost to injury (${w.games} team-games)">
+          <div class="n">${(100 * w.pct).toFixed(1)}%</div>
+          <div class="b" style="height:${Math.max(2, 100 * w.pct / max * 0.8)}%"></div></div>`).join('');
+      document.getElementById('wklabels').innerHTML = wk.map(w => {
+        const dt = new Date(w.week + 'T12:00:00');
+        return `<span>${dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>`;
+      }).join('');
+
+      const byCat = d.categories.map(c => ({ ...c,
+        games: ts.reduce((a, t) => a + (t.totals[c.key] ? t.totals[c.key].games : 0), 0) })).filter(c => c.games);
+      const top = Math.max(1, ...byCat.map(c => c.games));
+      document.querySelector('#reasons tbody').innerHTML = byCat.map(c => `<tr>
+        <td style="text-align:left">${esc(c.label)}${inj.includes(c.key) ? ' <span class="muted">(injury)</span>' : ''}</td>
+        <td><div class="barcell">${c.games}<div class="bartrack"><div class="bar" style="width:${100 * c.games / top}%;background:${inj.includes(c.key) ? 'var(--bar)' : 'var(--bar-soft)'}"></div></div></div></td></tr>`).join('');
+    }
+
+    function detailHtml(t) {
+      const cats = Object.fromEntries(window.TEAM_INJURIES.categories.map(c => [c.key, c.label]));
+      const ps = t.players.slice().sort((a, b) =>
+        Object.values(b.missed).reduce((x, y) => x + y, 0) * b.value - Object.values(a.missed).reduce((x, y) => x + y, 0) * a.value);
+      const rows = ps.length ? ps.map(p => `<tr><td>${esc(p.name)}</td><td>${p.minutes}</td><td>${n1(p.value)}</td>
+          <td class="reasons">${Object.entries(p.missed).map(([c, n]) => `${esc(cats[c] || c)}: ${n}`).join(' &middot; ')}</td></tr>`).join('')
+        : '<tr><td colspan="4" class="muted">No rotation player has missed a game.</td></tr>';
+      return `<div class="det"><table><thead><tr><th>Player</th><th>Proj. min</th><th title="pts/100 per game missed">Cost / game out</th>
+        <th style="text-align:left">Games missed, by reason</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function renderTeams() {
+      const rs = teamRows();
+      [...rs].sort((a, b) => b.cost - a.cost).forEach((r, i) => { r.rank = i + 1; });
+      rs.sort((a, b) => sortKey === 'team' ? sortDir * a.team.localeCompare(b.team) : sortDir * (a[sortKey] - b[sortKey]));
+      document.querySelectorAll('#team-table thead th').forEach(th => th.classList.toggle('sorted', th.dataset.key === sortKey));
+      const maxCost = Math.max(0.1, ...rs.map(r => r.cost));
+      document.querySelector('#team-table tbody').innerHTML = rs.map(r => {
+        const hurt = r.out.filter(o => isInjury(o.status));
+        const out = hurt.length
+          ? hurt.map(o => `${esc(o.name)} <span class="muted">(${o.minutes} min)</span>`).join(', ')
+          : '<span class="muted">&mdash;</span>';
+        const main = `<tr class="team-row ${openTeam === r.team ? 'open' : ''}" data-team="${r.team}">
+          <td class="muted">${r.rank}</td>
+          <td><strong>${r.team}</strong> <span class="muted team-full">${TEAM_NAMES[r.team] || ''}</span></td>
+          <td>${r.gp}</td>
+          <td class="primary"><div class="barcell">${n1(r.cost)}<div class="bartrack"><div class="bar" style="width:${Math.max(0, 100 * r.cost / maxCost)}%"></div></div></div></td>
+          <td>${r.wins.toFixed(2)}</td>
+          <td>${r.games}</td>
+          <td>${n1(r.minpg)}</td>
+          <td>${r.healthy}/${r.gp}</td>
+          <td>${n1(r.otherCost)}</td>
+          <td class="names">${out}</td>
+        </tr>`;
+        return openTeam === r.team ? main + `<tr class="detail"><td colspan="10">${detailHtml(r)}</td></tr>` : main;
+      }).join('');
+      document.querySelectorAll('#team-table tr.team-row').forEach(tr => tr.addEventListener('click', () => {
+        openTeam = openTeam === tr.dataset.team ? null : tr.dataset.team; renderTeams();
+      }));
+    }
+
+    function renderPlayers() {
+      const inj = injuryCats(), ps = [];
+      window.TEAM_INJURIES.teams.forEach(t => t.players.forEach(p => {
+        const g = inj.reduce((a, c) => a + (p.missed[c] || 0), 0);
+        if (g) ps.push({ ...p, team: t.team, g, total: g * p.value,
+                         outNow: t.out.some(o => o.name === p.name && isInjury(o.status)) });
+      }));
+      ps.sort((a, b) => b.total - a.total);
+      document.querySelector('#player-table tbody').innerHTML = ps.slice(0, 25).map((p, i) => `<tr>
+        <td class="muted" style="text-align:left">${i + 1}</td><td style="text-align:left"><strong>${esc(p.name)}</strong></td>
+        <td>${p.team}</td><td>${p.minutes}</td><td>${n1(p.value)}</td><td>${p.g}</td>
+        <td class="primary">${n1(p.total)}</td>
+        <td>${p.outNow ? 'Out' : '<span class="muted">Back / day-to-day</span>'}</td></tr>`).join('')
+        || '<tr><td colspan="8" class="muted">No injury absences yet.</td></tr>';
+    }
+
+    function render() { renderLeague(); renderTeams(); renderPlayers(); }
+
+    document.querySelector('#team-table thead').addEventListener('click', e => {
+      const th = e.target.closest('th');
+      if (!th || th.dataset.key === 'rank') return;
+      const k = th.dataset.key;
+      if (sortKey === k) sortDir *= -1;
+      else { sortKey = k; sortDir = (k === 'team') ? 1 : -1; }
+      renderTeams();
+    });
+    document.getElementById('inc-inactive').addEventListener('change', render);
+
+    // Load the data fresh (GitHub Pages caches .js aggressively).
+    const s = document.createElement('script');
+    s.src = 'data/team_injuries.js?v=' + Date.now();
+    s.onload = () => {
+      const d = window.TEAM_INJURIES;
+      const games = d.teams.reduce((n, t) => n + t.gp, 0) / 2;
+      document.getElementById('season-chip').textContent = `${d.season} · ${games} games`;
+      document.getElementById('footer').textContent =
+        `Updated ${d.generated}. "Out now" = injured and missed the team's last ${d.out_recent_games} games in a row (or marked out by hand). ` +
+        `Players not on a game's roster at all (two-ways in the G League, unsigned depth-chart entries) are not counted as injured.`;
+      render();
+    };
+    s.onerror = () => { document.querySelector('#team-table tbody').innerHTML =
+      '<tr><td colspan="10" class="muted">Injury data failed to load.</td></tr>'; };
+    document.head.appendChild(s);
+  </script>
+</body>
+</html>

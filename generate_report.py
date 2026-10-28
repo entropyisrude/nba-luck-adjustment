@@ -94,7 +94,7 @@ def _load_game_possessions() -> dict[str, float]:
 SOS_PRIOR_GAMES = 10.0
 SOS_HOME_EDGE = 1.25  # per side, pts/100: a 2.5-point home margin
 TEAM_PRIORS_PATH = DATA_DIR / f"team_priors_{TAG}.json"
-NAME_ALIASES = {"nahshon hyland": "bones hyland"}  # depth-chart -> box-score name
+NAME_ALIASES = {"nahshon hyland": "bones hyland", "yang hansen": "hansen yang"}  # depth-chart -> box-score name
 
 
 def _load_team_priors() -> dict:
@@ -297,6 +297,106 @@ def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, pr
         modes[luck_key] = rows
     return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "prior_games": SOS_PRIOR_GAMES, "out_recent_games": OUT_RECENT_GAMES, "modes": modes}
+
+
+# Injury tracker (team-injuries.html). Same absence cost as the power ratings,
+# split by nba.com's reason for each projected-rotation player who sat.
+STATUS_CSV = DATA_DIR / f"season_{TAG}" / f"player_game_status_{TAG}.csv"
+INJURY_JS_PATH = DATA_DIR / "team_injuries.js"
+WINS_PER_POINT = 0.033  # win probability per point of expected margin
+ABSENCE_CATEGORIES = [
+    ("injury", "Injury / illness"), ("inactive", "Inactive, reason not listed"), ("rest", "Rest"), ("personal", "Personal / not with team"),
+    ("suspension", "Suspension"), ("coach", "Coach's decision"), ("gleague", "G League"),
+    ("unlisted", "Not on game roster"), ("other", "Other / unspecified"),
+]
+
+
+def _absence_category(status: str | None) -> str:
+    s = (status or "").lower()
+    if not s:
+        return "unlisted"
+    if s == "inactive":
+        return "inactive"
+    for needle, cat in (("injury", "injury"), ("illness", "injury"), ("rest", "rest"),
+                        ("personal", "personal"), ("not with team", "personal"),
+                        ("suspen", "suspension"), ("coach", "coach"), ("g league", "gleague")):
+        if needle in s:
+            return cat
+    return "other"
+
+
+def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dict) -> dict | None:
+    """Data for team-injuries.html: projected-rotation games missed, by reason."""
+    teams = priors.get("teams", {})
+    if source_df.empty or not teams or not STATUS_CSV.exists():
+        return None
+    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
+    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    status = pd.read_csv(STATUS_CSV, dtype={"game_id": str})
+    status["game_id"] = status["game_id"].str.lstrip("0")
+    listed = {k: [(_name_key(n), s) for n, s in zip(g.player_name, g.status)]
+              for k, g in status.groupby(["game_id", "team_abbr"])}
+    games = source_df.assign(gid=source_df["game_id"].astype(str).str.lstrip("0")).sort_values("date")
+    cats = [c for c, _ in ABSENCE_CATEGORIES]
+    team_out = {}
+    weekly: dict[str, dict] = {}
+    for team, info in teams.items():
+        rotation = [dict(p, key=_name_key(p["name"]),
+                         # A player rated below replacement costs nothing by sitting.
+                         value=max(0.0, p["minutes"] / 48 * ((p["o"] - rep_o) + (p["d"] - rep_d))))
+                    for p in info.get("rotation", [])]
+        tot = {c: {"games": 0, "minutes": 0.0, "cost": 0.0, "wins": 0.0} for c in cats}
+        players = {p["name"]: {c: 0 for c in cats} for p in rotation}
+        gp = healthy = healthy_strict = 0
+        last_status = {}
+        for r in games[(games.home_team == team) | (games.away_team == team)].itertuples(index=False):
+            roster = listed.get((r.gid, team))
+            if roster is None:
+                continue
+            gp += 1
+            poss = (game_poss or {}).get(r.gid) or (r.home_pts_actual + r.away_pts_actual) / 2
+            week = (pd.Timestamp(r.date) - pd.Timedelta(days=pd.Timestamp(r.date).weekday())).strftime("%Y-%m-%d")
+            wk = weekly.setdefault(week, {"team_games": 0, **{c: {"minutes": 0.0, "cost": 0.0} for c in cats}})
+            wk["team_games"] += 1
+            injured = inactive = False
+            for p in rotation:
+                st = next((s for k, s in roster if _same_player(p["key"], k)), None)
+                last_status[p["name"]] = st
+                if st == "played":
+                    continue
+                cat = _absence_category(st)
+                injured |= cat == "injury"
+                inactive |= cat == "inactive"
+                players[p["name"]][cat] += 1
+                t = tot[cat]
+                t["games"] += 1
+                t["minutes"] += p["minutes"]
+                t["cost"] += p["value"]
+                t["wins"] += p["value"] * poss / 100 * WINS_PER_POINT
+                wk[cat]["minutes"] += p["minutes"]
+                wk[cat]["cost"] += p["value"]
+            healthy += not injured
+            healthy_strict += not (injured or inactive)
+        team_out[team] = {
+            "team": team, "gp": gp, "healthy": healthy, "healthy_with_inactive": healthy_strict,
+            "totals": {c: {k: round(v, 3) for k, v in t.items()} for c, t in tot.items()},
+            "players": [{"name": p["name"], "minutes": p["minutes"], "value": round(p["value"], 2),
+                         "missed": {c: n for c, n in players[p["name"]].items() if n},
+                         "last": last_status.get(p["name"])}
+                        for p in rotation if any(players[p["name"]].values())],
+            "out": [],
+        }
+    for team, outs in _currently_out(source_df, priors).items():
+        if team in team_out:
+            team_out[team]["out"] = [
+                {"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
+                 "status": next((pl["last"] for pl in team_out[team]["players"] if pl["name"] == p["name"]), None),
+                 "value": round(p["o"] + p["d"], 2)} for p in outs]
+    return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "wins_per_point": WINS_PER_POINT, "out_recent_games": OUT_RECENT_GAMES,
+            "categories": [{"key": c, "label": label} for c, label in ABSENCE_CATEGORIES],
+            "teams": [team_out[t] for t in sorted(team_out)],
+            "weekly": [{"week": w, **v} for w, v in sorted(weekly.items())]}
 
 
 def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None) -> str:
@@ -507,6 +607,10 @@ def generate_report():
     power = _power_payload({"default": rs_df, "3pt_ft": alt_rs_df}, game_poss, priors)
     POWER_JS_PATH.write_text("window.TEAM_POWER = " + json.dumps(power, separators=(",", ":"))
                              + ";\n", encoding="utf-8")
+    injuries = _injury_payload(rs_df, game_poss, priors)
+    if injuries:
+        INJURY_JS_PATH.write_text("window.TEAM_INJURIES = " + json.dumps(injuries, separators=(",", ":"))
+                                  + ";\n", encoding="utf-8")
     playoff_team_rows_3pt_ft = _build_team_rows(alt_playoff_df, game_poss)
 
     swing_rows = _build_swing_rows(rs_df)
