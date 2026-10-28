@@ -86,11 +86,14 @@ jobs:
           echo "start=$START" >> $GITHUB_OUTPUT
           echo "end=$END" >> $GITHUB_OUTPUT
           echo "yesterday=$(date -u -d '1 day ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "week_ago=$(date -u -d '8 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "fourteen_days_ago=$(date -u -d '14 days ago' +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Run daily update
         run: |
           python run_daily.py --start ${{ steps.date.outputs.start }} --end ${{ steps.date.outputs.end }}
+          # Retry any game from the past week that an earlier run skipped.
+          python run_daily.py --start ${{ steps.date.outputs.week_ago }} --end ${{ steps.date.outputs.end }} --skip-existing
 
       - name: Generate report
         run: |
@@ -168,6 +171,13 @@ jobs:
       # Schedule adjustment prior: team offense/defense from the win-projections
       # page (uses today's rosters, DARKO and depth charts), then rebuild the
       # luck report with it.
+      # Official NBA injury report (Out/Doubtful players) for current strength.
+      - name: Fetch NBA injury report
+        continue-on-error: true
+        run: |
+          pip install pdfplumber
+          python scripts/fetch_injury_report.py
+
       - name: Refresh team priors and rebuild luck report
         continue-on-error: true
         run: |

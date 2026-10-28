@@ -277,7 +277,7 @@
       document.querySelector('#team-table tbody').innerHTML = rs.map(r => {
         const hurt = r.out.filter(o => isInjury(o.status));
         const out = hurt.length
-          ? hurt.map(o => `${esc(o.name)} <span class="muted">(${o.minutes} min)</span>`).join(', ')
+          ? hurt.map(o => `<span title="${esc(o.status || '')}">${esc(o.name)}</span> <span class="muted">(${o.minutes} min)</span>`).join(', ')
           : '<span class="muted">&mdash;</span>';
         const main = `<tr class="team-row ${openTeam === r.team ? 'open' : ''}" data-team="${r.team}">
           <td class="muted">${r.rank}</td>
@@ -334,7 +334,7 @@
       const games = d.teams.reduce((n, t) => n + t.gp, 0) / 2;
       document.getElementById('season-chip').textContent = `${d.season} · ${games} games`;
       document.getElementById('footer').textContent =
-        `Updated ${d.generated}. "Out now" = injured and missed the team's last ${d.out_recent_games} games in a row (or marked out by hand). ` +
+        `Updated ${d.generated}. "Out now" = listed Out/Doubtful with an injury on the NBA's latest official injury report (hover a name for the injury). ` +
         `Players not on a game's roster at all (two-ways in the G League, unsigned depth-chart entries) are not counted as injured.`;
       render();
     };

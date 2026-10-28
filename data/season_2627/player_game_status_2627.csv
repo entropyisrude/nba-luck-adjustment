@@ -788,6 +788,41 @@ date,game_id,team_abbr,player_id,player_name,status
 2026-10-23,22600098,MIA,203501,Tim Hardaway Jr.,played
 2026-10-23,22600098,MIA,1643621,Tre Donaldson,Inactive - Coach's Decision
 2026-10-23,22600098,MIA,1642884,Vladislav Goldin,Inactive - Coach's Decision
+2026-10-23,22600099,CHI,1627741,Buddy Hield,played
+2026-10-23,22600099,CHI,1643410,Caleb Wilson,played
+2026-10-23,22600099,CHI,1643517,Dailyn Swain,DNP - Coach's Decision
+2026-10-23,22600099,CHI,1630171,Isaac Okoro,played
+2026-10-23,22600099,CHI,1630188,Jalen Smith,played
+2026-10-23,22600099,CHI,1643637,Jaylin Sellers,DNP - Coach's Decision
+2026-10-23,22600099,CHI,1641722,Jordan Hawkins,DNP - Coach's Decision
+2026-10-23,22600099,CHI,1630581,Josh Giddey,played
+2026-10-23,22600099,CHI,1631159,Leonard Miller,played
+2026-10-23,22600099,CHI,1641824,Matas Buzelis,played
+2026-10-23,22600099,CHI,1629651,Nic Claxton,Inactive - Injury/Illness
+2026-10-23,22600099,CHI,1642855,Noa Essengue,played
+2026-10-23,22600099,CHI,1626181,Norman Powell,played
+2026-10-23,22600099,CHI,1630172,Patrick Williams,DNP - Coach's Decision
+2026-10-23,22600099,CHI,1643591,Tobe Awaka,DNP - Coach's Decision
+2026-10-23,22600099,CHI,1630200,Tre Jones,played
+2026-10-23,22600099,CHI,1628380,Zach Collins,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1631260,AJ Green,played
+2026-10-23,22600099,MIL,1642881,Bogoljub Marković,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1643415,Brayden Burries,played
+2026-10-23,22600099,MIL,1627747,Caris LeVert,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1642504,Cormac Ryan,Inactive - Coach's Decision
+2026-10-23,22600099,MIL,1629018,Gary Trent Jr.,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1631170,Jaime Jaquez Jr.,played
+2026-10-23,22600099,MIL,1630579,Jericho Sims,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1642880,Kam Jones,Inactive - Coach's Decision
+2026-10-23,22600099,MIL,1642857,Kasparas Jakučionis,played
+2026-10-23,22600099,MIL,1642276,Kel'el Ware,played
+2026-10-23,22600099,MIL,1628398,Kyle Kuzma,played
+2026-10-23,22600099,MIL,1626167,Myles Turner,played
+2026-10-23,22600099,MIL,1643417,Nate Ament,DNP - Coach's Decision
+2026-10-23,22600099,MIL,1631172,Ousmane Dieng,played
+2026-10-23,22600099,MIL,1631250,Pete Nance,Inactive - Coach's Decision
+2026-10-23,22600099,MIL,1631157,Ryan Rollins,played
+2026-10-23,22600099,MIL,1629639,Tyler Herro,played
 2026-10-23,22600100,NOP,1642358,AJ Johnson,DNP - Coach's Decision
 2026-10-23,22600100,NOP,1631097,Bennedict Mathurin,played
 2026-10-23,22600100,NOP,1631121,Bryce McGowens,DNP - Coach's Decision
@@ -1281,6 +1316,41 @@ date,game_id,team_abbr,player_id,player_name,status
 2026-10-25,22600113,IND,1631245,Quenton Jackson,played
 2026-10-25,22600113,IND,204456,T.J. McConnell,Inactive - Injury/Illness
 2026-10-25,22600113,IND,1630169,Tyrese Haliburton,played
+2026-10-25,22600114,NYK,203083,Andre Drummond,played
+2026-10-25,22600114,NYK,1642261,Dalton Knecht,Inactive - G League - Two-Way
+2026-10-25,22600114,NYK,1643022,Jaden Akins,played
+2026-10-25,22600114,NYK,1628973,Jalen Brunson,played
+2026-10-25,22600114,NYK,1630164,James Wiseman,played
+2026-10-25,22600114,NYK,203903,Jordan Clarkson,played
+2026-10-25,22600114,NYK,1630631,Jose Alvarado,Inactive - Injury/Illness
+2026-10-25,22600114,NYK,1628404,Josh Hart,played
+2026-10-25,22600114,NYK,1626157,Karl-Anthony Towns,played
+2026-10-25,22600114,NYK,1641755,Kevin McCullar Jr.,DNP - Coach's Decision
+2026-10-25,22600114,NYK,1629013,Landry Shamet,played
+2026-10-25,22600114,NYK,1628969,Mikal Bridges,played
+2026-10-25,22600114,NYK,1630540,Miles McBride,played
+2026-10-25,22600114,NYK,1642885,Mohamed Diawara,DNP - Coach's Decision
+2026-10-25,22600114,NYK,1628384,OG Anunoby,played
+2026-10-25,22600114,NYK,1642359,Pacôme Dadiet,DNP - Coach's Decision
+2026-10-25,22600114,NYK,1642278,Tyler Kolek,played
+2026-10-25,22600114,NYK,1643589,Tyler Nickel,Inactive - G League - Two-Way
+2026-10-25,22600114,ORL,1631457,Alex Morales,DNP - Coach's Decision
+2026-10-25,22600114,ORL,1641710,Anthony Black,played
+2026-10-25,22600114,ORL,1630658,Colin Castleton,DNP - Coach's Decision
+2026-10-25,22600114,ORL,1630217,Desmond Bane,played
+2026-10-25,22600114,ORL,1630532,Franz Wagner,played
+2026-10-25,22600114,ORL,1629048,Goga Bitadze,DNP - Coach's Decision
+2026-10-25,22600114,ORL,1643593,Izaiyah Nelson,Inactive - Injury/Illness
+2026-10-25,22600114,ORL,1630591,Jalen Suggs,played
+2026-10-25,22600114,ORL,1631288,Jamal Cain,played
+2026-10-25,22600114,ORL,1642859,Jase Richardson,played
+2026-10-25,22600114,ORL,1628975,Jevon Carter,DNP - Coach's Decision
+2026-10-25,22600114,ORL,1628371,Jonathan Isaac,Inactive - Injury/Illness
+2026-10-25,22600114,ORL,202696,Nikola Vučević,played
+2026-10-25,22600114,ORL,1642869,Noah Penda,Inactive - Injury/Illness
+2026-10-25,22600114,ORL,1631094,Paolo Banchero,Inactive - Injury/Illness
+2026-10-25,22600114,ORL,1641783,Tristan da Silva,played
+2026-10-25,22600114,ORL,1628976,Wendell Carter Jr.,played
 2026-10-25,22600115,MIN,1630162,Anthony Edwards,played
 2026-10-25,22600115,MIN,1630245,Ayo Dosunmu,played
 2026-10-25,22600115,MIN,1630538,Bones Hyland,played
@@ -1591,6 +1661,30 @@ date,game_id,team_abbr,player_id,player_name,status
 2026-10-26,22600123,MIL,1631250,Pete Nance,Inactive - G League - Two-Way
 2026-10-26,22600123,MIL,1631157,Ryan Rollins,played
 2026-10-26,22600123,MIL,1629639,Tyler Herro,played
+2026-10-26,22600124,OKC,1643530,Aday Mara,played
+2026-10-26,22600124,OKC,1642349,Ajay Mitchell,played
+2026-10-26,22600124,OKC,1627936,Alex Caruso,played
+2026-10-26,22600124,OKC,1642892,Bennett Stirtz,played
+2026-10-26,22600124,OKC,1642964,Brooks Barnhizer,played
+2026-10-26,22600124,OKC,1628392,Isaiah Hartenstein,played
+2026-10-26,22600124,OKC,1642272,Jared McCain,played
+2026-10-26,22600124,OKC,1631119,Jaylin Williams,played
+2026-10-26,22600124,OKC,1643717,Josh Dix,played
+2026-10-26,22600124,OKC,1629026,Kenrich Williams,played
+2026-10-26,22600124,OKC,1628983,Shai Gilgeous-Alexander,played
+2026-10-26,22600124,PHX,1631221,Collin Gillespie,played
+2026-10-26,22600124,PHX,1626164,Devin Booker,played
+2026-10-26,22600124,PHX,1628415,Dillon Brooks,played
+2026-10-26,22600124,PHX,1641871,Duop Reath,played
+2026-10-26,22600124,PHX,1630224,Jalen Green,played
+2026-10-26,22600124,PHX,1631123,Jamaree Bouyea,played
+2026-10-26,22600124,PHX,1630692,Jordan Goodwin,played
+2026-10-26,22600124,PHX,1642863,Khaman Maluach,played
+2026-10-26,22600124,PHX,1643520,Koa Peat,played
+2026-10-26,22600124,PHX,1628379,Luke Kennard,played
+2026-10-26,22600124,PHX,1628970,Miles Bridges,played
+2026-10-26,22600124,PHX,1642853,Rasheer Fleming,played
+2026-10-26,22600124,PHX,1642346,Ryan Dunn,played
 2026-10-26,22600125,ATL,1630598,Aaron Wiggins,played
 2026-10-26,22600125,ATL,1642854,Asa Newell,played
 2026-10-26,22600125,ATL,203468,CJ McCollum,played

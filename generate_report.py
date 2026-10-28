@@ -154,6 +154,7 @@ def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str
 OUT_RECENT_GAMES = 3  # a rotation player missing this many straight team games counts as out
 AVAILABILITY_PATH = DATA_DIR / f"availability_{START_YEAR}_{(START_YEAR + 1) % 100:02d}.js"
 POWER_JS_PATH = DATA_DIR / "team_power_ratings.js"
+INJURY_REPORT_PATH = DATA_DIR / f"injury_report_{TAG}.json"  # scripts/fetch_injury_report.py
 
 
 def _load_out_overrides() -> dict[tuple[str, str], bool]:
@@ -220,10 +221,26 @@ def _team_quality_fit(source_df: pd.DataFrame, game_poss: dict | None, priors: d
     return {"mu": mu, "off": off_q, "def": def_q, "costs": costs, "acc": acc, "teams": teams}
 
 
+def _load_injury_report(source_df: pd.DataFrame) -> dict[str, list[dict]]:
+    """{team: [{key, name, status, reason}]} from scripts/fetch_injury_report.py,
+    for teams whose latest report is for a game after their last game played."""
+    if not INJURY_REPORT_PATH.exists():
+        return {}
+    report = json.loads(INJURY_REPORT_PATH.read_text(encoding="utf-8")).get("teams", {})
+    last_game = {}
+    for side in ("home_team", "away_team"):
+        for team, d in source_df.groupby(side)["date"].max().items():
+            last_game[team] = max(last_game.get(team, ""), str(d))
+    return {team: [dict(p, key=_name_key(p["name"])) for p in info.get("players", [])]
+            for team, info in report.items()
+            if (info.get("game_date") or "") > last_game.get(team, "")}
+
+
 def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict]]:
-    """{team: [out player]} for current strength: a rotation player who missed his
-    team's last OUT_RECENT_GAMES games (or all of them, with 2+ played) counts as
-    out; window.OUT_NOW in the availability file overrides either way."""
+    """{team: [out player]} for current strength. A rotation player is out when
+    the NBA's latest injury report lists him Out or Doubtful; players it does not
+    list are out after missing the team's last OUT_RECENT_GAMES games (or all of
+    them, with 2+ played). window.OUT_NOW in the availability file overrides both."""
     box_csv = DATA_DIR / "player_boxscore_stats.csv"
     teams = priors.get("teams", {})
     if not teams or not box_csv.exists():
@@ -231,6 +248,7 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     rep_o = float(priors.get("replacement", {}).get("o", 0.0))
     rep_d = float(priors.get("replacement", {}).get("d", 0.0))
     overrides = _load_out_overrides()
+    report = _load_injury_report(source_df)
     box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
     played = {k: [_name_key(n) for n in g]
@@ -249,12 +267,21 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
                 streak += 1
             override = next((flag for k, flag in overrides.items() if _same_player(key, k)), None)
             need = min(OUT_RECENT_GAMES, len(team_games))
-            auto = len(team_games) >= 2 and streak >= need
+            listed = next((r for r in report.get(team, []) if _same_player(key, r["key"])), None)
+            if listed is not None:
+                auto = listed["status"] in ("Out", "Doubtful")
+            else:
+                auto = len(team_games) >= 2 and streak >= need
             if override is True or (override is None and auto):
-                reason = ("marked out" if override is True
-                          else f"missed last {streak} game{'s' if streak != 1 else ''}")
+                if override is True:
+                    reason = "marked out"
+                elif listed is not None:
+                    reason = f"injury report: {listed['status'].lower()}"
+                else:
+                    reason = f"missed last {streak} game{'s' if streak != 1 else ''}"
                 out.setdefault(team, []).append({
                     "name": p["name"], "minutes": p["minutes"], "reason": reason,
+                    "status": listed["reason"] if listed is not None else None,
                     "o": p["minutes"] / 48 * (p["o"] - rep_o),
                     "d": p["minutes"] / 48 * (p["d"] - rep_d)})
     return out
@@ -291,7 +318,8 @@ def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, pr
                 "sched": [round(a["so"] / a["poss"], 2), round(a["sd"] / a["poss"], 2)],
                 "pre": [round(mu + pre.get("off", 0.0), 2), round(mu - pre.get("def", 0.0), 2)],
                 "missing_avg": round(sum(o + d for o, d in team_costs) / max(len(team_costs), 1), 2),
-                "out": [{"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
+                "out": [{"name": p["name"], "minutes": p["minutes"],
+                         "reason": p["reason"] + (f" ({p['status']})" if p.get("status") else ""),
                          "net": round(p["o"] + p["d"], 2)} for p in out.get(t, [])],
             })
         modes[luck_key] = rows
@@ -390,7 +418,8 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
         if team in team_out:
             team_out[team]["out"] = [
                 {"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
-                 "status": next((pl["last"] for pl in team_out[team]["players"] if pl["name"] == p["name"]), None),
+                 "status": p.get("status") or next((pl["last"] for pl in team_out[team]["players"]
+                                                    if pl["name"] == p["name"]), None),
                  "value": round(p["o"] + p["d"], 2)} for p in outs]
     return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "wins_per_point": WINS_PER_POINT, "out_recent_games": OUT_RECENT_GAMES,

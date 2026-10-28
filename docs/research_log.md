@@ -969,3 +969,9 @@ Build a read-only audit script that selects canonical source files, reports sche
 - `src/nba_pages.py`: some game pages already use liveData minutes ("PT23M56.00S") and carry `played`; those were being read as 0 minutes. Now passed through.
 - `generate_report.py::_injury_payload` -> `data/team_injuries.js` -> `team-injuries.html`. Projected-rotation absences tagged by reason; cost = min/48 x (rating - replacement), floored at 0; wins lost = cost x poss/100 x 0.033. "Inactive, reason not listed" counts as injury by default (page toggle).
 - Name alias: depth-chart "Yang Hansen" = box "Hansen Yang" (also fixes his power-rating absences).
+
+## 2026-10-28 — Current strength from the official injury report; skipped-game backfill
+
+- Three games (10/23 MIL-CHI, 10/25 NYK-ORL, 10/26 OKC-PHX) had been skipped by run_daily as "empty": their nba.com pages use liveData minutes, which the adapter read as 0 before today's fix. Backfilled with the new `run_daily.py --skip-existing`; the daily workflow now reruns the past 8 days with it so a skipped game is retried.
+- `scripts/fetch_injury_report.py` parses the NBA's official injury report PDFs (ruled table, merged team cells located by the horizontal rules) into `data/injury_report_2627.json`: per team, the newest report covering a game after its last game played.
+- `_currently_out`: listed Out/Doubtful -> out; listed Questionable/Probable/Available -> not out; not listed -> the 3-straight-missed rule; OUT_NOW overrides. Fixes new long-term injuries (OKC: Williams, Wallace, Holmgren, Caruso; TOR: Leonard) that the missed-games rule took 3 games to catch.

@@ -101,7 +101,8 @@
       Click a team for its offense/defense breakdown and who is out.</p>
       <dl>
         <dt>Current</dt><dd>Full strength minus projected-rotation players who are out right now
-          (missed the team's last 3 games in a row, or marked out by hand). Best guess at how good the
+          (listed Out or Doubtful on the NBA's latest official injury report; players not on the report
+          count as out after missing the team's last 3 games in a row; either can be overridden by hand). Best guess at how good the
           team is tonight.</dd>
         <dt>Full</dt><dd>The team at full strength: its preseason projection updated by every game
           so far, adjusted for opponent strength, home court and the team's own missing players.
@@ -256,7 +257,7 @@
       document.getElementById('season-chip').textContent = `${d.season} · ${games} games`;
       document.getElementById('footer').textContent =
         `Updated ${d.generated}. Preseason prior counts like ${d.prior_games} games; a rotation player is ` +
-        `"out" after missing ${d.out_recent_games} straight games. Ratings are descriptive estimates, not predictions of any single game.`;
+        `"out" when the NBA's injury report lists him Out/Doubtful, or after missing ${d.out_recent_games} straight games. Ratings are descriptive estimates, not predictions of any single game.`;
       render();
     };
     s.onerror = () => { document.querySelector('#power-table tbody').innerHTML =

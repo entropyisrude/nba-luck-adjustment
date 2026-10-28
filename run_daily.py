@@ -190,6 +190,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", required=True, help="YYYY-MM-DD (ET)")
     parser.add_argument("--end", required=True, help="YYYY-MM-DD (ET)")
+    parser.add_argument("--skip-existing", action="store_true",
+                        help="only process games not already in adjusted_games.csv (backfill)")
     args = parser.parse_args()
 
     start = datetime.strptime(args.start, "%Y-%m-%d").date()
@@ -230,6 +232,8 @@ def main():
             print(f"DATE {d.isoformat()} [{game_type_label}] GAMES {len(game_ids)}")
 
             for game_id in game_ids:
+                if args.skip_existing and not existing.empty and                         str(game_id).lstrip('0') in set(existing['game_id']):
+                    continue
                 try:
                     row, player_df, player_state, shooting_luck_state = process_game(
                         game_id, game_date_mmddyyyy, d, game_type_label,
