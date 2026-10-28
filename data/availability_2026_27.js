@@ -11,3 +11,13 @@ window.AVAILABILITY = {
   "Moses Moody": 52,        // patellar tendon -- expected to miss the start
   "Johnny Furphy": 55,      // ACL -- expected to miss the start
 };
+
+// Who is out RIGHT NOW, for the Team Power Ratings page's "Current strength".
+// By default a projected-rotation player counts as out once he has missed his
+// team's last 3 games in a row (until he plays again). List a player here to
+// override that: true = out now (e.g. just injured, out for weeks), false =
+// available (e.g. missed games but is back tonight). Same name spelling as the
+// depth charts.
+window.OUT_NOW = {
+  // "Player Name": true,
+};

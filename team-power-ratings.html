@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Team Power Ratings — 2026-27</title>
+  <style>
+    :root {
+      --bg: #f2f6fb; --card: #fff; --line: #d6e1ef; --ink: #192231;
+      --muted: #5b6778; --good: #15803d; --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: var(--ink);
+      background: linear-gradient(180deg, #eef5ff 0%, #f8fbff 30%, #f2f6fb 100%);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #154f8b 0%, #0d2f53 45%, #081a2f 100%);
+      color: #f8fbff; border-radius: 14px; padding: 18px 20px;
+      border: 1px solid #254b72; margin-bottom: 14px; text-align: center;
+    }
+    h1 { margin: 0; font-size: 26px; }
+    .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; justify-content: center; }
+    .chip {
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      padding: 6px 10px; border-radius: 999px; font-size: 12px;
+    }
+    .nav { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .nav a {
+      color: #e8f4ff; text-decoration: none; border: 1px solid rgba(255,255,255,.35);
+      border-radius: 7px; padding: 6px 10px; font-size: 12px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px; box-shadow: 0 3px 12px rgba(23, 38, 62, 0.06); margin-bottom: 14px;
+    }
+    .explain {
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.55;
+    }
+    .explain h3 { margin: 0 0 8px; font-size: 14px; }
+    .explain dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+    .explain dt { font-weight: 700; }
+    .explain dd { margin: 0; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: end; }
+    .controls label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+    select { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: 13px; background: #fff; color: var(--ink); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #edf2f9; padding: 8px 9px; text-align: right; white-space: nowrap; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    thead th { background: #edf3fc; color: #123154; cursor: pointer; user-select: none; }
+    thead th:hover { background: #e4edf9; }
+    thead th.sorted { background: #dbe7f8; }
+    th.primary, td.primary { background: #f3f8ff; font-weight: 700; }
+    .pos { color: var(--good); font-weight: 600; }
+    .neg { color: var(--bad); font-weight: 600; }
+    .muted { color: var(--muted); }
+    tr.team-row { cursor: pointer; }
+    tr.team-row:hover { background: #f4f8fd; }
+    tr.team-row td:first-child::before { content: "\25B8 "; color: var(--muted); }
+    tr.team-row.open td:first-child::before { content: "\25BE "; }
+    .detail td { background: #fafcff; padding: 0; text-align: left; white-space: normal; }
+    .det { padding: 10px 14px 14px 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .det table { font-size: 12px; }
+    .det th, .det td { padding: 4px 8px; border-bottom: 1px solid #eef3f9; }
+    .det h4 { margin: 0 0 6px; font-size: 13px; }
+    .table-scroll { overflow-x: auto; }
+    @media (max-width: 720px) {
+      .wrap { padding: 8px; }
+      h1 { font-size: 20px; }
+      table { font-size: 11.5px; }
+      th, td { padding: 6px 5px; }
+      .team-full { display: none; }
+      .det { grid-template-columns: 1fr; padding-left: 10px; }
+      .explain dl { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Team Power Ratings</h1>
+      <div class="meta">
+        <span class="chip" id="season-chip"></span>
+        <span class="chip">Luck-adjusted &middot; schedule-adjusted &middot; injury-aware</span>
+      </div>
+      <div class="nav">
+        <a href="index.html">Home (Luck-Adjusted Results)</a>
+        <a href="team-projections.html">Win Projections</a>
+        <a href="depth-charts.html">Depth Charts</a>
+        <a href="nerd.html">NERD Ratings</a>
+      </div>
+    </section>
+
+    <section class="explain">
+      <h3>How to read this</h3>
+      <p>Every rating is a net rating: points per 100 possessions above an average team, built from
+      shooting-luck-adjusted results. Teams are ranked by <strong>Current strength</strong>.
+      Click a team for its offense/defense breakdown and who is out.</p>
+      <dl>
+        <dt>Current</dt><dd>Full strength minus projected-rotation players who are out right now
+          (missed the team's last 3 games in a row, or marked out by hand). Best guess at how good the
+          team is tonight.</dd>
+        <dt>Full</dt><dd>The team at full strength: its preseason projection updated by every game
+          so far, adjusted for opponent strength, home court and the team's own missing players.
+          The projection counts like 10 games, so early results move it gradually.</dd>
+        <dt>Season</dt><dd>Luck-adjusted results as played, no other adjustment.</dd>
+        <dt>Sched-adj</dt><dd>Season results with home court and each opponent's strength removed
+          (the opponent as it actually lined up that night, missing players included).</dd>
+        <dt>Preseason</dt><dd>The starting point: the <a href="team-projections.html">win
+          projections</a>' NERD + DARKO average with depth-chart minutes.</dd>
+        <dt>Change</dt><dd>Current minus Preseason.</dd>
+      </dl>
+      <p class="muted" style="margin-bottom:0">A missing player's projected minutes are valued at
+      replacement level instead of his rating, so missing a star costs far more than missing a
+      bench player. Projected rotations come from the <a href="depth-charts.html">depth charts</a>;
+      players out long-term are best removed there.</p>
+    </section>
+
+    <section class="card">
+      <div class="controls">
+        <label>Shooting adjustment
+          <select id="luck-sel">
+            <option value="default">3PT + FT + 50% mid-range (default)</option>
+            <option value="3pt_ft">3PT + FT only</option>
+          </select>
+        </label>
+      </div>
+      <div class="table-scroll">
+        <table id="power-table">
+          <thead><tr>
+            <th data-key="rank">#</th>
+            <th data-key="team">Team</th>
+            <th data-key="w">Record</th>
+            <th data-key="current" class="primary" title="Full strength minus players out right now">Current</th>
+            <th data-key="full" title="Preseason prior updated by every game, at full strength">Full</th>
+            <th data-key="cur_o" title="Current offensive rating (points scored per 100)">Off</th>
+            <th data-key="cur_d" title="Current defensive rating (points allowed per 100; lower is better)">Def</th>
+            <th data-key="season" title="Luck-adjusted net rating as played">Season</th>
+            <th data-key="sched" title="Season results with opponent strength and home court removed">Sched-adj</th>
+            <th data-key="pre" title="Preseason projection">Preseason</th>
+            <th data-key="change" title="Current minus Preseason">Change</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" id="footer" style="font-size:12px;margin:10px 2px 0"></p>
+    </section>
+  </div>
+
+  <script>
+    const TEAM_NAMES = {
+      ATL:"Atlanta Hawks", BOS:"Boston Celtics", BKN:"Brooklyn Nets", CHA:"Charlotte Hornets",
+      CHI:"Chicago Bulls", CLE:"Cleveland Cavaliers", DAL:"Dallas Mavericks", DEN:"Denver Nuggets",
+      DET:"Detroit Pistons", GSW:"Golden State Warriors", HOU:"Houston Rockets", IND:"Indiana Pacers",
+      LAC:"LA Clippers", LAL:"Los Angeles Lakers", MEM:"Memphis Grizzlies", MIA:"Miami Heat",
+      MIL:"Milwaukee Bucks", MIN:"Minnesota Timberwolves", NOP:"New Orleans Pelicans",
+      NYK:"New York Knicks", OKC:"Oklahoma City Thunder", ORL:"Orlando Magic",
+      PHI:"Philadelphia 76ers", PHX:"Phoenix Suns", POR:"Portland Trail Blazers",
+      SAC:"Sacramento Kings", SAS:"San Antonio Spurs", TOR:"Toronto Raptors", UTA:"Utah Jazz",
+      WAS:"Washington Wizards" };
+    let sortKey = 'current', sortDir = -1, openTeam = null;
+
+    const net = pair => pair[0] - pair[1];
+    function fmt(v, d = 1) {
+      if (v == null || isNaN(v)) return '&mdash;';
+      v = Math.round(v * 10 ** d) / 10 ** d || 0;  // no "-0.0"
+      const s = (v > 0 ? '+' : '') + v.toFixed(d);
+      return `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${s}</span>`;
+    }
+
+    function rows() {
+      const mode = document.getElementById('luck-sel').value;
+      return (window.TEAM_POWER.modes[mode] || []).map(r => ({
+        ...r,
+        current: net(r.current), full: net(r.full), season: net(r.season),
+        sched: net(r.sched), pre: net(r.pre),
+        change: net(r.current) - net(r.pre),
+        cur_o: r.current[0], cur_d: r.current[1],
+        pairs: r,
+      }));
+    }
+
+    function detailHtml(r) {
+      const p = r.pairs;
+      const line = (label, pair) => `<tr><td>${label}</td><td>${pair[0].toFixed(1)}</td><td>${pair[1].toFixed(1)}</td><td>${fmt(pair[0] - pair[1])}</td></tr>`;
+      const outRows = r.out.length
+        ? r.out.slice().sort((a, b) => b.net - a.net).map(o =>
+            `<tr><td>${o.name}</td><td>${o.minutes}</td><td class="muted">${o.reason}</td><td>${fmt(-o.net)}</td></tr>`).join('')
+        : '<tr><td colspan="4" class="muted">Nobody in the projected rotation is currently out.</td></tr>';
+      return `<div class="det">
+        <div><h4>Offense / defense</h4>
+          <table><thead><tr><th style="text-align:left">Version</th><th>Off</th><th>Def</th><th>Net</th></tr></thead><tbody>
+            ${line('Current', p.current)}${line('Full strength', p.full)}${line('Season (as played)', p.season)}
+            ${line('Schedule-adjusted', p.sched)}${line('Preseason', p.pre)}
+          </tbody></table>
+          <p class="muted" style="font-size:12px;margin:6px 0 0">Average cost of missing players per game so far:
+            ${p.missing_avg.toFixed(1)} pts/100. Def is points allowed per 100 (lower is better).</p></div>
+        <div><h4>Out right now</h4>
+          <table><thead><tr><th style="text-align:left">Player</th><th>Proj. min</th><th style="text-align:left">Why</th><th>Effect</th></tr></thead>
+          <tbody>${outRows}</tbody></table>
+          <p class="muted" style="font-size:12px;margin:6px 0 0">Override in <code>data/availability_2026_27.js</code> (OUT_NOW).</p></div>
+      </div>`;
+    }
+
+    function render() {
+      let rs = rows();
+      // Rank is always by Current; the displayed order follows the chosen sort.
+      [...rs].sort((a, b) => b.current - a.current).forEach((r, i) => { r.rank = i + 1; });
+      rs.sort((a, b) => {
+        if (sortKey === 'team') return sortDir * a.team.localeCompare(b.team);
+        if (sortKey === 'w') return sortDir * ((a.w - a.l) - (b.w - b.l));
+        return sortDir * (a[sortKey] - b[sortKey]);
+      });
+      document.querySelectorAll('#power-table thead th').forEach(th =>
+        th.classList.toggle('sorted', th.dataset.key === sortKey));
+      document.querySelector('#power-table tbody').innerHTML = rs.map(r => {
+        const main = `<tr class="team-row ${openTeam === r.team ? 'open' : ''}" data-team="${r.team}">
+          <td class="muted">${r.rank}</td>
+          <td><strong>${r.team}</strong> <span class="muted team-full">${TEAM_NAMES[r.team] || ''}</span></td>
+          <td>${r.w}-${r.l}</td>
+          <td class="primary">${fmt(r.current)}</td>
+          <td>${fmt(r.full)}</td>
+          <td>${r.cur_o.toFixed(1)}</td>
+          <td>${r.cur_d.toFixed(1)}</td>
+          <td>${fmt(r.season)}</td>
+          <td>${fmt(r.sched)}</td>
+          <td>${fmt(r.pre)}</td>
+          <td>${fmt(r.change)}</td>
+        </tr>`;
+        return openTeam === r.team ? main + `<tr class="detail"><td colspan="11">${detailHtml(r)}</td></tr>` : main;
+      }).join('');
+      document.querySelectorAll('#power-table tr.team-row').forEach(tr => tr.addEventListener('click', () => {
+        openTeam = openTeam === tr.dataset.team ? null : tr.dataset.team; render();
+      }));
+    }
+
+    document.querySelector('#power-table thead').addEventListener('click', e => {
+      const th = e.target.closest('th');
+      if (!th || th.dataset.key === 'rank') return;
+      const k = th.dataset.key;
+      if (sortKey === k) sortDir *= -1;
+      else { sortKey = k; sortDir = (k === 'team' || k === 'cur_d') ? 1 : -1; }
+      render();
+    });
+    document.getElementById('luck-sel').addEventListener('change', render);
+
+    // Load the data fresh (GitHub Pages caches .js aggressively).
+    const s = document.createElement('script');
+    s.src = 'data/team_power_ratings.js?v=' + Date.now();
+    s.onload = () => {
+      const d = window.TEAM_POWER;
+      const games = (d.modes.default || []).reduce((n, r) => n + r.w + r.l, 0) / 2;
+      document.getElementById('season-chip').textContent = `${d.season} · ${games} games`;
+      document.getElementById('footer').textContent =
+        `Updated ${d.generated}. Preseason prior counts like ${d.prior_games} games; a rotation player is ` +
+        `"out" after missing ${d.out_recent_games} straight games. Ratings are descriptive estimates, not predictions of any single game.`;
+      render();
+    };
+    s.onerror = () => { document.querySelector('#power-table tbody').innerHTML =
+      '<tr><td colspan="11" class="muted">Ratings data failed to load.</td></tr>'; };
+    document.head.appendChild(s);
+  </script>
+</body>
+</html>

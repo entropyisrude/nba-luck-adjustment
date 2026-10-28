@@ -14,7 +14,7 @@ import unicodedata
 
 import numpy as np
 
-from src.season import SEASON, SEASON_START_DATE, TAG
+from src.season import SEASON, SEASON_START_DATE, START_YEAR, TAG
 
 TEMPLATE_PATH = Path("template.html")
 DATA_DIR = Path("data")
@@ -151,15 +151,27 @@ def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str
     return costs
 
 
-def _adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
-                      priors: dict) -> dict[str, dict[str, tuple[float, float]]]:
-    """{mode: {team: (adj_ortg, adj_drtg)}} for modes:
-    "sos"  - opponent strength (incl. the opponent's missing players) and venue removed
-    "inj"  - the team's own missing players credited back (no opponent adjustment)
-    "both" - both of the above
-    "power" - full-strength ratings from the prior-plus-season fit itself."""
-    if source_df.empty:
+OUT_RECENT_GAMES = 3  # a rotation player missing this many straight team games counts as out
+AVAILABILITY_PATH = DATA_DIR / f"availability_{START_YEAR}_{(START_YEAR + 1) % 100:02d}.js"
+POWER_JS_PATH = DATA_DIR / "team_power_ratings.js"
+
+
+def _load_out_overrides() -> dict[tuple[str, str], bool]:
+    """OUT_NOW map from the availability file: {"Player": true|false} -> {name key: out?}."""
+    if not AVAILABILITY_PATH.exists():
         return {}
+    text = AVAILABILITY_PATH.read_text(encoding="utf-8")
+    m = re.search(r"window\.OUT_NOW\s*=\s*\{(.*?)\};", text, re.S)
+    if not m:
+        return {}
+    return {_name_key(name): flag == "true"
+            for name, flag in re.findall(r'"([^"]+)"\s*:\s*(true|false)', m.group(1))}
+
+
+def _team_quality_fit(source_df: pd.DataFrame, game_poss: dict | None, priors: dict) -> dict:
+    """Fit full-strength team offense/defense: the preseason prior (worth
+    SOS_PRIOR_GAMES games) updated by every game, with opponent, venue and
+    missing players accounted for. Returns the fit plus per-team summaries."""
     df = source_df.copy()
     gid = df["game_id"].astype(str).str.lstrip("0")
     fallback = (df["home_pts_actual"] + df["away_pts_actual"]) / 2
@@ -193,33 +205,101 @@ def _adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
             rows.append(x)
             ys.append(lam * float(prior.get(key, 0.0)))
     coef = np.linalg.lstsq(np.array(rows), np.array(ys), rcond=None)[0]
-    off_q = {t: coef[1 + idx[t]] for t in teams}
-    def_q = {t: coef[1 + n + idx[t]] for t in teams}
-    sums = {m: ({t: 0.0 for t in teams}, {t: 0.0 for t in teams}) for m in ("sos", "inj", "both")}
-    den = {t: 0.0 for t in teams}
+    mu = float(coef[0])
+    off_q = {t: float(coef[1 + idx[t]]) for t in teams}
+    def_q = {t: float(coef[1 + n + idx[t]]) for t in teams}
+    # Season-to-date ratings (possession-weighted), raw and opponent-adjusted.
+    acc = {t: {"po": 0.0, "pd": 0.0, "so": 0.0, "sd": 0.0, "poss": 0.0} for t in teams}
     for off, dfn, y, venue, poss, mo, md in obs:
-        # The opponent as it actually lined up that night: full strength minus
-        # its missing players.
-        sos_o = y + (def_q[dfn] - md) - SOS_HOME_EDGE * venue
-        sos_d = y - (off_q[off] - mo) - SOS_HOME_EDGE * venue
-        for mode, o_val, d_val in (("sos", sos_o, sos_d),
-                                   ("inj", y + mo, y - md),
-                                   ("both", sos_o + mo, sos_d - md)):
-            # Offense credited to `off`; points allowed charged to `dfn`.
-            sums[mode][0][off] += poss * o_val
-            sums[mode][1][dfn] += poss * d_val
-        den[off] += poss
-    out = {m: {t: (so[t] / den[t], sd[t] / den[t]) for t in teams if den[t] > 0}
-           for m, (so, sd) in sums.items()}
-    # Power rating: the fit itself -- full-strength quality as the preseason
-    # prior updated by every game so far (opponents, venue and missing players
-    # accounted for). ORtg = league avg + O, DRtg = league avg - D.
-    out["power"] = {t: (coef[0] + off_q[t], coef[0] - def_q[t]) for t in teams}
+        acc[off]["po"] += poss * y
+        acc[dfn]["pd"] += poss * y
+        # The opponent as it actually lined up that night.
+        acc[off]["so"] += poss * (y + (def_q[dfn] - md) - SOS_HOME_EDGE * venue)
+        acc[dfn]["sd"] += poss * (y - (off_q[off] - mo) - SOS_HOME_EDGE * venue)
+        acc[off]["poss"] += poss
+    return {"mu": mu, "off": off_q, "def": def_q, "costs": costs, "acc": acc, "teams": teams}
+
+
+def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict]]:
+    """{team: [out player]} for current strength: a rotation player who missed his
+    team's last OUT_RECENT_GAMES games (or all of them, with 2+ played) counts as
+    out; window.OUT_NOW in the availability file overrides either way."""
+    box_csv = DATA_DIR / "player_boxscore_stats.csv"
+    teams = priors.get("teams", {})
+    if not teams or not box_csv.exists():
+        return {}
+    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
+    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    overrides = _load_out_overrides()
+    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
+    box["game_id"] = box["game_id"].str.lstrip("0")
+    played = {k: [_name_key(n) for n in g]
+              for k, g in box.groupby(["game_id", "team_abbr"])["player_name"]}
+    games = source_df.assign(gid=source_df["game_id"].astype(str).str.lstrip("0")).sort_values("date")
+    out: dict[str, list[dict]] = {}
+    for team, info in teams.items():
+        team_games = [g for g in games[(games.home_team == team) | (games.away_team == team)].gid
+                      if (g, team) in played]
+        for p in info.get("rotation", []):
+            key = _name_key(p["name"])
+            streak = 0
+            for g in reversed(team_games):
+                if any(_same_player(key, n) for n in played[(g, team)]):
+                    break
+                streak += 1
+            override = next((flag for k, flag in overrides.items() if _same_player(key, k)), None)
+            need = min(OUT_RECENT_GAMES, len(team_games))
+            auto = len(team_games) >= 2 and streak >= need
+            if override is True or (override is None and auto):
+                reason = ("marked out" if override is True
+                          else f"missed last {streak} game{'s' if streak != 1 else ''}")
+                out.setdefault(team, []).append({
+                    "name": p["name"], "minutes": p["minutes"], "reason": reason,
+                    "o": p["minutes"] / 48 * (p["o"] - rep_o),
+                    "d": p["minutes"] / 48 * (p["d"] - rep_d)})
     return out
 
 
-def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None,
-                     ratings: dict[str, tuple[float, float]] | None = None) -> str:
+def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, priors: dict) -> dict:
+    """Data for team-power-ratings.html, one entry per shooting-luck setting."""
+    team_priors = priors.get("teams", {})
+    modes = {}
+    for luck_key, luck_df in luck_dfs.items():
+        if luck_df.empty:
+            modes[luck_key] = []
+            continue
+        fit = _team_quality_fit(luck_df, game_poss, priors)
+        mu = fit["mu"]
+        out = _currently_out(luck_df, priors)
+        rows = []
+        for t in fit["teams"]:
+            a = fit["acc"][t]
+            w = int(((luck_df.home_team == t) & (luck_df.margin_actual > 0)).sum()
+                    + ((luck_df.away_team == t) & (luck_df.margin_actual < 0)).sum())
+            gp = int(((luck_df.home_team == t) | (luck_df.away_team == t)).sum())
+            out_o = sum(p["o"] for p in out.get(t, []))
+            out_d = sum(p["d"] for p in out.get(t, []))
+            full = (mu + fit["off"][t], mu - fit["def"][t])
+            current = (full[0] - out_o, full[1] + out_d)
+            pre = team_priors.get(t, {})
+            team_costs = [c for (g, team), c in fit["costs"].items() if team == t]
+            rows.append({
+                "team": t, "w": w, "l": gp - w,
+                "current": [round(current[0], 2), round(current[1], 2)],
+                "full": [round(full[0], 2), round(full[1], 2)],
+                "season": [round(a["po"] / a["poss"], 2), round(a["pd"] / a["poss"], 2)],
+                "sched": [round(a["so"] / a["poss"], 2), round(a["sd"] / a["poss"], 2)],
+                "pre": [round(mu + pre.get("off", 0.0), 2), round(mu - pre.get("def", 0.0), 2)],
+                "missing_avg": round(sum(o + d for o, d in team_costs) / max(len(team_costs), 1), 2),
+                "out": [{"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
+                         "net": round(p["o"] + p["d"], 2)} for p in out.get(t, [])],
+            })
+        modes[luck_key] = rows
+    return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "prior_games": SOS_PRIOR_GAMES, "out_recent_games": OUT_RECENT_GAMES, "modes": modes}
+
+
+def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None) -> str:
     """Build HTML rows for the team rankings table from a given slice of games."""
     if source_df.empty:
         return '<tr><td colspan="12" style="text-align:center;color:#888;">No games yet</td></tr>'
@@ -315,9 +395,6 @@ def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None,
     total_adj_against = teams['home_pts_adj_against'].fillna(0) + teams['away_pts_adj_against'].fillna(0)
     teams['adj_ortg'] = (total_adj_for / total_poss * 100).round(1)
     teams['adj_drtg'] = (total_adj_against / total_poss * 100).round(1)
-    if ratings:
-        teams['adj_ortg'] = teams['team'].map(lambda t: ratings[t][0]).round(1)
-        teams['adj_drtg'] = teams['team'].map(lambda t: ratings[t][1]).round(1)
     teams['adj_nrtg'] = (teams['adj_ortg'] - teams['adj_drtg']).round(1)
 
     teams = teams.sort_values('wins', ascending=False)
@@ -427,12 +504,9 @@ def generate_report():
     playoff_team_rows = _build_team_rows(playoff_df, game_poss)
     team_rows_3pt_ft = _build_team_rows(alt_rs_df, game_poss)
     priors = _load_team_priors()
-    adjusted_rows = {}
-    for luck_key, luck_df in (("default", rs_df), ("3pt-ft", alt_rs_df)):
-        by_mode = _adjusted_ratings(luck_df, game_poss, priors)
-        for mode in ("sos", "inj", "both", "power"):
-            adjusted_rows[f"{luck_key}-{mode}"] = _build_team_rows(
-                luck_df, game_poss, by_mode.get(mode))
+    power = _power_payload({"default": rs_df, "3pt_ft": alt_rs_df}, game_poss, priors)
+    POWER_JS_PATH.write_text("window.TEAM_POWER = " + json.dumps(power, separators=(",", ":"))
+                             + ";\n", encoding="utf-8")
     playoff_team_rows_3pt_ft = _build_team_rows(alt_playoff_df, game_poss)
 
     swing_rows = _build_swing_rows(rs_df)
@@ -512,8 +586,6 @@ def generate_report():
     html = html.replace('{{TEAM_RANKINGS_ROWS}}', team_rows)
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS}}', playoff_team_rows)
     html = html.replace('{{TEAM_RANKINGS_ROWS_3PT_FT}}', team_rows_3pt_ft)
-    html = html.replace('{{TEAM_RANKINGS_ADJUSTED_TEMPLATES}}', "\n".join(
-        f'    <template id="rows-team-{key}">{rows}</template>' for key, rows in adjusted_rows.items()))
     html = html.replace('{{PLAYOFF_RANKINGS_ROWS_3PT_FT}}', playoff_team_rows_3pt_ft)
     html = html.replace('{{BIGGEST_SWINGS_ROWS}}', swing_rows)
     html = html.replace('{{PLAYOFF_BIGGEST_SWINGS_ROWS}}', playoff_swing_rows)

@@ -952,3 +952,13 @@ Build a read-only audit script that selects canonical source files, reports sche
 - 2026-10-28: added a "Power rating" view: the fit's own full-strength O/D
   (preseason prior updated by every game, opponent/venue/missing players
   accounted for). Net-rating colors now green positive / red negative.
+
+### Team Power Ratings page (2026-10-28)
+
+- The adjusted views moved off the luck report onto team-power-ratings.html
+  (data/team_power_ratings.js, written by generate_report.py). Columns side by
+  side: Current (default rank) = Full minus projected-rotation players out
+  now; Full = the prior-plus-season fit; Season; Sched-adj; Preseason; Change.
+- "Out now": missed the team's last 3 games in a row (all games if fewer,
+  with 2+ played), overridable via window.OUT_NOW in
+  data/availability_2026_27.js.
