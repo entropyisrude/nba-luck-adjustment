@@ -7217,6 +7217,21 @@
           "rights": "Bird"
         },
         {
+          "player": "Enrique Freeman",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 26.0,
+          "contract_type": "2W",
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": 2185116,
+          "rights": "Two-Way"
+        },
+        {
           "player": "Rudy Gobert",
           "category": "active_roster",
           "position": "C",
@@ -7337,21 +7352,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Non-Bird"
-        },
-        {
-          "player": "Enrique Freeman",
-          "category": "cap_hold",
-          "position": "PF",
-          "age": 26.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": "Two-Way"
         },
         {
           "player": "Round 2, Pick #59",
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-27T10:44:07.971218+00:00",
+  "roster_synced_at": "2026-10-28T10:44:37.319344+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
