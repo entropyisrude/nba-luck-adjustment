@@ -156,7 +156,8 @@ def _adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
     """{mode: {team: (adj_ortg, adj_drtg)}} for modes:
     "sos"  - opponent strength (incl. the opponent's missing players) and venue removed
     "inj"  - the team's own missing players credited back (no opponent adjustment)
-    "both" - both of the above."""
+    "both" - both of the above
+    "power" - full-strength ratings from the prior-plus-season fit itself."""
     if source_df.empty:
         return {}
     df = source_df.copy()
@@ -208,8 +209,13 @@ def _adjusted_ratings(source_df: pd.DataFrame, game_poss: dict | None,
             sums[mode][0][off] += poss * o_val
             sums[mode][1][dfn] += poss * d_val
         den[off] += poss
-    return {m: {t: (so[t] / den[t], sd[t] / den[t]) for t in teams if den[t] > 0}
-            for m, (so, sd) in sums.items()}
+    out = {m: {t: (so[t] / den[t], sd[t] / den[t]) for t in teams if den[t] > 0}
+           for m, (so, sd) in sums.items()}
+    # Power rating: the fit itself -- full-strength quality as the preseason
+    # prior updated by every game so far (opponents, venue and missing players
+    # accounted for). ORtg = league avg + O, DRtg = league avg - D.
+    out["power"] = {t: (coef[0] + off_q[t], coef[0] - def_q[t]) for t in teams}
+    return out
 
 
 def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None,
@@ -336,7 +342,7 @@ def _build_team_rows(source_df: pd.DataFrame, game_poss: dict | None = None,
         adj_ortg = row['adj_ortg']
         adj_drtg = row['adj_drtg']
         adj_nrtg = row['adj_nrtg']
-        nrtg_class = "negative" if adj_nrtg > 0 else ("positive" if adj_nrtg < 0 else "")
+        nrtg_class = "positive" if adj_nrtg > 0 else ("negative" if adj_nrtg < 0 else "")
         rows += f"""        <tr data-team="{row['team']}" data-wins="{int(row['wins'])}" data-adjwins="{int(row['adj_wins'])}" data-diff="{win_diff}" data-oppexp="{row['opp_3p_exp_pct']:.1f}" data-oppact="{row['opp_3p_pct']:.1f}" data-oppdiff="{opp_diff:.1f}" data-teamexp="{row['team_3p_exp_pct']:.1f}" data-teamact="{row['team_3p_pct']:.1f}" data-teamdiff="{team_diff:.1f}" data-netdiff="{net_diff:.1f}" data-adjortg="{adj_ortg:.1f}" data-adjdrtg="{adj_drtg:.1f}" data-adjnrtg="{adj_nrtg:.1f}">
             <td>{rank}</td>
             <td><strong>{row['team']}</strong></td>
@@ -424,7 +430,7 @@ def generate_report():
     adjusted_rows = {}
     for luck_key, luck_df in (("default", rs_df), ("3pt-ft", alt_rs_df)):
         by_mode = _adjusted_ratings(luck_df, game_poss, priors)
-        for mode in ("sos", "inj", "both"):
+        for mode in ("sos", "inj", "both", "power"):
             adjusted_rows[f"{luck_key}-{mode}"] = _build_team_rows(
                 luck_df, game_poss, by_mode.get(mode))
     playoff_team_rows_3pt_ft = _build_team_rows(alt_playoff_df, game_poss)

@@ -586,6 +586,7 @@
             <option value="sos">Schedule — adjust for opponent strength</option>
             <option value="inj">Own injuries — credit back missing players</option>
             <option value="both">Schedule + own injuries</option>
+            <option value="power">Power rating — preseason prior + season results</option>
         </select>
         <p id="sched-note" hidden style="max-width:780px;margin:8px auto 0;font-size:12.5px;color:#5b6778;line-height:1.5;">
             Changes the regular-season Adj OffRtg / DefRtg / NetRtg.
@@ -594,6 +595,9 @@
             <a href="depth-charts.html">projected-rotation</a> players who didn't play.
             <strong>Own injuries</strong> credits a team back for its own projected-rotation players
             who didn't play, estimating its full-strength ratings.
+            <strong>Power rating</strong> starts from each team's preseason projection and treats
+            every game as an update (adjusted for opponent, home court and missing players), so
+            early-season results move it gradually rather than all at once.
             A missing player's projected minutes are valued at replacement level instead of his
             NERD + DARKO rating. Team strength starts from the
             <a href="team-projections.html">win projections</a>, counted like 10 games and fading

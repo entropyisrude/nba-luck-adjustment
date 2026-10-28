@@ -948,3 +948,7 @@ Build a read-only audit script that selects canonical source files, reports sche
   played was weaker either way. Depth-chart minutes and current ratings are
   applied to past games, so a player acquired mid-season counts as missing
   for his new team's earlier games.
+
+- 2026-10-28: added a "Power rating" view: the fit's own full-strength O/D
+  (preseason prior updated by every game, opponent/venue/missing players
+  accounted for). Net-rating colors now green positive / red negative.
