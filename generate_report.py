@@ -90,7 +90,8 @@ def _load_game_possessions() -> dict[str, float]:
 # O and D are full-strength team qualities, shrunk toward the win-projections
 # prior with the weight of SOS_PRIOR_GAMES games. miss_o/miss_d are the known
 # cost of projected-rotation players who did not play that game: their
-# depth-chart minutes valued at replacement level instead of their rating.
+# depth-chart minutes go first to the teammates who would absorb them (bench
+# players more than starters) and only the overflow to replacement level.
 SOS_PRIOR_GAMES = 10.0
 SOS_HOME_EDGE = 1.25  # per side, pts/100: a 2.5-point home margin
 TEAM_PRIORS_PATH = DATA_DIR / f"team_priors_{TAG}.json"
@@ -121,6 +122,46 @@ def _same_player(a: tuple[str, str], b: tuple[str, str]) -> bool:
             and (a[0].startswith(b[0]) or b[0].startswith(a[0])))
 
 
+def _headroom(minutes: float) -> float:
+    """Extra minutes a healthy rotation player picks up when teammates sit:
+    starters a couple, bench players up to 8 (never past 34)."""
+    if minutes >= 30:
+        return 2.0
+    if minutes >= 24:
+        return 4.0
+    return max(0.0, min(8.0, 34.0 - minutes))
+
+
+def _lineup_cost(rotation: list[dict], avail: dict[str, float], rep_o: float, rep_d: float) -> tuple[float, float]:
+    """(offense, defense) cost in pts/100 versus full strength when each rotation
+    player plays the fraction avail[name] (default 1) of his projected minutes.
+    Lost minutes go to fully available teammates up to their headroom, in
+    proportion to it; the rest go to replacement level. Never below zero: the
+    depth chart is taken as the coach's best use of a healthy roster."""
+    lost = sum((1 - avail.get(p["name"], 1.0)) * p["minutes"] for p in rotation)
+    if lost <= 0:
+        return 0.0, 0.0
+    heads = {p["name"]: _headroom(p["minutes"]) if avail.get(p["name"], 1.0) >= 1 else 0.0 for p in rotation}
+    room = sum(heads.values())
+    given = min(lost, room)
+    co = cd = 0.0
+    for p in rotation:
+        extra = given * heads[p["name"]] / room if room else 0.0
+        missing = (1 - avail.get(p["name"], 1.0)) * p["minutes"]
+        co += (missing - extra) / 48 * p["o"]
+        cd += (missing - extra) / 48 * p["d"]
+    co -= (lost - given) / 48 * rep_o
+    cd -= (lost - given) / 48 * rep_d
+    if co + cd < 0:
+        return 0.0, 0.0
+    return co, cd
+
+
+def _replacement(priors: dict) -> tuple[float, float]:
+    r = priors.get("replacement", {})
+    return float(r.get("o", 0.0)), float(r.get("d", 0.0))
+
+
 def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str], tuple[float, float]]:
     """{(game_id, team): (offense cost, defense cost)} in pts/100 from projected-
     rotation players who did not play that game (injured, rested or benched)."""
@@ -128,8 +169,7 @@ def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str
     teams = priors.get("teams", {})
     if not teams or not box_csv.exists():
         return {}
-    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
-    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    rep_o, rep_d = _replacement(priors)
     box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
     played = {k: [_name_key(n) for n in g]
@@ -141,19 +181,29 @@ def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str
             names = played.get((gid, team))
             if names is None or team not in teams:
                 continue
-            co = cd = 0.0
-            for p in teams[team].get("rotation", []):
-                key = _name_key(p["name"])
-                if not any(_same_player(key, n) for n in names):
-                    co += p["minutes"] / 48 * (p["o"] - rep_o)
-                    cd += p["minutes"] / 48 * (p["d"] - rep_d)
-            costs[(gid, team)] = (co, cd)
+            rotation = teams[team].get("rotation", [])
+            missing = {p["name"]: 0.0 for p in rotation
+                       if not any(_same_player(_name_key(p["name"]), n) for n in names)}
+            costs[(gid, team)] = _lineup_cost(rotation, missing, rep_o, rep_d)
     return costs
 
 
 OUT_RECENT_GAMES = 3  # a rotation player missing this many straight team games counts as out
 AVAILABILITY_PATH = DATA_DIR / f"availability_{START_YEAR}_{(START_YEAR + 1) % 100:02d}.js"
 POWER_JS_PATH = DATA_DIR / "team_power_ratings.js"
+SEASON_GAMES = 82
+# Expected games missed, from the injury report's wording (first match wins).
+# Rough tiers; GAMES_OUT in the availability file overrides any player.
+DURATION_RULES = [
+    (("acl", "achilles", "season"), None),            # rest of season
+    (("surgery", "repair", "fracture", "rupture", "torn", "tear", "dislocat"), 30),
+    (("high ankle", "high grade", "grade 2", "grade 3"), 12),
+    (("sprain", "strain", "tendinitis", "tendinopathy", "effusion", "bone bruise"), 6),
+    (("soreness", "sore", "tightness", "illness", "contusion", "management", "rest",
+      "spasm", "inflammation", "swelling", "stiffness", "personal", "not with team"), 2),
+]
+INJURY_DEFAULT_GAMES = 6   # injury wording that matches no rule
+UNLISTED_OUT_GAMES = 10    # out by the missed-games rule or by hand, no injury listed
 INJURY_REPORT_PATH = DATA_DIR / f"injury_report_{TAG}.json"  # scripts/fetch_injury_report.py
 
 
@@ -161,12 +211,35 @@ def _load_out_overrides() -> dict[tuple[str, str], bool]:
     """OUT_NOW map from the availability file: {"Player": true|false} -> {name key: out?}."""
     if not AVAILABILITY_PATH.exists():
         return {}
-    text = AVAILABILITY_PATH.read_text(encoding="utf-8")
+    # Drop // comments so commented-out examples are ignored.
+    text = re.sub(r"//.*", "", AVAILABILITY_PATH.read_text(encoding="utf-8"))
     m = re.search(r"window\.OUT_NOW\s*=\s*\{(.*?)\};", text, re.S)
     if not m:
         return {}
     return {_name_key(name): flag == "true"
             for name, flag in re.findall(r'"([^"]+)"\s*:\s*(true|false)', m.group(1))}
+
+
+def _load_games_out() -> dict[tuple[str, str], float | None]:
+    """GAMES_OUT map: {"Player": games still to miss, or "season"} -> {name key: games}."""
+    if not AVAILABILITY_PATH.exists():
+        return {}
+    # Drop // comments so commented-out examples are ignored.
+    text = re.sub(r"//.*", "", AVAILABILITY_PATH.read_text(encoding="utf-8"))
+    m = re.search(r"window\.GAMES_OUT\s*=\s*\{(.*?)\};", text, re.S)
+    if not m:
+        return {}
+    return {_name_key(name): (None if val.strip('"') == "season" else float(val))
+            for name, val in re.findall(r'"([^"]+)"\s*:\s*("season"|\d+(?:\.\d+)?)', m.group(1))}
+
+
+def _expected_games_out(reason: str | None) -> float | None:
+    """Games a listed-out player is expected to miss from here (None = rest of season)."""
+    text = (reason or "").lower()
+    for needles, games in DURATION_RULES:
+        if any(n in text for n in needles):
+            return games
+    return INJURY_DEFAULT_GAMES if "injury" in text or "illness" in text else UNLISTED_OUT_GAMES
 
 
 def _team_quality_fit(source_df: pd.DataFrame, game_poss: dict | None, priors: dict) -> dict:
@@ -237,17 +310,19 @@ def _load_injury_report(source_df: pd.DataFrame) -> dict[str, list[dict]]:
 
 
 def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict]]:
-    """{team: [out player]} for current strength. A rotation player is out when
-    the NBA's latest injury report lists him Out or Doubtful; players it does not
-    list are out after missing the team's last OUT_RECENT_GAMES games (or all of
-    them, with 2+ played). window.OUT_NOW in the availability file overrides both."""
+    """{team: [out player]}. A rotation player is out tonight when the NBA's
+    latest injury report lists him Out or Doubtful; players it does not list are
+    out after missing the team's last OUT_RECENT_GAMES games (or all of them,
+    with 2+ played). Each out player also gets the games he is expected to miss
+    (None = rest of season), from the report's wording. The availability file's
+    GAMES_OUT (games still to miss, 0 = available) and OUT_NOW override."""
     box_csv = DATA_DIR / "player_boxscore_stats.csv"
     teams = priors.get("teams", {})
     if not teams or not box_csv.exists():
         return {}
-    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
-    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    rep_o, rep_d = _replacement(priors)
     overrides = _load_out_overrides()
+    games_out = _load_games_out()
     report = _load_injury_report(source_df)
     box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
@@ -256,9 +331,10 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     games = source_df.assign(gid=source_df["game_id"].astype(str).str.lstrip("0")).sort_values("date")
     out: dict[str, list[dict]] = {}
     for team, info in teams.items():
+        rotation = info.get("rotation", [])
         team_games = [g for g in games[(games.home_team == team) | (games.away_team == team)].gid
                       if (g, team) in played]
-        for p in info.get("rotation", []):
+        for p in rotation:
             key = _name_key(p["name"])
             streak = 0
             for g in reversed(team_games):
@@ -266,30 +342,40 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
                     break
                 streak += 1
             override = next((flag for k, flag in overrides.items() if _same_player(key, k)), None)
+            manual = next((g for k, g in games_out.items() if _same_player(key, k)), "unset")
+            if manual != "unset":
+                override = manual is None or manual > 0
             need = min(OUT_RECENT_GAMES, len(team_games))
             listed = next((r for r in report.get(team, []) if _same_player(key, r["key"])), None)
             if listed is not None:
                 auto = listed["status"] in ("Out", "Doubtful")
             else:
                 auto = len(team_games) >= 2 and streak >= need
-            if override is True or (override is None and auto):
-                if override is True:
-                    reason = "marked out"
-                elif listed is not None:
-                    reason = f"injury report: {listed['status'].lower()}"
-                else:
-                    reason = f"missed last {streak} game{'s' if streak != 1 else ''}"
-                out.setdefault(team, []).append({
-                    "name": p["name"], "minutes": p["minutes"], "reason": reason,
-                    "status": listed["reason"] if listed is not None else None,
-                    "o": p["minutes"] / 48 * (p["o"] - rep_o),
-                    "d": p["minutes"] / 48 * (p["d"] - rep_d)})
+            if not (override is True or (override is None and auto)):
+                continue
+            if manual != "unset":
+                reason, expected = "games out set by hand", manual
+            elif override is True and listed is None:
+                reason, expected = "marked out", UNLISTED_OUT_GAMES
+            elif listed is not None:
+                reason, expected = f"injury report: {listed['status'].lower()}", _expected_games_out(listed["reason"])
+            else:
+                reason = f"missed last {streak} game{'s' if streak != 1 else ''}"
+                expected = UNLISTED_OUT_GAMES
+            solo = _lineup_cost(rotation, {p["name"]: 0.0}, rep_o, rep_d)
+            out.setdefault(team, []).append({
+                "name": p["name"], "minutes": p["minutes"], "reason": reason,
+                "status": listed["reason"] if listed is not None else None,
+                "games_out": expected, "o": solo[0], "d": solo[1]})
     return out
 
 
 def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, priors: dict) -> dict:
-    """Data for team-power-ratings.html, one entry per shooting-luck setting."""
+    """Data for team-power-ratings.html, one entry per shooting-luck setting.
+    tonight: full strength minus everyone out now. outlook: full strength over
+    the rest of the season, each out player missing his expected share of it."""
     team_priors = priors.get("teams", {})
+    rep_o, rep_d = _replacement(priors)
     modes = {}
     for luck_key, luck_df in luck_dfs.items():
         if luck_df.empty:
@@ -304,23 +390,29 @@ def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, pr
             w = int(((luck_df.home_team == t) & (luck_df.margin_actual > 0)).sum()
                     + ((luck_df.away_team == t) & (luck_df.margin_actual < 0)).sum())
             gp = int(((luck_df.home_team == t) | (luck_df.away_team == t)).sum())
-            out_o = sum(p["o"] for p in out.get(t, []))
-            out_d = sum(p["d"] for p in out.get(t, []))
+            left = max(SEASON_GAMES - gp, 1)
+            rotation = team_priors.get(t, {}).get("rotation", [])
+            outs = out.get(t, [])
+            share = {p["name"]: 1.0 if p["games_out"] is None else min(p["games_out"], left) / left
+                     for p in outs}
+            tonight_o, tonight_d = _lineup_cost(rotation, {p["name"]: 0.0 for p in outs}, rep_o, rep_d)
+            look_o, look_d = _lineup_cost(rotation, {n: 1 - sh for n, sh in share.items()}, rep_o, rep_d)
             full = (mu + fit["off"][t], mu - fit["def"][t])
-            current = (full[0] - out_o, full[1] + out_d)
             pre = team_priors.get(t, {})
             team_costs = [c for (g, team), c in fit["costs"].items() if team == t]
             rows.append({
-                "team": t, "w": w, "l": gp - w,
-                "current": [round(current[0], 2), round(current[1], 2)],
+                "team": t, "w": w, "l": gp - w, "games_left": left,
+                "outlook": [round(full[0] - look_o, 2), round(full[1] + look_d, 2)],
+                "tonight": [round(full[0] - tonight_o, 2), round(full[1] + tonight_d, 2)],
                 "full": [round(full[0], 2), round(full[1], 2)],
                 "season": [round(a["po"] / a["poss"], 2), round(a["pd"] / a["poss"], 2)],
                 "sched": [round(a["so"] / a["poss"], 2), round(a["sd"] / a["poss"], 2)],
                 "pre": [round(mu + pre.get("off", 0.0), 2), round(mu - pre.get("def", 0.0), 2)],
                 "missing_avg": round(sum(o + d for o, d in team_costs) / max(len(team_costs), 1), 2),
-                "out": [{"name": p["name"], "minutes": p["minutes"],
-                         "reason": p["reason"] + (f" ({p['status']})" if p.get("status") else ""),
-                         "net": round(p["o"] + p["d"], 2)} for p in out.get(t, [])],
+                "out": [{"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
+                         "status": p.get("status"), "games_out": p["games_out"],
+                         "share": round(share[p["name"]], 3), "net": round(p["o"] + p["d"], 2)}
+                        for p in outs],
             })
         modes[luck_key] = rows
     return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -358,8 +450,7 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
     teams = priors.get("teams", {})
     if source_df.empty or not teams or not STATUS_CSV.exists():
         return None
-    rep_o = float(priors.get("replacement", {}).get("o", 0.0))
-    rep_d = float(priors.get("replacement", {}).get("d", 0.0))
+    rep_o, rep_d = _replacement(priors)
     status = pd.read_csv(STATUS_CSV, dtype={"game_id": str})
     status["game_id"] = status["game_id"].str.lstrip("0")
     listed = {k: [(_name_key(n), s) for n, s in zip(g.player_name, g.status)]
@@ -369,10 +460,12 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
     team_out = {}
     weekly: dict[str, dict] = {}
     for team, info in teams.items():
+        base = info.get("rotation", [])
         rotation = [dict(p, key=_name_key(p["name"]),
-                         # A player rated below replacement costs nothing by sitting.
-                         value=max(0.0, p["minutes"] / 48 * ((p["o"] - rep_o) + (p["d"] - rep_d))))
-                    for p in info.get("rotation", [])]
+                         # Share of a game's cost when several players sit together.
+                         weight=max(0.0, p["minutes"] / 48 * ((p["o"] - rep_o) + (p["d"] - rep_d))),
+                         value=sum(_lineup_cost(base, {p["name"]: 0.0}, rep_o, rep_d)))
+                    for p in base]
         tot = {c: {"games": 0, "minutes": 0.0, "cost": 0.0, "wins": 0.0} for c in cats}
         players = {p["name"]: {c: 0 for c in cats} for p in rotation}
         gp = healthy = healthy_strict = 0
@@ -387,11 +480,17 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
             wk = weekly.setdefault(week, {"team_games": 0, **{c: {"minutes": 0.0, "cost": 0.0} for c in cats}})
             wk["team_games"] += 1
             injured = inactive = False
+            statuses = {p["name"]: next((s for k, s in roster if _same_player(p["key"], k)), None)
+                        for p in rotation}
+            sat = [p for p in rotation if statuses[p["name"]] != "played"]
+            game_cost = sum(_lineup_cost(base, {p["name"]: 0.0 for p in sat}, rep_o, rep_d))
+            weights = sum(p["weight"] for p in sat)
             for p in rotation:
-                st = next((s for k, s in roster if _same_player(p["key"], k)), None)
+                st = statuses[p["name"]]
                 last_status[p["name"]] = st
                 if st == "played":
                     continue
+                cost = game_cost * p["weight"] / weights if weights else 0.0
                 cat = _absence_category(st)
                 injured |= cat == "injury"
                 inactive |= cat == "inactive"
@@ -399,10 +498,10 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
                 t = tot[cat]
                 t["games"] += 1
                 t["minutes"] += p["minutes"]
-                t["cost"] += p["value"]
-                t["wins"] += p["value"] * poss / 100 * WINS_PER_POINT
+                t["cost"] += cost
+                t["wins"] += cost * poss / 100 * WINS_PER_POINT
                 wk[cat]["minutes"] += p["minutes"]
-                wk[cat]["cost"] += p["value"]
+                wk[cat]["cost"] += cost
             healthy += not injured
             healthy_strict += not (injured or inactive)
         team_out[team] = {
@@ -420,7 +519,7 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
                 {"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
                  "status": p.get("status") or next((pl["last"] for pl in team_out[team]["players"]
                                                     if pl["name"] == p["name"]), None),
-                 "value": round(p["o"] + p["d"], 2)} for p in outs]
+                 "games_out": p["games_out"], "value": round(p["o"] + p["d"], 2)} for p in outs]
     return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "wins_per_point": WINS_PER_POINT, "out_recent_games": OUT_RECENT_GAMES,
             "categories": [{"key": c, "label": label} for c, label in ABSENCE_CATEGORIES],

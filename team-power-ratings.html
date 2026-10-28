@@ -97,13 +97,16 @@
     <section class="explain">
       <h3>How to read this</h3>
       <p>Every rating is a net rating: points per 100 possessions above an average team, built from
-      shooting-luck-adjusted results. Teams are ranked by <strong>Current strength</strong>.
+      shooting-luck-adjusted results. Teams are ranked by <strong>Outlook</strong>.
       Click a team for its offense/defense breakdown and who is out.</p>
       <dl>
-        <dt>Current</dt><dd>Full strength minus projected-rotation players who are out right now
-          (listed Out or Doubtful on the NBA's latest official injury report; players not on the report
-          count as out after missing the team's last 3 games in a row; either can be overridden by hand). Best guess at how good the
-          team is tonight.</dd>
+        <dt>Outlook</dt><dd>How good the team should be over the rest of the season: full strength,
+          with each injured player missing his expected share of the remaining games. A fracture or
+          surgery weighs heavily; a sore back barely registers. Expected games out come from the
+          wording of the NBA's official injury report (see below).</dd>
+        <dt>Tonight</dt><dd>Full strength minus everyone out right now (listed Out or Doubtful on the
+          latest injury report; players not on the report count as out after missing the team's last
+          3 games in a row). The right number for a single game.</dd>
         <dt>Full</dt><dd>The team at full strength: its preseason projection updated by every game
           so far, adjusted for opponent strength, home court and the team's own missing players.
           The projection counts like 10 games, so early results move it gradually.</dd>
@@ -112,11 +115,17 @@
           (the opponent as it actually lined up that night, missing players included).</dd>
         <dt>Preseason</dt><dd>The starting point: the <a href="team-projections.html">win
           projections</a>' NERD + DARKO average with depth-chart minutes.</dd>
-        <dt>Change</dt><dd>Current minus Preseason.</dd>
+        <dt>Change</dt><dd>Outlook minus Preseason.</dd>
       </dl>
-      <p class="muted" style="margin-bottom:0">A missing player's projected minutes are valued at
-      replacement level instead of his rating, so missing a star costs far more than missing a
-      bench player. Projected rotations come from the <a href="depth-charts.html">depth charts</a>;
+      <p class="muted" style="margin-bottom:6px">Expected games out by injury wording: ACL, Achilles or
+      season-ending &rarr; rest of season; surgery, repair, fracture, tear &rarr; 30; high ankle sprain
+      &rarr; 12; sprain, strain, tendinitis &rarr; 6; soreness, illness, contusion, rest, management
+      &rarr; 2; out for other reasons (benched, not on the report) &rarr; 10. Override any player in
+      <code>GAMES_OUT</code> in <code>data/availability_2026_27.js</code>.</p>
+      <p class="muted" style="margin-bottom:0">A missing player's projected minutes go first to his
+      healthy teammates (bench players pick up to 8 more minutes, starters 2&ndash;4), and only what
+      they can't absorb goes to a replacement-level player. Missing a star costs far more than
+      missing a bench player, and deep teams lose less. Projected rotations come from the <a href="depth-charts.html">depth charts</a>;
       players out long-term are best removed there.</p>
     </section>
 
@@ -135,14 +144,15 @@
             <th data-key="rank">#</th>
             <th data-key="team">Team</th>
             <th data-key="w">Record</th>
-            <th data-key="current" class="primary" title="Full strength minus players out right now">Current</th>
+            <th data-key="outlook" class="primary" title="Rest-of-season strength, injured players weighted by expected games out">Outlook</th>
+            <th data-key="tonight" title="Full strength minus everyone out right now">Tonight</th>
             <th data-key="full" title="Preseason prior updated by every game, at full strength">Full</th>
-            <th data-key="cur_o" title="Current offensive rating (points scored per 100)">Off</th>
-            <th data-key="cur_d" title="Current defensive rating (points allowed per 100; lower is better)">Def</th>
+            <th data-key="cur_o" title="Outlook offensive rating (points scored per 100)">Off</th>
+            <th data-key="cur_d" title="Outlook defensive rating (points allowed per 100; lower is better)">Def</th>
             <th data-key="season" title="Luck-adjusted net rating as played">Season</th>
             <th data-key="sched" title="Season results with opponent strength and home court removed">Sched-adj</th>
             <th data-key="pre" title="Preseason projection">Preseason</th>
-            <th data-key="change" title="Current minus Preseason">Change</th>
+            <th data-key="change" title="Outlook minus Preseason">Change</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -162,7 +172,7 @@
       PHI:"Philadelphia 76ers", PHX:"Phoenix Suns", POR:"Portland Trail Blazers",
       SAC:"Sacramento Kings", SAS:"San Antonio Spurs", TOR:"Toronto Raptors", UTA:"Utah Jazz",
       WAS:"Washington Wizards" };
-    let sortKey = 'current', sortDir = -1, openTeam = null;
+    let sortKey = 'outlook', sortDir = -1, openTeam = null;
 
     const net = pair => pair[0] - pair[1];
     function fmt(v, d = 1) {
@@ -176,10 +186,10 @@
       const mode = document.getElementById('luck-sel').value;
       return (window.TEAM_POWER.modes[mode] || []).map(r => ({
         ...r,
-        current: net(r.current), full: net(r.full), season: net(r.season),
+        outlook: net(r.outlook), tonight: net(r.tonight), full: net(r.full), season: net(r.season),
         sched: net(r.sched), pre: net(r.pre),
-        change: net(r.current) - net(r.pre),
-        cur_o: r.current[0], cur_d: r.current[1],
+        change: net(r.outlook) - net(r.pre),
+        cur_o: r.outlook[0], cur_d: r.outlook[1],
         pairs: r,
       }));
     }
@@ -189,27 +199,29 @@
       const line = (label, pair) => `<tr><td>${label}</td><td>${pair[0].toFixed(1)}</td><td>${pair[1].toFixed(1)}</td><td>${fmt(pair[0] - pair[1])}</td></tr>`;
       const outRows = r.out.length
         ? r.out.slice().sort((a, b) => b.net - a.net).map(o =>
-            `<tr><td>${o.name}</td><td>${o.minutes}</td><td class="muted">${o.reason}</td><td>${fmt(-o.net)}</td></tr>`).join('')
-        : '<tr><td colspan="4" class="muted">Nobody in the projected rotation is currently out.</td></tr>';
+            `<tr><td>${o.name}</td><td>${o.minutes}</td>
+              <td class="muted" style="white-space:normal">${o.reason}${o.status ? ' &middot; ' + o.status : ''}</td>
+              <td>${o.games_out == null ? 'season' : o.games_out}</td><td>${fmt(-o.net)}</td></tr>`).join('')
+        : '<tr><td colspan="5" class="muted">Nobody in the projected rotation is currently out.</td></tr>';
       return `<div class="det">
         <div><h4>Offense / defense</h4>
           <table><thead><tr><th style="text-align:left">Version</th><th>Off</th><th>Def</th><th>Net</th></tr></thead><tbody>
-            ${line('Current', p.current)}${line('Full strength', p.full)}${line('Season (as played)', p.season)}
+            ${line('Outlook', p.outlook)}${line('Tonight', p.tonight)}${line('Full strength', p.full)}${line('Season (as played)', p.season)}
             ${line('Schedule-adjusted', p.sched)}${line('Preseason', p.pre)}
           </tbody></table>
           <p class="muted" style="font-size:12px;margin:6px 0 0">Average cost of missing players per game so far:
             ${p.missing_avg.toFixed(1)} pts/100. Def is points allowed per 100 (lower is better).</p></div>
         <div><h4>Out right now</h4>
-          <table><thead><tr><th style="text-align:left">Player</th><th>Proj. min</th><th style="text-align:left">Why</th><th>Effect</th></tr></thead>
+          <table><thead><tr><th style="text-align:left">Player</th><th>Proj. min</th><th style="text-align:left">Why</th><th title="Expected games still to miss">Est. games out</th><th title="Effect on tonight's net rating of this player alone">Effect</th></tr></thead>
           <tbody>${outRows}</tbody></table>
-          <p class="muted" style="font-size:12px;margin:6px 0 0">Override in <code>data/availability_2026_27.js</code> (OUT_NOW).</p></div>
+          <p class="muted" style="font-size:12px;margin:6px 0 0">${r.games_left} games left. Override in <code>data/availability_2026_27.js</code> (GAMES_OUT).</p></div>
       </div>`;
     }
 
     function render() {
       let rs = rows();
-      // Rank is always by Current; the displayed order follows the chosen sort.
-      [...rs].sort((a, b) => b.current - a.current).forEach((r, i) => { r.rank = i + 1; });
+      // Rank is always by Outlook; the displayed order follows the chosen sort.
+      [...rs].sort((a, b) => b.outlook - a.outlook).forEach((r, i) => { r.rank = i + 1; });
       rs.sort((a, b) => {
         if (sortKey === 'team') return sortDir * a.team.localeCompare(b.team);
         if (sortKey === 'w') return sortDir * ((a.w - a.l) - (b.w - b.l));
@@ -222,7 +234,8 @@
           <td class="muted">${r.rank}</td>
           <td><strong>${r.team}</strong> <span class="muted team-full">${TEAM_NAMES[r.team] || ''}</span></td>
           <td>${r.w}-${r.l}</td>
-          <td class="primary">${fmt(r.current)}</td>
+          <td class="primary">${fmt(r.outlook)}</td>
+          <td>${fmt(r.tonight)}</td>
           <td>${fmt(r.full)}</td>
           <td>${r.cur_o.toFixed(1)}</td>
           <td>${r.cur_d.toFixed(1)}</td>
@@ -231,7 +244,7 @@
           <td>${fmt(r.pre)}</td>
           <td>${fmt(r.change)}</td>
         </tr>`;
-        return openTeam === r.team ? main + `<tr class="detail"><td colspan="11">${detailHtml(r)}</td></tr>` : main;
+        return openTeam === r.team ? main + `<tr class="detail"><td colspan="12">${detailHtml(r)}</td></tr>` : main;
       }).join('');
       document.querySelectorAll('#power-table tr.team-row').forEach(tr => tr.addEventListener('click', () => {
         openTeam = openTeam === tr.dataset.team ? null : tr.dataset.team; render();
@@ -257,11 +270,11 @@
       document.getElementById('season-chip').textContent = `${d.season} · ${games} games`;
       document.getElementById('footer').textContent =
         `Updated ${d.generated}. Preseason prior counts like ${d.prior_games} games; a rotation player is ` +
-        `"out" when the NBA's injury report lists him Out/Doubtful, or after missing ${d.out_recent_games} straight games. Ratings are descriptive estimates, not predictions of any single game.`;
+        `out tonight when the NBA's injury report lists him Out/Doubtful, or after missing ${d.out_recent_games} straight games. Ratings are descriptive estimates, not predictions of any single game.`;
       render();
     };
     s.onerror = () => { document.querySelector('#power-table tbody').innerHTML =
-      '<tr><td colspan="11" class="muted">Ratings data failed to load.</td></tr>'; };
+      '<tr><td colspan="12" class="muted">Ratings data failed to load.</td></tr>'; };
     document.head.appendChild(s);
   </script>
 </body>

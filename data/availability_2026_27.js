@@ -12,12 +12,19 @@ window.AVAILABILITY = {
   "Johnny Furphy": 55,      // ACL -- expected to miss the start
 };
 
-// Who is out RIGHT NOW, for the Team Power Ratings page's "Current strength".
-// By default a projected-rotation player counts as out once he has missed his
-// team's last 3 games in a row (until he plays again). List a player here to
-// override that: true = out now (e.g. just injured, out for weeks), false =
-// available (e.g. missed games but is back tonight). Same name spelling as the
-// depth charts.
+// Team Power Ratings: games each player is still expected to MISS, counted
+// from today. Overrides the estimate made from the injury report's wording
+// (fracture/tear/surgery 30, sprain/strain 6, soreness/illness 2, ACL/Achilles
+// rest of season). "season" = out for the rest of the season; 0 = available
+// now (e.g. listed out but actually back). Listing a player with more than 0
+// also counts him out tonight. Same name spelling as the depth charts.
+window.GAMES_OUT = {
+  // "Jalen Williams": 40,
+  // "Some Player": "season",
+};
+
+// Older true/false switch for "out tonight" (GAMES_OUT above wins when a
+// player is in both): true = out now, false = available.
 window.OUT_NOW = {
   // "Player Name": true,
 };
