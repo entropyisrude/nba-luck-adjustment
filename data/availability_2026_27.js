@@ -19,8 +19,10 @@ window.AVAILABILITY = {
 // now (e.g. listed out but actually back). Listing a player with more than 0
 // also counts him out tonight. Same name spelling as the depth charts.
 window.GAMES_OUT = {
-  // "Jalen Williams": 40,
+  // "Player Name": 40,
   // "Some Player": "season",
+  "Jalen Williams": "season",  // ankle fracture (set 2026-10-29)
+  "Cason Wallace": "season",   // shoulder labral tear (set 2026-10-29)
 };
 
 // Older true/false switch for "out tonight" (GAMES_OUT above wins when a
