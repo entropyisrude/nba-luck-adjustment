@@ -26,6 +26,7 @@ window.GAMES_OUT = {
   "Jalen Williams": "season",  // ankle fracture (set 2026-10-29)
   "Cason Wallace": "season",   // shoulder labral tear (set 2026-10-29)
   "Anthony Edwards": {games: 40, from: "2026-10-29"},  // knee surgery (set 2026-10-29)
+  "Kristaps Porzingis": "season",  // (set 2026-10-29)
 };
 
 // Older true/false switch for "out tonight" (GAMES_OUT above wins when a
