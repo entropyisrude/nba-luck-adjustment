@@ -982,3 +982,16 @@ Build a read-only audit script that selects canonical source files, reports sche
 - Power ratings now rank by **Outlook** (rest of season): each out player plays (1 - expected games out / games left) of his minutes. Expected games out from injury-report wording: ACL/Achilles/season -> rest of season; surgery/repair/fracture/tear -> 30; high ankle -> 12; sprain/strain/tendinitis -> 6; soreness/illness/contusion/management -> 2; out without an injury listed -> 10. `window.GAMES_OUT` in the availability file overrides per player. **Tonight** keeps everyone out now at full weight.
 - Override parsing now strips `//` comments (commented examples had been read as entries).
 - Open question: the duration tiers are guesses, not calibrated; a historical injury-report archive would allow fitting them.
+
+## 2026-10-29 — Injury durations from ESPN return dates; countdown overrides
+
+The official injury report's wording understated serious injuries (Edwards' knee
+surgery was listed as "Injury Management" -> 2 games). Each out player's expected
+games out now come from ESPN's estimated return date (scripts/fetch_espn_injuries.py,
+daily; only status/return date/injury type kept), converted to games at the team's
+remaining pace (games left x days to return / days to Apr 12); a return after the
+regular season = out for the season. The wording tiers remain the fallback. Teams
+with no official report entry use ESPN's Out status. GAMES_OUT now takes
+{games: N, from: date} (counts down as the team plays, then drops off) and
+{until: date}, besides "season" and plain numbers. Set by hand: Jalen Williams and
+Cason Wallace out for the season, Edwards 40 games from 2026-10-29.

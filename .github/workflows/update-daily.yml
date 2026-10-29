@@ -178,6 +178,10 @@ jobs:
           pip install pdfplumber
           python scripts/fetch_injury_report.py
 
+      - name: Fetch ESPN injury return dates
+        continue-on-error: true
+        run: python scripts/fetch_espn_injuries.py
+
       - name: Refresh team priors and rebuild luck report
         continue-on-error: true
         run: |

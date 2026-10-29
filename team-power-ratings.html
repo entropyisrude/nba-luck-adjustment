@@ -117,11 +117,14 @@
           projections</a>' NERD + DARKO average with depth-chart minutes.</dd>
         <dt>Change</dt><dd>Outlook minus Preseason.</dd>
       </dl>
-      <p class="muted" style="margin-bottom:6px">Expected games out by injury wording: ACL, Achilles or
-      season-ending &rarr; rest of season; surgery, repair, fracture, tear &rarr; 30; high ankle sprain
-      &rarr; 12; sprain, strain, tendinitis &rarr; 6; soreness, illness, contusion, rest, management
-      &rarr; 2; out for other reasons (benched, not on the report) &rarr; 10. Override any player in
-      <code>GAMES_OUT</code> in <code>data/availability_2026_27.js</code>.</p>
+      <p class="muted" style="margin-bottom:6px">Expected games out come from ESPN's estimated return
+      date for each injured player, converted to games at the team's remaining-schedule pace (a return
+      after the regular season counts as out for the season). Without a return date they fall back to
+      the injury report's wording: ACL, Achilles or season-ending &rarr; rest of season; surgery, repair,
+      fracture, tear &rarr; 30; high ankle sprain &rarr; 12; sprain, strain, tendinitis &rarr; 6;
+      soreness, illness, contusion, rest, management &rarr; 2; out for other reasons (benched, not on
+      the report) &rarr; 10. Override any player in <code>GAMES_OUT</code> in
+      <code>data/availability_2026_27.js</code>: a game count from a date counts down as the team plays.</p>
       <p class="muted" style="margin-bottom:0">A missing player's projected minutes go first to his
       healthy teammates (bench players pick up to 8 more minutes, starters 2&ndash;4), and only what
       they can't absorb goes to a replacement-level player. Missing a star costs far more than
@@ -200,7 +203,7 @@
       const outRows = r.out.length
         ? r.out.slice().sort((a, b) => b.net - a.net).map(o =>
             `<tr><td>${o.name}</td><td>${o.minutes}</td>
-              <td class="muted" style="white-space:normal">${o.reason}${o.status ? ' &middot; ' + o.status : ''}</td>
+              <td class="muted" style="white-space:normal">${o.reason}${o.status ? ' &middot; ' + o.status : ''}${o.est ? ' &middot; ' + o.est : ''}</td>
               <td>${o.games_out == null ? 'season' : o.games_out}</td><td>${fmt(-o.net)}</td></tr>`).join('')
         : '<tr><td colspan="5" class="muted">Nobody in the projected rotation is currently out.</td></tr>';
       return `<div class="det">

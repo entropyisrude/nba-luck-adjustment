@@ -193,7 +193,8 @@ AVAILABILITY_PATH = DATA_DIR / f"availability_{START_YEAR}_{(START_YEAR + 1) % 1
 POWER_JS_PATH = DATA_DIR / "team_power_ratings.js"
 SEASON_GAMES = 82
 # Expected games missed, from the injury report's wording (first match wins).
-# Rough tiers; GAMES_OUT in the availability file overrides any player.
+# Fallback tiers by injury wording, used only when ESPN has no return date;
+# GAMES_OUT in the availability file overrides any player.
 DURATION_RULES = [
     (("acl", "achilles", "season"), None),            # rest of season
     (("surgery", "repair", "fracture", "rupture", "torn", "tear", "dislocat"), 30),
@@ -205,6 +206,8 @@ DURATION_RULES = [
 INJURY_DEFAULT_GAMES = 6   # injury wording that matches no rule
 UNLISTED_OUT_GAMES = 10    # out by the missed-games rule or by hand, no injury listed
 INJURY_REPORT_PATH = DATA_DIR / f"injury_report_{TAG}.json"  # scripts/fetch_injury_report.py
+ESPN_INJURIES_PATH = DATA_DIR / f"espn_injuries_{TAG}.json"  # scripts/fetch_espn_injuries.py
+REGULAR_SEASON_END = f"{START_YEAR + 1}-04-12"
 
 
 def _load_out_overrides() -> dict[tuple[str, str], bool]:
@@ -220,8 +223,12 @@ def _load_out_overrides() -> dict[tuple[str, str], bool]:
             for name, flag in re.findall(r'"([^"]+)"\s*:\s*(true|false)', m.group(1))}
 
 
-def _load_games_out() -> dict[tuple[str, str], float | None]:
-    """GAMES_OUT map: {"Player": games still to miss, or "season"} -> {name key: games}."""
+def _load_games_out() -> dict[tuple[str, str], tuple]:
+    """GAMES_OUT map from the availability file -> {name key: spec}:
+      "season"                        -> ("season",)
+      {games: 40, from: "2026-10-29"} -> ("games", 40, "2026-10-29")  counts down as the team plays
+      {until: "2026-12-21"}           -> ("until", "2026-12-21")       expected return date
+      40 / 0                          -> ("games", 40, None)           fixed (0 = available)"""
     if not AVAILABILITY_PATH.exists():
         return {}
     # Drop // comments so commented-out examples are ignored.
@@ -229,8 +236,67 @@ def _load_games_out() -> dict[tuple[str, str], float | None]:
     m = re.search(r"window\.GAMES_OUT\s*=\s*\{(.*?)\};", text, re.S)
     if not m:
         return {}
-    return {_name_key(name): (None if val.strip('"') == "season" else float(val))
-            for name, val in re.findall(r'"([^"]+)"\s*:\s*("season"|\d+(?:\.\d+)?)', m.group(1))}
+    out = {}
+    for name, val in re.findall(r'"([^"]+)"\s*:\s*("season"|\{[^}]*\}|\d+(?:\.\d+)?)', m.group(1)):
+        if val == '"season"':
+            out[_name_key(name)] = ("season",)
+        elif val.startswith("{"):
+            games = re.search(r"games\s*:\s*(\d+(?:\.\d+)?)", val)
+            since = re.search(r'from\s*:\s*"(\d{4}-\d{2}-\d{2})"', val)
+            until = re.search(r'until\s*:\s*"(\d{4}-\d{2}-\d{2})"', val)
+            if until:
+                out[_name_key(name)] = ("until", until.group(1))
+            elif games:
+                out[_name_key(name)] = ("games", float(games.group(1)), since.group(1) if since else None)
+        else:
+            out[_name_key(name)] = ("games", float(val), None)
+    return out
+
+
+def _games_until(return_date: str, today: str, games_left: int) -> float | None:
+    """Games a team plays before return_date at its remaining-schedule pace
+    (None = not back this regular season)."""
+    if return_date > REGULAR_SEASON_END:
+        return None
+    day = lambda d: datetime.strptime(d, "%Y-%m-%d")
+    days_left = max((day(REGULAR_SEASON_END) - day(today)).days, 1)
+    return round(games_left * max((day(return_date) - day(today)).days, 0) / days_left)
+
+
+def _manual_games_out(spec: tuple | None, team_dates: list[str], today: str, games_left: int):
+    """(games still to miss or None for the season, note) from a GAMES_OUT spec;
+    ("unset", None) when there is none or its countdown has run out."""
+    if spec is None:
+        return "unset", None
+    if spec[0] == "season":
+        return None, "set by hand: out for the season"
+    if spec[0] == "until":
+        games = _games_until(spec[1], today, games_left)
+        return (games, f"set by hand: back {spec[1]}") if games is None or games > 0 else ("unset", None)
+    games, since = spec[1], spec[2]
+    if since is None:
+        return games, "set by hand"
+    left = games - sum(d >= since for d in team_dates)
+    return (left, f"set by hand: {games:g} games from {since}") if left > 0 else ("unset", None)
+
+
+def _load_espn_injuries() -> list[dict]:
+    """[{key, name, team, status, return_date, type, detail}] from scripts/fetch_espn_injuries.py."""
+    if not ESPN_INJURIES_PATH.exists():
+        return []
+    players = json.loads(ESPN_INJURIES_PATH.read_text(encoding="utf-8")).get("players", [])
+    return [dict(pl, key=_name_key(pl["name"])) for pl in players if pl.get("name")]
+
+
+def _estimate_games_out(news: dict | None, listed: dict | None, today: str, games_left: int):
+    """(games still to miss or None for the season, note): ESPN's estimated
+    return date when it has a future one, else the injury report's wording."""
+    if news is not None and (news.get("return_date") or "") > today:
+        games = _games_until(news["return_date"], today, games_left)
+        return (None if games is None else max(games, 1)), f"ESPN est. return {news['return_date']}"
+    if listed is not None:
+        return _expected_games_out(listed["reason"]), "estimated from injury wording"
+    return UNLISTED_OUT_GAMES, "default for unlisted absences"
 
 
 def _expected_games_out(reason: str | None) -> float | None:
@@ -315,9 +381,10 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     """{team: [out player]}. A rotation player is out tonight when the NBA's
     latest injury report lists him Out or Doubtful; players it does not list are
     out after missing the team's last OUT_RECENT_GAMES games (or all of them,
-    with 2+ played). Each out player also gets the games he is expected to miss
-    (None = rest of season), from the report's wording. The availability file's
-    GAMES_OUT (games still to miss, 0 = available) and OUT_NOW override."""
+    with 2+ played); teams missing from the report use ESPN's status. Each out
+    player also gets the games he is expected to miss (None = rest of season),
+    from ESPN's estimated return date, else the report's wording. The
+    availability file's GAMES_OUT and OUT_NOW override."""
     box_csv = DATA_DIR / "player_boxscore_stats.csv"
     teams = priors.get("teams", {})
     if not teams or not box_csv.exists():
@@ -326,6 +393,8 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     overrides = _load_out_overrides()
     games_out = _load_games_out()
     report = _load_injury_report(source_df)
+    espn = _load_espn_injuries()
+    today = datetime.now().strftime("%Y-%m-%d")
     box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
     played = {k: [_name_key(n) for n in g]
@@ -334,8 +403,10 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     out: dict[str, list[dict]] = {}
     for team, info in teams.items():
         rotation = info.get("rotation", [])
-        team_games = [g for g in games[(games.home_team == team) | (games.away_team == team)].gid
-                      if (g, team) in played]
+        team_rows = games[(games.home_team == team) | (games.away_team == team)]
+        team_games = [g for g in team_rows.gid if (g, team) in played]
+        team_dates = [str(d) for d in team_rows.date]
+        games_left = max(SEASON_GAMES - len(team_rows), 1)
         for p in rotation:
             key = _name_key(p["name"])
             streak = 0
@@ -344,33 +415,43 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
                     break
                 streak += 1
             override = next((flag for k, flag in overrides.items() if _same_player(key, k)), None)
-            manual = next((g for k, g in games_out.items() if _same_player(key, k)), "unset")
+            spec = next((g for k, g in games_out.items() if _same_player(key, k)), None)
+            manual, manual_note = _manual_games_out(spec, team_dates, today, games_left)
             if manual != "unset":
                 override = manual is None or manual > 0
             need = min(OUT_RECENT_GAMES, len(team_games))
             listed = next((r for r in report.get(team, []) if _same_player(key, r["key"])), None)
             if listed is not None and listed["past"] and streak == 0:
                 listed = None  # played since the report
+            news = next((e for e in espn if e["team"] in (team, None) and _same_player(key, e["key"])), None)
+            missed = len(team_games) >= 2 and streak >= need
             if listed is not None:
                 auto = listed["status"] in ("Out", "Doubtful")
+            elif team not in report and news is not None:
+                auto = news["status"] == "Out" or missed  # no official report for this team
             else:
-                auto = len(team_games) >= 2 and streak >= need
+                auto = missed
             if not (override is True or (override is None and auto)):
                 continue
-            if manual != "unset":
-                reason, expected = "games out set by hand", manual
-            elif override is True and listed is None:
-                reason, expected = "marked out", UNLISTED_OUT_GAMES
-            elif listed is not None:
-                reason, expected = f"injury report: {listed['status'].lower()}", _expected_games_out(listed["reason"])
-            else:
+            if listed is not None:
+                reason = f"injury report: {listed['status'].lower()}"
+            elif override is True:
+                reason = "marked out"
+            elif missed:
                 reason = f"missed last {streak} game{'s' if streak != 1 else ''}"
-                expected = UNLISTED_OUT_GAMES
+            else:
+                reason = "ESPN: out"
+            if manual != "unset":
+                expected, est = manual, manual_note
+            else:
+                expected, est = _estimate_games_out(news, listed, today, games_left)
+            status = listed["reason"] if listed is not None else None
+            if status is None and news is not None and news["status"] == "Out":
+                status = "Injury/Illness - " + " ".join(x for x in (news.get("type"), news.get("detail")) if x)
             solo = _lineup_cost(rotation, {p["name"]: 0.0}, rep_o, rep_d)
             out.setdefault(team, []).append({
-                "name": p["name"], "minutes": p["minutes"], "reason": reason,
-                "status": listed["reason"] if listed is not None else None,
-                "games_out": expected, "o": solo[0], "d": solo[1]})
+                "name": p["name"], "minutes": p["minutes"], "reason": reason, "status": status,
+                "games_out": expected, "est": est, "o": solo[0], "d": solo[1]})
     return out
 
 
@@ -414,7 +495,7 @@ def _power_payload(luck_dfs: dict[str, pd.DataFrame], game_poss: dict | None, pr
                 "pre": [round(mu + pre.get("off", 0.0), 2), round(mu - pre.get("def", 0.0), 2)],
                 "missing_avg": round(sum(o + d for o, d in team_costs) / max(len(team_costs), 1), 2),
                 "out": [{"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
-                         "status": p.get("status"), "games_out": p["games_out"],
+                         "status": p.get("status"), "games_out": p["games_out"], "est": p.get("est"),
                          "share": round(share[p["name"]], 3), "net": round(p["o"] + p["d"], 2)}
                         for p in outs],
             })
@@ -523,7 +604,8 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
                 {"name": p["name"], "minutes": p["minutes"], "reason": p["reason"],
                  "status": p.get("status") or next((pl["last"] for pl in team_out[team]["players"]
                                                     if pl["name"] == p["name"]), None),
-                 "games_out": p["games_out"], "value": round(p["o"] + p["d"], 2)} for p in outs]
+                 "games_out": p["games_out"], "est": p.get("est"),
+                 "value": round(p["o"] + p["d"], 2)} for p in outs]
     return {"season": SEASON, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "wins_per_point": WINS_PER_POINT, "out_recent_games": OUT_RECENT_GAMES,
             "categories": [{"key": c, "label": label} for c, label in ABSENCE_CATEGORIES],

@@ -12,18 +12,20 @@ window.AVAILABILITY = {
   "Johnny Furphy": 55,      // ACL -- expected to miss the start
 };
 
-// Team Power Ratings: games each player is still expected to MISS, counted
-// from today. Overrides the estimate made from the injury report's wording
+// Team Power Ratings: how many more games a player will miss. Normally this is
+// automatic -- ESPN's estimated return date, else the injury report's wording
 // (fracture/tear/surgery 30, sprain/strain 6, soreness/illness 2, ACL/Achilles
-// rest of season). "season" = out for the rest of the season; 0 = available
-// now (e.g. listed out but actually back). Listing a player with more than 0
-// also counts him out tonight. Same name spelling as the depth charts.
+// rest of season). Add a player here to override it:
+//   "season"                         out for the rest of the season
+//   {games: 40, from: "2026-10-29"}  40 games starting that date; counts down
+//                                    as his team plays, then drops off
+//   {until: "2026-12-21"}            expected back that date
+//   0                                available now (listed out but actually back)
+// Anything but 0 also counts him out tonight. Same name spelling as the depth charts.
 window.GAMES_OUT = {
-  // "Player Name": 40,
-  // "Some Player": "season",
   "Jalen Williams": "season",  // ankle fracture (set 2026-10-29)
   "Cason Wallace": "season",   // shoulder labral tear (set 2026-10-29)
-  "Anthony Edwards": 40,       // surgery (set 2026-10-29)
+  "Anthony Edwards": {games: 40, from: "2026-10-29"},  // knee surgery (set 2026-10-29)
 };
 
 // Older true/false switch for "out tonight" (GAMES_OUT above wins when a
