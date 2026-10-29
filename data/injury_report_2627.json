@@ -1,8 +1,8 @@
 {
- "generated": "2026-10-28 16:00",
+ "generated": "2026-10-29 10:46",
  "teams": {
   "ATL": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -12,8 +12,8 @@
     },
     {
      "name": "Zuby Ejiofor",
-     "status": "Questionable",
-     "reason": "G League - On Assignment"
+     "status": "Available",
+     "reason": "-"
     },
     {
      "name": "Keshon Gilbert",
@@ -37,7 +37,7 @@
     },
     {
      "name": "Aaron Wiggins",
-     "status": "Probable",
+     "status": "Available",
      "reason": "Injury/Illness - Left Knee Contusion"
     },
     {
@@ -95,7 +95,7 @@
    ]
   },
   "CHA": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -126,7 +126,7 @@
    ]
   },
   "CHI": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -147,7 +147,7 @@
    ]
   },
   "CLE": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -168,7 +168,7 @@
    ]
   },
   "DAL": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -209,7 +209,7 @@
    ]
   },
   "DEN": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -235,7 +235,7 @@
    ]
   },
   "DET": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -261,7 +261,7 @@
    ]
   },
   "GSW": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -287,7 +287,7 @@
    ]
   },
   "HOU": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -318,7 +318,7 @@
    ]
   },
   "IND": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -379,7 +379,7 @@
    ]
   },
   "LAC": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -415,13 +415,18 @@
    ]
   },
   "LAL": {
-   "report": "2026-10-27 05:30 PM ET",
-   "game_date": "2026-10-27",
+   "report": "2026-10-28 05:30 PM ET",
+   "game_date": "2026-10-28",
    "players": [
     {
      "name": "Cameron Carr",
      "status": "Out",
      "reason": "Injury/Illness - Right Oblique Strain"
+    },
+    {
+     "name": "Luka Doncic",
+     "status": "Out",
+     "reason": "Injury/Illness - Back Tightness"
     },
     {
      "name": "Walker Kessler",
@@ -431,7 +436,12 @@
     {
      "name": "Adou Thiero",
      "status": "Out",
-     "reason": "Injury/Illness - Left Knee Effusion/Swelling"
+     "reason": "Injury/Illness - Left Knee Injury Management"
+    },
+    {
+     "name": "Ziaire Williams",
+     "status": "Out",
+     "reason": "Injury/Illness - Left Foot Inflammation/Soreness"
     }
    ]
   },
@@ -452,7 +462,7 @@
    ]
   },
   "MIA": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -468,7 +478,7 @@
    ]
   },
   "MIN": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -484,7 +494,7 @@
    ]
   },
   "NOP": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -515,7 +525,7 @@
    ]
   },
   "NYK": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -526,7 +536,7 @@
    ]
   },
   "OKC": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -567,7 +577,7 @@
    ]
   },
   "ORL": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -603,7 +613,7 @@
    ]
   },
   "PHI": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -650,22 +660,12 @@
    ]
   },
   "POR": {
-   "report": "2026-10-27 05:30 PM ET",
-   "game_date": "2026-10-27",
+   "report": "2026-10-29 06:30 AM ET",
+   "game_date": "2026-10-29",
    "players": [
     {
-     "name": "Branden Carlson",
-     "status": "Available",
-     "reason": "Injury/Illness - Concussion Protocol"
-    },
-    {
-     "name": "Scoot Henderson",
-     "status": "Questionable",
-     "reason": "Injury/Illness - Left Ankle Soreness"
-    },
-    {
      "name": "Jayson Kent",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "G League - Two-Way"
     },
     {
@@ -675,19 +675,24 @@
     },
     {
      "name": "John Tonje",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "G League - Two-Way"
     },
     {
+     "name": "Hansen Yang",
+     "status": "Questionable",
+     "reason": "G League - On Assignment"
+    },
+    {
      "name": "Chris Youngblood",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "G League - Two-Way"
     }
    ]
   },
   "SAC": {
-   "report": "2026-10-27 05:30 PM ET",
-   "game_date": "2026-10-27",
+   "report": "2026-10-29 06:30 AM ET",
+   "game_date": "2026-10-29",
    "players": [
     {
      "name": "Dylan Cardwell",
@@ -697,7 +702,7 @@
     {
      "name": "Keegan Murray",
      "status": "Out",
-     "reason": "Injury/Illness - Left Left Ankle Capsulitis"
+     "reason": "Injury/Illness - Left Ankle capsulitis"
     },
     {
      "name": "Sean Pedulla",
@@ -707,7 +712,7 @@
     {
      "name": "Maxime Raynaud",
      "status": "Out",
-     "reason": "Injury/Illness - Right Patella Subluxation"
+     "reason": "Injury/Illness - Right Patella subluxation"
     },
     {
      "name": "Ben Simmons",
@@ -717,7 +722,7 @@
    ]
   },
   "SAS": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -733,7 +738,7 @@
    ]
   },
   "TOR": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -754,7 +759,7 @@
    ]
   },
   "UTA": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {
@@ -795,7 +800,7 @@
    ]
   },
   "WAS": {
-   "report": "2026-10-28 03:45 PM ET",
+   "report": "2026-10-28 05:30 PM ET",
    "game_date": "2026-10-28",
    "players": [
     {

@@ -5532,6 +5532,21 @@
       ],
       "active_roster": [
         {
+          "player": "Lawson Lovering",
+          "category": "active_roster",
+          "position": "C",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Adou Thiero",
           "category": "active_roster",
           "position": "SF",
@@ -5686,21 +5701,6 @@
           "category": "active_roster",
           "position": "SG",
           "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "AK Okereke",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 23,
           "contract_type": "NBA.com roster",
           "cap_hit": null,
           "base_salary": null,
@@ -6312,6 +6312,21 @@
           "rights": null
         },
         {
+          "player": "Klay Thompson",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 36,
+          "contract_type": null,
+          "cap_hit": 17460317,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Dru Smith",
           "category": "active_roster",
           "position": "SG",
@@ -6370,21 +6385,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": "Early Bird"
-        },
-        {
-          "player": "Klay Thompson",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 36,
-          "contract_type": null,
-          "cap_hit": 17460317,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
         },
         {
           "player": "Andrew Wiggins",
@@ -10343,21 +10343,6 @@
       "source_sha256": "033b902559b74b9d5eb3e8153f295f3d8114f357195b8d081c1e88cb607340cd",
       "active_roster": [
         {
-          "player": "Sean Pedulla",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Malik Monk",
           "category": "active_roster",
           "position": "SG",
@@ -10369,6 +10354,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 20190035,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Sean Pedulla",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-28T10:44:37.319344+00:00",
+  "roster_synced_at": "2026-10-29T10:45:54.842891+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
