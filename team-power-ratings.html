@@ -110,8 +110,8 @@
         <dt>Full</dt><dd>The team at full strength: its preseason projection updated by every game
           so far, adjusted for opponent strength, home court and the team's own missing players.
           The projection counts like 10 games, so early results move it gradually.</dd>
-        <dt>Season</dt><dd>Luck-adjusted results as played, no other adjustment.</dd>
-        <dt>Sched-adj</dt><dd>Season results with home court and each opponent's strength removed
+        <dt>YTD</dt><dd>Year-to-date results as played, luck-adjusted (both teams' shooting), no other adjustment.</dd>
+        <dt>Sched-adj</dt><dd>YTD results with home court and each opponent's strength removed
           (the opponent as it actually lined up that night, missing players included).</dd>
         <dt>Preseason</dt><dd>The starting point: the <a href="team-projections.html">win
           projections</a>' NERD + DARKO average with depth-chart minutes.</dd>
@@ -149,8 +149,8 @@
             <th data-key="full" title="Preseason prior updated by every game, at full strength">Full</th>
             <th data-key="cur_o" title="Outlook offensive rating (points scored per 100)">Off</th>
             <th data-key="cur_d" title="Outlook defensive rating (points allowed per 100; lower is better)">Def</th>
-            <th data-key="season" title="Luck-adjusted net rating as played">Season</th>
-            <th data-key="sched" title="Season results with opponent strength and home court removed">Sched-adj</th>
+            <th data-key="season" title="Year-to-date luck-adjusted net rating as played">YTD</th>
+            <th data-key="sched" title="YTD results with opponent strength and home court removed">Sched-adj</th>
             <th data-key="pre" title="Preseason projection">Preseason</th>
             <th data-key="change" title="Outlook minus Preseason">Change</th>
           </tr></thead>
@@ -206,7 +206,7 @@
       return `<div class="det">
         <div><h4>Offense / defense</h4>
           <table><thead><tr><th style="text-align:left">Version</th><th>Off</th><th>Def</th><th>Net</th></tr></thead><tbody>
-            ${line('Outlook', p.outlook)}${line('Tonight', p.tonight)}${line('Full strength', p.full)}${line('Season (as played)', p.season)}
+            ${line('Outlook', p.outlook)}${line('Tonight', p.tonight)}${line('Full strength', p.full)}${line('YTD (as played)', p.season)}
             ${line('Schedule-adjusted', p.sched)}${line('Preseason', p.pre)}
           </tbody></table>
           <p class="muted" style="font-size:12px;margin:6px 0 0">Average cost of missing players per game so far:
