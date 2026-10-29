@@ -295,8 +295,9 @@ def _team_quality_fit(source_df: pd.DataFrame, game_poss: dict | None, priors: d
 
 
 def _load_injury_report(source_df: pd.DataFrame) -> dict[str, list[dict]]:
-    """{team: [{key, name, status, reason}]} from scripts/fetch_injury_report.py,
-    for teams whose latest report is for a game after their last game played."""
+    """{team: [{key, name, status, reason, past}]} from scripts/fetch_injury_report.py.
+    past: the report is for a game the team has already played (it stays the
+    latest word on who is hurt until the next report comes out)."""
     if not INJURY_REPORT_PATH.exists():
         return {}
     report = json.loads(INJURY_REPORT_PATH.read_text(encoding="utf-8")).get("teams", {})
@@ -304,9 +305,10 @@ def _load_injury_report(source_df: pd.DataFrame) -> dict[str, list[dict]]:
     for side in ("home_team", "away_team"):
         for team, d in source_df.groupby(side)["date"].max().items():
             last_game[team] = max(last_game.get(team, ""), str(d))
-    return {team: [dict(p, key=_name_key(p["name"])) for p in info.get("players", [])]
-            for team, info in report.items()
-            if (info.get("game_date") or "") > last_game.get(team, "")}
+    return {team: [dict(p, key=_name_key(p["name"]),
+                        past=(info.get("game_date") or "") <= last_game.get(team, ""))
+                   for p in info.get("players", [])]
+            for team, info in report.items()}
 
 
 def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict]]:
@@ -347,6 +349,8 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
                 override = manual is None or manual > 0
             need = min(OUT_RECENT_GAMES, len(team_games))
             listed = next((r for r in report.get(team, []) if _same_player(key, r["key"])), None)
+            if listed is not None and listed["past"] and streak == 0:
+                listed = None  # played since the report
             if listed is not None:
                 auto = listed["status"] in ("Out", "Doubtful")
             else:
