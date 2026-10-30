@@ -5105,6 +5105,21 @@
       ],
       "active_roster": [
         {
+          "player": "Blake Wesley",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Non-Bird"
+        },
+        {
           "player": "Keaton Wagler",
           "category": "active_roster",
           "position": "PG",
@@ -10236,21 +10251,6 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Blake Wesley",
-          "category": "cap_hold",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Keljin Blevins",
           "category": "cap_hold",
           "position": "G",
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-29T10:45:54.842891+00:00",
+  "roster_synced_at": "2026-10-30T10:46:05.272951+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
