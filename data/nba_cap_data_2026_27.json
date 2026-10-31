@@ -5105,21 +5105,6 @@
       ],
       "active_roster": [
         {
-          "player": "Blake Wesley",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Keaton Wagler",
           "category": "active_roster",
           "position": "PG",
@@ -5255,6 +5240,36 @@
           "rights": null
         },
         {
+          "player": "Blake Wesley",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Non-Bird"
+        },
+        {
+          "player": "Jalen Pickett",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 27.0,
+          "contract_type": "RK-2ND",
+          "cap_hit": 2449421,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Bird"
+        },
+        {
           "player": "Jordan Miller",
           "category": "active_roster",
           "position": "SF",
@@ -5298,21 +5313,6 @@
           "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
-        },
-        {
-          "player": "Jalen Pickett",
-          "category": "active_roster",
-          "position": "PG",
-          "age": 27.0,
-          "contract_type": "RK-2ND",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
         },
         {
           "player": "Rui Hachimura",
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-10-30T10:46:05.272951+00:00",
+  "roster_synced_at": "2026-10-31T10:44:45.477333+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
