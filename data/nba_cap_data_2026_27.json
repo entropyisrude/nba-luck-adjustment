@@ -592,21 +592,6 @@
           "rights": null
         },
         {
-          "player": "Devin Carter",
-          "category": "active_roster",
-          "position": "PG",
-          "age": 24,
-          "contract_type": "RK-1ST",
-          "cap_hit": 5158080,
-          "base_salary": 5158080,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 5158080,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jordan Walsh",
           "category": "active_roster",
           "position": "SF",
@@ -723,6 +708,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 2667944,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Devin Carter",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 24,
+          "contract_type": "RK-1ST",
+          "cap_hit": 5158080,
+          "base_salary": 5158080,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 5158080,
           "qualifying_offer": null,
           "rights": null
         }
@@ -2412,6 +2412,21 @@
           "rights": null
         },
         {
+          "player": "Walter Clayton Jr.",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Dereck Lively II",
           "category": "active_roster",
           "position": "C",
@@ -2433,21 +2448,6 @@
           "age": 29,
           "contract_type": null,
           "cap_hit": 9428571,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Walter Clayton Jr.",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
@@ -8037,21 +8037,6 @@
           "rights": null
         },
         {
-          "player": "James Wiseman",
-          "category": "active_roster",
-          "position": "C",
-          "age": 25,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jalen Brunson",
           "category": "active_roster",
           "position": "PG",
@@ -8123,6 +8108,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 57078728,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "James Wiseman",
+          "category": "active_roster",
+          "position": "C",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-02T10:52:18.725339+00:00",
+  "roster_synced_at": "2026-11-03T10:45:36.387836+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
