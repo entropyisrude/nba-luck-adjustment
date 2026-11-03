@@ -217,9 +217,13 @@ def main() -> None:
         FROM read_parquet('{LUCK_COMPONENTS.as_posix()}') GROUP BY 1
         """
     )
+    # Rows written by run_daily.py since Oct 2026 already carry these columns,
+    # with *_pts_adj fully adjusted; only older 3PT-only rows are layered here.
+    existing = {r[0] for r in con.execute("DESCRIBE raw_adjusted_games").fetchall()}
     for column in ("home_pts_adj_3pt", "away_pts_adj_3pt",
                    "home_pts_adj_3pt_ft", "away_pts_adj_3pt_ft"):
-        con.execute(f"ALTER TABLE raw_adjusted_games ADD COLUMN {column} DOUBLE")
+        if column not in existing:
+            con.execute(f"ALTER TABLE raw_adjusted_games ADD COLUMN {column} DOUBLE")
     con.execute(
         """
         UPDATE raw_adjusted_games AS g SET
@@ -230,6 +234,7 @@ def main() -> None:
           away_pts_adj=g.away_pts_adj-COALESCE(l.ft_away,0)-0.5*COALESCE(l.mr_away,0)
         FROM game_luck_totals l
         WHERE ltrim(CAST(g.game_id AS VARCHAR),'0')=l.game_id
+          AND g.home_pts_adj_3pt IS NULL
         """
     )
     if PLAYER_BOX_STATS.exists():
