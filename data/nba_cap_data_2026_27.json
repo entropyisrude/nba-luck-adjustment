@@ -7232,21 +7232,6 @@
           "rights": "Bird"
         },
         {
-          "player": "Enrique Freeman",
-          "category": "active_roster",
-          "position": "PF",
-          "age": 26.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": 2185116,
-          "rights": "Two-Way"
-        },
-        {
           "player": "Rudy Gobert",
           "category": "active_roster",
           "position": "C",
@@ -11576,6 +11561,21 @@
           "rights": "Two-Way"
         },
         {
+          "player": "Kobe Bufkin",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Kyle Filipowski",
           "category": "active_roster",
           "position": "PF",
@@ -11602,21 +11602,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 6563925,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Kobe Bufkin",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12420,6 +12405,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-03T10:45:36.387836+00:00",
+  "roster_synced_at": "2026-11-04T10:46:01.330409+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
