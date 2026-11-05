@@ -8438,6 +8438,21 @@
           "rights": null
         },
         {
+          "player": "Dalen Terry",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Cason Wallace",
           "category": "active_roster",
           "position": "PG",
@@ -12405,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-04T10:46:01.330409+00:00",
+  "roster_synced_at": "2026-11-05T10:46:42.979023+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
