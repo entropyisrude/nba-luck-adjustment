@@ -7,14 +7,19 @@ Sources:
   - nba_analytics.duckdb → 1996-97 through present (box stats)
   - canonical counted on/off → 1996-97 through present (pbpstats fallback)
 
+The current season is included while in progress (lower minutes floor,
+flagged "partial"); its on/off comes from metric/build_current_season_counted.py.
+
 Output: data/player_seasons.json
 
 Run from project root:
-    python scripts/build_player_seasons.py
+    python scripts/build_player_seasons.py                 # full rebuild (needs the Kaggle zip)
+    python scripts/build_player_seasons.py --current-only  # refresh just the current season
 """
 
 import gzip
 import json
+import sys
 import zipfile
 from collections import defaultdict
 from pathlib import Path
@@ -24,6 +29,9 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from src.season import SEASON, TAG  # noqa: E402
+
 DATA_DIR = ROOT / "data"
 KAGGLE_ZIP = ROOT / "historical-nba-data-and-player-box-scores.zip"
 RS_DB = DATA_DIR / "nba_analytics.duckdb"
@@ -38,7 +46,10 @@ CANONICAL_COUNTED_ONOFF = (
     / "adjusted_onoff_regular_canonical_counted.parquet"
 )
 
+CURRENT_COUNTED_ONOFF = ROOT / "derived" / "contextual_causal" / "current_season" / f"onoff_counted_{TAG}.parquet"
+
 MIN_MINUTES = 500
+CURRENT_MIN_MINUTES = 150  # in-progress season: enough to compare, flagged partial
 EOIN_FIRST = "1979-80"
 EOIN_LAST = "1995-96"
 DB_FIRST = "1996-97"
@@ -311,19 +322,17 @@ def load_pbpstats_onoff() -> dict[tuple[int, str], dict]:
     return result
 
 
-def load_canonical_counted_onoff() -> dict[tuple[int, str], dict]:
+def load_canonical_counted_onoff(path: Path = CANONICAL_COUNTED_ONOFF) -> dict[tuple[int, str], dict]:
     """Build player-season offensive/defensive on-off from counted evidence."""
-    if not CANONICAL_COUNTED_ONOFF.exists():
-        raise FileNotFoundError(
-            f"Canonical counted on/off file not found: {CANONICAL_COUNTED_ONOFF}"
-        )
+    if not path.exists():
+        raise FileNotFoundError(f"Canonical counted on/off file not found: {path}")
 
     columns = [
         "player_id", "date", "on_pts_for", "on_pts_against",
         "off_pts_for", "off_pts_against", "on_off_poss", "on_def_poss",
         "off_off_poss", "off_def_poss",
     ]
-    frame = pd.read_parquet(CANONICAL_COUNTED_ONOFF, columns=columns)
+    frame = pd.read_parquet(path, columns=columns)
     frame["date"] = pd.to_datetime(frame["date"])
     start_year = frame["date"].dt.year.where(
         frame["date"].dt.month >= 10,
@@ -378,8 +387,8 @@ def load_finishing_stats() -> dict[tuple[int, int], dict]:
     return out
 
 
-def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
-    print("Querying DuckDB for 1996-97+ …")
+def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict, only_season: str | None = None) -> list[dict]:
+    print(f"Querying DuckDB for {only_season or '1996-97+'} …")
     con = duckdb.connect(str(RS_DB), read_only=True)
 
     query = """
@@ -413,12 +422,13 @@ def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
       -- and play-in ('5') games for 2024-25 and 2025-26, which must not blend
       -- into regular-season rates.
       AND CAST(game_id AS VARCHAR) LIKE '2%'
+      AND (CAST(? AS VARCHAR) IS NULL OR season = ?)
     GROUP BY player_id, player_name, season
-    HAVING SUM(minutes) >= ?
+    HAVING SUM(minutes) >= CASE WHEN season = ? THEN ? ELSE ? END
     ORDER BY season, player_name
     """
 
-    df = con.execute(query, [MIN_MINUTES]).df()
+    df = con.execute(query, [only_season, only_season, SEASON, CURRENT_MIN_MINUTES, MIN_MINUTES]).df()
     con.close()
 
     records = []
@@ -463,6 +473,8 @@ def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
             "oo_off": oo_data.get("oo_off"),
             "oo_def": oo_data.get("oo_def"),
         })
+        if season == SEASON:
+            records[-1]["partial"] = True
 
     print(f"  DB:   {len(records):,} player-seasons ({DB_FIRST}–present)")
     return records
@@ -472,17 +484,33 @@ def build_db_seasons(pbp_onoff: dict, bio: dict, finishing: dict) -> list[dict]:
 # Main
 # ---------------------------------------------------------------------------
 
+def current_season_onoff() -> dict[tuple[int, str], dict]:
+    if not CURRENT_COUNTED_ONOFF.exists():
+        print(f"  WARNING: {CURRENT_COUNTED_ONOFF} not found — run metric/build_current_season_counted.py; "
+              f"{SEASON} on/off will be None")
+        return {}
+    return load_canonical_counted_onoff(CURRENT_COUNTED_ONOFF)
+
+
 def main():
-    # Retain pbpstats only as a fallback for a player-season absent from the
-    # audited artifact; canonical counted evidence is authoritative.
-    pbp_onoff = load_pbpstats_onoff()
-    pbp_onoff.update(load_canonical_counted_onoff())
     finishing = load_finishing_stats()
-    eoin = build_eoin_seasons()
-    with zipfile.ZipFile(KAGGLE_ZIP) as z:
-        bio = load_player_bio(z)
-    modern = build_db_seasons(pbp_onoff, bio, finishing)
-    all_seasons = eoin + modern
+    if "--current-only" in sys.argv:
+        # Keep every finished season as published; rebuild only the current one.
+        # Weight comes from each player's latest earlier season (rookies: none).
+        prior = [r for r in json.loads(OUT.read_text(encoding="utf-8"))["seasons"] if r["season"] != SEASON]
+        bio = {r["pid"]: {"wt": r.get("wt")} for r in sorted(prior, key=lambda r: r["season"]) if r.get("wt")}
+        all_seasons = prior + build_db_seasons(current_season_onoff(), bio, finishing, only_season=SEASON)
+    else:
+        # Retain pbpstats only as a fallback for a player-season absent from the
+        # audited artifact; canonical counted evidence is authoritative.
+        pbp_onoff = load_pbpstats_onoff()
+        pbp_onoff.update(load_canonical_counted_onoff())
+        pbp_onoff.update(current_season_onoff())
+        eoin = build_eoin_seasons()
+        with zipfile.ZipFile(KAGGLE_ZIP) as z:
+            bio = load_player_bio(z)
+        modern = build_db_seasons(pbp_onoff, bio, finishing)
+        all_seasons = eoin + modern
 
     # Normalize names: some players' display names changed mid-career
     # (O.G./OG Anunoby, diacritics, etc.), splitting their player index entry.
@@ -503,6 +531,8 @@ def main():
         "generated": __import__("datetime").date.today().isoformat(),
         "source": "Eoin/Kaggle (1979-80–1995-96) + nba_analytics.duckdb (1996-97–present) + canonical counted on/off (pbpstats fallback)",
         "min_minutes": MIN_MINUTES,
+        "current_season": SEASON,
+        "current_min_minutes": CURRENT_MIN_MINUTES,
         "cols": ["pts","ast","or","dr","stl","blk","tov","fta","fg2a","fg3a",
                  "fg2p","fg3p","ftp","oo","oo_off","oo_def","ht","wt",
                  "rimfga","rimfgp","dunks"],

@@ -95,7 +95,7 @@
 
 <div class="hero-banner">
   <h1>Player Similarity Machine</h1>
-  <p class="timestamp">1979-80 through 2025-26 &nbsp;|&nbsp; 14,600+ player-seasons</p>
+  <p class="timestamp">1979-80 through 2026-27 (in progress, 150+ min, updated weekly) &nbsp;|&nbsp; 14,800+ player-seasons</p>
   <div class="hero-nav">
     <div class="hero-nav-row">
       <span class="hero-nav-label">Home</span>
@@ -318,7 +318,7 @@ function selectPlayerName(name) {
   const sorted = entry.seasons.sort((a,b) => b.season.localeCompare(a.season));
   seasonSel.innerHTML =
     `<option value="career">Career (all seasons)</option>` +
-    sorted.map(s => `<option value="${s.idx}">${s.season}${s.team ? ' · '+s.team : ''}</option>`).join('');
+    sorted.map(s => `<option value="${s.idx}">${s.season}${allSeasons[s.idx].partial ? ' (in progress)' : ''}${s.team ? ' · '+s.team : ''}</option>`).join('');
   runBtn.disabled = false;
 }
 
@@ -629,7 +629,7 @@ function clearError() {
 
 async function init() {
   try {
-    const resp = await fetch('data/player_seasons.json?v=20260718-canonical-counted-v1');
+    const resp = await fetch('data/player_seasons.json?v=20261105-current-season');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     allSeasons = data.seasons;
