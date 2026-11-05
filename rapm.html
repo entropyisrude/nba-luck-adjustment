@@ -426,11 +426,10 @@
 
       let nextVal = null;
       if (prefix === "lb-") {
-        const preferredGroups = ["Last3", "Last5", "All", "2025-26", "2024-25"];
+        const preferredGroups = ["Last3", "Last5", "All"];
         nextVal = preferredGroups.find(k => keys.includes(k));
       } else {
-        const preferred = ["2025-26", "2024-25", "2023-24"];
-        nextVal = preferred.find(k => keys.includes(k));
+        // Default to the latest regular season (picked below).
       }
       if (!nextVal && keys.length > 0) {
         const lastRegular = [...keys].reverse().find(k => parseSeasonKey(k).isRegularSeason);
