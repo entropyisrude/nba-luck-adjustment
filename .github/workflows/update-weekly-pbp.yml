@@ -71,6 +71,7 @@ jobs:
           python generate_player_span_search_report.py
           python scripts/build_player_seasons.py --current-only
           python scripts/build_game_similarity_index.py
+          COMBO_SEARCH_AGG_SEASONS=latest python generate_combo_search_report.py
 
       - name: Commit and push changes
         run: |

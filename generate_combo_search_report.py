@@ -21,6 +21,9 @@ REGULAR_SPAN_SEARCH_HREF = os.environ.get("REGULAR_SPAN_SEARCH_HREF", "player-sp
 PLAYOFF_GAME_SEARCH_HREF = os.environ.get("PLAYOFF_GAME_SEARCH_HREF", "game-search-playoffs.html")
 PLAYOFF_SPAN_SEARCH_HREF = os.environ.get("PLAYOFF_SPAN_SEARCH_HREF", "player-span-search-playoffs.html")
 LOG_SEASONS_RAW = os.environ.get("COMBO_SEARCH_LOG_SEASONS", "latest")
+# "latest": rewrite only the newest season's aggregate chunk and keep the
+# published files for finished seasons (rebuilds only add float noise there).
+AGG_SEASONS_RAW = os.environ.get("COMBO_SEARCH_AGG_SEASONS", "all")
 
 
 def _season_start(season: str) -> int:
@@ -290,6 +293,9 @@ def generate_combo_search_report() -> Path:
     for season in seasons:
         filename = f"agg_{_season_slug(season)}.js"
         agg_files[season] = filename
+        if (AGG_SEASONS_RAW.strip().lower() == "latest" and season != seasons[-1]
+                and (CHUNK_DIR / filename).exists()):
+            continue
         prefix = (
             "window.__COMBO_AGG_CHUNKS = window.__COMBO_AGG_CHUNKS || {};\n"
             f"window.__COMBO_AGG_CHUNKS[{json.dumps(season)}] = "
@@ -722,6 +728,7 @@ def generate_combo_search_report() -> Path:
     }}
 
     function formatNum(v, digits = 1) {{
+      if (v == null) return "—";  // not available for this season (Number(null) would show 0)
       const n = Number(v);
       return Number.isFinite(n) ? n.toFixed(digits) : "";
     }}
@@ -768,6 +775,9 @@ def generate_combo_search_report() -> Path:
     }}
 
     function comboPoss(r, idx) {{
+      // Off/def splits exist only for seasons with per-game combo facts; older
+      // seasons carry just the estimated possessions per side.
+      if (r[idx.off_poss] == null && r[idx.def_poss] == null) return 2 * Number(r[idx.poss_est] || 0);
       const off = Number(r[idx.off_poss] || 0);
       const def = Number(r[idx.def_poss] || 0);
       return off + def;
