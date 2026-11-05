@@ -68,7 +68,7 @@ def number(value: object, default: float = 0.0) -> float:
 
 
 def rounded(value: object) -> float:
-    return round(number(value), 3)
+    return round(number(value), 3) + 0.0  # + 0.0 folds -0.0 so rebuilds are byte-stable
 
 
 def nullable_number(value: object) -> float | None:
@@ -78,7 +78,7 @@ def nullable_number(value: object) -> float | None:
         result = float(value)
     except (TypeError, ValueError):
         return None
-    return round(result, 3) if math.isfinite(result) else None
+    return round(result, 3) + 0.0 if math.isfinite(result) else None
 
 
 def shooting_box_is_valid(row: list[object]) -> bool:

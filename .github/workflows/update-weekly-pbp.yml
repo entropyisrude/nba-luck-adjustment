@@ -70,6 +70,7 @@ jobs:
           python generate_player_game_search_report.py
           python generate_player_span_search_report.py
           python scripts/build_player_seasons.py --current-only
+          python scripts/build_game_similarity_index.py
 
       - name: Commit and push changes
         run: |
