@@ -1955,6 +1955,21 @@
       "source_sha256": "e82f51f3acfb304d2d2fc7516eef3a6edc0788175a8d8e6adac3573c218c3f93",
       "active_roster": [
         {
+          "player": "Norchad Omier",
+          "category": "active_roster",
+          "position": "F",
+          "age": 25,
+          "contract_type": null,
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "James Harden",
           "category": "active_roster",
           "position": "SG",
@@ -2037,21 +2052,6 @@
           "contract_type": "ROS",
           "cap_hit": 2406205,
           "base_salary": 2406205,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Riley Minix",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -4403,6 +4403,21 @@
           "rights": null
         },
         {
+          "player": "Oscar Tshiebwe",
+          "category": "active_roster",
+          "position": "PF",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 2449421,
+          "base_salary": 2537526,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 2537526,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jabari Smith Jr.",
           "category": "active_roster",
           "position": "PF",
@@ -4534,21 +4549,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 3524115,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Oscar Tshiebwe",
-          "category": "active_roster",
-          "position": "PF",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": 2537526,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 2537526,
           "qualifying_offer": null,
           "rights": null
         },
@@ -5411,21 +5411,6 @@
           "category": "cap_hold",
           "position": "SG",
           "age": 32,
-          "contract_type": null,
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Norchad Omier",
-          "category": "cap_hold",
-          "position": "F",
-          "age": 25,
           "contract_type": null,
           "cap_hit": 2185116,
           "base_salary": null,
@@ -7932,6 +7917,21 @@
           "rights": null
         },
         {
+          "player": "Dalton Knecht",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Miles McBride",
           "category": "active_roster",
           "position": "PG",
@@ -7958,21 +7958,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 20923760,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Dalton Knecht",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 25,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -8438,21 +8423,6 @@
           "rights": null
         },
         {
-          "player": "Dalen Terry",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Cason Wallace",
           "category": "active_roster",
           "position": "PG",
@@ -8539,6 +8509,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 23148148,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Dalen Terry",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         }
@@ -9992,19 +9977,19 @@
           "rights": null
         },
         {
-          "player": "Chris Youngblood",
+          "player": "John Tonje",
           "category": "active_roster",
-          "position": "SG",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
+          "position": "G",
+          "age": 25.0,
+          "contract_type": "2W",
+          "cap_hit": 2185116,
           "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
           "qualifying_offer": null,
-          "rights": null
+          "rights": "Non-Bird"
         },
         {
           "player": "Jrue Holiday",
@@ -10037,21 +10022,6 @@
           "rights": null
         },
         {
-          "player": "John Tonje",
-          "category": "active_roster",
-          "position": "G",
-          "age": 25.0,
-          "contract_type": "2W",
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Micah Potter",
           "category": "active_roster",
           "position": "C",
@@ -10078,6 +10048,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 2449421,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Chris Youngblood",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -11311,6 +11296,21 @@
           "rights": null
         },
         {
+          "player": "Kevin McCullar Jr.",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Kyle Anderson",
           "category": "active_roster",
           "position": "PF",
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-05T10:46:42.979023+00:00",
+  "roster_synced_at": "2026-11-06T10:43:50.926226+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
