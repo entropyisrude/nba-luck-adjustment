@@ -1955,21 +1955,6 @@
       "source_sha256": "e82f51f3acfb304d2d2fc7516eef3a6edc0788175a8d8e6adac3573c218c3f93",
       "active_roster": [
         {
-          "player": "Norchad Omier",
-          "category": "active_roster",
-          "position": "F",
-          "age": 25,
-          "contract_type": null,
-          "cap_hit": 2185116,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "James Harden",
           "category": "active_roster",
           "position": "SG",
@@ -2176,6 +2161,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 50105628,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Norchad Omier",
+          "category": "active_roster",
+          "position": "F",
+          "age": 25,
+          "contract_type": null,
+          "cap_hit": 2185116,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         }
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-06T10:43:50.926226+00:00",
+  "roster_synced_at": "2026-11-07T10:45:30.315219+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
