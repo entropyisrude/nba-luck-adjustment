@@ -2045,6 +2045,21 @@
           "rights": null
         },
         {
+          "player": "Riley Minix",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 26,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Khalifa Diop",
           "category": "active_roster",
           "position": "C",
@@ -5240,21 +5255,6 @@
           "rights": null
         },
         {
-          "player": "Blake Wesley",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "FA",
-          "cap_hit": 2449421,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Non-Bird"
-        },
-        {
           "player": "Jalen Pickett",
           "category": "active_roster",
           "position": "PG",
@@ -5866,6 +5866,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 34206898,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Richie Saunders",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12420,6 +12435,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-07T10:45:30.315219+00:00",
+  "roster_synced_at": "2026-11-08T10:44:15.595727+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
