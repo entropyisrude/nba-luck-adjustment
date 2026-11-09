@@ -2090,21 +2090,6 @@
           "rights": null
         },
         {
-          "player": "Tristan Enaruna",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 25,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Tyrese Proctor",
           "category": "active_roster",
           "position": "SG",
@@ -5945,21 +5930,6 @@
           "rights": null
         },
         {
-          "player": "Carson Cooper",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 22,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jahmai Mashack",
           "category": "active_roster",
           "position": "SG",
@@ -8378,6 +8348,21 @@
           "rights": null
         },
         {
+          "player": "Nique Clifford",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 24,
+          "contract_type": "RK-1ST",
+          "cap_hit": 3263400,
+          "base_salary": 3263400,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 3263400,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Thomas Sorber",
           "category": "active_roster",
           "position": "C",
@@ -8524,21 +8509,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 23148148,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Dalen Terry",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 24,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         }
@@ -10414,21 +10384,6 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": 5477000,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Nique Clifford",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 24,
-          "contract_type": "RK-1ST",
-          "cap_hit": 3263400,
-          "base_salary": 3263400,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": 3263400,
           "qualifying_offer": null,
           "rights": null
         },
@@ -12435,6 +12390,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-08T10:44:15.595727+00:00",
+  "roster_synced_at": "2026-11-09T10:45:58.699118+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
