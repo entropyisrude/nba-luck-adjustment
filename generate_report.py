@@ -162,18 +162,35 @@ def _replacement(priors: dict) -> tuple[float, float]:
     return float(r.get("o", 0.0)), float(r.get("d", 0.0))
 
 
+def _team_stints(box: pd.DataFrame) -> dict[str, list[tuple[tuple[str, str], str, str]]]:
+    """{last name: [(name key, team, last date he played for that team)]}."""
+    out: dict[str, list] = {}
+    for (name, team), d in box.groupby(["player_name", "team_abbr"])["date"].max().items():
+        key = _name_key(name)
+        out.setdefault(key[1], []).append((key, team, str(d)))
+    return out
+
+
+def _not_yet_on_team(stints: dict, key: tuple[str, str], team: str, date: str) -> bool:
+    """He played for another team on or after this date: he arrived later (trade
+    or signing), so the team's earlier games are not absences."""
+    return any(t != team and d >= date and _same_player(key, k) for k, t, d in stints.get(key[1], ()))
+
+
 def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str], tuple[float, float]]:
     """{(game_id, team): (offense cost, defense cost)} in pts/100 from projected-
-    rotation players who did not play that game (injured, rested or benched)."""
+    rotation players who did not play that game (injured, rested or benched).
+    Players who joined the team later are not counted for its earlier games."""
     box_csv = DATA_DIR / "player_boxscore_stats.csv"
     teams = priors.get("teams", {})
     if not teams or not box_csv.exists():
         return {}
     rep_o, rep_d = _replacement(priors)
-    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
+    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["date", "game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
     played = {k: [_name_key(n) for n in g]
               for k, g in box.groupby(["game_id", "team_abbr"])["player_name"]}
+    stints = _team_stints(box)
     costs = {}
     for r in source_df.itertuples(index=False):
         gid = str(r.game_id).lstrip("0")
@@ -183,7 +200,8 @@ def _missing_costs(source_df: pd.DataFrame, priors: dict) -> dict[tuple[str, str
                 continue
             rotation = teams[team].get("rotation", [])
             missing = {p["name"]: 0.0 for p in rotation
-                       if not any(_same_player(_name_key(p["name"]), n) for n in names)}
+                       if not any(_same_player(_name_key(p["name"]), n) for n in names)
+                       and not _not_yet_on_team(stints, _name_key(p["name"]), team, str(r.date))}
             costs[(gid, team)] = _lineup_cost(rotation, missing, rep_o, rep_d)
     return costs
 
@@ -395,11 +413,13 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
     report = _load_injury_report(source_df)
     espn = _load_espn_injuries()
     today = datetime.now().strftime("%Y-%m-%d")
-    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["game_id", "team_abbr", "player_name"])
+    box = pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["date", "game_id", "team_abbr", "player_name"])
     box["game_id"] = box["game_id"].str.lstrip("0")
     played = {k: [_name_key(n) for n in g]
               for k, g in box.groupby(["game_id", "team_abbr"])["player_name"]}
+    stints = _team_stints(box)
     games = source_df.assign(gid=source_df["game_id"].astype(str).str.lstrip("0")).sort_values("date")
+    game_date = dict(zip(games.gid, games.date.astype(str)))
     out: dict[str, list[dict]] = {}
     for team, info in teams.items():
         rotation = info.get("rotation", [])
@@ -411,7 +431,8 @@ def _currently_out(source_df: pd.DataFrame, priors: dict) -> dict[str, list[dict
             key = _name_key(p["name"])
             streak = 0
             for g in reversed(team_games):
-                if any(_same_player(key, n) for n in played[(g, team)]):
+                if (any(_same_player(key, n) for n in played[(g, team)])
+                        or _not_yet_on_team(stints, key, team, game_date[g])):
                     break
                 streak += 1
             override = next((flag for k, flag in overrides.items() if _same_player(key, k)), None)
@@ -541,6 +562,9 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
     listed = {k: [(_name_key(n), s) for n, s in zip(g.player_name, g.status)]
               for k, g in status.groupby(["game_id", "team_abbr"])}
     games = source_df.assign(gid=source_df["game_id"].astype(str).str.lstrip("0")).sort_values("date")
+    box_csv = DATA_DIR / "player_boxscore_stats.csv"
+    stints = (_team_stints(pd.read_csv(box_csv, dtype={"game_id": str}, usecols=["date", "team_abbr", "player_name"]))
+              if box_csv.exists() else {})
     cats = [c for c, _ in ABSENCE_CATEGORIES]
     team_out = {}
     weekly: dict[str, dict] = {}
@@ -567,11 +591,16 @@ def _injury_payload(source_df: pd.DataFrame, game_poss: dict | None, priors: dic
             injured = inactive = False
             statuses = {p["name"]: next((s for k, s in roster if _same_player(p["key"], k)), None)
                         for p in rotation}
-            sat = [p for p in rotation if statuses[p["name"]] != "played"]
+            for p in rotation:  # not on the team yet: neither played nor missed
+                if statuses[p["name"]] != "played" and _not_yet_on_team(stints, p["key"], team, str(r.date)):
+                    statuses[p["name"]] = "not yet on team"
+            sat = [p for p in rotation if statuses[p["name"]] not in ("played", "not yet on team")]
             game_cost = sum(_lineup_cost(base, {p["name"]: 0.0 for p in sat}, rep_o, rep_d))
             weights = sum(p["weight"] for p in sat)
             for p in rotation:
                 st = statuses[p["name"]]
+                if st == "not yet on team":
+                    continue
                 last_status[p["name"]] = st
                 if st == "played":
                     continue

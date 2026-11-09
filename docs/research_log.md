@@ -995,3 +995,11 @@ with no official report entry use ESPN's Out status. GAMES_OUT now takes
 {games: N, from: date} (counts down as the team plays, then drops off) and
 {until: date}, besides "season" and plain numbers. Set by hand: Jalen Williams and
 Cason Wallace out for the season, Edwards 40 games from 2026-10-29.
+
+## 2026-11-09 — Mid-season arrivals are not absences
+
+A player who joins a team mid-season (Nique Clifford, SAC -> OKC on Nov 8) was
+counted as missing every earlier game of his new team: in the fit's own-injury
+credit, in the "missed last N games" out rule, and on the Injury Tracker. A
+rotation player now counts as missing a game only if he did not play for another
+team on or after that date (from box scores).
