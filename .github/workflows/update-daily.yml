@@ -187,6 +187,7 @@ jobs:
         run: |
           pip install playwright
           python -m playwright install --with-deps chromium
+          python scripts/build_current_season_mpg.py
           python scripts/export_team_priors.py
           python generate_report.py
           cp data/3pt_luck_report.html index.html
