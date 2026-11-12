@@ -5667,6 +5667,21 @@
           "rights": null
         },
         {
+          "player": "Carson Cooper",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 22,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Chris Mañon",
           "category": "active_roster",
           "position": "SG",
@@ -12375,6 +12390,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-11T10:45:32.739981+00:00",
+  "roster_synced_at": "2026-11-12T10:45:04.187907+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
