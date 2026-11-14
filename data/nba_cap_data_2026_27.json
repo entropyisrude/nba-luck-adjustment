@@ -1689,6 +1689,21 @@
           "rights": null
         },
         {
+          "player": "Orlando Robinson",
+          "category": "active_roster",
+          "position": "C",
+          "age": 26,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Buddy Hield",
           "category": "active_roster",
           "position": "SG",
@@ -7187,6 +7202,21 @@
           "rights": null
         },
         {
+          "player": "Johni Broome",
+          "category": "active_roster",
+          "position": "SF",
+          "age": 24,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jonathan Kuminga",
           "category": "active_roster",
           "position": "PF",
@@ -12390,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-13T10:51:07.529752+00:00",
+  "roster_synced_at": "2026-11-14T10:45:20.207725+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
