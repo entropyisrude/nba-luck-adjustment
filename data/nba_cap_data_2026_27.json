@@ -45,21 +45,6 @@
           "rights": null
         },
         {
-          "player": "Keshon Gilbert",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Jalen Johnson",
           "category": "active_roster",
           "position": "SF",
@@ -11696,21 +11681,6 @@
           "rights": "Non-Bird"
         },
         {
-          "player": "Trey Alexander",
-          "category": "active_roster",
-          "position": "SG",
-          "age": 23,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Ace Bailey",
           "category": "active_roster",
           "position": "SF",
@@ -12420,6 +12390,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-16T11:07:24.810716+00:00",
+  "roster_synced_at": "2026-11-17T10:46:38.670374+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
