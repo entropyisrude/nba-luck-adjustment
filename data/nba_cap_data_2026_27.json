@@ -15,17 +15,17 @@
       "source_sha256": "b63f42aad4643cd4c9b06ac4258e4f3cfd4acecd856360acbd6d7f76459a6a13",
       "active_roster": [
         {
-          "player": "Luguentz Dort",
+          "player": "Rafael Castro",
           "category": "active_roster",
-          "position": "SG",
-          "age": 27,
-          "contract_type": "FA",
-          "cap_hit": 17722222,
-          "base_salary": 17722222,
+          "position": "C",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
-          "guaranteed": 17722222,
+          "guaranteed": null,
           "qualifying_offer": null,
           "rights": null
         },
@@ -41,6 +41,21 @@
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
           "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
+          "player": "Luguentz Dort",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 27,
+          "contract_type": "FA",
+          "cap_hit": 17722222,
+          "base_salary": 17722222,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": 17722222,
           "qualifying_offer": null,
           "rights": null
         },
@@ -11546,6 +11561,21 @@
       "source_sha256": "e77a4f740487d0263ee7d6374aa9c241e659a13d5a1bf91295db467d35232b19",
       "active_roster": [
         {
+          "player": "Jonas Aidoo",
+          "category": "active_roster",
+          "position": "C",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Harrison Ingram",
           "category": "active_roster",
           "position": "SF",
@@ -12390,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-17T10:46:38.670374+00:00",
+  "roster_synced_at": "2026-11-18T10:54:19.104219+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
