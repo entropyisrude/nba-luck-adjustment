@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-18 10:54",
+ "generated": "2026-11-19 10:46",
  "teams": {
   "ATL": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
      "name": "Rafael Castro",
-     "status": "Doubtful",
+     "status": "Out",
      "reason": "G League - Two-Way"
     },
     {
@@ -43,7 +43,7 @@
    ]
   },
   "BKN": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -74,7 +74,7 @@
    ]
   },
   "BOS": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -121,7 +121,7 @@
    ]
   },
   "CHI": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -142,7 +142,7 @@
     {
      "name": "Patrick Williams",
      "status": "Probable",
-     "reason": "Injury/Illness - Right Finger Dislocation"
+     "reason": "Injury/Illness - Right Finger"
     },
     {
      "name": "Caleb Wilson",
@@ -152,7 +152,7 @@
    ]
   },
   "CLE": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -172,7 +172,7 @@
     },
     {
      "name": "Jaylon Tyson",
-     "status": "Doubtful",
+     "status": "Out",
      "reason": "Injury/Illness - Right Ankle Injury Management"
     },
     {
@@ -182,13 +182,13 @@
     },
     {
      "name": "Peyton Watson",
-     "status": "Questionable",
+     "status": "Doubtful",
      "reason": "Injury/Illness - Low Back Contusion"
     }
    ]
   },
   "DAL": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -234,7 +234,7 @@
    ]
   },
   "DEN": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -260,9 +260,14 @@
    ]
   },
   "DET": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-18 05:30 PM ET",
+   "game_date": "2026-11-18",
    "players": [
+    {
+     "name": "Cade Cunningham",
+     "status": "Questionable",
+     "reason": "Injury/Illness - Right Knee Soreness"
+    },
     {
      "name": "Jalen Duren",
      "status": "Out",
@@ -275,7 +280,7 @@
     },
     {
      "name": "Isaiah Joe",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "Injury/Illness - Right Hip Contusion"
     },
     {
@@ -301,7 +306,7 @@
    ]
   },
   "GSW": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -327,7 +332,7 @@
     {
      "name": "Moses Moody",
      "status": "Out",
-     "reason": "Injury/Illness - Left Patellar Tendon Repair/Surgery"
+     "reason": "Injury/Illness - Left Patellar Tendon"
     },
     {
      "name": "Kristaps Porzingis",
@@ -342,7 +347,7 @@
    ]
   },
   "HOU": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -368,7 +373,7 @@
    ]
   },
   "IND": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -388,7 +393,7 @@
     },
     {
      "name": "Andrew Nembhard",
-     "status": "Questionable",
+     "status": "Out",
      "reason": "Injury/Illness - Left Hip Soreness/Tightness"
     },
     {
@@ -399,8 +404,8 @@
    ]
   },
   "LAC": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-19 05:30 AM ET",
+   "game_date": "2026-11-19",
    "players": [
     {
      "name": "Bradley Beal",
@@ -413,30 +418,25 @@
      "reason": "Injury/Illness - Right Heel Surgery"
     },
     {
+     "name": "Nick Martinelli",
+     "status": "Out",
+     "reason": "G League - Two-Way"
+    },
+    {
      "name": "Jordan Miller",
      "status": "Out",
      "reason": "Injury/Illness - Left Rotator Cuff Surgery"
-    },
-    {
-     "name": "Yanic Konan Niederhauser",
-     "status": "Out",
-     "reason": "Injury/Illness - Right Lisfranc Surgery"
     }
    ]
   },
   "LAL": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-18 05:30 PM ET",
+   "game_date": "2026-11-18",
    "players": [
     {
      "name": "Quentin Grimes",
      "status": "Available",
      "reason": "Injury/Illness - Right Finger Splint"
-    },
-    {
-     "name": "Walker Kessler",
-     "status": "Out",
-     "reason": "Injury/Illness - Right Lower Leg Soreness"
     },
     {
      "name": "Austin Reaves",
@@ -446,7 +446,7 @@
    ]
   },
   "MEM": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -477,17 +477,17 @@
    ]
   },
   "MIA": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
      "name": "Bam Adebayo",
-     "status": "Probable",
+     "status": "Available",
      "reason": "Injury/Illness - Right Hip Impingement"
     },
     {
      "name": "Myron Gardner",
-     "status": "Questionable",
+     "status": "Out",
      "reason": "Injury/Illness - Right Hamstring Tightness/Soreness"
     },
     {
@@ -497,7 +497,7 @@
     },
     {
      "name": "Nikola Jovic",
-     "status": "Probable",
+     "status": "Available",
      "reason": "Injury/Illness - Illness"
     },
     {
@@ -513,7 +513,7 @@
    ]
   },
   "MIL": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -537,6 +537,11 @@
      "reason": "G League - Two-Way"
     },
     {
+     "name": "Ryan Rollins",
+     "status": "Out",
+     "reason": "Injury/Illness - Illness"
+    },
+    {
      "name": "Cormac Ryan",
      "status": "Out",
      "reason": "G League - Two-Way"
@@ -544,8 +549,8 @@
    ]
   },
   "MIN": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-19 05:30 AM ET",
+   "game_date": "2026-11-19",
    "players": [
     {
      "name": "Joan Beringer",
@@ -569,18 +574,18 @@
     },
     {
      "name": "Jonathan Kuminga",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "Injury/Illness - Right Shoulder Contusion"
     },
     {
      "name": "Zyon Pullin",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "Injury/Illness - Right Quadriceps Contusion"
     }
    ]
   },
   "NOP": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -626,7 +631,7 @@
    ]
   },
   "OKC": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -657,7 +662,7 @@
    ]
   },
   "ORL": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -683,7 +688,7 @@
    ]
   },
   "PHI": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -705,11 +710,16 @@
      "name": "Ariel Hukporti",
      "status": "Out",
      "reason": "Injury/Illness - Right Achilles Tendon Rupture/Tear"
+    },
+    {
+     "name": "Dean Wade",
+     "status": "Questionable",
+     "reason": "Injury/Illness - Left Hamstring Tightness/Soreness"
     }
    ]
   },
   "PHX": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
@@ -720,13 +730,18 @@
    ]
   },
   "POR": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-19 05:30 AM ET",
+   "game_date": "2026-11-19",
    "players": [
     {
      "name": "Deni Avdija",
      "status": "Questionable",
      "reason": "Injury/Illness - Left Foot Inflammation/Soreness"
+    },
+    {
+     "name": "Toumani Camara",
+     "status": "Questionable",
+     "reason": "Injury/Illness - Abdominal Soreness"
     },
     {
      "name": "Branden Carlson",
@@ -749,6 +764,11 @@
      "reason": "Injury/Illness - Right Meniscus Surgery"
     },
     {
+     "name": "Robert Williams III",
+     "status": "Out",
+     "reason": "Rest"
+    },
+    {
      "name": "Chris Youngblood",
      "status": "Out",
      "reason": "Injury/Illness - Right Heel Contusion/Bone Bruise"
@@ -756,17 +776,17 @@
    ]
   },
   "SAC": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {
      "name": "Precious Achiuwa",
-     "status": "Questionable",
+     "status": "Available",
      "reason": "Injury/Illness - Left Lower Leg Contusion"
     },
     {
      "name": "De'Andre Hunter",
-     "status": "Questionable",
+     "status": "Available",
      "reason": "Injury/Illness - Left Hip Soreness/Tightness"
     },
     {
@@ -792,8 +812,8 @@
    ]
   },
   "SAS": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-19 05:30 AM ET",
+   "game_date": "2026-11-19",
    "players": [
     {
      "name": "Maliq Brown",
@@ -804,6 +824,11 @@
      "name": "Ja'Kobi Gillespie",
      "status": "Out",
      "reason": "G League - Two-Way"
+    },
+    {
+     "name": "Dylan Harper",
+     "status": "Out",
+     "reason": "Injury/Illness - Left Hip Soreness"
     },
     {
      "name": "Tobias Harris",
@@ -818,13 +843,18 @@
    ]
   },
   "TOR": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-18 05:30 PM ET",
+   "game_date": "2026-11-18",
    "players": [
     {
      "name": "Scottie Barnes",
+     "status": "Out",
+     "reason": "Injury/Illness - Left Groin Injury Management"
+    },
+    {
+     "name": "RJ Barrett",
      "status": "Questionable",
-     "reason": "Injury/Illness - Illness"
+     "reason": "Injury/Illness - Right Hamstring Tightness/Soreness"
     },
     {
      "name": "Nate Bittle",
@@ -838,19 +868,19 @@
     },
     {
      "name": "Kevin McCullar Jr.",
-     "status": "Out",
+     "status": "Available",
      "reason": "G League - Two-Way"
     },
     {
      "name": "Malachi Smith",
-     "status": "Out",
+     "status": "Available",
      "reason": "G League - Two-Way"
     }
    ]
   },
   "UTA": {
-   "report": "2026-11-17 05:30 PM ET",
-   "game_date": "2026-11-17",
+   "report": "2026-11-18 05:30 PM ET",
+   "game_date": "2026-11-18",
    "players": [
     {
      "name": "Kobe Bufkin",
@@ -859,7 +889,7 @@
     },
     {
      "name": "Jaxson Hayes",
-     "status": "Out",
+     "status": "Questionable",
      "reason": "Injury/Illness - Left Knee Strain"
     },
     {
@@ -880,12 +910,12 @@
     {
      "name": "Jusuf Nurkic",
      "status": "Out",
-     "reason": "Injury/Illness - Right Right Foot; 2nd Plantar Plate Tear"
+     "reason": "Injury/Illness - Right Foot; 2nd Plantar Plate Tear"
     }
    ]
   },
   "WAS": {
-   "report": "2026-11-18 05:45 AM ET",
+   "report": "2026-11-18 05:30 PM ET",
    "game_date": "2026-11-18",
    "players": [
     {

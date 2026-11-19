@@ -1970,6 +1970,21 @@
       "source_sha256": "e82f51f3acfb304d2d2fc7516eef3a6edc0788175a8d8e6adac3573c218c3f93",
       "active_roster": [
         {
+          "player": "Zack Austin",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 25,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "James Harden",
           "category": "active_roster",
           "position": "SG",
@@ -2052,21 +2067,6 @@
           "contract_type": "ROS",
           "cap_hit": 2406205,
           "base_salary": 2406205,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
-          "player": "Riley Minix",
-          "category": "active_roster",
-          "position": "SF",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
           "likely_incentives": null,
           "unlikely_incentives": null,
           "trade_bonus_proration": null,
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-18T10:54:19.104219+00:00",
+  "roster_synced_at": "2026-11-19T10:46:01.615603+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
