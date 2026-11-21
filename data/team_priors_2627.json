@@ -1,6 +1,6 @@
 {
  "season": "2026-27",
- "generated_at": "2026-11-20T18:12:28.115314+00:00",
+ "generated_at": "2026-11-21T10:44:29.190995+00:00",
  "source": "team-projections.html computeTeamsAvg() (NERD + DARKO average, depth-chart minutes, all healthy)",
  "replacement": {
   "o": -1,
@@ -8,68 +8,68 @@
  },
  "teams": {
   "ATL": {
-   "off": -2.557,
-   "def": 0.062,
-   "net": -2.494,
+   "off": -2.539,
+   "def": 0.068,
+   "net": -2.469,
    "rotation": [
     {
      "name": "Jalen Johnson",
      "minutes": 28,
-     "o": -0.091,
+     "o": -0.09,
      "d": 0.175
     },
     {
      "name": "Dyson Daniels",
      "minutes": 27,
-     "o": -0.176,
+     "o": -0.175,
      "d": 1.775
     },
     {
      "name": "Nickeil Alexander-Walker",
      "minutes": 26,
-     "o": 0.674,
+     "o": 0.675,
      "d": -0.03
     },
     {
      "name": "Onyeka Okongwu",
      "minutes": 25,
-     "o": -0.146,
+     "o": -0.145,
      "d": 1.03
     },
     {
      "name": "C.J. McCollum",
      "minutes": 23,
-     "o": 0.654,
+     "o": 0.655,
      "d": -0.795
     },
     {
      "name": "Luguentz Dort",
      "minutes": 22,
-     "o": -1.061,
+     "o": -1.06,
      "d": -0.275
     },
     {
      "name": "Aaron Wiggins",
      "minutes": 17,
-     "o": -0.071,
+     "o": -0.07,
      "d": -0.4
-    },
-    {
-     "name": "Kingston Flemings",
-     "minutes": 16,
-     "o": -2.224,
-     "d": -1.024
     },
     {
      "name": "Jock Landale",
      "minutes": 16,
-     "o": -0.481,
+     "o": -0.48,
      "d": -0.41
     },
     {
+     "name": "Kingston Flemings",
+     "minutes": 15,
+     "o": -2.224,
+     "d": -1.024
+    },
+    {
      "name": "RayJ Dennis",
-     "minutes": 8,
-     "o": -1.371,
+     "minutes": 9,
+     "o": -1.37,
      "d": -0.74
     },
     {
@@ -87,19 +87,19 @@
     {
      "name": "Asa Newell",
      "minutes": 6,
-     "o": -0.781,
+     "o": -0.78,
      "d": -0.315
     },
     {
      "name": "Corey Kispert",
      "minutes": 4,
-     "o": -0.221,
+     "o": -0.22,
      "d": -1.485
     },
     {
      "name": "Dorian Finney-Smith",
      "minutes": 4,
-     "o": -2.101,
+     "o": -2.1,
      "d": 0.545
     },
     {
@@ -111,74 +111,74 @@
    ]
   },
   "BOS": {
-   "off": 2.917,
+   "off": 2.918,
    "def": 2.186,
-   "net": 5.102,
+   "net": 5.103,
    "rotation": [
     {
      "name": "Derrick White",
      "minutes": 28,
-     "o": 0.754,
+     "o": 0.755,
      "d": 1.315
     },
     {
      "name": "Jayson Tatum",
      "minutes": 28,
-     "o": 3.789,
+     "o": 3.79,
      "d": 0.24
     },
     {
      "name": "Payton Pritchard",
      "minutes": 26,
-     "o": 2.319,
+     "o": 2.32,
      "d": -0.78
     },
     {
      "name": "Paul George",
      "minutes": 25,
-     "o": 0.274,
+     "o": 0.275,
      "d": 0.975
     },
     {
      "name": "Sam Hauser",
      "minutes": 19,
-     "o": 0.934,
+     "o": 0.935,
      "d": -0.225
     },
     {
      "name": "Neemias Queta",
      "minutes": 17,
-     "o": -0.041,
+     "o": -0.04,
      "d": 1.975
     },
     {
      "name": "Mitchell Robinson",
      "minutes": 17,
-     "o": 0.114,
+     "o": 0.115,
      "d": 1.07
     },
     {
      "name": "Devin Carter",
      "minutes": 16,
-     "o": -0.431,
+     "o": -0.43,
      "d": -0.495
     },
     {
      "name": "Baylor Scheierman",
      "minutes": 16,
-     "o": -1.016,
+     "o": -1.015,
      "d": 0.36
     },
     {
      "name": "Hugo Gonzalez",
      "minutes": 13,
-     "o": -1.041,
+     "o": -1.04,
      "d": 1.47
     },
     {
      "name": "Jordan Walsh",
      "minutes": 11,
-     "o": -0.696,
+     "o": -0.695,
      "d": -0.205
     },
     {
@@ -190,44 +190,44 @@
     {
      "name": "Luka Garza",
      "minutes": 7,
-     "o": 1.434,
+     "o": 1.435,
      "d": -0.05
     },
     {
      "name": "Amari Williams",
      "minutes": 6,
-     "o": -3.436,
+     "o": -3.435,
      "d": 0.235
     },
     {
      "name": "Mike Conley",
      "minutes": 4,
-     "o": -1.451,
+     "o": -1.45,
      "d": 0.21
     }
    ]
   },
   "BKN": {
-   "off": -4.456,
+   "off": -4.455,
    "def": -2.34,
-   "net": -6.791,
+   "net": -6.79,
    "rotation": [
     {
      "name": "Julius Randle",
      "minutes": 27,
-     "o": 0.154,
+     "o": 0.155,
      "d": -1.125
     },
     {
      "name": "Michael Porter Jr.",
      "minutes": 26,
-     "o": 2.299,
+     "o": 2.3,
      "d": -1.205
     },
     {
      "name": "Egor Demin",
      "minutes": 23,
-     "o": -0.801,
+     "o": -0.8,
      "d": 0.165
     },
     {
@@ -239,61 +239,61 @@
     {
      "name": "Noah Clowney",
      "minutes": 21,
-     "o": -1.186,
+     "o": -1.185,
      "d": -0.155
     },
     {
      "name": "Day'Ron Sharpe",
      "minutes": 18,
-     "o": 0.084,
+     "o": 0.085,
      "d": 1.34
     },
     {
      "name": "Nolan Traore",
      "minutes": 16,
-     "o": -2.101,
+     "o": -2.1,
      "d": -0.94
     },
     {
      "name": "Ben Saraf",
      "minutes": 16,
-     "o": -2.851,
+     "o": -2.85,
      "d": -0.675
     },
     {
      "name": "Chaney Johnson",
      "minutes": 14,
-     "o": -1.361,
+     "o": -1.36,
      "d": -0.065
     },
     {
      "name": "Drake Powell",
      "minutes": 12,
-     "o": -2.981,
+     "o": -2.98,
      "d": -1.61
     },
     {
      "name": "Danny Wolf",
      "minutes": 10,
-     "o": -2.036,
+     "o": -2.035,
      "d": 0.73
     },
     {
      "name": "Moritz Wagner",
      "minutes": 9,
-     "o": -0.931,
+     "o": -0.93,
      "d": -0.48
     },
     {
      "name": "Keon Ellis",
      "minutes": 8,
-     "o": -0.771,
+     "o": -0.77,
      "d": 0.77
     },
     {
      "name": "Grant Nelson",
      "minutes": 8,
-     "o": -2.036,
+     "o": -2.035,
      "d": -0.065
     },
     {
@@ -305,92 +305,92 @@
     {
      "name": "Josh Minott",
      "minutes": 4,
-     "o": -0.276,
+     "o": -0.275,
      "d": 0.415
     }
    ]
   },
   "CHA": {
-   "off": -1.135,
-   "def": -0.535,
-   "net": -1.662,
+   "off": -1.134,
+   "def": -0.534,
+   "net": -1.66,
    "rotation": [
     {
      "name": "Kon Knueppel",
      "minutes": 26,
-     "o": 1.954,
+     "o": 1.955,
      "d": -0.265
     },
     {
      "name": "Brandon Miller",
      "minutes": 26,
-     "o": 0.964,
+     "o": 0.965,
      "d": 0.145
     },
     {
      "name": "Dennis Schr\u00f6der",
      "minutes": 25,
-     "o": -1.886,
+     "o": -1.885,
      "d": -1.18
     },
     {
      "name": "Naz Reid",
      "minutes": 23,
-     "o": -0.871,
+     "o": -0.87,
      "d": 0.785
     },
     {
      "name": "Coby White",
      "minutes": 22,
-     "o": 1.639,
+     "o": 1.64,
      "d": -1.175
     },
     {
      "name": "Moussa Diabate",
      "minutes": 21,
-     "o": 0.394,
+     "o": 0.395,
      "d": 1.055
     },
     {
      "name": "Grayson Allen",
      "minutes": 19,
-     "o": 0.419,
+     "o": 0.42,
      "d": -0.72
     },
     {
      "name": "Royce O'Neale",
      "minutes": 16,
-     "o": -2.206,
+     "o": -2.205,
      "d": -0.09
     },
     {
      "name": "Ryan Kalkbrenner",
      "minutes": 16,
-     "o": -0.561,
+     "o": -0.56,
      "d": 1.515
     },
     {
      "name": "Sion James",
      "minutes": 12,
-     "o": -2.291,
+     "o": -2.29,
      "d": 0.25
     },
     {
      "name": "Grant Williams",
      "minutes": 9,
-     "o": -0.096,
+     "o": -0.095,
      "d": 0.4
     },
     {
      "name": "PJ Hall",
      "minutes": 9,
-     "o": -1.706,
+     "o": -1.705,
      "d": -0.19
     },
     {
      "name": "Liam McNeeley",
      "minutes": 7,
-     "o": -1.461,
+     "o": -1.46,
      "d": -1.12
     },
     {
@@ -408,32 +408,32 @@
    ]
   },
   "CHI": {
-   "off": -3.215,
+   "off": -3.214,
    "def": -1.804,
-   "net": -5.021,
+   "net": -5.02,
    "rotation": [
     {
      "name": "Josh Giddey",
      "minutes": 27,
-     "o": 0.559,
+     "o": 0.56,
      "d": -0.51
     },
     {
      "name": "Matas Buzelis",
      "minutes": 26,
-     "o": -0.701,
+     "o": -0.7,
      "d": -0.72
     },
     {
      "name": "Nicolas Claxton",
      "minutes": 25,
-     "o": -2.086,
+     "o": -2.085,
      "d": 0.275
     },
     {
      "name": "Norman Powell",
      "minutes": 24,
-     "o": 0.424,
+     "o": 0.425,
      "d": -0.82
     },
     {
@@ -451,25 +451,25 @@
     {
      "name": "Buddy Hield",
      "minutes": 14,
-     "o": -0.801,
+     "o": -0.8,
      "d": -0.875
     },
     {
      "name": "Leonard Miller",
      "minutes": 13,
-     "o": -0.026,
+     "o": -0.025,
      "d": -0.835
     },
     {
      "name": "Jalen Smith",
      "minutes": 13,
-     "o": 0.849,
+     "o": 0.85,
      "d": 0.605
     },
     {
      "name": "Jordan Hawkins",
      "minutes": 9,
-     "o": -1.311,
+     "o": -1.31,
      "d": -1.815
     },
     {
@@ -481,25 +481,25 @@
     {
      "name": "Patrick Williams",
      "minutes": 9,
-     "o": -2.606,
+     "o": -2.605,
      "d": -0.495
     },
     {
      "name": "Tre Jones",
      "minutes": 8,
-     "o": 0.544,
+     "o": 0.545,
      "d": -0.545
     },
     {
      "name": "Isaac Okoro",
      "minutes": 8,
-     "o": -0.711,
+     "o": -0.71,
      "d": -1.26
     },
     {
      "name": "Orlando Robinson",
      "minutes": 5,
-     "o": -2.481,
+     "o": -2.48,
      "d": 0.165
     },
     {
@@ -511,68 +511,68 @@
     {
      "name": "Zach Collins",
      "minutes": 4,
-     "o": -1.931,
+     "o": -1.93,
      "d": 0.62
     }
    ]
   },
   "CLE": {
-   "off": 3.248,
+   "off": 3.249,
    "def": -0.333,
-   "net": 2.918,
+   "net": 2.92,
    "rotation": [
     {
      "name": "James Harden",
      "minutes": 33,
-     "o": 2.129,
+     "o": 2.13,
      "d": -1.395
     },
     {
      "name": "Donovan Mitchell",
      "minutes": 32,
-     "o": 3.939,
+     "o": 3.94,
      "d": -0.215
     },
     {
      "name": "Evan Mobley",
      "minutes": 31,
-     "o": 0.079,
+     "o": 0.08,
      "d": 1.905
     },
     {
      "name": "Peyton Watson",
      "minutes": 29,
-     "o": -1.476,
+     "o": -1.475,
      "d": -0.485
     },
     {
      "name": "Jarrett Allen",
      "minutes": 29,
-     "o": 0.779,
+     "o": 0.78,
      "d": 1.58
     },
     {
      "name": "Sam Merrill",
      "minutes": 26,
-     "o": 0.644,
+     "o": 0.645,
      "d": -0.24
     },
     {
      "name": "Jaylon Tyson",
      "minutes": 23,
-     "o": -0.596,
+     "o": -0.595,
      "d": -1.005
     },
     {
      "name": "Tyrese Proctor",
      "minutes": 11,
-     "o": 0.099,
+     "o": 0.1,
      "d": -0.905
     },
     {
      "name": "Thomas Bryant",
      "minutes": 10,
-     "o": -0.341,
+     "o": -0.34,
      "d": -0.14
     },
     {
@@ -590,68 +590,68 @@
    ]
   },
   "DAL": {
-   "off": -3.135,
+   "off": -3.134,
    "def": -1.473,
-   "net": -4.614,
+   "net": -4.612,
    "rotation": [
     {
      "name": "Cooper Flagg",
      "minutes": 31,
-     "o": 0.199,
+     "o": 0.2,
      "d": -0.125
     },
     {
      "name": "Kyrie Irving",
      "minutes": 26,
-     "o": 2.674,
+     "o": 2.675,
      "d": -0.645
     },
     {
      "name": "Daniel Gafford",
      "minutes": 23,
-     "o": -0.456,
+     "o": -0.455,
      "d": 1.21
     },
     {
      "name": "PJ Washington",
      "minutes": 22,
-     "o": -1.531,
+     "o": -1.53,
      "d": 0.035
     },
     {
      "name": "Max Christie",
      "minutes": 20,
-     "o": -1.251,
+     "o": -1.25,
      "d": -0.65
     },
     {
      "name": "Naji Marshall",
      "minutes": 19,
-     "o": -0.811,
+     "o": -0.81,
      "d": -0.54
     },
     {
      "name": "Zaccharie Risacher",
      "minutes": 19,
-     "o": -1.421,
+     "o": -1.42,
      "d": -0.605
     },
     {
      "name": "Walter Clayton Jr.",
      "minutes": 17,
-     "o": -0.926,
+     "o": -0.925,
      "d": -1.73
     },
     {
      "name": "Santi Aldama",
      "minutes": 17,
-     "o": 0.104,
+     "o": 0.105,
      "d": -0.28
     },
     {
      "name": "Caleb Martin",
      "minutes": 14,
-     "o": -2.851,
+     "o": -2.85,
      "d": 0.41
     },
     {
@@ -669,190 +669,190 @@
     {
      "name": "Dereck Lively II",
      "minutes": 6,
-     "o": -0.096,
+     "o": -0.095,
      "d": 1.585
     },
     {
      "name": "Marcus Sasser",
      "minutes": 5,
-     "o": -1.056,
+     "o": -1.055,
      "d": -0.41
     }
    ]
   },
   "DEN": {
-   "off": 5.307,
+   "off": 5.308,
    "def": -1.135,
-   "net": 4.184,
+   "net": 4.186,
    "rotation": [
     {
      "name": "Nikola Jokic",
      "minutes": 33,
-     "o": 5.244,
+     "o": 5.245,
      "d": 2.46
     },
     {
      "name": "Jamal Murray",
      "minutes": 32,
-     "o": 3.319,
+     "o": 3.32,
      "d": -1.32
     },
     {
      "name": "Cameron Johnson",
      "minutes": 30,
-     "o": 0.944,
+     "o": 0.945,
      "d": -0.315
     },
     {
      "name": "Aaron Gordon",
      "minutes": 30,
-     "o": 1.374,
+     "o": 1.375,
      "d": 0.21
     },
     {
      "name": "Christian Braun",
      "minutes": 27,
-     "o": -0.081,
+     "o": -0.08,
      "d": 0.075
     },
     {
      "name": "DeMar DeRozan",
      "minutes": 22,
-     "o": -0.411,
+     "o": -0.41,
      "d": -2.06
     },
     {
      "name": "Spencer Jones",
      "minutes": 22,
-     "o": -2.186,
+     "o": -2.185,
      "d": -0.165
     },
     {
      "name": "Tyus Jones",
      "minutes": 12,
-     "o": -1.306,
+     "o": -1.305,
      "d": -1.145
     },
     {
      "name": "Julian Strawther",
      "minutes": 12,
-     "o": -1.166,
+     "o": -1.165,
      "d": -1.05
     },
     {
      "name": "Marvin Bagley III",
      "minutes": 10,
-     "o": -0.141,
+     "o": -0.14,
      "d": -0.335
     },
     {
      "name": "Cam Whitmore",
      "minutes": 5,
-     "o": -0.566,
+     "o": -0.565,
      "d": -1.35
     },
     {
      "name": "DaRon Holmes II",
      "minutes": 5,
-     "o": -0.791,
+     "o": -0.79,
      "d": -0.6
     }
    ]
   },
   "DET": {
    "off": 1.598,
-   "def": 2.858,
-   "net": 4.465,
+   "def": 2.859,
+   "net": 4.467,
    "rotation": [
     {
      "name": "Cade Cunningham",
      "minutes": 33,
-     "o": 3.039,
+     "o": 3.04,
      "d": 0.585
     },
     {
      "name": "Ausar Thompson",
      "minutes": 29,
-     "o": -0.666,
+     "o": -0.665,
      "d": 2.22
     },
     {
      "name": "Jalen Duren",
      "minutes": 29,
-     "o": 1.394,
+     "o": 1.395,
      "d": 0.53
     },
     {
      "name": "John Collins",
      "minutes": 24,
-     "o": -0.811,
+     "o": -0.81,
      "d": 0.11
     },
     {
      "name": "Duncan Robinson",
      "minutes": 22,
-     "o": 0.904,
+     "o": 0.905,
      "d": -0.565
     },
     {
      "name": "Isaiah Joe",
      "minutes": 19,
-     "o": 1.139,
+     "o": 1.14,
      "d": -0.025
     },
     {
      "name": "Paul Reed",
      "minutes": 18,
-     "o": 0.219,
+     "o": 0.22,
      "d": 1.98
     },
     {
      "name": "Daniss Jenkins",
      "minutes": 17,
-     "o": -1.106,
+     "o": -1.105,
      "d": -0.255
     },
     {
      "name": "Kevin Huerter",
      "minutes": 17,
-     "o": 0.069,
+     "o": 0.07,
      "d": 0.09
     },
     {
      "name": "Ron Holland II",
      "minutes": 16,
-     "o": -2.081,
+     "o": -2.08,
      "d": 1.38
     },
     {
      "name": "Taurean Prince",
      "minutes": 10,
-     "o": -1.566,
+     "o": -1.565,
      "d": -1.055
     },
     {
      "name": "Javonte Green",
      "minutes": 6,
-     "o": -1.211,
+     "o": -1.21,
      "d": 1.325
     }
    ]
   },
   "GSW": {
-   "off": -0.018,
-   "def": 0.973,
-   "net": 0.948,
+   "off": -0.017,
+   "def": 0.974,
+   "net": 0.949,
    "rotation": [
     {
      "name": "Stephen Curry",
      "minutes": 30,
-     "o": 4.189,
+     "o": 4.19,
      "d": -1.78
     },
     {
      "name": "Brandin Podziemski",
      "minutes": 30,
-     "o": 0.299,
+     "o": 0.3,
      "d": 0.82
     },
     {
@@ -864,183 +864,183 @@
     {
      "name": "Draymond Green",
      "minutes": 27,
-     "o": -2.976,
+     "o": -2.975,
      "d": 2.045
     },
     {
      "name": "Gui Santos",
      "minutes": 25,
-     "o": 0.334,
+     "o": 0.335,
      "d": 0.35
     },
     {
      "name": "De'Anthony Melton",
      "minutes": 22,
-     "o": -0.266,
+     "o": -0.265,
      "d": 0.54
     },
     {
      "name": "Kristaps Porzingis",
      "minutes": 20,
-     "o": 0.339,
+     "o": 0.34,
      "d": 1.125
     },
     {
      "name": "Al Horford",
      "minutes": 17,
-     "o": -1.656,
+     "o": -1.655,
      "d": 0.11
     },
     {
      "name": "Gary Payton II",
      "minutes": 13,
-     "o": -1.191,
+     "o": -1.19,
      "d": 0.015
     },
     {
      "name": "Will Richard",
      "minutes": 10,
-     "o": -0.831,
+     "o": -0.83,
      "d": 0.1
     },
     {
      "name": "Malevy Leons",
      "minutes": 8,
-     "o": -1.866,
+     "o": -1.865,
      "d": -0.52
     },
     {
      "name": "Georges Niang",
      "minutes": 5,
-     "o": -1.101,
+     "o": -1.1,
      "d": -1.07
     },
     {
      "name": "Charles Bassey",
      "minutes": 5,
-     "o": -0.921,
+     "o": -0.92,
      "d": 0.18
     },
     {
      "name": "Brandon Williams",
      "minutes": 1,
-     "o": 0.379,
+     "o": 0.38,
      "d": -1.125
     }
    ]
   },
   "HOU": {
-   "off": 2.066,
-   "def": 3.143,
-   "net": 5.206,
+   "off": 2.067,
+   "def": 3.144,
+   "net": 5.208,
    "rotation": [
     {
      "name": "Amen Thompson",
      "minutes": 33,
-     "o": 0.689,
+     "o": 0.69,
      "d": 0.825
     },
     {
      "name": "Kevin Durant",
      "minutes": 31,
-     "o": 2.109,
+     "o": 2.11,
      "d": -0.46
     },
     {
      "name": "Alperen Sengun",
      "minutes": 30,
-     "o": 1.504,
+     "o": 1.505,
      "d": 0.795
     },
     {
      "name": "Jabari Smith Jr.",
      "minutes": 29,
-     "o": -0.206,
+     "o": -0.205,
      "d": 0.28
     },
     {
      "name": "Fred VanVleet",
      "minutes": 25,
-     "o": 0.194,
+     "o": 0.195,
      "d": 1.06
     },
     {
      "name": "Tari Eason",
      "minutes": 24,
-     "o": -0.316,
+     "o": -0.315,
      "d": 1.115
     },
     {
      "name": "Reed Sheppard",
      "minutes": 23,
-     "o": 0.104,
+     "o": 0.105,
      "d": 0.025
     },
     {
      "name": "Marcus Smart",
      "minutes": 21,
-     "o": -0.676,
+     "o": -0.675,
      "d": 1.365
     },
     {
      "name": "Steven Adams",
      "minutes": 15,
-     "o": -0.731,
+     "o": -0.73,
      "d": 1.95
     },
     {
      "name": "Bogdan Bogdanovic",
      "minutes": 9,
-     "o": -0.636,
+     "o": -0.635,
      "d": -0.21
     }
    ]
   },
   "IND": {
-   "off": -1.201,
-   "def": -1.756,
-   "net": -2.955,
+   "off": -1.2,
+   "def": -1.755,
+   "net": -2.954,
    "rotation": [
     {
      "name": "Andrew Nembhard",
      "minutes": 26,
-     "o": -0.591,
+     "o": -0.59,
      "d": -1.05
     },
     {
      "name": "Tyrese Haliburton",
      "minutes": 26,
-     "o": 3.494,
+     "o": 3.495,
      "d": -0.315
     },
     {
      "name": "Pascal Siakam",
      "minutes": 26,
-     "o": 0.949,
+     "o": 0.95,
      "d": -0.095
     },
     {
      "name": "Ivica Zubac",
      "minutes": 24,
-     "o": -0.691,
+     "o": -0.69,
      "d": 0.89
     },
     {
      "name": "Aaron Nesmith",
      "minutes": 23,
-     "o": 0.164,
+     "o": 0.165,
      "d": -0.705
     },
     {
      "name": "Kelly Oubre Jr.",
      "minutes": 20,
-     "o": -0.791,
+     "o": -0.79,
      "d": -0.905
     },
     {
      "name": "T.J. McConnell",
      "minutes": 12,
-     "o": -0.741,
+     "o": -0.74,
      "d": -0.41
     },
     {
@@ -1052,80 +1052,80 @@
     {
      "name": "Obi Toppin",
      "minutes": 12,
-     "o": 1.234,
+     "o": 1.235,
      "d": -1.075
     },
     {
      "name": "Larry Nance Jr.",
      "minutes": 12,
-     "o": -3.216,
+     "o": -3.215,
      "d": 0.945
     },
     {
      "name": "Jay Huff",
      "minutes": 11,
-     "o": -1.541,
+     "o": -1.54,
      "d": 0.79
     },
     {
      "name": "Johnny Furphy",
      "minutes": 10,
-     "o": -1.576,
+     "o": -1.575,
      "d": 0.24
     },
     {
      "name": "Kobe Brown",
      "minutes": 10,
-     "o": -1.111,
+     "o": -1.11,
      "d": -1.65
     },
     {
      "name": "Ben Sheppard",
      "minutes": 8,
-     "o": -1.246,
+     "o": -1.245,
      "d": -0.84
     },
     {
      "name": "Jarace Walker",
      "minutes": 8,
-     "o": -2.301,
+     "o": -2.3,
      "d": -0.93
     }
    ]
   },
   "LAC": {
-   "off": -2.683,
-   "def": -2.381,
-   "net": -5.068,
+   "off": -2.682,
+   "def": -2.38,
+   "net": -5.067,
    "rotation": [
     {
      "name": "Darius Garland",
      "minutes": 32,
-     "o": 2.259,
+     "o": 2.26,
      "d": -1.775
     },
     {
      "name": "Derrick Jones Jr.",
      "minutes": 27,
-     "o": -0.331,
+     "o": -0.33,
      "d": 0.685
     },
     {
      "name": "Rui Hachimura",
      "minutes": 24,
-     "o": -0.696,
+     "o": -0.695,
      "d": -0.895
     },
     {
      "name": "Bradley Beal",
      "minutes": 22,
-     "o": -1.141,
+     "o": -1.14,
      "d": -1.44
     },
     {
      "name": "Jordan Miller",
      "minutes": 22,
-     "o": -0.131,
+     "o": -0.13,
      "d": -1.195
     },
     {
@@ -1137,37 +1137,37 @@
     {
      "name": "Brook Lopez",
      "minutes": 17,
-     "o": -1.991,
+     "o": -1.99,
      "d": 1.08
     },
     {
      "name": "Kris Dunn",
      "minutes": 16,
-     "o": -1.201,
+     "o": -1.2,
      "d": 0.85
     },
     {
      "name": "Cameron Christie",
      "minutes": 14,
-     "o": -1.866,
+     "o": -1.865,
      "d": -0.155
     },
     {
      "name": "Gradey Dick",
      "minutes": 13,
-     "o": -1.566,
+     "o": -1.565,
      "d": -0.67
     },
     {
      "name": "Kobe Sanders",
      "minutes": 13,
-     "o": -1.136,
+     "o": -1.135,
      "d": -0.405
     },
     {
      "name": "Isaiah Jackson",
      "minutes": 13,
-     "o": -0.376,
+     "o": -0.375,
      "d": 0.06
     },
     {
@@ -1179,68 +1179,68 @@
    ]
   },
   "LAL": {
-   "off": 2.647,
-   "def": 0.789,
-   "net": 3.436,
+   "off": 2.648,
+   "def": 0.79,
+   "net": 3.437,
    "rotation": [
     {
      "name": "Austin Reaves",
      "minutes": 34,
-     "o": 2.254,
+     "o": 2.255,
      "d": -0.595
     },
     {
      "name": "Luka Doncic",
      "minutes": 33,
-     "o": 4.839,
+     "o": 4.84,
      "d": -0.005
     },
     {
      "name": "Walker Kessler",
      "minutes": 31,
-     "o": 0.129,
+     "o": 0.13,
      "d": 1.27
     },
     {
      "name": "Quentin Grimes",
      "minutes": 26,
-     "o": -0.606,
+     "o": -0.605,
      "d": -0.565
     },
     {
      "name": "Sandro Mamukelashvili",
      "minutes": 24,
-     "o": 0.699,
+     "o": 0.7,
      "d": 0.06
     },
     {
      "name": "Ziaire Williams",
      "minutes": 19,
-     "o": -1.391,
+     "o": -1.39,
      "d": 0.03
     },
     {
      "name": "Collin Sexton",
      "minutes": 17,
-     "o": -0.056,
+     "o": -0.055,
      "d": -1.13
     },
     {
      "name": "Matisse Thybulle",
      "minutes": 17,
-     "o": -1.431,
+     "o": -1.43,
      "d": 2.065
     },
     {
      "name": "Jake LaRavia",
      "minutes": 14,
-     "o": -1.261,
+     "o": -1.26,
      "d": 0.42
     },
     {
      "name": "Kevon Looney",
      "minutes": 9,
-     "o": -1.441,
+     "o": -1.44,
      "d": 0.395
     },
     {
@@ -1252,26 +1252,26 @@
     {
      "name": "Jarred Vanderbilt",
      "minutes": 8,
-     "o": -1.431,
+     "o": -1.43,
      "d": 1.125
     }
    ]
   },
   "MEM": {
-   "off": -0.61,
+   "off": -0.609,
    "def": -0.747,
-   "net": -1.363,
+   "net": -1.362,
    "rotation": [
     {
      "name": "Cedric Coward",
      "minutes": 30,
-     "o": 0.664,
+     "o": 0.665,
      "d": 0.125
     },
     {
      "name": "Ty Jerome",
      "minutes": 27,
-     "o": 2.549,
+     "o": 2.55,
      "d": -0.975
     },
     {
@@ -1283,55 +1283,55 @@
     {
      "name": "Zach Edey",
      "minutes": 24,
-     "o": -0.816,
+     "o": -0.815,
      "d": 1.44
     },
     {
      "name": "Scotty Pippen Jr.",
      "minutes": 22,
-     "o": -0.886,
+     "o": -0.885,
      "d": 0.275
     },
     {
      "name": "Jaylen Wells",
      "minutes": 21,
-     "o": 0.459,
+     "o": 0.46,
      "d": -1.305
     },
     {
      "name": "Jerami Grant",
      "minutes": 17,
-     "o": -1.091,
+     "o": -1.09,
      "d": -0.78
     },
     {
      "name": "Isaiah Stewart",
      "minutes": 17,
-     "o": -1.871,
+     "o": -1.87,
      "d": 0.945
     },
     {
      "name": "Cam Spencer",
      "minutes": 16,
-     "o": 0.944,
+     "o": 0.945,
      "d": -1.235
     },
     {
      "name": "Quinten Post",
      "minutes": 13,
-     "o": -1.116,
+     "o": -1.115,
      "d": 0.41
     },
     {
      "name": "Olivier-Maxence Prosper",
      "minutes": 9,
-     "o": -0.641,
+     "o": -0.64,
      "d": -0.905
     },
     {
      "name": "Taylor Hendricks",
      "minutes": 9,
-     "o": -0.336,
+     "o": -0.335,
      "d": -0.16
     },
     {
@@ -1343,123 +1343,123 @@
    ]
   },
   "MIA": {
-   "off": 0.326,
-   "def": 0.338,
-   "net": 0.668,
+   "off": 0.327,
+   "def": 0.339,
+   "net": 0.669,
    "rotation": [
     {
      "name": "Bam Adebayo",
      "minutes": 32,
-     "o": 1.199,
+     "o": 1.2,
      "d": 2.095
     },
     {
      "name": "Giannis Antetokounmpo",
      "minutes": 31,
-     "o": 3.034,
+     "o": 3.035,
      "d": 1.525
     },
     {
      "name": "Andrew Wiggins",
      "minutes": 28,
-     "o": -1.051,
+     "o": -1.05,
      "d": -0.765
     },
     {
      "name": "Davion Mitchell",
      "minutes": 27,
-     "o": 0.389,
+     "o": 0.39,
      "d": 0.22
     },
     {
      "name": "Pelle Larsson",
      "minutes": 27,
-     "o": -0.491,
+     "o": -0.49,
      "d": -0.22
     },
     {
      "name": "Tim Hardaway Jr.",
      "minutes": 18,
-     "o": -0.421,
+     "o": -0.42,
      "d": -1.52
     },
     {
      "name": "Klay Thompson",
      "minutes": 18,
-     "o": -0.841,
+     "o": -0.84,
      "d": -1.24
     },
     {
      "name": "Nikola Jovic",
      "minutes": 18,
-     "o": -1.221,
+     "o": -1.22,
      "d": 0.265
     },
     {
      "name": "Bobby Portis",
      "minutes": 18,
-     "o": -0.801,
+     "o": -0.8,
      "d": -0.99
     },
     {
      "name": "Simone Fontecchio",
      "minutes": 13,
-     "o": -0.406,
+     "o": -0.405,
      "d": -0.205
     },
     {
      "name": "Nick Richards",
      "minutes": 10,
-     "o": -2.331,
+     "o": -2.33,
      "d": -0.735
     }
    ]
   },
   "MIL": {
-   "off": -2.703,
+   "off": -2.702,
    "def": -2.96,
-   "net": -5.665,
+   "net": -5.664,
    "rotation": [
     {
      "name": "Tyler Herro",
      "minutes": 28,
-     "o": 1.119,
+     "o": 1.12,
      "d": -1.505
     },
     {
      "name": "Ryan Rollins",
      "minutes": 26,
-     "o": 0.049,
+     "o": 0.05,
      "d": -0.225
     },
     {
      "name": "Jaime Jaquez Jr.",
      "minutes": 24,
-     "o": -0.371,
+     "o": -0.37,
      "d": -0.77
     },
     {
      "name": "Myles Turner",
      "minutes": 24,
-     "o": -1.301,
+     "o": -1.3,
      "d": 1.065
     },
     {
      "name": "Kel'el Ware",
      "minutes": 24,
-     "o": -0.556,
+     "o": -0.555,
      "d": -0.68
     },
     {
      "name": "Kasparas Jakucionis",
      "minutes": 18,
-     "o": 0.479,
+     "o": 0.48,
      "d": -0.305
     },
     {
      "name": "Kyle Kuzma",
      "minutes": 18,
-     "o": -2.536,
+     "o": -2.535,
      "d": -1.585
     },
     {
@@ -1471,31 +1471,31 @@
     {
      "name": "AJ Green",
      "minutes": 17,
-     "o": 0.029,
+     "o": 0.03,
      "d": -0.26
     },
     {
      "name": "Pete Nance",
      "minutes": 16,
-     "o": -1.256,
+     "o": -1.255,
      "d": -0.575
     },
     {
      "name": "Gary Trent Jr.",
      "minutes": 10,
-     "o": -1.021,
+     "o": -1.02,
      "d": -2.065
     },
     {
      "name": "Ousmane Dieng",
      "minutes": 9,
-     "o": -2.131,
+     "o": -2.13,
      "d": -0.835
     },
     {
      "name": "Caris LeVert",
      "minutes": 5,
-     "o": -2.011,
+     "o": -2.01,
      "d": 0.17
     },
     {
@@ -1507,311 +1507,311 @@
    ]
   },
   "MIN": {
-   "off": 0.474,
+   "off": 0.475,
    "def": 0.915,
-   "net": 1.395,
+   "net": 1.396,
    "rotation": [
     {
      "name": "Anthony Edwards",
      "minutes": 32,
-     "o": 3.574,
+     "o": 3.575,
      "d": -0.555
     },
     {
      "name": "LaMelo Ball",
      "minutes": 30,
-     "o": 3.254,
+     "o": 3.255,
      "d": -0.415
     },
     {
      "name": "Jaden McDaniels",
      "minutes": 29,
-     "o": -0.726,
+     "o": -0.725,
      "d": 1.09
     },
     {
      "name": "Rudy Gobert",
      "minutes": 29,
-     "o": -1.826,
+     "o": -1.825,
      "d": 3.595
     },
     {
      "name": "Ayo Dosunmu",
      "minutes": 27,
-     "o": -0.766,
+     "o": -0.765,
      "d": -0.38
     },
     {
      "name": "Jonathan Kuminga",
      "minutes": 22,
-     "o": -1.016,
+     "o": -1.015,
      "d": 0.44
     },
     {
      "name": "Joan Beringer",
      "minutes": 18,
-     "o": -0.346,
+     "o": -0.345,
      "d": -0.3
     },
     {
      "name": "Terrence Shannon Jr.",
      "minutes": 16,
-     "o": -0.716,
+     "o": -0.715,
      "d": -1.795
     },
     {
      "name": "Cody Williams",
      "minutes": 15,
-     "o": -2.696,
+     "o": -2.695,
      "d": -1.24
     },
     {
      "name": "Jaylen Clark",
      "minutes": 9,
-     "o": -0.701,
+     "o": -0.7,
      "d": 0.59
     },
     {
      "name": "Nah'Shon Hyland",
      "minutes": 8,
-     "o": 0.414,
+     "o": 0.415,
      "d": -0.675
     },
     {
      "name": "Johni Broome",
      "minutes": 5,
-     "o": -2.836,
+     "o": -2.835,
      "d": -0.89
     }
    ]
   },
   "NOP": {
-   "off": -0.679,
+   "off": -0.678,
    "def": -3.485,
-   "net": -4.161,
+   "net": -4.16,
    "rotation": [
     {
      "name": "Trey Murphy III",
      "minutes": 31,
-     "o": 0.664,
+     "o": 0.665,
      "d": -0.68
     },
     {
      "name": "Zion Williamson",
      "minutes": 28,
-     "o": 1.659,
+     "o": 1.66,
      "d": -0.735
     },
     {
      "name": "Dejounte Murray",
      "minutes": 27,
-     "o": 0.024,
+     "o": 0.025,
      "d": -0.555
     },
     {
      "name": "Jeremiah Fears",
      "minutes": 26,
-     "o": -0.506,
+     "o": -0.505,
      "d": -1.53
     },
     {
      "name": "Saddiq Bey",
      "minutes": 26,
-     "o": 0.379,
+     "o": 0.38,
      "d": -1.515
     },
     {
      "name": "Herb Jones",
      "minutes": 22,
-     "o": -0.881,
+     "o": -0.88,
      "d": 1.565
     },
     {
      "name": "Derik Queen",
      "minutes": 22,
-     "o": -0.536,
+     "o": -0.535,
      "d": -0.825
     },
     {
      "name": "Yves Missi",
      "minutes": 18,
-     "o": -0.806,
+     "o": -0.805,
      "d": -0.23
     },
     {
      "name": "Bennedict Mathurin",
      "minutes": 16,
-     "o": -1.501,
+     "o": -1.5,
      "d": -1.065
     },
     {
      "name": "Jordan Poole",
      "minutes": 13,
-     "o": -0.691,
+     "o": -0.69,
      "d": -1.075
     },
     {
      "name": "AJ Johnson",
      "minutes": 7,
-     "o": -2.266,
+     "o": -2.265,
      "d": -1.56
     },
     {
      "name": "Karlo Matkovic",
      "minutes": 4,
-     "o": -1.391,
+     "o": -1.39,
      "d": 0.555
     }
    ]
   },
   "NYK": {
-   "off": 2.453,
+   "off": 2.454,
    "def": 1.155,
-   "net": 3.606,
+   "net": 3.607,
    "rotation": [
     {
      "name": "Jalen Brunson",
      "minutes": 31,
-     "o": 3.824,
+     "o": 3.825,
      "d": -1.295
     },
     {
      "name": "Mikal Bridges",
      "minutes": 31,
-     "o": -0.251,
+     "o": -0.25,
      "d": 0.105
     },
     {
      "name": "OG Anunoby",
      "minutes": 31,
-     "o": 0.879,
+     "o": 0.88,
      "d": 1.61
     },
     {
      "name": "Karl-Anthony Towns",
      "minutes": 30,
-     "o": 2.384,
+     "o": 2.385,
      "d": 0.995
     },
     {
      "name": "Josh Hart",
      "minutes": 28,
-     "o": -0.726,
+     "o": -0.725,
      "d": 0.485
     },
     {
      "name": "Miles McBride",
      "minutes": 16,
-     "o": 0.414,
+     "o": 0.415,
      "d": 0.82
     },
     {
      "name": "Landry Shamet",
      "minutes": 16,
-     "o": -0.226,
+     "o": -0.225,
      "d": 0.38
     },
     {
      "name": "Andre Drummond",
      "minutes": 14,
-     "o": -2.486,
+     "o": -2.485,
      "d": 0.68
     },
     {
      "name": "Jordan Clarkson",
      "minutes": 13,
-     "o": -0.816,
+     "o": -0.815,
      "d": -1.22
     },
     {
      "name": "Jose Alvarado",
      "minutes": 11,
-     "o": -0.771,
+     "o": -0.77,
      "d": 1.065
     },
     {
      "name": "Dalton Knecht",
      "minutes": 10,
-     "o": -0.531,
+     "o": -0.53,
      "d": -1.645
     },
     {
      "name": "Mohamed Diawara",
      "minutes": 7,
-     "o": -1.866,
+     "o": -1.865,
      "d": -0.595
     },
     {
      "name": "James Wiseman",
      "minutes": 2,
-     "o": -2.656,
+     "o": -2.655,
      "d": -0.54
     }
    ]
   },
   "OKC": {
-   "off": 2.189,
-   "def": 6.077,
-   "net": 8.26,
+   "off": 2.145,
+   "def": 6.059,
+   "net": 8.197,
    "rotation": [
     {
      "name": "Shai Gilgeous-Alexander",
      "minutes": 30,
-     "o": 5.359,
+     "o": 5.36,
      "d": 1.16
     },
     {
      "name": "Chet Holmgren",
      "minutes": 24,
-     "o": 1.024,
+     "o": 1.025,
      "d": 2.72
     },
     {
      "name": "Cason Wallace",
      "minutes": 23,
-     "o": -0.396,
+     "o": -0.395,
      "d": 1.415
-    },
-    {
-     "name": "Ajay Mitchell",
-     "minutes": 23,
-     "o": 0.479,
-     "d": 0.9
     },
     {
      "name": "Jalen Williams",
      "minutes": 23,
-     "o": 0.519,
+     "o": 0.52,
      "d": 0.985
+    },
+    {
+     "name": "Ajay Mitchell",
+     "minutes": 22,
+     "o": 0.48,
+     "d": 0.9
     },
     {
      "name": "Isaiah Hartenstein",
      "minutes": 21,
-     "o": 0.424,
+     "o": 0.425,
      "d": 2.7
     },
     {
      "name": "Jared McCain",
      "minutes": 19,
-     "o": -0.041,
+     "o": -0.04,
      "d": -0.905
     },
     {
      "name": "Alex Caruso",
      "minutes": 15,
-     "o": -0.676,
+     "o": -0.675,
      "d": 3.145
     },
     {
      "name": "Micah Peavy",
      "minutes": 14,
-     "o": -2.171,
+     "o": -2.17,
      "d": 0.01
     },
     {
      "name": "Jaylin Williams",
      "minutes": 14,
-     "o": -0.791,
+     "o": -0.79,
      "d": 1.56
     },
     {
@@ -1821,16 +1821,16 @@
      "d": 0.706
     },
     {
-     "name": "Kenrich Williams",
+     "name": "Nique Clifford",
      "minutes": 10,
-     "o": -1.006,
-     "d": 0.57
+     "o": -1.705,
+     "d": -0.0
     },
     {
-     "name": "Nique Clifford",
-     "minutes": 9,
-     "o": -1.706,
-     "d": -0.0
+     "name": "Kenrich Williams",
+     "minutes": 10,
+     "o": -1.005,
+     "d": 0.57
     },
     {
      "name": "Bennett Stirtz",
@@ -1843,133 +1843,133 @@
   "ORL": {
    "off": -0.828,
    "def": 3.025,
-   "net": 2.195,
+   "net": 2.197,
    "rotation": [
     {
      "name": "Paolo Banchero",
      "minutes": 33,
-     "o": 0.704,
+     "o": 0.705,
      "d": -0.72
     },
     {
      "name": "Desmond Bane",
      "minutes": 29,
-     "o": 0.964,
+     "o": 0.965,
      "d": -0.31
     },
     {
      "name": "Franz Wagner",
      "minutes": 29,
-     "o": 1.929,
+     "o": 1.93,
      "d": 0.76
     },
     {
      "name": "Wendell Carter Jr.",
      "minutes": 28,
-     "o": -1.111,
+     "o": -1.11,
      "d": 1.855
     },
     {
      "name": "Anthony Black",
      "minutes": 26,
-     "o": -1.281,
+     "o": -1.28,
      "d": 1.095
     },
     {
      "name": "Jalen Suggs",
      "minutes": 25,
-     "o": -0.556,
+     "o": -0.555,
      "d": 1.84
     },
     {
      "name": "Tristan Da Silva",
      "minutes": 20,
-     "o": -0.606,
+     "o": -0.605,
      "d": -0.095
     },
     {
      "name": "Goga Bitadze",
      "minutes": 13,
-     "o": -0.306,
+     "o": -0.305,
      "d": 1.755
     },
     {
      "name": "Nikola Vucevic",
      "minutes": 12,
-     "o": -1.776,
+     "o": -1.775,
      "d": -0.02
     },
     {
      "name": "Jase Richardson",
      "minutes": 9,
-     "o": -1.061,
+     "o": -1.06,
      "d": -1.085
     },
     {
      "name": "Jonathan Isaac",
      "minutes": 9,
-     "o": -1.726,
+     "o": -1.725,
      "d": 2.955
     },
     {
      "name": "Jevon Carter",
      "minutes": 7,
-     "o": -1.316,
+     "o": -1.315,
      "d": -0.585
     }
    ]
   },
   "PHI": {
-   "off": 2.19,
-   "def": -1.34,
-   "net": 0.852,
+   "off": 2.191,
+   "def": -1.339,
+   "net": 0.853,
    "rotation": [
     {
      "name": "Tyrese Maxey",
      "minutes": 34,
-     "o": 2.304,
+     "o": 2.305,
      "d": -0.735
     },
     {
      "name": "VJ Edgecombe",
      "minutes": 32,
-     "o": 0.159,
+     "o": 0.16,
      "d": -0.11
     },
     {
      "name": "Jaylen Brown",
      "minutes": 32,
-     "o": 1.379,
+     "o": 1.38,
      "d": -0.895
     },
     {
      "name": "Joel Embiid",
      "minutes": 28,
-     "o": 1.429,
+     "o": 1.43,
      "d": 1.09
     },
     {
      "name": "LeBron James",
      "minutes": 27,
-     "o": 1.114,
+     "o": 1.115,
      "d": -0.455
     },
     {
      "name": "Anfernee Simons",
      "minutes": 22,
-     "o": 0.044,
+     "o": 0.045,
      "d": -1.94
     },
     {
      "name": "Kentavious Caldwell-Pope",
      "minutes": 20,
-     "o": -1.766,
+     "o": -1.765,
      "d": 0.19
     },
     {
      "name": "Dean Wade",
      "minutes": 15,
-     "o": -0.836,
+     "o": -0.835,
      "d": 1.105
     },
     {
@@ -1981,184 +1981,184 @@
     {
      "name": "Dominick Barlow",
      "minutes": 8,
-     "o": -1.211,
+     "o": -1.21,
      "d": 0.975
     },
     {
      "name": "Adem Bona",
      "minutes": 7,
-     "o": -1.826,
+     "o": -1.825,
      "d": 0.895
     },
     {
      "name": "Justin Edwards",
      "minutes": 5,
-     "o": -1.131,
+     "o": -1.13,
      "d": -1.38
     }
    ]
   },
   "PHX": {
-   "off": -0.145,
+   "off": -0.144,
    "def": -1.134,
-   "net": -1.277,
+   "net": -1.276,
    "rotation": [
     {
      "name": "Devin Booker",
      "minutes": 31,
-     "o": 2.704,
+     "o": 2.705,
      "d": -1.135
     },
     {
      "name": "Miles Bridges",
      "minutes": 28,
-     "o": 0.134,
+     "o": 0.135,
      "d": -0.86
     },
     {
      "name": "Dillon Brooks",
      "minutes": 27,
-     "o": -0.451,
+     "o": -0.45,
      "d": -0.745
     },
     {
      "name": "Jalen Green",
      "minutes": 26,
-     "o": 0.269,
+     "o": 0.27,
      "d": -1.625
     },
     {
      "name": "Oso Ighodaro",
      "minutes": 25,
-     "o": -1.381,
+     "o": -1.38,
      "d": 1.91
     },
     {
      "name": "Collin Gillespie",
      "minutes": 23,
-     "o": 0.664,
+     "o": 0.665,
      "d": 0.475
     },
     {
      "name": "Khaman Maluach",
      "minutes": 21,
-     "o": -1.951,
+     "o": -1.95,
      "d": 0.965
     },
     {
      "name": "Luke Kennard",
      "minutes": 16,
-     "o": 0.729,
+     "o": 0.73,
      "d": -1.105
     },
     {
      "name": "Jordan Goodwin",
      "minutes": 14,
-     "o": -0.316,
+     "o": -0.315,
      "d": 0.83
     },
     {
      "name": "Drew Timme",
      "minutes": 9,
-     "o": -1.926,
+     "o": -1.925,
      "d": -0.665
     },
     {
      "name": "Rasheer Fleming",
      "minutes": 8,
-     "o": -1.161,
+     "o": -1.16,
      "d": 0.365
     },
     {
      "name": "Duop Reath",
      "minutes": 7,
-     "o": -0.861,
+     "o": -0.86,
      "d": -0.37
     },
     {
      "name": "Ryan Dunn",
      "minutes": 5,
-     "o": -1.366,
+     "o": -1.365,
      "d": 0.775
     }
    ]
   },
   "POR": {
-   "off": 2.738,
-   "def": 0.216,
-   "net": 2.967,
+   "off": 2.739,
+   "def": 0.217,
+   "net": 2.968,
    "rotation": [
     {
      "name": "Deni Avdija",
      "minutes": 34,
-     "o": 1.829,
+     "o": 1.83,
      "d": -0.495
     },
     {
      "name": "Toumani Camara",
      "minutes": 31,
-     "o": -0.306,
+     "o": -0.305,
      "d": 0.905
     },
     {
      "name": "Donovan Clingan",
      "minutes": 30,
-     "o": 0.359,
+     "o": 0.36,
      "d": 1.69
     },
     {
      "name": "Damian Lillard",
      "minutes": 29,
-     "o": 2.189,
+     "o": 2.19,
      "d": -1.665
     },
     {
      "name": "Jrue Holiday",
      "minutes": 29,
-     "o": 0.744,
+     "o": 0.745,
      "d": 0.16
     },
     {
      "name": "Ja Morant",
      "minutes": 28,
-     "o": 1.519,
+     "o": 1.52,
      "d": -0.38
     },
     {
      "name": "Scoot Henderson",
      "minutes": 27,
-     "o": -1.381,
+     "o": -1.38,
      "d": -0.92
     },
     {
      "name": "Robert Williams III",
      "minutes": 17,
-     "o": -0.001,
+     "o": -0.0,
      "d": 1.975
     },
     {
      "name": "Vit Krejci",
      "minutes": 10,
-     "o": -0.921,
+     "o": -0.92,
      "d": -0.105
     },
     {
      "name": "Yang Hansen",
      "minutes": 5,
-     "o": -3.251,
+     "o": -3.25,
      "d": -0.205
     }
    ]
   },
   "SAC": {
-   "off": -2.81,
-   "def": -3.059,
-   "net": -5.871,
+   "off": -2.809,
+   "def": -3.058,
+   "net": -5.87,
    "rotation": [
     {
      "name": "Keegan Murray",
      "minutes": 33,
-     "o": -0.511,
+     "o": -0.51,
      "d": 0.215
     },
     {
@@ -2170,55 +2170,55 @@
     {
      "name": "Domantas Sabonis",
      "minutes": 31,
-     "o": -0.356,
+     "o": -0.355,
      "d": 0.005
     },
     {
      "name": "Zach LaVine",
      "minutes": 29,
-     "o": -0.271,
+     "o": -0.27,
      "d": -2.335
     },
     {
      "name": "Maxime Raynaud",
      "minutes": 22,
-     "o": -1.156,
+     "o": -1.155,
      "d": -1.67
     },
     {
      "name": "Malik Monk",
      "minutes": 20,
-     "o": 0.094,
+     "o": 0.095,
      "d": -1.135
     },
     {
      "name": "Dylan Cardwell",
      "minutes": 20,
-     "o": -1.366,
+     "o": -1.365,
      "d": 2.235
     },
     {
      "name": "De'Andre Hunter",
      "minutes": 19,
-     "o": -1.021,
+     "o": -1.02,
      "d": -1.085
     },
     {
      "name": "Precious Achiuwa",
      "minutes": 18,
-     "o": -0.781,
+     "o": -0.78,
      "d": 0.325
     },
     {
      "name": "Mason Plumlee",
      "minutes": 9,
-     "o": -2.396,
+     "o": -2.395,
      "d": 0.93
     },
     {
      "name": "Sean Pedulla",
      "minutes": 4,
-     "o": -1.666,
+     "o": -1.665,
      "d": -1.255
     },
     {
@@ -2230,68 +2230,68 @@
    ]
   },
   "SAS": {
-   "off": 2.911,
+   "off": 2.912,
    "def": 3.742,
-   "net": 6.643,
+   "net": 6.645,
    "rotation": [
     {
      "name": "Victor Wembanyama",
      "minutes": 29,
-     "o": 3.094,
+     "o": 3.095,
      "d": 4.035
     },
     {
      "name": "Stephon Castle",
      "minutes": 28,
-     "o": 0.254,
+     "o": 0.255,
      "d": -0.115
     },
     {
      "name": "Dylan Harper",
      "minutes": 27,
-     "o": 1.214,
+     "o": 1.215,
      "d": 0.85
     },
     {
      "name": "Devin Vassell",
      "minutes": 26,
-     "o": 0.444,
+     "o": 0.445,
      "d": 0.49
     },
     {
      "name": "De'Aaron Fox",
      "minutes": 24,
-     "o": 1.769,
+     "o": 1.77,
      "d": 0.425
     },
     {
      "name": "Julian Champagnie",
      "minutes": 23,
-     "o": 0.579,
+     "o": 0.58,
      "d": 0.52
     },
     {
      "name": "Tobias Harris",
      "minutes": 23,
-     "o": -0.176,
+     "o": -0.175,
      "d": 0.42
     },
     {
      "name": "Keldon Johnson",
      "minutes": 17,
-     "o": -0.121,
+     "o": -0.12,
      "d": -0.27
     },
     {
      "name": "Luke Kornet",
      "minutes": 16,
-     "o": -1.096,
+     "o": -1.095,
      "d": 1.42
     },
     {
      "name": "Carter Bryant",
      "minutes": 14,
-     "o": -2.086,
+     "o": -2.085,
      "d": -0.22
     },
     {
@@ -2303,105 +2303,105 @@
     {
      "name": "Harrison Barnes",
      "minutes": 5,
-     "o": 0.104,
+     "o": 0.105,
      "d": -0.97
     }
    ]
   },
   "TOR": {
-   "off": 1.15,
+   "off": 1.151,
    "def": 2.9,
-   "net": 4.048,
+   "net": 4.049,
    "rotation": [
     {
      "name": "Immanuel Quickley",
      "minutes": 32,
-     "o": 0.914,
+     "o": 0.915,
      "d": 0.255
     },
     {
      "name": "Scottie Barnes",
      "minutes": 32,
-     "o": 0.604,
+     "o": 0.605,
      "d": 1.875
     },
     {
      "name": "Kawhi Leonard",
      "minutes": 30,
-     "o": 3.899,
+     "o": 3.9,
      "d": 0.905
     },
     {
      "name": "R.J. Barrett",
      "minutes": 29,
-     "o": 1.014,
+     "o": 1.015,
      "d": -1.08
     },
     {
      "name": "Collin Murray-Boyles",
      "minutes": 26,
-     "o": -0.866,
+     "o": -0.865,
      "d": 0.89
     },
     {
      "name": "Jakob Poeltl",
      "minutes": 25,
-     "o": -0.601,
+     "o": -0.6,
      "d": 1.83
     },
     {
      "name": "Ja'Kobe Walter",
      "minutes": 24,
-     "o": -0.976,
+     "o": -0.975,
      "d": -0.485
     },
     {
      "name": "Jamal Shead",
      "minutes": 20,
-     "o": -0.906,
+     "o": -0.905,
      "d": 0.37
     },
     {
      "name": "Kyle Anderson",
      "minutes": 15,
-     "o": -3.101,
+     "o": -3.1,
      "d": 1.26
     },
     {
      "name": "Kevin McCullar Jr.",
      "minutes": 7,
-     "o": -2.466,
+     "o": -2.465,
      "d": -0.635
     }
    ]
   },
   "UTA": {
-   "off": -2.799,
+   "off": -2.798,
    "def": -1.079,
-   "net": -3.873,
+   "net": -3.872,
    "rotation": [
     {
      "name": "Lauri Markkanen",
      "minutes": 32,
-     "o": 1.719,
+     "o": 1.72,
      "d": 0.16
     },
     {
      "name": "Keyonte George",
      "minutes": 30,
-     "o": 0.969,
+     "o": 0.97,
      "d": -2.79
     },
     {
      "name": "Jaren Jackson Jr.",
      "minutes": 29,
-     "o": -0.726,
+     "o": -0.725,
      "d": 1.795
     },
     {
      "name": "Ace Bailey",
      "minutes": 27,
-     "o": -1.236,
+     "o": -1.235,
      "d": -1.02
     },
     {
@@ -2413,37 +2413,37 @@
     {
      "name": "Jusuf Nurkic",
      "minutes": 25,
-     "o": -2.346,
+     "o": -2.345,
      "d": 2.145
     },
     {
      "name": "Jaxson Hayes",
      "minutes": 15,
-     "o": -1.121,
+     "o": -1.12,
      "d": 1.095
     },
     {
      "name": "Isaiah Collier",
      "minutes": 11,
-     "o": -1.696,
+     "o": -1.695,
      "d": -1.82
     },
     {
      "name": "Brice Sensabaugh",
      "minutes": 9,
-     "o": 0.154,
+     "o": 0.155,
      "d": -2.255
     },
     {
      "name": "Josh Okogie",
      "minutes": 8,
-     "o": -1.176,
+     "o": -1.175,
      "d": 1.085
     },
     {
      "name": "Kobe Bufkin",
      "minutes": 8,
-     "o": -2.011,
+     "o": -2.01,
      "d": -0.805
     },
     {
@@ -2455,38 +2455,38 @@
     {
      "name": "Kyle Filipowski",
      "minutes": 7,
-     "o": 0.079,
+     "o": 0.08,
      "d": -0.675
     },
     {
      "name": "Josh Green",
      "minutes": 5,
-     "o": -0.966,
+     "o": -0.965,
      "d": 0.505
     }
    ]
   },
   "WAS": {
-   "off": -3.241,
-   "def": -2.817,
-   "net": -6.076,
+   "off": -3.24,
+   "def": -2.816,
+   "net": -6.075,
    "rotation": [
     {
      "name": "Trae Young",
      "minutes": 29,
-     "o": 2.999,
+     "o": 3.0,
      "d": -2.57
     },
     {
      "name": "Anthony Davis",
      "minutes": 29,
-     "o": -0.161,
+     "o": -0.16,
      "d": 1.515
     },
     {
      "name": "Kyshawn George",
      "minutes": 28,
-     "o": -1.056,
+     "o": -1.055,
      "d": -0.125
     },
     {
@@ -2499,48 +2499,48 @@
      "name": "Alex Sarr",
      "minutes": 26,
      "o": -2.107,
-     "d": 1.023
+     "d": 1.024
     },
     {
      "name": "Tre Johnson",
      "minutes": 20,
-     "o": -1.196,
+     "o": -1.195,
      "d": -1.595
     },
     {
      "name": "Bilal Coulibaly",
      "minutes": 20,
-     "o": -1.516,
+     "o": -1.515,
      "d": -0.28
     },
     {
      "name": "Bub Carrington",
      "minutes": 16,
      "o": -2.717,
-     "d": -2.107
+     "d": -2.106
     },
     {
      "name": "Deandre Ayton",
      "minutes": 16,
-     "o": -1.251,
+     "o": -1.25,
      "d": 0.37
     },
     {
      "name": "Justin Champagnie",
      "minutes": 12,
-     "o": 0.434,
+     "o": 0.435,
      "d": -0.5
     },
     {
      "name": "Will Riley",
      "minutes": 10,
-     "o": -1.301,
+     "o": -1.3,
      "d": -2.12
     },
     {
      "name": "Khris Middleton",
      "minutes": 8,
-     "o": -0.946,
+     "o": -0.945,
      "d": -1.11
     }
    ]
