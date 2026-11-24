@@ -272,21 +272,6 @@
       ],
       "cap_holds": [
         {
-          "player": "Gabe Vincent",
-          "category": "cap_hold",
-          "position": "PG",
-          "age": 30.0,
-          "contract_type": "FA",
-          "cap_hit": 21850000,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": "Bird"
-        },
-        {
           "player": "Trent Forrest",
           "category": "cap_hold",
           "position": "PG",
@@ -10373,6 +10358,21 @@
           "rights": null
         },
         {
+          "player": "Gabe Vincent",
+          "category": "active_roster",
+          "position": "PG",
+          "age": 30.0,
+          "contract_type": "FA",
+          "cap_hit": 21850000,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": "Bird"
+        },
+        {
           "player": "Darius Acuff Jr.",
           "category": "active_roster",
           "position": "PG",
@@ -12420,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-23T10:44:03.099775+00:00",
+  "roster_synced_at": "2026-11-24T01:14:30.761684+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
