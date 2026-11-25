@@ -1674,21 +1674,6 @@
           "rights": null
         },
         {
-          "player": "Orlando Robinson",
-          "category": "active_roster",
-          "position": "C",
-          "age": 26,
-          "contract_type": "NBA.com roster",
-          "cap_hit": null,
-          "base_salary": null,
-          "likely_incentives": null,
-          "unlikely_incentives": null,
-          "trade_bonus_proration": null,
-          "guaranteed": null,
-          "qualifying_offer": null,
-          "rights": null
-        },
-        {
           "player": "Buddy Hield",
           "category": "active_roster",
           "position": "SG",
@@ -12420,6 +12405,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-24T01:14:30.761684+00:00",
+  "roster_synced_at": "2026-11-25T10:44:29.982383+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
