@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-25 10:44",
+ "generated": "2026-11-26 10:45",
  "teams": {
   "ATL": {
    "report": "2026-11-22 05:30 PM ET",
@@ -53,7 +53,7 @@
    ]
   },
   "BKN": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -110,7 +110,7 @@
    ]
   },
   "CHA": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -120,7 +120,7 @@
     },
     {
      "name": "Grayson Allen",
-     "status": "Questionable",
+     "status": "Out",
      "reason": "Concussion Protocol"
     },
     {
@@ -130,12 +130,12 @@
     },
     {
      "name": "Sion James",
-     "status": "Probable",
+     "status": "Available",
      "reason": "Injury/Illness - Left Thigh Soreness"
     },
     {
      "name": "Ryan Kalkbrenner",
-     "status": "Doubtful",
+     "status": "Out",
      "reason": "Injury/Illness - Left Hip Soreness/Tightness"
     },
     {
@@ -151,7 +151,7 @@
    ]
   },
   "CHI": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -165,18 +165,13 @@
      "reason": "Injury/Illness - Right Hamstring Strain"
     },
     {
-     "name": "Orlando Robinson",
-     "status": "Out",
-     "reason": "Not With Team"
-    },
-    {
      "name": "Jaylin Sellers",
      "status": "Out",
      "reason": "G League - Two-Way"
     },
     {
      "name": "Jalen Smith",
-     "status": "Questionable",
+     "status": "Out",
      "reason": "Injury/Illness - Gastrointestinal Illness"
     },
     {
@@ -187,7 +182,7 @@
    ]
   },
   "CLE": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -321,7 +316,7 @@
    ]
   },
   "GSW": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -342,7 +337,7 @@
     {
      "name": "Moses Moody",
      "status": "Out",
-     "reason": "Injury/Illness - Left Patellar Tendon"
+     "reason": "Injury/Illness - Left Patellar Tendon Repair/Surgery"
     },
     {
      "name": "Kristaps Porzingis",
@@ -357,7 +352,7 @@
    ]
   },
   "HOU": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -409,7 +404,7 @@
    ]
   },
   "LAC": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -425,7 +420,12 @@
     {
      "name": "Jordan Miller",
      "status": "Out",
-     "reason": "Injury/Illness - Left Rotator Cuff"
+     "reason": "Injury/Illness - Left Rotator Cuff Surgery"
+    },
+    {
+     "name": "Jalen Pickett",
+     "status": "Questionable",
+     "reason": "G League - Two-Way"
     }
    ]
   },
@@ -446,7 +446,7 @@
    ]
   },
   "MEM": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -477,12 +477,12 @@
    ]
   },
   "MIA": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
      "name": "Giannis Antetokounmpo",
-     "status": "Questionable",
+     "status": "Available",
      "reason": "Injury/Illness - Right Groin Tendinitis"
     },
     {
@@ -524,7 +524,7 @@
    ]
   },
   "MIN": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -545,7 +545,7 @@
     {
      "name": "Anthony Edwards",
      "status": "Out",
-     "reason": "Injury/Illness - Right Knee Arthroscopy"
+     "reason": "Injury/Illness - Right Knee"
     },
     {
      "name": "Rocco Zikarsky",
@@ -606,7 +606,7 @@
    ]
   },
   "NYK": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -615,29 +615,34 @@
      "reason": "Injury/Illness - Left Calf Strain"
     },
     {
+     "name": "Jalen Brunson",
+     "status": "Probable",
+     "reason": "Injury/Illness - Illness"
+    },
+    {
      "name": "Jordan Clarkson",
      "status": "Out",
      "reason": "Injury/Illness - Right Plantar Fasciitis"
     },
     {
      "name": "Josh Hart",
-     "status": "Questionable",
+     "status": "Probable",
      "reason": "Injury/Illness - Right Shoulder Sprain"
     },
     {
      "name": "Miles McBride",
-     "status": "Questionable",
+     "status": "Out",
      "reason": "Injury/Illness - Left Adductor Tightness"
     },
     {
      "name": "Karl-Anthony Towns",
-     "status": "Questionable",
+     "status": "Probable",
      "reason": "Injury/Illness - Right Knee Inflammation"
     }
    ]
   },
   "OKC": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -709,12 +714,12 @@
    ]
   },
   "PHI": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
      "name": "Joel Embiid",
-     "status": "Doubtful",
+     "status": "Out",
      "reason": "Injury/Illness - Illness"
     },
     {
@@ -725,7 +730,7 @@
    ]
   },
   "PHX": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -736,7 +741,7 @@
    ]
   },
   "POR": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
@@ -762,9 +767,14 @@
    ]
   },
   "SAC": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
+    {
+     "name": "Zach LaVine",
+     "status": "Out",
+     "reason": "Injury/Illness - Right Knee Soreness"
+    },
     {
      "name": "Jonathan Mogbo",
      "status": "Out",
@@ -783,7 +793,7 @@
    ]
   },
   "SAS": {
-   "report": "2026-11-25 05:30 AM ET",
+   "report": "2026-11-25 05:30 PM ET",
    "game_date": "2026-11-25",
    "players": [
     {
