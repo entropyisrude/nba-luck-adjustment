@@ -8706,6 +8706,21 @@
           "rights": null
         },
         {
+          "player": "Kevin Porter Jr.",
+          "category": "active_roster",
+          "position": "SG",
+          "age": 26,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jamal Cain",
           "category": "active_roster",
           "position": "SF",
@@ -12405,6 +12420,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-26T10:45:38.103179+00:00",
+  "roster_synced_at": "2026-11-27T10:43:52.067617+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
