@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-27 10:43",
+ "generated": "2026-11-28 10:44",
  "players": [
   {
    "name": "Jock Landale",
@@ -50,10 +50,10 @@
    "name": "Mitchell Robinson",
    "team": "BOS",
    "status": "Out",
-   "return_date": "2026-11-27",
+   "return_date": "2026-11-29",
    "type": "Illness",
    "detail": null,
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
   },
   {
    "name": "Moritz Wagner",
@@ -74,22 +74,22 @@
    "updated": "2026-11-23"
   },
   {
-   "name": "Ryan Kalkbrenner",
-   "team": "CHA",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-28",
-   "type": "Hip",
-   "detail": "Soreness",
-   "updated": "2026-11-26"
-  },
-  {
    "name": "Grayson Allen",
    "team": "CHA",
    "status": "Out",
    "return_date": "2026-11-28",
    "type": "Concussion",
    "detail": null,
-   "updated": "2026-11-25"
+   "updated": "2026-11-27"
+  },
+  {
+   "name": "Ryan Kalkbrenner",
+   "team": "CHA",
+   "status": "Day-To-Day",
+   "return_date": "2026-11-28",
+   "type": "Hip",
+   "detail": "Soreness",
+   "updated": "2026-11-27"
   },
   {
    "name": "Dennis Schroder",
@@ -110,22 +110,31 @@
    "updated": "2026-11-08"
   },
   {
+   "name": "Norman Powell",
+   "team": "CHI",
+   "status": "Out",
+   "return_date": "2026-12-01",
+   "type": "Hamstring",
+   "detail": "Strain",
+   "updated": "2026-11-28"
+  },
+  {
+   "name": "Noa Essengue",
+   "team": "CHI",
+   "status": "Day-To-Day",
+   "return_date": "2026-11-28",
+   "type": "Thumb",
+   "detail": null,
+   "updated": "2026-11-27"
+  },
+  {
    "name": "Jalen Smith",
    "team": "CHI",
    "status": "Day-To-Day",
    "return_date": "2026-11-28",
    "type": "Illness",
    "detail": null,
-   "updated": "2026-11-26"
-  },
-  {
-   "name": "Norman Powell",
-   "team": "CHI",
-   "status": "Out",
-   "return_date": "2026-11-28",
-   "type": "Hamstring",
-   "detail": "Strain",
-   "updated": "2026-11-22"
+   "updated": "2026-11-27"
   },
   {
    "name": "Caleb Wilson",
@@ -153,6 +162,24 @@
    "type": "Toe",
    "detail": "Sprain",
    "updated": "2026-11-16"
+  },
+  {
+   "name": "Caleb Martin",
+   "team": "DAL",
+   "status": "Day-To-Day",
+   "return_date": "2026-11-30",
+   "type": "Ankle",
+   "detail": "Sprain",
+   "updated": "2026-11-28"
+  },
+  {
+   "name": "Kyrie Irving",
+   "team": "DAL",
+   "status": "Out",
+   "return_date": "2026-11-30",
+   "type": "Knee",
+   "detail": "Not Specified",
+   "updated": "2026-11-28"
   },
   {
    "name": "Tobi Lawal",
@@ -236,13 +263,22 @@
    "updated": "2026-11-24"
   },
   {
+   "name": "Gui Santos",
+   "team": "GSW",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Knee",
+   "detail": null,
+   "updated": "2026-11-28"
+  },
+  {
    "name": "Stephen Curry",
    "team": "GSW",
    "status": "Out",
    "return_date": "2026-12-12",
    "type": "Abdomen",
    "detail": null,
-   "updated": "2026-11-26"
+   "updated": "2026-11-28"
   },
   {
    "name": "Kristaps Porzingis",
@@ -272,31 +308,22 @@
    "updated": "2026-10-16"
   },
   {
-   "name": "Kelly Oubre Jr.",
-   "team": "IND",
+   "name": "Steven Adams",
+   "team": "HOU",
    "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Hand",
+   "return_date": "2026-11-28",
+   "type": "Knee",
    "detail": null,
    "updated": "2026-11-27"
   },
   {
-   "name": "Larry Nance Jr.",
-   "team": "IND",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Ankle",
-   "detail": "Soreness",
-   "updated": "2026-11-26"
-  },
-  {
    "name": "T.J. McConnell",
    "team": "IND",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "status": "Out",
+   "return_date": "2026-11-28",
    "type": "Hamstring",
    "detail": null,
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
   },
   {
    "name": "Tyrese Haliburton",
@@ -305,7 +332,7 @@
    "return_date": "2026-12-13",
    "type": "Hamstring",
    "detail": "Strain",
-   "updated": "2026-11-24"
+   "updated": "2026-11-27"
   },
   {
    "name": "Ben Sheppard",
@@ -315,6 +342,15 @@
    "type": "Knee",
    "detail": null,
    "updated": "2026-10-28"
+  },
+  {
+   "name": "Yanic Konan Niederhauser",
+   "team": "LAC",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Toe",
+   "detail": null,
+   "updated": "2026-11-28"
   },
   {
    "name": "Bradley Beal",
@@ -335,31 +371,13 @@
    "updated": "2026-08-26"
   },
   {
-   "name": "Austin Reaves",
-   "team": "LAL",
-   "status": "Out",
-   "return_date": "2026-11-27",
-   "type": "Heel",
-   "detail": "Bruise",
-   "updated": "2026-11-26"
-  },
-  {
    "name": "Isaiah Stewart",
    "team": "MEM",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "status": "Out",
+   "return_date": "2026-11-29",
    "type": "Hip",
    "detail": "Soreness",
-   "updated": "2026-11-26"
-  },
-  {
-   "name": "Zach Edey",
-   "team": "MEM",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Ankle",
-   "detail": "Soreness",
-   "updated": "2026-11-26"
+   "updated": "2026-11-28"
   },
   {
    "name": "Scotty Pippen Jr.",
@@ -407,31 +425,22 @@
    "updated": "2026-11-07"
   },
   {
-   "name": "Giannis Antetokounmpo",
-   "team": "MIA",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Groin",
-   "detail": null,
-   "updated": "2026-11-26"
-  },
-  {
-   "name": "Andrew Wiggins",
-   "team": "MIA",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "name": "Kasparas Jakucionis",
+   "team": "MIL",
+   "status": "Out",
+   "return_date": "2026-11-28",
    "type": "Ankle",
-   "detail": "Sprain",
-   "updated": "2026-11-26"
+   "detail": null,
+   "updated": "2026-11-27"
   },
   {
    "name": "LaMelo Ball",
    "team": "MIN",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "status": "Out",
+   "return_date": "2026-11-29",
    "type": "Ankle",
    "detail": null,
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
   },
   {
    "name": "Donte DiVincenzo",
@@ -461,22 +470,13 @@
    "updated": "2026-10-29"
   },
   {
-   "name": "Trendon Watford",
-   "team": "NOP",
-   "status": "Out",
-   "return_date": "2026-11-27",
-   "type": "Ankle",
-   "detail": "Sprain",
-   "updated": "2026-11-26"
-  },
-  {
    "name": "Bennedict Mathurin",
    "team": "NOP",
    "status": "Out",
-   "return_date": "2026-11-27",
+   "return_date": "2026-11-29",
    "type": "Foot",
    "detail": "Plantar Fasciitis",
-   "updated": "2026-11-26"
+   "updated": "2026-11-28"
   },
   {
    "name": "Julian Reese",
@@ -499,47 +499,56 @@
   {
    "name": "Miles McBride",
    "team": "NYK",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "status": "Out",
+   "return_date": "2026-11-29",
    "type": "Groin",
    "detail": "Soreness",
-   "updated": "2026-11-26"
-  },
-  {
-   "name": "Jordan Clarkson",
-   "team": "NYK",
-   "status": "Out",
-   "return_date": "2026-11-27",
-   "type": "Foot",
-   "detail": "Plantar Fasciitis",
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
   },
   {
    "name": "OG Anunoby",
    "team": "NYK",
    "status": "Out",
-   "return_date": "2026-11-27",
+   "return_date": "2026-11-29",
    "type": "Calf",
    "detail": "Soreness",
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
+  },
+  {
+   "name": "Jordan Clarkson",
+   "team": "NYK",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Foot",
+   "detail": "Plantar Fasciitis",
+   "updated": "2026-11-27"
   },
   {
    "name": "Andre Drummond",
    "team": "NYK",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Head",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Concussion",
    "detail": "Not Specified",
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
   },
   {
    "name": "Nikola Topic",
    "team": "OKC",
    "status": "Out",
-   "return_date": "2026-11-28",
+   "return_date": "2026-12-13",
    "type": "Hip",
    "detail": "Strain",
-   "updated": "2026-11-24"
+   "updated": "2026-11-27"
+  },
+  {
+   "name": "Aday Mara",
+   "team": "OKC",
+   "status": "Out",
+   "return_date": "2026-11-30",
+   "type": "Lower Leg",
+   "detail": "Bruise",
+   "updated": "2026-11-27"
   },
   {
    "name": "Jaylin Williams",
@@ -548,15 +557,6 @@
    "return_date": "2026-11-28",
    "type": "Back",
    "detail": "Spasms",
-   "updated": "2026-11-24"
-  },
-  {
-   "name": "Aday Mara",
-   "team": "OKC",
-   "status": "Out",
-   "return_date": "2026-11-28",
-   "type": "Lower Leg",
-   "detail": "Bruise",
    "updated": "2026-11-24"
   },
   {
@@ -598,11 +598,29 @@
   {
    "name": "Colin Castleton",
    "team": "ORL",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
+   "status": "Out",
+   "return_date": "2026-11-29",
    "type": "Calf",
    "detail": "Soreness",
-   "updated": "2026-11-26"
+   "updated": "2026-11-28"
+  },
+  {
+   "name": "Kevin Porter Jr.",
+   "team": "ORL",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Not Injury Related",
+   "detail": null,
+   "updated": "2026-11-27"
+  },
+  {
+   "name": "Anthony Black",
+   "team": "ORL",
+   "status": "Day-To-Day",
+   "return_date": "2026-11-28",
+   "type": "Back",
+   "detail": null,
+   "updated": "2026-11-27"
   },
   {
    "name": "Jonathan Isaac",
@@ -643,20 +661,38 @@
   {
    "name": "Joel Embiid",
    "team": "PHI",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Illness",
-   "detail": null,
-   "updated": "2026-11-26"
+   "status": "Out",
+   "return_date": "2026-12-01",
+   "type": "Foot",
+   "detail": "Plantar Fasciitis",
+   "updated": "2026-11-28"
   },
   {
-   "name": "Jaylen Brown",
+   "name": "LeBron James",
+   "team": "PHI",
+   "status": "Out",
+   "return_date": "2026-12-01",
+   "type": "Back",
+   "detail": null,
+   "updated": "2026-11-28"
+  },
+  {
+   "name": "Dean Wade",
    "team": "PHI",
    "status": "Out",
    "return_date": "2026-11-28",
    "type": "Hamstring",
    "detail": null,
-   "updated": "2026-11-26"
+   "updated": "2026-11-27"
+  },
+  {
+   "name": "Jaylen Brown",
+   "team": "PHI",
+   "status": "Out",
+   "return_date": "2026-12-01",
+   "type": "Hamstring",
+   "detail": null,
+   "updated": "2026-11-27"
   },
   {
    "name": "Ariel Hukporti",
@@ -675,6 +711,15 @@
    "type": "Shoulder",
    "detail": "Surgery",
    "updated": "2026-09-11"
+  },
+  {
+   "name": "Damian Lillard",
+   "team": "POR",
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Calf",
+   "detail": "Soreness",
+   "updated": "2026-11-27"
   },
   {
    "name": "Chris Youngblood",
@@ -740,24 +785,6 @@
    "updated": "2026-10-21"
   },
   {
-   "name": "Dylan Harper",
-   "team": "SAS",
-   "status": "Out",
-   "return_date": "2026-11-27",
-   "type": "Hip",
-   "detail": "Strain",
-   "updated": "2026-11-26"
-  },
-  {
-   "name": "De'Aaron Fox",
-   "team": "SAS",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Lower Leg",
-   "detail": "Bruise",
-   "updated": "2026-11-26"
-  },
-  {
    "name": "Tobias Harris",
    "team": "SAS",
    "status": "Out",
@@ -776,13 +803,13 @@
    "updated": "2026-10-05"
   },
   {
-   "name": "Alijah Martin",
+   "name": "Ja'Kobe Walter",
    "team": "TOR",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Knee",
-   "detail": "Soreness",
-   "updated": "2026-11-26"
+   "status": "Out",
+   "return_date": "2026-11-29",
+   "type": "Quadriceps",
+   "detail": "Bruise",
+   "updated": "2026-11-28"
   },
   {
    "name": "Kawhi Leonard",
@@ -812,22 +839,13 @@
    "updated": "2026-11-19"
   },
   {
-   "name": "Jaxson Hayes",
-   "team": "UTA",
-   "status": "Day-To-Day",
-   "return_date": "2026-11-27",
-   "type": "Knee",
-   "detail": "Not Specified",
-   "updated": "2026-11-27"
-  },
-  {
-   "name": "Jusuf Nurkic",
+   "name": "Mo Bamba",
    "team": "UTA",
    "status": "Out",
-   "return_date": "2026-11-27",
-   "type": "Foot",
-   "detail": "Strain",
-   "updated": "2026-11-27"
+   "return_date": "2026-11-29",
+   "type": "Illness",
+   "detail": null,
+   "updated": "2026-11-28"
   },
   {
    "name": "Lauri Markkanen",

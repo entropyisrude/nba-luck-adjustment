@@ -5780,6 +5780,21 @@
       "source_sha256": "f86e9b76a00e5fa7b1deea0bf82607036228a123e0013ea50d103e4cd1bce4ac",
       "active_roster": [
         {
+          "player": "Lawson Lovering",
+          "category": "active_roster",
+          "position": "C",
+          "age": 23,
+          "contract_type": "NBA.com roster",
+          "cap_hit": null,
+          "base_salary": null,
+          "likely_incentives": null,
+          "unlikely_incentives": null,
+          "trade_bonus_proration": null,
+          "guaranteed": null,
+          "qualifying_offer": null,
+          "rights": null
+        },
+        {
           "player": "Jaylen Wells",
           "category": "active_roster",
           "position": "SG",
@@ -12420,6 +12435,6 @@
       "roster_source": "NBA.com official roster (synced)"
     }
   },
-  "roster_synced_at": "2026-11-27T10:43:52.067617+00:00",
+  "roster_synced_at": "2026-11-28T10:44:01.051930+00:00",
   "roster_source": "NBA.com team rosters; contracts from last Spotrac scrape"
 }
